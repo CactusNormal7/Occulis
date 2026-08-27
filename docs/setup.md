@@ -53,18 +53,25 @@ pnpm exec wrangler d1 create occulis-prod
 
 Chaque commande affiche un `database_id`. **Les reporter dans `wrangler.toml`** à la place
 des `REMPLACER_PAR_L_ID_*`, puis committer : la configuration des environnements est
-versionnée, pas saisie à la main.
+versionnée, pas saisie à la main. Tant que ces valeurs ne sont pas remplacées, toutes les
+commandes visant ces bases échouent.
 
 ## 4. Premier déploiement en recette
 
 ```bash
 cd apps/server
-pnpm exec wrangler d1 migrations apply occulis-staging --remote
+pnpm exec wrangler d1 migrations apply occulis-staging --remote --env staging
 pnpm exec wrangler deploy --env staging
 ```
 
+`--env staging` est obligatoire sur les deux commandes : les bindings ne sont pas hérités
+par les environnements nommés, donc sans lui wrangler ne voit que la configuration par
+défaut et ne trouve qu'`occulis-local`.
+
 L'ordre compte : migrations d'abord, déploiement ensuite. Un Worker déployé contre un
 schéma non migré échoue à la première requête.
+
+Pour la production, même chose avec `--env production`.
 
 ## 5. Secrets pour la CI
 
