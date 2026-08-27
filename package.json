@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write .",
-    "infra": "bash scripts/infra.sh"
+    "infra": "pnpm --filter @occulis/infra start"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260827.1",
