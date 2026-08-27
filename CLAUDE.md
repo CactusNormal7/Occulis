@@ -8,6 +8,7 @@ Jeu de plateau tactique compétitif 1v1 en ligne, vue isométrique 2D, DA minima
 
 - Monorepo pnpm workspaces, TypeScript strict partout.
 - `packages/core` — logique de jeu pure (règles, plateau, hauteur, calcul de LOS, résolution des tours). **Aucune dépendance de rendu.** Testée avec Vitest.
+- `apps/server` — Worker Cloudflare + Durable Object de partie, consomme `@occulis/core`. Squelette : transport, cycle de vie du DO, schéma D1. Ni authentification, ni matchmaking, ni ELO.
 - `apps/web` — rendu (Vite + PixiJS/WebGL), consomme `@occulis/core`. La rotation isométrique et les recalculs de projection vivent ici (`src/iso.ts`), jamais dans `core`.
 - Séparation logique/rendu actée dès le départ (docs/design.md section 8) pour permettre un futur portage moteur (C++ envisagé mais explicitement reporté, hors scope pour l'instant).
 - Pas de backend écrit à ce jour, mais l'infrastructure cible est **décidée** — voir la section « Infrastructure et CI/CD » plus bas et [docs/architecture.md](docs/architecture.md). Quand le multijoueur en ligne sera implémenté : le serveur doit être **autoritaire** et ne jamais transmettre au client des données hors LOS de ce joueur (le fog of war doit être appliqué serveur-side, pas seulement caché visuellement côté client — sans quoi il est contournable via devtools).
@@ -18,6 +19,7 @@ Jeu de plateau tactique compétitif 1v1 en ligne, vue isométrique 2D, DA minima
 pnpm install
 pnpm dev          # lance apps/web (Vite)
 pnpm test         # tests de packages/core (Vitest)
+pnpm --filter @occulis/web build && cd apps/server && pnpm exec wrangler dev   # serveur en local
 pnpm typecheck
 pnpm lint
 ```
@@ -35,7 +37,8 @@ pnpm lint
 ## Infrastructure et CI/CD
 
 Décidée et documentée dans [docs/architecture.md](docs/architecture.md) ; chiffrage dans
-[docs/costs.md](docs/costs.md). Rien n'est encore implémenté — ni serveur, ni base, ni workflow.
+[docs/costs.md](docs/costs.md) ; procédure d'installation dans [docs/setup.md](docs/setup.md).
+Le squelette du Worker existe (`apps/server`) ; la CI, le matchmaking et l'authentification non.
 Les points encore ouverts sont listés en section 7 d'architecture.md : demander avant de trancher,
 comme pour la section 10 du design doc.
 

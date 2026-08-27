@@ -1,0 +1,57 @@
+# Une branche = un environnement complet (docs/architecture.md section 4).
+# Les `database_id` sont produits par `wrangler d1 create` — voir docs/setup.md.
+
+name = "occulis"
+main = "src/index.ts"
+compatibility_date = "2026-08-27"
+
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+
+[[durable_objects.bindings]]
+name = "MATCH"
+class_name = "MatchDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MatchDO"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "occulis-local"
+database_id = "local"
+
+# --- Recette -----------------------------------------------------------------
+[env.staging]
+name = "occulis-staging"
+
+[env.staging.assets]
+directory = "../web/dist"
+binding = "ASSETS"
+
+[[env.staging.durable_objects.bindings]]
+name = "MATCH"
+class_name = "MatchDO"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "occulis-staging"
+database_id = "REMPLACER_PAR_L_ID_STAGING"
+
+# --- Production --------------------------------------------------------------
+[env.production]
+name = "occulis-production"
+
+[env.production.assets]
+directory = "../web/dist"
+binding = "ASSETS"
+
+[[env.production.durable_objects.bindings]]
+name = "MATCH"
+class_name = "MatchDO"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "occulis-prod"
+database_id = "REMPLACER_PAR_L_ID_PROD"
