@@ -100,7 +100,7 @@ le replay), et un bug signalé se rejoue à l'identique.
 | Env | URL | Déclencheur | Base |
 |---|---|---|---|
 | Local | `localhost` | `pnpm dev` + `wrangler dev` | SQLite local, hors quota |
-| Preview | `<branche>.beta.occulis.fr` | push sur toute branche | créée par la CI |
+| Preview | `<branche>.beta.occulis.fr` | push sur une branche **sélectionnée** | créée par la CI |
 | Recette | `beta.occulis.fr` | merge sur `staging` | fixe |
 | Prod | `occulis.fr` | push sur `main` | fixe |
 
@@ -116,6 +116,21 @@ beta avec de vrais testeurs » (design doc section 2) suppose une URL fixe sur u
 Bijectif, donc sans collision. Le séparateur doit être un tiret et non un point : un certificat
 wildcard `*.beta.occulis.fr` ne couvre qu'un seul niveau.
 
+### Sélection des branches hébergées
+
+**Toutes les branches ne sont pas hébergées.** L'ensemble des branches déployées en recette est
+choisi explicitement : on doit pouvoir en ajouter une et en retirer une autre à volonté, sans
+que la population d'environnements dérive avec le nombre de branches ouvertes.
+
+**Le mécanisme n'est pas arrêté** et reste à trancher (point ouvert 3). Plusieurs formes le
+permettraient — un label sur la PR, un manifeste versionné dans le dépôt, un déclenchement
+manuel du workflow, une convention de nommage — et le choix entre elles n'a aucune conséquence
+sur le reste de l'architecture. Seule la propriété compte : **la liste est décidée, pas subie.**
+
+Conséquence directe : la contrainte de quota ci-dessous cesse d'être un risque. La population
+d'environnements est bornée par décision et non par la croissance du dépôt, ce qui rend aussi
+la base par branche (point ouvert 5) nettement plus tenable qu'un modèle automatique.
+
 **Quotas :** 10 bases D1 sur le plan gratuit, dont 2 fixes → 8 branches simultanées. Les bases
 locales ne comptent pas (`wrangler dev` écrit un fichier SQLite sur la machine du dev). Sur le
 plan Workers Paid — retenu en section 6, et probablement obligatoire pour les Durable Objects —
@@ -126,12 +141,13 @@ cette limite est très supérieure et le plafond de 8 branches disparaît.
 ```
 push (toute branche)
   └─ install → typecheck → lint → test → build
-       └─ migrations D1 → deploy Worker → commente l'URL sur la PR
+       └─ si la branche est sélectionnée pour la recette :
+            migrations D1 → deploy Worker → commente l'URL sur la PR
 
 push main
   └─ mêmes gates → migrations → deploy prod
 
-branche supprimée
+branche supprimée, ou retirée de la sélection
   └─ destruction du Worker, du namespace DO et de la base
 ```
 
@@ -145,53 +161,12 @@ binaire distribué. **L'URL de production doit être définitive avant le premie
 
 ## 6. Coûts
 
-Plan **Workers Paid — 5 $/mois**, qui inclut 10 M de requêtes Worker, 1 M de requêtes Durable
-Object, 400 K GB-s de durée DO, 1 Go de stockage DO, 25 Md de lignes D1 lues, 50 M écrites et
-5 Go de stockage D1.
+Chiffrage détaillé dans [costs.md](costs.md). En résumé : plan **Workers Paid à 5 $/mois**,
+qui couvre tout jusqu'à ~50 000 parties par mois ; ~32 $/mois à un million de parties. Le seul
+levier de coût réel est le nombre de coups joués (requêtes Durable Object).
 
-Hypothèses : ~60 actions par partie, 2 connexions WebSocket, ~50 requêtes Worker par session.
-Arrondi à 100 requêtes DO par partie pour garder de la marge.
-
-| Volume | Requêtes DO | Requêtes Worker | Lignes D1 écrites | Coût/mois |
-|---|---|---|---|---|
-| Dev + beta fermée (500 parties) | 50 K | 25 K | 28 K | **5 $** |
-| 1 000 joueurs (20 K parties) | 2 M | 1 M | 1,1 M | **5,15 $** |
-| 5 000 joueurs (50 K parties) | 5 M | 2,5 M | 2,75 M | **5,60 $** |
-| 1 M de parties | 100 M | 50 M | 55 M | **~32 $** |
-
-Le seul levier de coût réel est le **nombre de coups joués** (requêtes DO, 0,15 $/million).
-Le reste est négligeable de plusieurs ordres de grandeur : écrire 55 M de lignes en D1 coûte
-un demi-centime. Cloudflare ne facture pas l'egress.
-
-### L'hibernation est une condition, pas une optimisation
-
-Un Durable Object gardant un WebSocket ouvert sans hiberner occupe 128 Mo en permanence, soit
-~10 800 GB-s par jour et par partie : les 400 K GB-s inclus partiraient en ~37 parties-jours.
-Avec hibernation, une partie ne consomme que son temps de calcul réel (~0,6 GB-s), soit
-~640 000 parties dans le forfait. **Facteur ~20 000.** Si l'implémentation du DO rate
-l'hibernation, la facture explose sans signal préalable — à couvrir par un test.
-
-### Non chiffré
-
-Les tarifs de dépassement pour la **durée DO**, le **stockage DO** (>1 Go) et le **stockage D1**
-(>5 Go) n'ont pas été relevés. Ils ne mordent qu'au dernier palier : 5 Go de D1 représentent
-1 à 2 millions de parties d'historique au format log d'actions. Au-delà, archiver vers R2.
-
-### Coûts hors hébergement
-
-L'hébergement est le poste le moins cher de la sortie du jeu.
-
-| Poste | Coût |
-|---|---|
-| Cloudflare | 60 $/an |
-| Domaine | ~12 €/an |
-| Compte développeur Apple (signature macOS) | 99 $/an |
-| Certificat de signature Windows | ~100–400 $/an |
-| Steam Direct | 100 $ une fois |
-
-La signature de code coûte plus cher que les serveurs. Sur dépôt privé, surveiller les minutes
-GitHub Actions (2 000/mois gratuites) : les 6 000 minutes de build du plan Cloudflare ne
-couvrent que les builds lancés par Cloudflare.
+**L'hibernation des DO y est une condition, pas une optimisation** — un DO qui n'hiberne pas
+consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
 
 ## 7. Points ouverts
 
@@ -200,16 +175,21 @@ couvrent que les builds lancés par Cloudflare.
 2. **Rattachement des hostnames de branche.** Attacher `<slug>.beta.occulis.fr` à un Worker créé
    dynamiquement par la CI passe par un DNS wildcard et l'API Cloudflare. Mécanisme non vérifié
    en pratique — les custom domains sur previews ont beaucoup bougé chez Cloudflare.
-3. **Seed des previews.** Une base neuve est vide : sans script de seed, un preview de branche
+3. **Mécanisme de sélection des branches hébergées.** La propriété est actée en section 4 —
+   la liste est décidée, pas subie — mais la forme reste ouverte : label sur la PR, manifeste
+   versionné, déclenchement manuel, convention de nommage. Sans conséquence sur le reste de
+   l'architecture, donc décidable tard, mais à trancher avant d'écrire le workflow.
+4. **Seed des previews.** Une base neuve est vide : sans script de seed, un preview de branche
    est inutilisable pour tester. C'est le vrai travail caché de l'automatisation.
-4. **Base par branche ou base partagée préfixée.** La seconde évite tout script de création et
+5. **Base par branche ou base partagée préfixée.** La seconde évite tout script de création et
    de nettoyage. Recommandation : commencer partagé, passer à la base par branche si l'équipe
    se marche dessus.
-5. **Plan Cloudflare.** Le chiffrage de section 6 part du plan Workers Paid (5 $/mois), que les
+6. **Plan Cloudflare.** Le chiffrage de section 6 part du plan Workers Paid (5 $/mois), que les
    Durable Objects ont longtemps rendu obligatoire. À confirmer à la création du compte — c'est
-   ce qui décide si le plafond de 8 branches simultanées de la section 4 s'applique ou non.
-6. **Test d'hibernation.** Rien ne signale au développeur qu'un Durable Object n'hiberne pas :
+   ce qui décide si le plafond de 8 branches simultanées de la section 4 s'applique ou non — étant
+   entendu que la sélection explicite des branches le rend de toute façon peu contraignant.
+7. **Test d'hibernation.** Rien ne signale au développeur qu'un Durable Object n'hiberne pas :
    le jeu fonctionne à l'identique et seule la facture change (facteur ~20 000, section 6).
    À couvrir par un test dédié dès l'implémentation du DO.
-7. **Domaine et marque.** `occulis.fr` n'a jamais été vérifié, ni en disponibilité ni en marque
+8. **Domaine et marque.** `occulis.fr` n'a jamais été vérifié, ni en disponibilité ni en marque
    (design doc section 9). À régler avant de câbler des URLs.

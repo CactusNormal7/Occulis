@@ -10,7 +10,7 @@ Jeu de plateau tactique compétitif 1v1 en ligne, vue isométrique 2D, DA minima
 - `packages/core` — logique de jeu pure (règles, plateau, hauteur, calcul de LOS, résolution des tours). **Aucune dépendance de rendu.** Testée avec Vitest.
 - `apps/web` — rendu (Vite + PixiJS/WebGL), consomme `@occulis/core`. La rotation isométrique et les recalculs de projection vivent ici (`src/iso.ts`), jamais dans `core`.
 - Séparation logique/rendu actée dès le départ (docs/design.md section 8) pour permettre un futur portage moteur (C++ envisagé mais explicitement reporté, hors scope pour l'instant).
-- Pas de backend pour l'instant, mais l'infrastructure cible est décidée et documentée dans [docs/architecture.md](docs/architecture.md) (Cloudflare Worker + Durable Objects, base D1, environnements et CI/CD, chiffrage). Quand le multijoueur en ligne sera implémenté : le serveur doit être **autoritaire** et ne jamais transmettre au client des données hors LOS de ce joueur (le fog of war doit être appliqué serveur-side, pas seulement caché visuellement côté client — sans quoi il est contournable via devtools).
+- Pas de backend écrit à ce jour, mais l'infrastructure cible est **décidée** — voir la section « Infrastructure et CI/CD » plus bas et [docs/architecture.md](docs/architecture.md). Quand le multijoueur en ligne sera implémenté : le serveur doit être **autoritaire** et ne jamais transmettre au client des données hors LOS de ce joueur (le fog of war doit être appliqué serveur-side, pas seulement caché visuellement côté client — sans quoi il est contournable via devtools).
 
 ## Commandes
 
@@ -29,7 +29,26 @@ pnpm lint
 - Grille : coordonnées entières `{x, y}` + hauteur de case séparée (`Tile.height`), jamais un simple array de valeurs numériques (cf. décision fondatrice section 5.1).
 - Différenciation des pièces par capacité/mouvement, jamais par points de vie/robustesse.
 - Pas de commentaires qui expliquent le "quoi" — seulement le "pourquoi" quand une règle de design non évidente est encodée (référencer la section du design doc au besoin).
+- **`packages/core` doit rester strictement déterministe** : aucun `Math.random`, aucun `Date.now`, aucune source d'entropie ou d'horloge. Toute la persistance et tous les replays reposent sur le fait que rejouer un log d'actions reconstruit l'état exact (docs/architecture.md section 3). Un appel non déterministe introduit ici casserait silencieusement la reconstruction côté serveur. Si un aléa devient nécessaire pour une règle, il doit entrer par un seed explicite passé en paramètre, jamais être tiré dans `core`.
 - Après toute modification substantielle de règle actée avec l'utilisateur, envisager de mettre à jour `docs/design.md` en parallèle du code pour que les deux restent synchronisés.
+
+## Infrastructure et CI/CD
+
+Décidée et documentée dans [docs/architecture.md](docs/architecture.md) ; chiffrage dans
+[docs/costs.md](docs/costs.md). Rien n'est encore implémenté — ni serveur, ni base, ni workflow.
+Les points encore ouverts sont listés en section 7 d'architecture.md : demander avant de trancher,
+comme pour la section 10 du design doc.
+
+- **Hébergement : Cloudflare Worker + Durable Objects.** **1 Durable Object = 1 partie.** Il détient le `GameState` et les deux `PlayerKnowledge`, et envoie à chaque joueur son propre `viewFor()`. Le fog est donc structurel et non applicatif : un client ne peut pas recevoir ce que le DO ne lui envoie pas. Le DO étant mono-threadé, la sérialisation des tours est acquise — ne pas ajouter de verrous.
+- **Un second DO, global, sert de file de matchmaking** : son mono-threading élimine par construction le double appariement.
+- **Le DO doit hiberner.** Un DO qui garde un WebSocket ouvert sans hiberner coûte ~20 000 fois plus cher, sans aucune différence fonctionnelle visible. À couvrir par un test dédié.
+- **Base : D1** (SQLite managé, natif Workers). Un DO n'est pas une base — aucune requête transversale entre DO n'est possible. Tout ce qui se cherche, se classe ou s'agrège (comptes, ELO, historique, classement, amis) va en D1.
+- **Le log d'actions en D1 est la source de vérité ; l'état du DO est un cache reconstructible.** Cela dépend entièrement de l'invariant de déterminisme de `core` ci-dessus.
+- **Les règles sont versionnées par partie, pas par connexion.** Une partie démarrée sous le ruleset v3 se termine en v3. La cible étant une app téléchargeable (Electron), un vieux client embarque un vieux `core` ; et le pilier « temps de réflexion illimité » implique des parties qui traversent les déploiements.
+- **Quatre environnements** : local (`wrangler dev`, SQLite local), preview par branche (`<branche>.beta.occulis.fr`), recette stable (`beta.occulis.fr`), prod (`occulis.fr`, sur `main`). **Une branche = un environnement complet** (client + Worker + DO + base), jamais un preview du client seul : une branche qui touche `core` change les règles et serait sinon testée contre celles de `main`.
+- **Les branches hébergées sont sélectionnées explicitement**, pas déployées automatiquement : on doit pouvoir en ajouter et en retirer à volonté, pour que la population d'environnements soit décidée et non subie. Le mécanisme n'est pas arrêté (point ouvert 3).
+- **CI/CD** : `typecheck → lint → test → build → migrations D1 → deploy` sur toute branche sélectionnée, et sur `main` pour la prod. Les migrations D1 sont une étape de CI dès le départ, sinon les environnements divergent en schéma. Un workflow séparé, sur tag, buildera et signera les binaires Electron.
+- `VITE_SERVER_URL` est injectée au build, donc **gravée dans le binaire distribué** : l'URL de production doit être définitive avant le premier build public.
 
 ## Modules de `packages/core`
 
