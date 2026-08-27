@@ -8,7 +8,8 @@
     "test": "pnpm -r test",
     "lint": "eslint .",
     "typecheck": "pnpm -r typecheck",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "infra": "bash scripts/infra.sh"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260827.1",

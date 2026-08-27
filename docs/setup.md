@@ -3,6 +3,16 @@
 Procédure de première installation. L'architecture est décidée dans
 [architecture.md](architecture.md) ; les coûts dans [costs.md](costs.md).
 
+Toutes les opérations décrites ici sont disponibles dans un menu interactif :
+
+```bash
+pnpm infra
+```
+
+Il enveloppe wrangler, reporte automatiquement les `database_id` dans `wrangler.toml`,
+et refuse de déployer tant que l'environnement visé n'est pas configuré. Les commandes
+brutes restent documentées ci-dessous pour comprendre ce qu'il fait.
+
 Principe directeur : **rien ne se crée à la main dans le dashboard Cloudflare.** Les
 Workers, bases D1 et namespaces Durable Object naissent de `wrangler.toml` et de la CLI,
 sinon les quatre environnements divergent et l'automatisation des previews ne peut pas
@@ -44,6 +54,8 @@ pnpm exec wrangler dev
 ```
 
 ## 3. Créer les bases distantes
+
+`pnpm infra` → option 3 crée la base et remplit `wrangler.toml` dans la foulée. À la main :
 
 ```bash
 cd apps/server

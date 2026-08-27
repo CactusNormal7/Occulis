@@ -22,6 +22,7 @@ pnpm test         # tests de packages/core (Vitest)
 pnpm --filter @occulis/web build && cd apps/server && pnpm exec wrangler dev   # serveur en local
 pnpm typecheck
 pnpm lint
+pnpm infra        # menu interactif Cloudflare (bases D1, migrations, déploiement)
 ```
 
 ## Conventions
