@@ -39,7 +39,7 @@ pnpm infra        # TUI Cloudflare (tooling/infra) — bases D1, migrations, dé
 
 Décidée et documentée dans [docs/architecture.md](docs/architecture.md) ; chiffrage dans
 [docs/costs.md](docs/costs.md) ; procédure d'installation dans [docs/setup.md](docs/setup.md).
-Le squelette du Worker existe (`apps/server`) ; la CI, le matchmaking et l'authentification non.
+Le squelette du Worker (`apps/server`) et la CI/CD existent ; le matchmaking et l'authentification non.
 Les points encore ouverts sont listés en section 7 d'architecture.md : demander avant de trancher,
 comme pour la section 10 du design doc.
 
@@ -51,7 +51,7 @@ comme pour la section 10 du design doc.
 - **Les règles sont versionnées par partie, pas par connexion.** Une partie démarrée sous le ruleset v3 se termine en v3. La cible étant une app téléchargeable (Electron), un vieux client embarque un vieux `core` ; et le pilier « temps de réflexion illimité » implique des parties qui traversent les déploiements.
 - **Quatre environnements** : local (`wrangler dev`, SQLite local), preview par branche (`<branche>.beta.occulis.fr`), recette stable (`beta.occulis.fr`), prod (`occulis.fr`, sur `main`). **Une branche = un environnement complet** (client + Worker + DO + base), jamais un preview du client seul : une branche qui touche `core` change les règles et serait sinon testée contre celles de `main`.
 - **Les branches hébergées sont sélectionnées explicitement**, pas déployées automatiquement : on doit pouvoir en ajouter et en retirer à volonté, pour que la population d'environnements soit décidée et non subie. Le mécanisme n'est pas arrêté (point ouvert 3).
-- **CI/CD** : `typecheck → lint → test → build → migrations D1 → deploy` sur toute branche sélectionnée, et sur `main` pour la prod. Les migrations D1 sont une étape de CI dès le départ, sinon les environnements divergent en schéma. Un workflow séparé, sur tag, buildera et signera les binaires Electron.
+- **CI/CD** : `.github/workflows/ci.yml`. Les vérifications (`typecheck → lint → test → build`) tournent sur toute branche et toute PR ; le déploiement ne concerne que les branches listées dans **`.github/deploy-environments.json`** (`main` → production, `staging` → recette). Une branche absente du manifeste passe la CI sans être déployée : c'est là le mécanisme de sélection des environnements. Les migrations D1 précèdent toujours le déploiement. Un workflow séparé, sur tag, buildera et signera les binaires Electron.
 - `VITE_SERVER_URL` est injectée au build, donc **gravée dans le binaire distribué** : l'URL de production doit être définitive avant le premier build public.
 
 ## Modules de `packages/core`
