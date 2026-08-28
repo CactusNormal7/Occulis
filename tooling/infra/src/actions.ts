@@ -21,7 +21,6 @@ export interface ActionContext {
 
 export interface ActionDef {
   id: string;
-  icon: string;
   label: string;
   hint: string;
   /** Demande un environnement avant de lancer. */
@@ -75,7 +74,6 @@ function checkConfig(log: ActionContext["log"]): void {
 export const ACTIONS: ActionDef[] = [
   {
     id: "status",
-    icon: "◆",
     label: "Statut",
     hint: "compte, bases D1, configuration",
     async run(ctx) {
@@ -89,7 +87,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "list",
-    icon: "≡",
     label: "Lister les bases D1",
     hint: "wrangler d1 list",
     async run(ctx) {
@@ -98,7 +95,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "create-db",
-    icon: "＋",
     label: "Créer une base distante",
     hint: "crée la base et reporte le database_id dans wrangler.toml",
     needsEnv: true,
@@ -124,7 +120,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "create-branch-env",
-    icon: "⎇",
     label: "Créer un environnement de branche",
     hint: "branche courante → bloc wrangler.toml + base D1 + manifeste CI",
     async run(ctx) {
@@ -178,7 +173,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "migrate",
-    icon: "⇡",
     label: "Appliquer les migrations",
     hint: "wrangler d1 migrations apply",
     needsEnv: true,
@@ -195,7 +189,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "dev",
-    icon: "▶",
     label: "Lancer le serveur en local",
     hint: "build client + migrations locales + wrangler dev",
     interactive: true,
@@ -210,7 +203,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "deploy",
-    icon: "⇑",
     label: "Déployer",
     hint: "gates (typecheck/lint/test) + build + migrations + deploy",
     needsEnv: true,
@@ -248,7 +240,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "sql",
-    icon: "▷",
     label: "Exécuter une requête SQL",
     hint: "wrangler d1 execute --command",
     needsEnv: true,
@@ -269,7 +260,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "info",
-    icon: "ℹ",
     label: "Décrire une base",
     hint: "taille, id, URL",
     needsEnv: true,
@@ -280,7 +270,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "tail",
-    icon: "◈",
     label: "Logs en direct",
     hint: "wrangler tail",
     needsEnv: true,
@@ -294,7 +283,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "deployments",
-    icon: "☷",
     label: "Historique des déploiements",
     hint: "wrangler deployments list",
     needsEnv: true,
@@ -306,7 +294,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "login",
-    icon: "⚿",
     label: "Connexion Cloudflare",
     hint: "wrangler login (ouvre le navigateur)",
     interactive: true,

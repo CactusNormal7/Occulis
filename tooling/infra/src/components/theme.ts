@@ -13,9 +13,9 @@ export const LEVEL_COLOR: Record<Level, string> = {
 
 export const LEVEL_PREFIX: Record<Level, string> = {
   info: "  ",
-  ok: "✔ ",
-  warn: "▲ ",
-  fail: "✖ ",
-  step: "▸ ",
+  ok: "  ",
+  warn: "! ",
+  fail: "! ",
+  step: "> ",
   raw: "  ",
 };

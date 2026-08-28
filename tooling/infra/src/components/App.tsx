@@ -25,7 +25,7 @@ type Phase = "menu" | "env" | "prompt" | "output";
 
 function tomlBadge(env: EnvName): string {
   const id = configuredDatabaseId(env);
-  return !id || id.startsWith(PLACEHOLDER) ? `${env} ✖` : `${env} ✔`;
+  return !id || id.startsWith(PLACEHOLDER) ? `${env} (à créer)` : `${env} (ok)`;
 }
 
 export function App({ onInteractive, onQuit }: Props): React.ReactElement {
@@ -52,9 +52,8 @@ export function App({ onInteractive, onQuit }: Props): React.ReactElement {
     key: a.id,
     label: a.label,
     hint: a.hint,
-    icon: a.icon,
   }));
-  menuItems.push({ key: "__quit", label: "Quitter", icon: "⏻" });
+  menuItems.push({ key: "__quit", label: "Quitter" });
 
   const log = useCallback((text: string, level: LogLine["level"] = "info") => {
     setLines((prev) => [...prev, { text, level }]);
