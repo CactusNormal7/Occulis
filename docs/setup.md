@@ -20,16 +20,15 @@ Workers, bases D1 et namespaces Durable Object naissent de `wrangler.toml` et de
 sinon les quatre environnements divergent et l'automatisation des previews ne peut pas
 recréer les ressources.
 
-## 0. Bloquants à lever avant toute commande
+## 0. Préalables
 
-- **Le domaine.** `occulis.0kl.fr` n'a jamais été vérifié, ni en disponibilité ni en marque
-  déposée (design doc section 9, point ouvert 8). Le risque de proximité avec « Oculus »
-  est déjà identifié. Acheter puis découvrir un conflit imposerait de tout renommer,
-  y compris l'URL gravée dans les binaires distribués.
+- **Le domaine est réglé.** La zone `0kl.fr` appartient au compte et la production publie sur
+  `occulis.0kl.fr` (voir architecture.md section 4). Plus rien ne dépend d'`occulis.fr`.
+- **Le nom, lui, n'est pas vérifié.** Le risque de marque sur « Occulis » (proximité avec
+  Oculus, design doc section 9, point ouvert 8) reste entier. Il porte sur le nom du jeu, pas
+  sur le domaine, et se paierait au renommage — y compris de l'URL gravée dans les binaires.
 - **Le plan Cloudflare** (point ouvert 6) : vérifier dans **Compute** si les Durable
   Objects exigent le plan Workers Paid. C'est l'hypothèse du chiffrage.
-
-Les étapes 1 à 4 ne dépendent d'aucun des deux et peuvent se faire tout de suite.
 
 ## 1. Outillage local
 
@@ -133,6 +132,7 @@ git checkout -b staging main && git push -u origin staging
 
 - `pnpm infra` doit savoir ajouter et retirer une branche du manifeste, avec son bloc
   `[env.<nom>]` et sa base D1 (point ouvert 3).
-- Le rattachement des hostnames `<branche>.occulis-beta.0kl.fr` (point ouvert 2), dont la
-  mécanique n'est pas vérifiée.
+- Le rattachement d'une URL à la recette et aux previews (`occulis-beta.0kl.fr`,
+  `occulis-<branche>.0kl.fr`). La mécanique est connue — un bloc `routes` avec
+  `custom_domain = true`, comme en production — il reste à le générer par environnement.
 - L'authentification : `POST /api/matches` ne vérifie aujourd'hui aucune identité.
