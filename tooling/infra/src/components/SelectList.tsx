@@ -7,7 +7,6 @@ export interface Item {
   key: string;
   label: string;
   hint?: string;
-  icon?: string;
   disabled?: boolean;
 }
 
@@ -80,7 +79,6 @@ export function SelectList({ items, firstRow, onSelect, onCancel }: Props): Reac
               {digitFor(index)}{" "}
             </Text>
             <Text color={color} bold={active}>
-              {item.icon ? `${item.icon}  ` : ""}
               {item.label}
             </Text>
             {item.hint ? <Text color="gray" dimColor>{`  ·  ${item.hint}`}</Text> : null}

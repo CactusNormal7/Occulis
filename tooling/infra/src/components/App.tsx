@@ -5,7 +5,7 @@ import { SelectList, type Item } from "./SelectList.js";
 import { OutputPane, type LogLine } from "./OutputPane.js";
 import { ACCENT } from "./theme.js";
 import { ACTIONS, type ActionDef } from "../actions.js";
-import { ENVS, type EnvName } from "../config.js";
+import { listEnvNames, dbName, type EnvName } from "../config.js";
 import { configuredDatabaseId } from "../toml.js";
 import { PLACEHOLDER } from "../config.js";
 
@@ -24,9 +24,8 @@ interface Props {
 type Phase = "menu" | "env" | "prompt" | "output";
 
 function tomlBadge(env: EnvName): string {
-  if (env === "local") return "";
   const id = configuredDatabaseId(env);
-  return !id || id.startsWith(PLACEHOLDER) ? `${env} ✖` : `${env} ✔`;
+  return !id || id.startsWith(PLACEHOLDER) ? `${env} (à créer)` : `${env} (ok)`;
 }
 
 export function App({ onInteractive, onQuit }: Props): React.ReactElement {
@@ -38,18 +37,23 @@ export function App({ onInteractive, onQuit }: Props): React.ReactElement {
   const [lines, setLines] = useState<LogLine[]>([]);
   const [running, setRunning] = useState(false);
 
+  // Recalculé à chaque retour au menu : une nouvelle branche peut avoir été
+  // créée entre-temps (action "Créer un environnement de branche").
   const subtitle = useMemo(
-    () => [tomlBadge("staging"), tomlBadge("production")].filter(Boolean).join("   ·   "),
-    [],
+    () =>
+      listEnvNames()
+        .filter((e) => e !== "local")
+        .map(tomlBadge)
+        .join("   ·   "),
+    [phase],
   );
 
   const menuItems: Item[] = ACTIONS.map((a) => ({
     key: a.id,
     label: a.label,
     hint: a.hint,
-    icon: a.icon,
   }));
-  menuItems.push({ key: "__quit", label: "Quitter", icon: "⏻" });
+  menuItems.push({ key: "__quit", label: "Quitter" });
 
   const log = useCallback((text: string, level: LogLine["level"] = "info") => {
     setLines((prev) => [...prev, { text, level }]);
@@ -167,14 +171,13 @@ export function App({ onInteractive, onQuit }: Props): React.ReactElement {
           <Text color="cyan">{`  ${action?.label} — choisir l'environnement`}</Text>
           <Text> </Text>
           <SelectList
-            items={ENVS.filter((e) => !(action?.remoteOnly && e === "local")).map((e) => ({
-              key: e,
-              label: e,
-              hint:
-                e === "local"
-                  ? "SQLite émulé par wrangler dev"
-                  : `occulis-${e === "production" ? "prod" : e}`,
-            }))}
+            items={listEnvNames()
+              .filter((e) => !(action?.remoteOnly && e === "local"))
+              .map((e) => ({
+                key: e,
+                label: e,
+                hint: e === "local" ? "SQLite émulé par wrangler dev" : dbName(e),
+              }))}
             firstRow={FIRST_ROW + 2}
             onSelect={onEnvSelect}
             onCancel={() => setPhase("menu")}
