@@ -70,16 +70,16 @@ pas de types avancés) est sans effet à cette échelle.
 
 ### Répartition des données
 
-| Donnée | Où |
-|---|---|
-| Partie en cours (plateau, tours, fog) | **Durable Object** |
-| File de matchmaking | **Durable Object global** |
-| Comptes, sessions, pseudos | **D1** |
-| Log d'actions / replays | **D1** |
-| Résultats, ELO, stats, classement | **D1** |
-| Amis, invitations, parties privées | **D1** |
-| Versions de ruleset | **D1** ou code versionné |
-| Replays volumineux, assets | R2, le jour où ce sera nécessaire |
+| Donnée                                | Où                                |
+| ------------------------------------- | --------------------------------- |
+| Partie en cours (plateau, tours, fog) | **Durable Object**                |
+| File de matchmaking                   | **Durable Object global**         |
+| Comptes, sessions, pseudos            | **D1**                            |
+| Log d'actions / replays               | **D1**                            |
+| Résultats, ELO, stats, classement     | **D1**                            |
+| Amis, invitations, parties privées    | **D1**                            |
+| Versions de ruleset                   | **D1** ou code versionné          |
+| Replays volumineux, assets            | R2, le jour où ce sera nécessaire |
 
 KV n'est pas retenu : cohérence à terme, donc jamais pour des données autoritaires.
 
@@ -92,7 +92,7 @@ reconstruit donc exactement l'état final, mémoire fantôme comprise.
 
 **Règle d'architecture : D1 détient le log d'actions comme source de vérité ; tout le reste,
 y compris l'état du Durable Object, est un cache reconstructible.** Conséquences directes :
-une partie complète tient dans quelques kilo-octets, les replays sont gratuits (le log *est*
+une partie complète tient dans quelques kilo-octets, les replays sont gratuits (le log _est_
 le replay), et un bug signalé se rejoue à l'identique.
 
 ## 4. Environnements
@@ -101,12 +101,12 @@ La zone est **`0kl.fr`**, propriété du compte. `occulis.fr` n'a jamais été a
 reste exposé au risque de marque signalé en section 9 du design doc ; les URLs ci-dessous ne
 dépendent donc pas de son acquisition.
 
-| Env | URL | Déclencheur | Base | État |
-|---|---|---|---|---|
-| Local | `localhost` | `pnpm dev` + `wrangler dev` | SQLite local, hors quota | ✅ |
-| Preview | `occulis-<branche>.0kl.fr` | push sur une branche **sélectionnée** | créée par la CI | ✗ |
-| Recette | `occulis-staging.0kl.fr` | push sur `staging` | fixe | ✅ |
-| Prod | `occulis.0kl.fr` | push sur `main` | fixe | ✅ |
+| Env     | URL                        | Déclencheur                           | Base                     | État |
+| ------- | -------------------------- | ------------------------------------- | ------------------------ | ---- |
+| Local   | `localhost`                | `pnpm dev` + `wrangler dev`           | SQLite local, hors quota | ✅   |
+| Preview | `occulis-<branche>.0kl.fr` | push sur une branche **sélectionnée** | créée par la CI          | ✗    |
+| Recette | `occulis-staging.0kl.fr`   | push sur `staging`                    | fixe                     | ✅   |
+| Prod    | `occulis.0kl.fr`           | push sur `main`                       | fixe                     | ✅   |
 
 **Schéma plat, un seul niveau sous la zone.** Le certificat universel de Cloudflare couvre
 `0kl.fr` et `*.0kl.fr`, mais **pas** `*.*.0kl.fr`. Vérifié en pratique : `staging.0kl.fr`
@@ -220,11 +220,12 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
    lui-même au déploiement : ni DNS wildcard ni appel à l'API Cloudflare. Reste à générer ce
    bloc par branche, ce qui relève du point 3. La recette n'est pas encore rattachée et se
    déploie sur son URL `workers.dev`.
-3. **Sélection des branches hébergées — forme arrêtée, outillage à finir.** La liste est le
-   manifeste versionné `.github/deploy-environments.json`, que la CI lit déjà. Reste à faire :
-   `pnpm infra` doit pouvoir y ajouter et en retirer une branche, en créant ou détruisant du
-   même geste le bloc `[env.<nom>]` du toml et la base D1. Tant que ce n'est pas fait,
-   l'ajout d'un environnement de branche se fait à la main, en trois éditions cohérentes.
+3. **Sélection des branches hébergées — arrêté et outillé.** La liste est le manifeste
+   versionné `.github/deploy-environments.json`, que la CI lit. `pnpm infra` l'édite dans les
+   deux sens (« Créer / Supprimer un environnement de branche ») : création ou destruction du
+   même geste du bloc `[env.<nom>]` du toml, de la base D1 et de l'entrée du manifeste, puis
+   commit et push de `wrangler.toml` et du manifeste. Reste à traiter séparément : le seed des
+   bases (point 4) et la vérification bout en bout de l'attache d'URL (point 2).
 4. **Seed des previews.** Une base neuve est vide : sans script de seed, un preview de branche
    est inutilisable pour tester. C'est le vrai travail caché de l'automatisation.
 5. **Base par branche ou base partagée préfixée.** La seconde évite tout script de création et

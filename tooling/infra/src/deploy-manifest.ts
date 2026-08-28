@@ -17,3 +17,16 @@ export function upsertDeployEnvironment(
   writeFileSync(DEPLOY_MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`);
   return outcome;
 }
+
+export function deployEnvironmentExists(branch: string): boolean {
+  const manifest = JSON.parse(readFileSync(DEPLOY_MANIFEST, "utf8")) as Manifest;
+  return Boolean(manifest[branch]);
+}
+
+export function removeDeployEnvironment(branch: string): boolean {
+  const manifest = JSON.parse(readFileSync(DEPLOY_MANIFEST, "utf8")) as Manifest;
+  if (!manifest[branch]) return false;
+  delete manifest[branch];
+  writeFileSync(DEPLOY_MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`);
+  return true;
+}

@@ -15,5 +15,7 @@ Ajouter une branche suppose trois choses cohérentes entre elles :
    ils ne sont pas hérités par les environnements nommés ;
 3. la base D1 correspondante, créée et son `database_id` reporté dans le toml.
 
-`pnpm infra` a vocation à faire les trois d'un coup (point ouvert 3 d'architecture.md :
-le mécanisme est arrêté — c'est ce fichier plus l'outil — mais l'outil ne l'écrit pas encore).
+`pnpm infra` → **Créer un environnement de branche** fait les trois d'un coup depuis la
+branche courante, applique les migrations, puis committe et pousse ce fichier et
+`apps/server/wrangler.toml`. **Supprimer un environnement de branche** les défait (Worker et
+base distante compris). Édition manuelle possible, mais garder les trois cohérents.

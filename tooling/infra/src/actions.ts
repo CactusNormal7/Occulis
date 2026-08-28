@@ -1,6 +1,21 @@
 import { existsSync, readFileSync } from "node:fs";
-import { ROOT, dbName, envFlag, slugifyBranch, PLACEHOLDER, TOML, type EnvName } from "./config.js";
-import { patchDatabaseId, configuredDatabaseId, envBlockExists, appendEnvBlock } from "./toml.js";
+import {
+  ROOT,
+  dbName,
+  envFlag,
+  slugifyBranch,
+  PLACEHOLDER,
+  TOML,
+  DEPLOY_MANIFEST,
+  type EnvName,
+} from "./config.js";
+import {
+  patchDatabaseId,
+  configuredDatabaseId,
+  envBlockExists,
+  appendEnvBlock,
+  removeEnvBlock,
+} from "./toml.js";
 import {
   runWrangler,
   runWranglerInherited,
@@ -8,8 +23,12 @@ import {
   runStreaming,
   remoteDatabaseId,
 } from "./wrangler.js";
-import { currentBranch } from "./git.js";
-import { upsertDeployEnvironment } from "./deploy-manifest.js";
+import { currentBranch, pathsHaveChanges, commitPaths, pushCurrentBranch } from "./git.js";
+import {
+  upsertDeployEnvironment,
+  deployEnvironmentExists,
+  removeDeployEnvironment,
+} from "./deploy-manifest.js";
 
 export type Level = "info" | "ok" | "warn" | "fail" | "step" | "raw";
 
@@ -121,10 +140,11 @@ export const ACTIONS: ActionDef[] = [
   {
     id: "create-branch-env",
     label: "Créer un environnement de branche",
-    hint: "branche courante → bloc wrangler.toml + base D1 + manifeste CI",
+    hint: "branche courante → wrangler.toml + base D1 + manifeste, commit et push",
     async run(ctx) {
       const branch = await currentBranch();
-      if (!branch) return ctx.log("Impossible de déterminer la branche courante (HEAD détaché ?).", "fail");
+      if (!branch)
+        return ctx.log("Impossible de déterminer la branche courante (HEAD détaché ?).", "fail");
       if (branch === "main" || branch === "staging") {
         return ctx.log(
           `« ${branch} » a déjà un environnement fixe géré par .github/deploy-environments.json — rien à faire.`,
@@ -157,7 +177,9 @@ export const ACTIONS: ActionDef[] = [
       ctx.log(`wrangler.toml : database_id de ${env} = ${id}`, "ok");
 
       ctx.log("Migrations", "step");
-      if ((await stream(ctx, ["d1", "migrations", "apply", name, "--remote", ...envFlag(env)])) !== 0)
+      if (
+        (await stream(ctx, ["d1", "migrations", "apply", name, "--remote", ...envFlag(env)])) !== 0
+      )
         return ctx.log("Migrations en échec.", "fail");
 
       const outcome = upsertDeployEnvironment(branch, env, name);
@@ -165,9 +187,77 @@ export const ACTIONS: ActionDef[] = [
         `.github/deploy-environments.json : entrée « ${branch} » ${outcome === "created" ? "ajoutée" : "mise à jour"}.`,
         "ok",
       );
+
+      // On ne committe que les deux fichiers que cette action a touchés : le reste
+      // du dépôt reste au développeur.
+      const tracked = [TOML, DEPLOY_MANIFEST];
+      ctx.log("Commit et push", "step");
+      if (await pathsHaveChanges(tracked)) {
+        if (
+          (await commitPaths(`infra: environnement de branche ${branch}`, tracked, (l) =>
+            ctx.log(l, "raw"),
+          )) !== 0
+        )
+          return ctx.log("git commit a échoué — committe et pousse à la main.", "fail");
+      } else {
+        ctx.log("wrangler.toml et le manifeste sont déjà à jour — rien à committer.", "warn");
+      }
+      if ((await pushCurrentBranch((l) => ctx.log(l, "raw"))) !== 0)
+        return ctx.log("git push a échoué — pousse la branche à la main.", "fail");
       ctx.log(
-        "Pense à committer wrangler.toml et .github/deploy-environments.json — la CI en dépend.",
-        "warn",
+        `Poussé sur « ${branch} » — la CI applique les migrations puis déploie occulis-${env}.0kl.fr.`,
+        "ok",
+      );
+    },
+  },
+  {
+    id: "delete-branch-env",
+    label: "Supprimer un environnement de branche",
+    hint: "branche courante → détruit worker + base D1, retire le bloc et l'entrée, push",
+    prompt: "Retape le nom de la branche courante pour confirmer la suppression",
+    async run(ctx) {
+      const branch = await currentBranch();
+      if (!branch)
+        return ctx.log("Impossible de déterminer la branche courante (HEAD détaché ?).", "fail");
+      if (branch === "main" || branch === "staging")
+        return ctx.log(`« ${branch} » est un environnement fixe — suppression refusée.`, "fail");
+      if ((ctx.query ?? "").trim() !== branch)
+        return ctx.log("Confirmation incorrecte — rien n'a été supprimé.", "warn");
+
+      const env = slugifyBranch(branch);
+      const name = dbName(env);
+      if (!envBlockExists(env) && !deployEnvironmentExists(branch))
+        return ctx.log(`Aucun environnement pour « ${branch} » — rien à supprimer.`, "warn");
+
+      // L'ordre compte : le Worker se supprime via --env, qui lit encore son bloc
+      // dans wrangler.toml — donc avant de retirer ce bloc.
+      ctx.log("Suppression du Worker", "step");
+      await runWrangler(["delete", ...envFlag(env)], (l) => ctx.log(l, "raw"), "y\n");
+
+      ctx.log("Suppression de la base D1", "step");
+      if (await remoteDatabaseId(name))
+        await runWrangler(["d1", "delete", name, "-y"], (l) => ctx.log(l, "raw"), "y\n");
+      else ctx.log(`${name} n'existe pas côté Cloudflare.`, "warn");
+
+      if (removeEnvBlock(env)) ctx.log(`wrangler.toml : bloc [env.${env}] retiré.`, "ok");
+      if (removeDeployEnvironment(branch))
+        ctx.log(`.github/deploy-environments.json : entrée « ${branch} » retirée.`, "ok");
+
+      const tracked = [TOML, DEPLOY_MANIFEST];
+      ctx.log("Commit et push", "step");
+      if (await pathsHaveChanges(tracked)) {
+        if (
+          (await commitPaths(`infra: suppression de l'environnement ${branch}`, tracked, (l) =>
+            ctx.log(l, "raw"),
+          )) !== 0
+        )
+          return ctx.log("git commit a échoué — committe et pousse à la main.", "fail");
+        if ((await pushCurrentBranch((l) => ctx.log(l, "raw"))) !== 0)
+          return ctx.log("git push a échoué — pousse la branche à la main.", "fail");
+      }
+      ctx.log(
+        "Environnement supprimé. L'environnement GitHub Actions homonyme, s'il existe, est inoffensif (retrait depuis Settings → Environments).",
+        "ok",
       );
     },
   },

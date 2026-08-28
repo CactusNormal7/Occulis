@@ -91,36 +91,48 @@ Pour la production, même chose avec `--env production`.
 
 Dans le dashboard, **Manage account → API Tokens**, créer un token portant :
 
-| Portée | Permission | Pourquoi |
-|---|---|---|
-| Compte | `Workers Scripts:Edit` | déployer le Worker |
-| Compte | `D1:Edit` | appliquer les migrations |
-| Compte | `Account Settings:Read` | résolution du compte |
-| Zone `0kl.fr` | `Workers Routes:Edit` | rattacher `occulis.0kl.fr` et `occulis-staging.0kl.fr` |
-| Zone `0kl.fr` | `Zone:Read` | lire la zone pour ce rattachement |
+| Portée        | Permission              | Pourquoi                                               |
+| ------------- | ----------------------- | ------------------------------------------------------ |
+| Compte        | `Workers Scripts:Edit`  | déployer le Worker                                     |
+| Compte        | `D1:Edit`               | appliquer les migrations                               |
+| Compte        | `Account Settings:Read` | résolution du compte                                   |
+| Zone `0kl.fr` | `Workers Routes:Edit`   | rattacher `occulis.0kl.fr` et `occulis-staging.0kl.fr` |
+| Zone `0kl.fr` | `Zone:Read`             | lire la zone pour ce rattachement                      |
 
 Les deux permissions de zone sont indispensables depuis que la production déclare un
 `custom_domain` : sans elles le déploiement échoue **après** les migrations, sur une erreur
 d'autorisation au moment de créer l'enregistrement DNS.
 
-Le déposer dans les secrets du dépôt GitHub :
+Le déposer dans les secrets **du dépôt** GitHub (_Settings → Secrets and variables → Actions_),
+pas dans ceux d'un environnement :
 
-| Secret | Valeur |
-|---|---|
-| `CLOUDFLARE_API_TOKEN` | le token créé |
+| Secret                  | Valeur                  |
+| ----------------------- | ----------------------- |
+| `CLOUDFLARE_API_TOKEN`  | le token créé           |
 | `CLOUDFLARE_ACCOUNT_ID` | l'ID relevé à l'étape 1 |
 
+Le token est à portée compte : le même sert la production, la recette et **chaque
+environnement de branche** — `--env` ne choisit que les routes et la base. Posés une fois au
+niveau dépôt, tous les environnements présents et futurs en héritent ; un job qui cible un
+`environment:` GitHub voit toujours les secrets du dépôt. Les poser sur les environnements
+`production`/`staging` seulement casserait le déploiement des branches.
+
 Sans ces deux secrets, le job de déploiement échoue ; les vérifications, elles, tournent.
+
+```bash
+gh secret set CLOUDFLARE_API_TOKEN --repo <owner>/Occulis
+gh secret set CLOUDFLARE_ACCOUNT_ID --repo <owner>/Occulis
+```
 
 ## 6. Déclencher un déploiement
 
 Le workflow `.github/workflows/ci.yml` vérifie **toute** branche et toute pull request, mais
 ne déploie que les branches listées dans `.github/deploy-environments.json` :
 
-| Branche | Environnement | URL |
-|---|---|---|
-| `main` | production | `occulis.0kl.fr` |
-| `staging` | recette | `occulis-staging.0kl.fr` |
+| Branche   | Environnement | URL                      |
+| --------- | ------------- | ------------------------ |
+| `main`    | production    | `occulis.0kl.fr`         |
+| `staging` | recette       | `occulis-staging.0kl.fr` |
 
 Les routes créées à la main dans le dashboard sont à supprimer : `wrangler.toml` est la
 source de vérité et une route orpheline sur un nom à deux niveaux (`staging.occulis.0kl.fr`)
@@ -132,11 +144,16 @@ La branche `staging` doit exister côté dépôt pour que la recette se déploie
 git checkout -b staging main && git push -u origin staging
 ```
 
+Pour une branche de travail, `pnpm infra` → **Créer un environnement de branche** fait tout
+d'un geste depuis la branche courante : bloc `[env.<slug>]` dans `wrangler.toml`, base D1
+distante et son `database_id`, migrations, entrée dans `.github/deploy-environments.json`,
+puis commit et push de ces deux seuls fichiers — la CI enchaîne migrations et déploiement.
+**Supprimer un environnement de branche** fait l'inverse : suppression du Worker et de la
+base distante, retrait du bloc et de l'entrée, commit et push.
+
 ## 7. Ce qui reste à écrire
 
-- `pnpm infra` doit savoir ajouter et retirer une branche du manifeste, avec son bloc
-  `[env.<nom>]` et sa base D1 (point ouvert 3).
-- Le rattachement d'une URL aux previews de branche (`occulis-<branche>.0kl.fr`). La
-  mécanique est acquise — un bloc `routes` avec `custom_domain = true`, comme en production
-  et en recette — il reste à le générer par branche (point ouvert 3).
+- Le rattachement d'une URL aux previews de branche (`occulis-<branche>.0kl.fr`) : le bloc
+  `routes` avec `custom_domain = true` est désormais généré par branche, mais l'attache
+  n'a pas encore été vérifiée bout en bout sur un vrai preview (point ouvert 2).
 - L'authentification : `POST /api/matches` ne vérifie aujourd'hui aucune identité.
