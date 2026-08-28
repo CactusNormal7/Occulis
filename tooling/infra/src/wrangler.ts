@@ -9,17 +9,26 @@ export interface RunResult {
 }
 
 // Runner générique : streame chaque ligne de stdout/stderr et accumule stdout.
+// `input` alimente stdin puis le ferme — de quoi répondre « y » aux confirmations
+// de wrangler (d1 delete, delete) sans TTY.
 export function runStreaming(
   command: string,
   args: string[],
   cwd: string,
   onLine?: LineSink,
+  input?: string,
 ): Promise<RunResult> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
       cwd,
       env: { ...process.env, FORCE_COLOR: "1" },
     });
+
+    if (input !== undefined && child.stdin) {
+      child.stdin.on("error", () => {});
+      child.stdin.write(input);
+      child.stdin.end();
+    }
 
     let stdout = "";
     const buffers: Record<"out" | "err", string> = { out: "", err: "" };
@@ -46,8 +55,8 @@ export function runStreaming(
 }
 
 // Exécute `pnpm exec wrangler …` depuis apps/server, en streamant chaque ligne.
-export function runWrangler(args: string[], onLine?: LineSink): Promise<RunResult> {
-  return runStreaming("pnpm", ["exec", "wrangler", ...args], SERVER_DIR, onLine);
+export function runWrangler(args: string[], onLine?: LineSink, input?: string): Promise<RunResult> {
+  return runStreaming("pnpm", ["exec", "wrangler", ...args], SERVER_DIR, onLine, input);
 }
 
 // Commandes qui exigent un vrai TTY (login navigateur, serveur long, tail).

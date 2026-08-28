@@ -9,6 +9,12 @@ Reprend à l'identique la logique de l'ancien `scripts/infra.sh` :
 - reporte automatiquement les `database_id` dans `apps/server/wrangler.toml` ;
 - refuse migrations et déploiement tant que l'`database_id` visé est un placeholder.
 
+**Créer / Supprimer un environnement de branche** opèrent sur la branche courante :
+bloc `[env.<slug>]` de `wrangler.toml`, base D1 distante, entrée de
+`.github/deploy-environments.json` — puis `git commit` de ces deux fichiers seulement
+(pathspec, le reste de l'index est laissé tel quel) et `git push`. La suppression détruit
+aussi le Worker et la base distante, et demande de retaper le nom de la branche.
+
 ## Navigation
 
 - `↑` `↓` / `j` `k`, chiffres `1`-`9` puis `0`, **clic** et **molette** ;

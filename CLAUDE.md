@@ -50,7 +50,7 @@ comme pour la section 10 du design doc.
 - **Le log d'actions en D1 est la source de vérité ; l'état du DO est un cache reconstructible.** Cela dépend entièrement de l'invariant de déterminisme de `core` ci-dessus.
 - **Les règles sont versionnées par partie, pas par connexion.** Une partie démarrée sous le ruleset v3 se termine en v3. La cible étant une app téléchargeable (Electron), un vieux client embarque un vieux `core` ; et le pilier « temps de réflexion illimité » implique des parties qui traversent les déploiements.
 - **Quatre environnements** : local (`wrangler dev`, SQLite local), preview par branche (`occulis-<branche>.0kl.fr`), recette (`occulis-staging.0kl.fr`), prod (`occulis.0kl.fr`, sur `main`). **Une branche = un environnement complet** (client + Worker + DO + base), jamais un preview du client seul : une branche qui touche `core` change les règles et serait sinon testée contre celles de `main`.
-- **Les branches hébergées sont sélectionnées explicitement**, pas déployées automatiquement : on doit pouvoir en ajouter et en retirer à volonté, pour que la population d'environnements soit décidée et non subie. Le mécanisme n'est pas arrêté (point ouvert 3).
+- **Les branches hébergées sont sélectionnées explicitement**, pas déployées automatiquement : on doit pouvoir en ajouter et en retirer à volonté, pour que la population d'environnements soit décidée et non subie. Le mécanisme est le manifeste `.github/deploy-environments.json`, édité dans les deux sens par `pnpm infra` (« Créer / Supprimer un environnement de branche »).
 - **CI/CD** : `.github/workflows/ci.yml`. Les vérifications (`typecheck → lint → test → build`) tournent sur toute branche et toute PR ; le déploiement ne concerne que les branches listées dans **`.github/deploy-environments.json`** (`main` → production, `staging` → recette). Une branche absente du manifeste passe la CI sans être déployée : c'est là le mécanisme de sélection des environnements. Les migrations D1 précèdent toujours le déploiement. Un workflow séparé, sur tag, buildera et signera les binaires Electron.
 - `VITE_SERVER_URL` est injectée au build, donc **gravée dans le binaire distribué** : l'URL de production doit être définitive avant le premier build public.
 
@@ -74,3 +74,13 @@ Moteur de rendu isométrique filaire fonctionnel (26 tests dans `apps/web`) : tr
 Non implémenté volontairement, car listé comme ouvert en section 10 du design doc : attaque à distance différée, pièges, déploiement, règle anti-répétition, détection du mat, roster de pièces. Pas de backend ni de design system (ce dernier est explicitement prévu pour plus tard par l'utilisateur).
 
 **Les interprétations qu'il a fallu encoder faute de décision explicite sont consignées dans [docs/implementation-notes.md](docs/implementation-notes.md)** — les relire avant de bâtir dessus, et faire valider celles qui sont concernées avant d'ajouter une règle qui en dépend.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).

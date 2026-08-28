@@ -53,7 +53,7 @@ export function OutputPane({ title, lines, running, onDone }: Props): React.Reac
     <Box flexDirection="column">
       <Box>
         <Text color="cyan" bold>
-          {running ? `${SPIN[frame]}  ` : "•  "}
+          {running ? `${SPIN[frame]}  ` : ""}
           {title}
         </Text>
         {clampedOffset > 0 ? (
