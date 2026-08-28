@@ -97,12 +97,31 @@ le replay), et un bug signalé se rejoue à l'identique.
 
 ## 4. Environnements
 
-| Env | URL | Déclencheur | Base |
-|---|---|---|---|
-| Local | `localhost` | `pnpm dev` + `wrangler dev` | SQLite local, hors quota |
-| Preview | `<branche>.beta.occulis.fr` | push sur une branche **sélectionnée** | créée par la CI |
-| Recette | `beta.occulis.fr` | merge sur `staging` | fixe |
-| Prod | `occulis.fr` | push sur `main` | fixe |
+La zone est **`0kl.fr`**, propriété du compte. `occulis.fr` n'a jamais été acquis et le nom
+reste exposé au risque de marque signalé en section 9 du design doc ; les URLs ci-dessous ne
+dépendent donc pas de son acquisition.
+
+| Env | URL | Déclencheur | Base | État |
+|---|---|---|---|---|
+| Local | `localhost` | `pnpm dev` + `wrangler dev` | SQLite local, hors quota | ✅ |
+| Preview | `occulis-<branche>.0kl.fr` | push sur une branche **sélectionnée** | créée par la CI | ✗ |
+| Recette | `occulis-beta.0kl.fr` | push sur `staging` | fixe | ✗ URL non rattachée |
+| Prod | `occulis.0kl.fr` | push sur `main` | fixe | ✅ |
+
+**Schéma plat, un seul niveau sous la zone.** Le certificat universel de Cloudflare couvre
+`0kl.fr` et `*.0kl.fr`, mais **pas** `*.*.0kl.fr` : un nom du type `beta.occulis.0kl.fr`
+exigerait Advanced Certificate Manager, payant. D'où le préfixe `occulis-` plutôt qu'un
+sous-domaine imbriqué. Cette contrainte s'applique aussi aux previews de branche.
+
+Le rattachement se déclare dans `wrangler.toml`, pas dans le dashboard :
+
+```toml
+routes = [{ pattern = "occulis.0kl.fr", custom_domain = true }]
+```
+
+`custom_domain = true` fait créer l'enregistrement DNS et le rattachement par wrangler au
+déploiement. Le token de la CI doit donc porter `Zone:Workers Routes:Edit` et `Zone:Zone:Read`
+en plus des permissions Workers et D1.
 
 **Une branche = un environnement complet** (client + Worker + DO + base), pas seulement un
 preview du client. Une branche qui touche `packages/core` change les règles ; la tester contre
@@ -112,9 +131,9 @@ assets statiques, l'ensemble part du même commit — donc du même `core`.
 La recette stable est distincte des previews de branche : le pilier « validation du fun par
 beta avec de vrais testeurs » (design doc section 2) suppose une URL fixe sur un build intégré.
 
-**Slug de branche :** nom complet normalisé, `/` → `-` (`feature/test2` → `feature-test2`).
-Bijectif, donc sans collision. Le séparateur doit être un tiret et non un point : un certificat
-wildcard `*.beta.occulis.fr` ne couvre qu'un seul niveau.
+**Slug de branche :** nom complet normalisé, `/` → `-` (`feature/test2` → `feature-test2`,
+donc `occulis-feature-test2.0kl.fr`). Bijectif, donc sans collision. Le séparateur est un tiret
+et jamais un point, pour la raison de certificat ci-dessus.
 
 ### Sélection des branches hébergées
 
@@ -194,9 +213,11 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
 
 1. **Versionnement du protocole et du ruleset** — la décision de section 1 ci-dessus est actée
    mais ne figure pas dans les points ouverts du design doc. À y reporter.
-2. **Rattachement des hostnames de branche.** Attacher `<slug>.beta.occulis.fr` à un Worker créé
-   dynamiquement par la CI passe par un DNS wildcard et l'API Cloudflare. Mécanisme non vérifié
-   en pratique — les custom domains sur previews ont beaucoup bougé chez Cloudflare.
+2. **Rattachement des hostnames de branche — mécanisme trouvé, reste à généraliser.** La
+   production utilise `routes = [{ pattern = …, custom_domain = true }]`, que wrangler applique
+   lui-même au déploiement : ni DNS wildcard ni appel à l'API Cloudflare. Reste à générer ce
+   bloc par branche, ce qui relève du point 3. La recette n'est pas encore rattachée et se
+   déploie sur son URL `workers.dev`.
 3. **Sélection des branches hébergées — forme arrêtée, outillage à finir.** La liste est le
    manifeste versionné `.github/deploy-environments.json`, que la CI lit déjà. Reste à faire :
    `pnpm infra` doit pouvoir y ajouter et en retirer une branche, en créant ou détruisant du
@@ -214,5 +235,7 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
 7. **Test d'hibernation.** Rien ne signale au développeur qu'un Durable Object n'hiberne pas :
    le jeu fonctionne à l'identique et seule la facture change (facteur ~20 000, section 6).
    À couvrir par un test dédié dès l'implémentation du DO.
-8. **Domaine et marque.** `occulis.fr` n'a jamais été vérifié, ni en disponibilité ni en marque
-   (design doc section 9). À régler avant de câbler des URLs.
+8. **Marque.** Les environnements vivent sous `0kl.fr`, donc plus aucune URL ne dépend
+   d'`occulis.fr`. Mais le risque de marque sur le **nom** « Occulis » lui-même (proximité avec
+   Oculus, design doc section 9) reste entier et n'a jamais été vérifié — il porte sur le nom du
+   jeu, pas sur le domaine, et se paierait au renommage.

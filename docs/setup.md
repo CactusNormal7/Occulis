@@ -22,7 +22,7 @@ recréer les ressources.
 
 ## 0. Bloquants à lever avant toute commande
 
-- **Le domaine.** `occulis.fr` n'a jamais été vérifié, ni en disponibilité ni en marque
+- **Le domaine.** `occulis.0kl.fr` n'a jamais été vérifié, ni en disponibilité ni en marque
   déposée (design doc section 9, point ouvert 8). Le risque de proximité avec « Oculus »
   est déjà identifié. Acheter puis découvrir un conflit imposerait de tout renommer,
   y compris l'URL gravée dans les binaires distribués.
@@ -90,8 +90,19 @@ Pour la production, même chose avec `--env production`.
 
 ## 5. Secrets pour la CI
 
-Dans le dashboard, **Manage account → API Tokens**, créer un token avec les permissions
-`Workers Scripts:Edit`, `D1:Edit` et `Account Settings:Read`.
+Dans le dashboard, **Manage account → API Tokens**, créer un token portant :
+
+| Portée | Permission | Pourquoi |
+|---|---|---|
+| Compte | `Workers Scripts:Edit` | déployer le Worker |
+| Compte | `D1:Edit` | appliquer les migrations |
+| Compte | `Account Settings:Read` | résolution du compte |
+| Zone `0kl.fr` | `Workers Routes:Edit` | rattacher `occulis.0kl.fr` au Worker |
+| Zone `0kl.fr` | `Zone:Read` | lire la zone pour ce rattachement |
+
+Les deux permissions de zone sont indispensables depuis que la production déclare un
+`custom_domain` : sans elles le déploiement échoue **après** les migrations, sur une erreur
+d'autorisation au moment de créer l'enregistrement DNS.
 
 Le déposer dans les secrets du dépôt GitHub :
 
@@ -122,6 +133,6 @@ git checkout -b staging main && git push -u origin staging
 
 - `pnpm infra` doit savoir ajouter et retirer une branche du manifeste, avec son bloc
   `[env.<nom>]` et sa base D1 (point ouvert 3).
-- Le rattachement des hostnames `<branche>.beta.occulis.fr` (point ouvert 2), dont la
+- Le rattachement des hostnames `<branche>.occulis-beta.0kl.fr` (point ouvert 2), dont la
   mécanique n'est pas vérifiée.
 - L'authentification : `POST /api/matches` ne vérifie aujourd'hui aucune identité.

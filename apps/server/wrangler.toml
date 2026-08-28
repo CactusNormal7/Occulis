@@ -43,6 +43,17 @@ database_id = "b0c5894c-1032-4ef4-9647-b9ff1ce9048b"
 [env.production]
 name = "occulis-production"
 
+# `custom_domain = true` fait créer par wrangler l'enregistrement DNS et le rattachement
+# au déploiement : rien à cliquer dans le dashboard. La zone 0kl.fr doit appartenir au
+# compte, et le token de la CI porter Zone:Workers Routes:Edit et Zone:Zone:Read en plus
+# des permissions Workers/D1.
+#
+# Un seul niveau sous la zone, délibérément : le certificat universel de Cloudflare couvre
+# `0kl.fr` et `*.0kl.fr`, mais pas `*.*.0kl.fr`. Un nom du type `beta.occulis.0kl.fr`
+# exigerait Advanced Certificate Manager (payant) — d'où le schéma plat retenu en
+# section 4 de docs/architecture.md.
+routes = [{ pattern = "occulis.0kl.fr", custom_domain = true }]
+
 [env.production.assets]
 directory = "../web/dist"
 binding = "ASSETS"
