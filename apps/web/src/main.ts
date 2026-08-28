@@ -1,58 +1,74 @@
 import { Application } from "pixi.js";
-import { type PlayerId, emptyKnowledge, observe, viewFor } from "@occulis/core";
-import { type IsoProjection, lerpAngle } from "./iso.js";
-import { SceneRenderer } from "./renderer.js";
+import { type Coord, type PlayerId, emptyKnowledge, observe, viewFor } from "@occulis/core";
+import {
+  type Camera,
+  createCamera,
+  originOf,
+  pivotOf,
+  settle,
+  toProjection,
+  toProjectionSpace,
+  withViewport,
+} from "./camera.js";
+import { attachControls } from "./controls.js";
+import { tileAt } from "./picking.js";
+import { Scene } from "./scene.js";
 import { demoGame } from "./scenario.js";
+import { BACKGROUND } from "./theme.js";
 
-const QUARTER_TURN = Math.PI / 2;
-
+/** Racine de composition : elle câble les modules, elle n'en implémente aucun. */
 async function main(): Promise<void> {
   const host = document.getElementById("app");
   if (host === null) throw new Error("élément #app introuvable");
 
   const app = new Application();
-  await app.init({ background: "#0d0f12", resizeTo: window, antialias: true });
+  await app.init({ background: BACKGROUND, resizeTo: window, antialias: true });
   host.appendChild(app.canvas);
 
   const state = demoGame();
-  const renderer = new SceneRenderer();
-  app.stage.addChild(renderer.root);
+  const scene = new Scene();
+  app.stage.addChild(scene.root);
 
   let viewer: PlayerId = "A";
-  let knowledge = observe(emptyKnowledge(viewer), state);
+  // Recalculé au changement de point de vue seulement : `viewFor` alloue.
+  let view = viewFor(state, observe(emptyKnowledge(viewer), state));
+  let camera: Camera = createCamera(pivotOf(state.board), {
+    x: app.screen.width,
+    y: app.screen.height,
+  });
+  let hovered: Coord | undefined;
 
-  let targetRotation = 0;
-  const projection: IsoProjection = {
-    tileWidth: 72,
-    tileHeight: 36,
-    heightUnit: 22,
-    rotation: 0,
-    pivot: { x: 4.5, y: 3.5 },
-  };
-  let current = projection;
+  app.renderer.on("resize", () => {
+    camera = withViewport(camera, { x: app.screen.width, y: app.screen.height });
+  });
 
-  const recentre = (): void => {
-    renderer.root.x = app.screen.width / 2;
-    renderer.root.y = app.screen.height / 2;
-  };
-  recentre();
-  app.renderer.on("resize", recentre);
-
-  window.addEventListener("keydown", (event) => {
-    if (event.key === "ArrowLeft") targetRotation -= QUARTER_TURN;
-    else if (event.key === "ArrowRight") targetRotation += QUARTER_TURN;
-    else if (event.key === " ") {
-      // Bascule de point de vue : chaque joueur ne voit que sa propre information.
+  attachControls({
+    canvas: app.canvas,
+    getCamera: () => camera,
+    setCamera: (next) => {
+      camera = next;
+    },
+    pickTile: (point) =>
+      tileAt(toProjectionSpace(camera, point), state.board, toProjection(camera)),
+    setHovered: (coord) => {
+      hovered = coord;
+    },
+    toggleViewer: () => {
+      // Chaque joueur ne voit que sa propre information (docs/design.md 5.4).
       viewer = viewer === "A" ? "B" : "A";
-      knowledge = observe(emptyKnowledge(viewer), state);
-    } else return;
-    event.preventDefault();
+      view = viewFor(state, observe(emptyKnowledge(viewer), state));
+    },
   });
 
   app.ticker.add((ticker) => {
-    const t = Math.min(1, ticker.deltaMS / 120);
-    current = { ...current, rotation: lerpAngle(current.rotation, targetRotation, t) };
-    renderer.render({ board: state.board, view: viewFor(state, knowledge), projection: current });
+    camera = settle(camera, ticker.deltaMS);
+    scene.render({
+      board: state.board,
+      view,
+      projection: toProjection(camera),
+      origin: originOf(camera),
+      hovered,
+    });
   });
 }
 
