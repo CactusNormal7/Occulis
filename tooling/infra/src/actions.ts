@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
-import { ROOT, dbName, envFlag, PLACEHOLDER, TOML, type EnvName } from "./config.js";
-import { patchDatabaseId, configuredDatabaseId } from "./toml.js";
+import { ROOT, dbName, envFlag, slugifyBranch, PLACEHOLDER, TOML, type EnvName } from "./config.js";
+import { patchDatabaseId, configuredDatabaseId, envBlockExists, appendEnvBlock } from "./toml.js";
 import {
   runWrangler,
   runWranglerInherited,
@@ -8,6 +8,8 @@ import {
   runStreaming,
   remoteDatabaseId,
 } from "./wrangler.js";
+import { currentBranch } from "./git.js";
+import { upsertDeployEnvironment } from "./deploy-manifest.js";
 
 export type Level = "info" | "ok" | "warn" | "fail" | "step" | "raw";
 
@@ -121,6 +123,60 @@ export const ACTIONS: ActionDef[] = [
     },
   },
   {
+    id: "create-branch-env",
+    icon: "⎇",
+    label: "Créer un environnement de branche",
+    hint: "branche courante → bloc wrangler.toml + base D1 + manifeste CI",
+    async run(ctx) {
+      const branch = await currentBranch();
+      if (!branch) return ctx.log("Impossible de déterminer la branche courante (HEAD détaché ?).", "fail");
+      if (branch === "main" || branch === "staging") {
+        return ctx.log(
+          `« ${branch} » a déjà un environnement fixe géré par .github/deploy-environments.json — rien à faire.`,
+          "fail",
+        );
+      }
+
+      const env = slugifyBranch(branch);
+      const name = dbName(env);
+
+      if (envBlockExists(env)) {
+        ctx.log(`Bloc [env.${env}] déjà présent dans wrangler.toml.`, "warn");
+      } else {
+        appendEnvBlock(env, name);
+        ctx.log(`wrangler.toml : bloc [env.${env}] ajouté (routes occulis-${env}.0kl.fr).`, "ok");
+      }
+
+      let id = await remoteDatabaseId(name);
+      if (!id) {
+        ctx.log(`Création de ${name}…`, "step");
+        const { code } = await runWrangler(["d1", "create", name], (l) => ctx.log(l, "raw"));
+        if (code !== 0) return ctx.log("Création de la base échouée.", "fail");
+        id = await remoteDatabaseId(name);
+        if (!id) return ctx.log("Création échouée : id introuvable.", "fail");
+        ctx.log("Base créée.", "ok");
+      } else {
+        ctx.log(`${name} existe déjà.`, "warn");
+      }
+      patchDatabaseId(env, id);
+      ctx.log(`wrangler.toml : database_id de ${env} = ${id}`, "ok");
+
+      ctx.log("Migrations", "step");
+      if ((await stream(ctx, ["d1", "migrations", "apply", name, "--remote", ...envFlag(env)])) !== 0)
+        return ctx.log("Migrations en échec.", "fail");
+
+      const outcome = upsertDeployEnvironment(branch, env, name);
+      ctx.log(
+        `.github/deploy-environments.json : entrée « ${branch} » ${outcome === "created" ? "ajoutée" : "mise à jour"}.`,
+        "ok",
+      );
+      ctx.log(
+        "Pense à committer wrangler.toml et .github/deploy-environments.json — la CI en dépend.",
+        "warn",
+      );
+    },
+  },
+  {
     id: "migrate",
     icon: "⇡",
     label: "Appliquer les migrations",
@@ -154,7 +210,7 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "deploy",
-    icon: "🚀",
+    icon: "⇑",
     label: "Déployer",
     hint: "gates (typecheck/lint/test) + build + migrations + deploy",
     needsEnv: true,
