@@ -6,5 +6,9 @@
   "staging": {
     "wranglerEnv": "staging",
     "d1Database": "occulis-staging"
+  },
+  "feature/engine": {
+    "wranglerEnv": "feature-engine",
+    "d1Database": "occulis-feature-engine"
   }
 }
