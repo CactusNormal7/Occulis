@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
@@ -6,15 +7,38 @@ const here = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(here, "../../..");
 export const SERVER_DIR = resolve(ROOT, "apps/server");
 export const TOML = resolve(SERVER_DIR, "wrangler.toml");
+export const DEPLOY_MANIFEST = resolve(ROOT, ".github/deploy-environments.json");
 
 export const PLACEHOLDER = "REMPLACER_PAR_L_ID";
 
-export type EnvName = "local" | "staging" | "production";
+export type EnvName = string;
 
-export const ENVS: EnvName[] = ["local", "staging", "production"];
+const FIXED_DB_NAMES: Record<string, string> = {
+  local: "occulis-local",
+  staging: "occulis-staging",
+  production: "occulis-prod",
+};
 
 export function dbName(env: EnvName): string {
-  return { local: "occulis-local", staging: "occulis-staging", production: "occulis-prod" }[env];
+  return FIXED_DB_NAMES[env] ?? `occulis-${env}`;
+}
+
+// "local" n'est jamais un bloc nommé dans le toml ; les autres sont découverts
+// dynamiquement, pour que tout environnement de branche déjà créé apparaisse
+// sans devoir étendre une liste figée à la main.
+export function listEnvNames(): EnvName[] {
+  const lines = readFileSync(TOML, "utf8").split("\n");
+  const found: EnvName[] = [];
+  for (const line of lines) {
+    const match = line.trim().match(/^\[env\.([^.\]]+)\]$/);
+    if (match) found.push(match[1]!);
+  }
+  return ["local", ...found];
+}
+
+// Nom de branche complet normalisé, `/` → `-` (docs/architecture.md section 4).
+export function slugifyBranch(branch: string): string {
+  return branch.replace(/\//g, "-");
 }
 
 // Les bindings ne sont pas hérités par les environnements nommés : toute commande

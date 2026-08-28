@@ -1,4 +1,10 @@
 {
-  "main": { "wranglerEnv": "production", "d1Database": "occulis-prod" },
-  "staging": { "wranglerEnv": "staging", "d1Database": "occulis-staging" }
+  "main": {
+    "wranglerEnv": "production",
+    "d1Database": "occulis-prod"
+  },
+  "staging": {
+    "wranglerEnv": "staging",
+    "d1Database": "occulis-staging"
+  }
 }

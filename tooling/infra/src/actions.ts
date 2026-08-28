@@ -1,6 +1,21 @@
 import { existsSync, readFileSync } from "node:fs";
-import { ROOT, dbName, envFlag, PLACEHOLDER, TOML, type EnvName } from "./config.js";
-import { patchDatabaseId, configuredDatabaseId } from "./toml.js";
+import {
+  ROOT,
+  dbName,
+  envFlag,
+  slugifyBranch,
+  PLACEHOLDER,
+  TOML,
+  DEPLOY_MANIFEST,
+  type EnvName,
+} from "./config.js";
+import {
+  patchDatabaseId,
+  configuredDatabaseId,
+  envBlockExists,
+  appendEnvBlock,
+  removeEnvBlock,
+} from "./toml.js";
 import {
   runWrangler,
   runWranglerInherited,
@@ -8,6 +23,12 @@ import {
   runStreaming,
   remoteDatabaseId,
 } from "./wrangler.js";
+import { currentBranch, pathsHaveChanges, commitPaths, pushCurrentBranch } from "./git.js";
+import {
+  upsertDeployEnvironment,
+  deployEnvironmentExists,
+  removeDeployEnvironment,
+} from "./deploy-manifest.js";
 
 export type Level = "info" | "ok" | "warn" | "fail" | "step" | "raw";
 
@@ -19,7 +40,6 @@ export interface ActionContext {
 
 export interface ActionDef {
   id: string;
-  icon: string;
   label: string;
   hint: string;
   /** Demande un environnement avant de lancer. */
@@ -73,7 +93,6 @@ function checkConfig(log: ActionContext["log"]): void {
 export const ACTIONS: ActionDef[] = [
   {
     id: "status",
-    icon: "◆",
     label: "Statut",
     hint: "compte, bases D1, configuration",
     async run(ctx) {
@@ -87,7 +106,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "list",
-    icon: "≡",
     label: "Lister les bases D1",
     hint: "wrangler d1 list",
     async run(ctx) {
@@ -96,7 +114,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "create-db",
-    icon: "＋",
     label: "Créer une base distante",
     hint: "crée la base et reporte le database_id dans wrangler.toml",
     needsEnv: true,
@@ -121,8 +138,131 @@ export const ACTIONS: ActionDef[] = [
     },
   },
   {
+    id: "create-branch-env",
+    label: "Créer un environnement de branche",
+    hint: "branche courante → wrangler.toml + base D1 + manifeste, commit et push",
+    async run(ctx) {
+      const branch = await currentBranch();
+      if (!branch)
+        return ctx.log("Impossible de déterminer la branche courante (HEAD détaché ?).", "fail");
+      if (branch === "main" || branch === "staging") {
+        return ctx.log(
+          `« ${branch} » a déjà un environnement fixe géré par .github/deploy-environments.json — rien à faire.`,
+          "fail",
+        );
+      }
+
+      const env = slugifyBranch(branch);
+      const name = dbName(env);
+
+      if (envBlockExists(env)) {
+        ctx.log(`Bloc [env.${env}] déjà présent dans wrangler.toml.`, "warn");
+      } else {
+        appendEnvBlock(env, name);
+        ctx.log(`wrangler.toml : bloc [env.${env}] ajouté (routes occulis-${env}.0kl.fr).`, "ok");
+      }
+
+      let id = await remoteDatabaseId(name);
+      if (!id) {
+        ctx.log(`Création de ${name}…`, "step");
+        const { code } = await runWrangler(["d1", "create", name], (l) => ctx.log(l, "raw"));
+        if (code !== 0) return ctx.log("Création de la base échouée.", "fail");
+        id = await remoteDatabaseId(name);
+        if (!id) return ctx.log("Création échouée : id introuvable.", "fail");
+        ctx.log("Base créée.", "ok");
+      } else {
+        ctx.log(`${name} existe déjà.`, "warn");
+      }
+      patchDatabaseId(env, id);
+      ctx.log(`wrangler.toml : database_id de ${env} = ${id}`, "ok");
+
+      ctx.log("Migrations", "step");
+      if (
+        (await stream(ctx, ["d1", "migrations", "apply", name, "--remote", ...envFlag(env)])) !== 0
+      )
+        return ctx.log("Migrations en échec.", "fail");
+
+      const outcome = upsertDeployEnvironment(branch, env, name);
+      ctx.log(
+        `.github/deploy-environments.json : entrée « ${branch} » ${outcome === "created" ? "ajoutée" : "mise à jour"}.`,
+        "ok",
+      );
+
+      // On ne committe que les deux fichiers que cette action a touchés : le reste
+      // du dépôt reste au développeur.
+      const tracked = [TOML, DEPLOY_MANIFEST];
+      ctx.log("Commit et push", "step");
+      if (await pathsHaveChanges(tracked)) {
+        if (
+          (await commitPaths(`infra: environnement de branche ${branch}`, tracked, (l) =>
+            ctx.log(l, "raw"),
+          )) !== 0
+        )
+          return ctx.log("git commit a échoué — committe et pousse à la main.", "fail");
+      } else {
+        ctx.log("wrangler.toml et le manifeste sont déjà à jour — rien à committer.", "warn");
+      }
+      if ((await pushCurrentBranch((l) => ctx.log(l, "raw"))) !== 0)
+        return ctx.log("git push a échoué — pousse la branche à la main.", "fail");
+      ctx.log(
+        `Poussé sur « ${branch} » — la CI applique les migrations puis déploie occulis-${env}.0kl.fr.`,
+        "ok",
+      );
+    },
+  },
+  {
+    id: "delete-branch-env",
+    label: "Supprimer un environnement de branche",
+    hint: "branche courante → détruit worker + base D1, retire le bloc et l'entrée, push",
+    prompt: "Retape le nom de la branche courante pour confirmer la suppression",
+    async run(ctx) {
+      const branch = await currentBranch();
+      if (!branch)
+        return ctx.log("Impossible de déterminer la branche courante (HEAD détaché ?).", "fail");
+      if (branch === "main" || branch === "staging")
+        return ctx.log(`« ${branch} » est un environnement fixe — suppression refusée.`, "fail");
+      if ((ctx.query ?? "").trim() !== branch)
+        return ctx.log("Confirmation incorrecte — rien n'a été supprimé.", "warn");
+
+      const env = slugifyBranch(branch);
+      const name = dbName(env);
+      if (!envBlockExists(env) && !deployEnvironmentExists(branch))
+        return ctx.log(`Aucun environnement pour « ${branch} » — rien à supprimer.`, "warn");
+
+      // L'ordre compte : le Worker se supprime via --env, qui lit encore son bloc
+      // dans wrangler.toml — donc avant de retirer ce bloc.
+      ctx.log("Suppression du Worker", "step");
+      await runWrangler(["delete", ...envFlag(env)], (l) => ctx.log(l, "raw"), "y\n");
+
+      ctx.log("Suppression de la base D1", "step");
+      if (await remoteDatabaseId(name))
+        await runWrangler(["d1", "delete", name, "-y"], (l) => ctx.log(l, "raw"), "y\n");
+      else ctx.log(`${name} n'existe pas côté Cloudflare.`, "warn");
+
+      if (removeEnvBlock(env)) ctx.log(`wrangler.toml : bloc [env.${env}] retiré.`, "ok");
+      if (removeDeployEnvironment(branch))
+        ctx.log(`.github/deploy-environments.json : entrée « ${branch} » retirée.`, "ok");
+
+      const tracked = [TOML, DEPLOY_MANIFEST];
+      ctx.log("Commit et push", "step");
+      if (await pathsHaveChanges(tracked)) {
+        if (
+          (await commitPaths(`infra: suppression de l'environnement ${branch}`, tracked, (l) =>
+            ctx.log(l, "raw"),
+          )) !== 0
+        )
+          return ctx.log("git commit a échoué — committe et pousse à la main.", "fail");
+        if ((await pushCurrentBranch((l) => ctx.log(l, "raw"))) !== 0)
+          return ctx.log("git push a échoué — pousse la branche à la main.", "fail");
+      }
+      ctx.log(
+        "Environnement supprimé. L'environnement GitHub Actions homonyme, s'il existe, est inoffensif (retrait depuis Settings → Environments).",
+        "ok",
+      );
+    },
+  },
+  {
     id: "migrate",
-    icon: "⇡",
     label: "Appliquer les migrations",
     hint: "wrangler d1 migrations apply",
     needsEnv: true,
@@ -139,7 +279,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "dev",
-    icon: "▶",
     label: "Lancer le serveur en local",
     hint: "build client + migrations locales + wrangler dev",
     interactive: true,
@@ -154,7 +293,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "deploy",
-    icon: "🚀",
     label: "Déployer",
     hint: "gates (typecheck/lint/test) + build + migrations + deploy",
     needsEnv: true,
@@ -192,7 +330,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "sql",
-    icon: "▷",
     label: "Exécuter une requête SQL",
     hint: "wrangler d1 execute --command",
     needsEnv: true,
@@ -213,7 +350,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "info",
-    icon: "ℹ",
     label: "Décrire une base",
     hint: "taille, id, URL",
     needsEnv: true,
@@ -224,7 +360,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "tail",
-    icon: "◈",
     label: "Logs en direct",
     hint: "wrangler tail",
     needsEnv: true,
@@ -238,7 +373,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "deployments",
-    icon: "☷",
     label: "Historique des déploiements",
     hint: "wrangler deployments list",
     needsEnv: true,
@@ -250,7 +384,6 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "login",
-    icon: "⚿",
     label: "Connexion Cloudflare",
     hint: "wrangler login (ouvre le navigateur)",
     interactive: true,

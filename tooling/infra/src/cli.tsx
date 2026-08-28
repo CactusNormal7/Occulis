@@ -61,7 +61,7 @@ async function runMenu(): Promise<void> {
 
     const { action, env } = outcome as InteractiveOutcome;
     console.clear();
-    consoleLog(`${action.icon}  ${action.label}${env ? ` · ${env}` : ""}`, "step");
+    consoleLog(`${action.label}${env ? ` · ${env}` : ""}`, "step");
     inInteractive = true;
     try {
       await action.run({ env, query: null, log: consoleLog });
