@@ -1,0 +1,111 @@
+name: CI/CD
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+# Les vérifications redondantes d'une PR peuvent être annulées ; un déploiement en
+# cours, non — d'où l'annulation restreinte aux pull requests.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    name: Vérifications
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      # `pnpm -r test` n'exécute que les paquets qui déclarent un script `test`.
+      # Ajouter des tests à apps/server ou apps/web suffira donc à les voir passer
+      # ici, sans toucher à ce workflow.
+      - name: Tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  target:
+    name: Environnement cible
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      wrangler_env: ${{ steps.resolve.outputs.wrangler_env }}
+      d1_database: ${{ steps.resolve.outputs.d1_database }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Une branche absente du manifeste n'est pas déployée. C'est le point
+      # d'extension pour les environnements par branche : une entrée de plus suffit.
+      - id: resolve
+        name: Résoudre la branche dans le manifeste
+        run: |
+          manifest=.github/deploy-environments.json
+          branch="$GITHUB_REF_NAME"
+          wrangler_env=$(jq -r --arg b "$branch" '.[$b].wranglerEnv // empty' "$manifest")
+          d1_database=$(jq -r --arg b "$branch" '.[$b].d1Database // empty' "$manifest")
+          {
+            echo "wrangler_env=$wrangler_env"
+            echo "d1_database=$d1_database"
+          } >> "$GITHUB_OUTPUT"
+          if [ -z "$wrangler_env" ]; then
+            echo "::notice::La branche '$branch' n'a pas d'environnement hébergé — aucun déploiement."
+          else
+            echo "::notice::'$branch' → environnement '$wrangler_env' (base $d1_database)."
+          fi
+
+  deploy:
+    name: Déploiement
+    needs: [checks, target]
+    if: needs.target.outputs.wrangler_env != ''
+    runs-on: ubuntu-latest
+    environment: ${{ needs.target.outputs.wrangler_env }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Le Worker sert ../web/dist : le client doit exister avant le déploiement, et
+      # provenir du même commit que le serveur, sinon les deux n'ont pas le même `core`.
+      - name: Build du client
+        run: pnpm --filter @occulis/web build
+
+      # Avant le déploiement : un Worker servi contre un schéma non migré échoue à la
+      # première requête.
+      - name: Migrations D1
+        working-directory: apps/server
+        run: >-
+          pnpm exec wrangler d1 migrations apply
+          "${{ needs.target.outputs.d1_database }}"
+          --remote --env "${{ needs.target.outputs.wrangler_env }}"
+
+      - name: Déploiement du Worker
+        working-directory: apps/server
+        run: pnpm exec wrangler deploy --env "${{ needs.target.outputs.wrangler_env }}"

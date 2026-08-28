@@ -100,11 +100,28 @@ Le déposer dans les secrets du dépôt GitHub :
 | `CLOUDFLARE_API_TOKEN` | le token créé |
 | `CLOUDFLARE_ACCOUNT_ID` | l'ID relevé à l'étape 1 |
 
-## 6. Ce qui reste à écrire
+Sans ces deux secrets, le job de déploiement échoue ; les vérifications, elles, tournent.
 
-- Le workflow GitHub Actions (`typecheck → lint → test → build → migrations → deploy`).
-- Le mécanisme de sélection des branches hébergées (point ouvert 3) — à trancher avant
-  d'écrire le workflow, puisqu'il en conditionne la condition de déploiement.
+## 6. Déclencher un déploiement
+
+Le workflow `.github/workflows/ci.yml` vérifie **toute** branche et toute pull request, mais
+ne déploie que les branches listées dans `.github/deploy-environments.json` :
+
+| Branche | Environnement |
+|---|---|
+| `main` | production |
+| `staging` | recette |
+
+La branche `staging` doit exister côté dépôt pour que la recette se déploie :
+
+```bash
+git checkout -b staging main && git push -u origin staging
+```
+
+## 7. Ce qui reste à écrire
+
+- `pnpm infra` doit savoir ajouter et retirer une branche du manifeste, avec son bloc
+  `[env.<nom>]` et sa base D1 (point ouvert 3).
 - Le rattachement des hostnames `<branche>.beta.occulis.fr` (point ouvert 2), dont la
   mécanique n'est pas vérifiée.
 - L'authentification : `POST /api/matches` ne vérifie aujourd'hui aucune identité.

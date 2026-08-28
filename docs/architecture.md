@@ -138,26 +138,48 @@ cette limite est très supérieure et le plafond de 8 branches disparaît.
 
 ## 5. CI/CD
 
+Implémentée dans `.github/workflows/ci.yml`, en trois jobs.
+
 ```
-push (toute branche)
-  └─ install → typecheck → lint → test → build
-       └─ si la branche est sélectionnée pour la recette :
-            migrations D1 → deploy Worker → commente l'URL sur la PR
+push (toute branche) ou pull request
+  └─ checks : install → typecheck → lint → test → build
 
-push main
-  └─ mêmes gates → migrations → deploy prod
-
-branche supprimée, ou retirée de la sélection
-  └─ destruction du Worker, du namespace DO et de la base
+push uniquement
+  └─ target : résout la branche dans .github/deploy-environments.json
+       └─ deploy (si et seulement si la branche y figure) :
+            build du client → migrations D1 → wrangler deploy
 ```
 
-Les migrations D1 (dossier `migrations/`, `wrangler d1 migrations apply`) sont une étape de CI
-à poser dès le départ, sinon les environnements divergent en schéma en quelques semaines.
+**Le manifeste `.github/deploy-environments.json` est la liste des branches hébergées.**
+Une branche absente passe la CI mais n'est pas déployée — c'est le mécanisme de sélection
+de la section 4, sous une forme que la CI peut lire et que `pnpm infra` pourra écrire.
+
+```json
+{ "main": { "wranglerEnv": "production", "d1Database": "occulis-prod" } }
+```
+
+Ajouter un environnement de branche est donc additif : une entrée dans le manifeste, un bloc
+`[env.<nom>]` dans `wrangler.toml`, une base D1. Aucun changement du workflow.
+
+Points de conception à ne pas défaire :
+
+- **Les migrations D1 précèdent le déploiement.** Un Worker servi contre un schéma non migré
+  échoue à la première requête. Sans cette étape en CI, les environnements divergent en
+  schéma en quelques semaines.
+- **Le client est rebuildé dans le job de déploiement**, à partir du même commit que le
+  serveur. Client et serveur doivent embarquer le même `core`, sinon l'UI calcule les coups
+  légaux avec des règles que le serveur refuse.
+- **L'annulation de job est restreinte aux pull requests.** Annuler un déploiement en cours
+  laisserait un environnement à moitié migré.
+- Le job de déploiement déclare un `environment:` GitHub, ce qui permettra d'exiger une
+  approbation manuelle sur la production sans toucher au workflow.
 
 Un workflow séparé, **sur tag**, buildera et signera les binaires Electron par OS.
 
-L'URL du serveur est injectée au build (`VITE_SERVER_URL`) : elle est donc gravée dans le
-binaire distribué. **L'URL de production doit être définitive avant le premier build public.**
+`VITE_SERVER_URL` n'est aujourd'hui lue nulle part : le Worker servant à la fois les assets
+et l'API, le client web tape sa propre origine. Elle ne redeviendra nécessaire que pour le
+build Electron, où elle sera **gravée dans le binaire distribué** — l'URL de production doit
+donc être définitive avant le premier build public.
 
 ## 6. Coûts
 
@@ -175,10 +197,11 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
 2. **Rattachement des hostnames de branche.** Attacher `<slug>.beta.occulis.fr` à un Worker créé
    dynamiquement par la CI passe par un DNS wildcard et l'API Cloudflare. Mécanisme non vérifié
    en pratique — les custom domains sur previews ont beaucoup bougé chez Cloudflare.
-3. **Mécanisme de sélection des branches hébergées.** La propriété est actée en section 4 —
-   la liste est décidée, pas subie — mais la forme reste ouverte : label sur la PR, manifeste
-   versionné, déclenchement manuel, convention de nommage. Sans conséquence sur le reste de
-   l'architecture, donc décidable tard, mais à trancher avant d'écrire le workflow.
+3. **Sélection des branches hébergées — forme arrêtée, outillage à finir.** La liste est le
+   manifeste versionné `.github/deploy-environments.json`, que la CI lit déjà. Reste à faire :
+   `pnpm infra` doit pouvoir y ajouter et en retirer une branche, en créant ou détruisant du
+   même geste le bloc `[env.<nom>]` du toml et la base D1. Tant que ce n'est pas fait,
+   l'ajout d'un environnement de branche se fait à la main, en trois éditions cohérentes.
 4. **Seed des previews.** Une base neuve est vide : sans script de seed, un preview de branche
    est inutilisable pour tester. C'est le vrai travail caché de l'automatisation.
 5. **Base par branche ou base partagée préfixée.** La seconde évite tout script de création et
