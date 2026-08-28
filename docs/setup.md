@@ -156,4 +156,5 @@ base distante, retrait du bloc et de l'entrée, commit et push.
 - Le rattachement d'une URL aux previews de branche (`occulis-<branche>.0kl.fr`) : le bloc
   `routes` avec `custom_domain = true` est désormais généré par branche, mais l'attache
   n'a pas encore été vérifiée bout en bout sur un vrai preview (point ouvert 2).
-- L'authentification : `POST /api/matches` ne vérifie aujourd'hui aucune identité.
+- L'authentification : `POST /api/matches` ne vérifie aujourd'hui aucune identité. La table
+  `users` existe (migration `0002_users.sql`) mais rien ne l'alimente ni ne la lit encore.
