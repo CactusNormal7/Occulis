@@ -105,13 +105,15 @@ dépendent donc pas de son acquisition.
 |---|---|---|---|---|
 | Local | `localhost` | `pnpm dev` + `wrangler dev` | SQLite local, hors quota | ✅ |
 | Preview | `occulis-<branche>.0kl.fr` | push sur une branche **sélectionnée** | créée par la CI | ✗ |
-| Recette | `occulis-beta.0kl.fr` | push sur `staging` | fixe | ✗ URL non rattachée |
+| Recette | `occulis-staging.0kl.fr` | push sur `staging` | fixe | ✅ |
 | Prod | `occulis.0kl.fr` | push sur `main` | fixe | ✅ |
 
 **Schéma plat, un seul niveau sous la zone.** Le certificat universel de Cloudflare couvre
-`0kl.fr` et `*.0kl.fr`, mais **pas** `*.*.0kl.fr` : un nom du type `beta.occulis.0kl.fr`
-exigerait Advanced Certificate Manager, payant. D'où le préfixe `occulis-` plutôt qu'un
-sous-domaine imbriqué. Cette contrainte s'applique aussi aux previews de branche.
+`0kl.fr` et `*.0kl.fr`, mais **pas** `*.*.0kl.fr`. Vérifié en pratique : `staging.0kl.fr`
+répond, `staging.occulis.0kl.fr` non. Un sous-domaine imbriqué exigerait Advanced Certificate
+Manager, payant — d'où le préfixe `occulis-`, qui garde un seul niveau tout en réservant un
+espace de noms dans une zone susceptible d'héberger autre chose. La contrainte vaut à
+l'identique pour les previews de branche.
 
 Le rattachement se déclare dans `wrangler.toml`, pas dans le dashboard :
 

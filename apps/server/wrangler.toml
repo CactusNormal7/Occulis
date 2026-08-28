@@ -26,6 +26,10 @@ database_id = "local"
 [env.staging]
 name = "occulis-staging"
 
+# Un seul niveau sous la zone, comme la production : `staging.occulis.0kl.fr` en aurait deux
+# et ne serait couvert par aucun certificat (vérifié en pratique).
+routes = [{ pattern = "occulis-staging.0kl.fr", custom_domain = true }]
+
 [env.staging.assets]
 directory = "../web/dist"
 binding = "ASSETS"

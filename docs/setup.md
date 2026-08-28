@@ -96,7 +96,7 @@ Dans le dashboard, **Manage account → API Tokens**, créer un token portant :
 | Compte | `Workers Scripts:Edit` | déployer le Worker |
 | Compte | `D1:Edit` | appliquer les migrations |
 | Compte | `Account Settings:Read` | résolution du compte |
-| Zone `0kl.fr` | `Workers Routes:Edit` | rattacher `occulis.0kl.fr` au Worker |
+| Zone `0kl.fr` | `Workers Routes:Edit` | rattacher `occulis.0kl.fr` et `occulis-staging.0kl.fr` |
 | Zone `0kl.fr` | `Zone:Read` | lire la zone pour ce rattachement |
 
 Les deux permissions de zone sont indispensables depuis que la production déclare un
@@ -117,10 +117,14 @@ Sans ces deux secrets, le job de déploiement échoue ; les vérifications, elle
 Le workflow `.github/workflows/ci.yml` vérifie **toute** branche et toute pull request, mais
 ne déploie que les branches listées dans `.github/deploy-environments.json` :
 
-| Branche | Environnement |
-|---|---|
-| `main` | production |
-| `staging` | recette |
+| Branche | Environnement | URL |
+|---|---|---|
+| `main` | production | `occulis.0kl.fr` |
+| `staging` | recette | `occulis-staging.0kl.fr` |
+
+Les routes créées à la main dans le dashboard sont à supprimer : `wrangler.toml` est la
+source de vérité et une route orpheline sur un nom à deux niveaux (`staging.occulis.0kl.fr`)
+reste sans certificat valide.
 
 La branche `staging` doit exister côté dépôt pour que la recette se déploie :
 
@@ -132,7 +136,7 @@ git checkout -b staging main && git push -u origin staging
 
 - `pnpm infra` doit savoir ajouter et retirer une branche du manifeste, avec son bloc
   `[env.<nom>]` et sa base D1 (point ouvert 3).
-- Le rattachement d'une URL à la recette et aux previews (`occulis-beta.0kl.fr`,
-  `occulis-<branche>.0kl.fr`). La mécanique est connue — un bloc `routes` avec
-  `custom_domain = true`, comme en production — il reste à le générer par environnement.
+- Le rattachement d'une URL aux previews de branche (`occulis-<branche>.0kl.fr`). La
+  mécanique est acquise — un bloc `routes` avec `custom_domain = true`, comme en production
+  et en recette — il reste à le générer par branche (point ouvert 3).
 - L'authentification : `POST /api/matches` ne vérifie aujourd'hui aucune identité.
