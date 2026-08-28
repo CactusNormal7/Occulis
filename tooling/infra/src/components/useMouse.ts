@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { useStdin, useStdout } from "ink";
+import { useEffect, useRef } from "react";
+import { useStdin } from "ink";
 
 export interface MouseEvent {
   type: "click" | "move" | "wheel";
@@ -11,20 +11,24 @@ export interface MouseEvent {
   dir: number;
 }
 
-const ENABLE = "\x1b[?1000h\x1b[?1003h\x1b[?1006h";
-const DISABLE = "\x1b[?1000l\x1b[?1003l\x1b[?1006l";
+export const MOUSE_ENABLE = "\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1006h";
+export const MOUSE_DISABLE = "\x1b[?1006l\x1b[?1003l\x1b[?1002l\x1b[?1000l";
+
 const SGR = /\x1b\[<(\d+);(\d+);(\d+)([Mm])/g;
 
-// Active le suivi souris SGR et traduit les séquences en événements. Ink continue
-// de gérer le clavier ; ces octets-là ne matchent aucun raccourci Ink.
+// Active le suivi souris SGR et traduit les séquences en événements. Le handler est
+// gardé dans une ref : l'abonnement stdin et les séquences d'activation ne sont
+// posés qu'une fois, sinon le va-et-vient enable/disable à chaque survol fait
+// perdre l'événement de clic qui suit.
 export function useMouse(handler: (event: MouseEvent) => void): void {
   const { stdin, setRawMode, isRawModeSupported } = useStdin();
-  const { stdout } = useStdout();
+  const handlerRef = useRef(handler);
+  handlerRef.current = handler;
 
   useEffect(() => {
     if (!isRawModeSupported) return;
     setRawMode(true);
-    stdout.write(ENABLE);
+    process.stdout.write(MOUSE_ENABLE);
 
     const onData = (data: Buffer | string) => {
       const text = data.toString("utf8");
@@ -34,11 +38,11 @@ export function useMouse(handler: (event: MouseEvent) => void): void {
         const y = Number(match[3]) - 1;
         const press = match[4] === "M";
         if (b === 64 || b === 65) {
-          handler({ type: "wheel", x, y, dir: b === 64 ? -1 : 1 });
+          handlerRef.current({ type: "wheel", x, y, dir: b === 64 ? -1 : 1 });
         } else if (b & 32) {
-          handler({ type: "move", x, y, dir: 0 });
+          handlerRef.current({ type: "move", x, y, dir: 0 });
         } else if (press && (b & 3) === 0) {
-          handler({ type: "click", x, y, dir: 0 });
+          handlerRef.current({ type: "click", x, y, dir: 0 });
         }
       }
     };
@@ -46,7 +50,7 @@ export function useMouse(handler: (event: MouseEvent) => void): void {
     stdin.on("data", onData);
     return () => {
       stdin.off("data", onData);
-      stdout.write(DISABLE);
+      process.stdout.write(MOUSE_DISABLE);
     };
-  }, [stdin, stdout, setRawMode, isRawModeSupported, handler]);
+  }, [stdin, setRawMode, isRawModeSupported]);
 }
