@@ -1,0 +1,133 @@
+import { type Coord, coordEquals } from "@occulis/core";
+import {
+  type Camera,
+  RADIANS_PER_PIXEL,
+  ZOOM_STEP,
+  panBy,
+  rotateBy,
+  snapRotation,
+  turn,
+  zoomAt,
+} from "./camera.js";
+import type { ScreenPoint } from "./iso.js";
+
+/**
+ * Seul module du client qui écoute des événements. Il ne dessine rien et ne
+ * détient aucun état de rendu : il traduit les gestes en transformations de
+ * caméra et en intention de survol.
+ */
+
+export interface ControlsOptions {
+  readonly canvas: HTMLCanvasElement;
+  readonly getCamera: () => Camera;
+  readonly setCamera: (camera: Camera) => void;
+  /** Point écran vers la case désignée, hauteur comprise. */
+  readonly pickTile: (point: ScreenPoint) => Coord | undefined;
+  readonly setHovered: (coord: Coord | undefined) => void;
+  readonly toggleViewer: () => void;
+}
+
+type DragKind = "pan" | "rotate";
+
+interface Drag {
+  readonly kind: DragKind;
+  readonly pointerId: number;
+  x: number;
+  y: number;
+}
+
+/** Gauche : déplacement. Droit ou milieu : rotation libre. */
+function dragKindOf(button: number): DragKind | undefined {
+  if (button === 0) return "pan";
+  if (button === 1 || button === 2) return "rotate";
+  return undefined;
+}
+
+function sameCoord(a: Coord | undefined, b: Coord | undefined): boolean {
+  if (a === undefined || b === undefined) return a === b;
+  return coordEquals(a, b);
+}
+
+export function attachControls(options: ControlsOptions): void {
+  const { canvas, getCamera, setCamera, pickTile, setHovered, toggleViewer } = options;
+
+  let drag: Drag | undefined;
+  let hovered: Coord | undefined;
+
+  const update = (transform: (camera: Camera) => Camera): void => {
+    setCamera(transform(getCamera()));
+  };
+
+  const pointOf = (event: MouseEvent): ScreenPoint => {
+    const bounds = canvas.getBoundingClientRect();
+    return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+  };
+
+  const refreshHover = (point: ScreenPoint): void => {
+    const next = pickTile(point);
+    if (sameCoord(next, hovered)) return;
+    hovered = next;
+    setHovered(next);
+  };
+
+  canvas.addEventListener(
+    "wheel",
+    (event) => {
+      event.preventDefault();
+      // Seul le signe est fiable : `deltaY` dépend de `deltaMode` et du périphérique.
+      const factor = event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+      update((camera) => zoomAt(camera, pointOf(event), factor));
+      refreshHover(pointOf(event));
+    },
+    { passive: false },
+  );
+
+  canvas.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+  });
+
+  canvas.addEventListener("pointerdown", (event) => {
+    const kind = dragKindOf(event.button);
+    if (kind === undefined) return;
+    canvas.setPointerCapture(event.pointerId);
+    drag = { kind, pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+  });
+
+  canvas.addEventListener("pointermove", (event) => {
+    if (drag !== undefined && drag.pointerId === event.pointerId) {
+      const dx = event.clientX - drag.x;
+      const dy = event.clientY - drag.y;
+      drag.x = event.clientX;
+      drag.y = event.clientY;
+
+      if (drag.kind === "pan") update((camera) => panBy(camera, dx, dy));
+      else update((camera) => rotateBy(camera, dx * RADIANS_PER_PIXEL));
+    }
+    refreshHover(pointOf(event));
+  });
+
+  const endDrag = (event: PointerEvent): void => {
+    if (drag === undefined || drag.pointerId !== event.pointerId) return;
+    // L'aimantation ne se déclenche qu'au relâchement d'une rotation à la main.
+    if (drag.kind === "rotate") update(snapRotation);
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    drag = undefined;
+  };
+
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+
+  canvas.addEventListener("pointerleave", () => {
+    if (hovered === undefined) return;
+    hovered = undefined;
+    setHovered(undefined);
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft") update((camera) => turn(camera, -1));
+    else if (event.key === "ArrowRight") update((camera) => turn(camera, 1));
+    else if (event.key === " ") toggleViewer();
+    else return;
+    event.preventDefault();
+  });
+}

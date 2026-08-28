@@ -9,7 +9,7 @@ Jeu de plateau tactique compétitif 1v1 en ligne, vue isométrique 2D, DA minima
 - Monorepo pnpm workspaces, TypeScript strict partout.
 - `packages/core` — logique de jeu pure (règles, plateau, hauteur, calcul de LOS, résolution des tours). **Aucune dépendance de rendu.** Testée avec Vitest.
 - `apps/server` — Worker Cloudflare + Durable Object de partie, consomme `@occulis/core`. Squelette : transport, cycle de vie du DO, schéma D1. Ni authentification, ni matchmaking, ni ELO.
-- `apps/web` — rendu (Vite + PixiJS/WebGL), consomme `@occulis/core`. La rotation isométrique et les recalculs de projection vivent ici (`src/iso.ts`), jamais dans `core`.
+- `apps/web` — rendu (Vite + PixiJS/WebGL), consomme `@occulis/core`. La rotation isométrique et les recalculs de projection vivent ici (`src/iso.ts`), jamais dans `core`. Le code couleur est centralisé dans `src/theme.ts`, **seul fichier du client autorisé à contenir une valeur de couleur** — une règle ESLint le vérifie. Les modules purs (`iso`, `camera`, `picking`) n'importent ni Pixi ni le DOM et sont testés.
 - Séparation logique/rendu actée dès le départ (docs/design.md section 8) pour permettre un futur portage moteur (C++ envisagé mais explicitement reporté, hors scope pour l'instant).
 - Pas de backend écrit à ce jour, mais l'infrastructure cible est **décidée** — voir la section « Infrastructure et CI/CD » plus bas et [docs/architecture.md](docs/architecture.md). Quand le multijoueur en ligne sera implémenté : le serveur doit être **autoritaire** et ne jamais transmettre au client des données hors LOS de ce joueur (le fog of war doit être appliqué serveur-side, pas seulement caché visuellement côté client — sans quoi il est contournable via devtools).
 
@@ -18,7 +18,7 @@ Jeu de plateau tactique compétitif 1v1 en ligne, vue isométrique 2D, DA minima
 ```bash
 pnpm install
 pnpm dev          # lance apps/web (Vite)
-pnpm test         # tests de packages/core (Vitest)
+pnpm test         # tests de packages/core et apps/web (Vitest)
 pnpm --filter @occulis/web build && cd apps/server && pnpm exec wrangler dev   # serveur en local
 pnpm typecheck
 pnpm lint
@@ -67,7 +67,9 @@ comme pour la section 10 du design doc.
 
 ## État du projet
 
-Logique de jeu posée et testée (57 tests) : plateau à hauteur, LOS, verticalité, déplacement, capture de mêlée, tours alternés, fog of war avec mémoire, abandon et pat. Rendu isométrique filaire fonctionnel avec rotation et fog of war à l'écran.
+Logique de jeu posée et testée (57 tests dans `core`) : plateau à hauteur, LOS, verticalité, déplacement, capture de mêlée, tours alternés, fog of war avec mémoire, abandon et pat.
+
+Moteur de rendu isométrique filaire fonctionnel (26 tests dans `apps/web`) : traits blancs, zoom vers le curseur, déplacement, rotation libre aimantée sur le quart de tour, surbrillance de la case survolée, occlusion des pièces par le relief, fog of war à l'écran. La DA et la caméra sont actées provisoirement en section 8.1 du design doc. Aucune interaction de jeu n'est encore câblée : ni sélection de pièce, ni affichage des coups légaux.
 
 Non implémenté volontairement, car listé comme ouvert en section 10 du design doc : attaque à distance différée, pièges, déploiement, règle anti-répétition, détection du mat, roster de pièces. Pas de backend ni de design system (ce dernier est explicitement prévu pour plus tard par l'utilisateur).
 
