@@ -6,9 +6,5 @@
   "staging": {
     "wranglerEnv": "staging",
     "d1Database": "occulis-staging"
-  },
-  "claude/staging-worker-prod-deploy-p18v0c": {
-    "wranglerEnv": "claude-staging-worker-prod-deploy-p18v0c",
-    "d1Database": "occulis-claude-staging-worker-prod-deploy-p18v0c"
   }
 }
