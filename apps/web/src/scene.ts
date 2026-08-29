@@ -111,8 +111,6 @@ export class Scene {
     const g = this.world;
     g.clear();
 
-    console.log(view)
-
     const occupants = occupantsOf(view);
     const cells = [...board.allTiles()]
       .map((tile) => ({ tile, depth: depthOf(tile.coord, tile.height, projection) }))
@@ -123,13 +121,10 @@ export class Scene {
     const span = nearest - farthest || 1;
 
     for (const { tile, depth } of cells) {
-      
       const key = coordKey(tile.coord);
       drawTile(g, board, tile, view.visible.has(key), (depth.plane - farthest) / span, projection);
-      
+
       const occupant = occupants.get(key);
-      // console.log(tile)
-      // console.log(occupant)
       if (occupant !== undefined) {
         drawPiece(
           g,

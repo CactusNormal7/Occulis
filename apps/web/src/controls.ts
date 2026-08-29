@@ -24,16 +24,27 @@ export interface ControlsOptions {
   /** Point écran vers la case désignée, hauteur comprise. */
   readonly pickTile: (point: ScreenPoint) => Coord | undefined;
   readonly setHovered: (coord: Coord | undefined) => void;
+  /** Case désignée par un clic ; `undefined` si le clic tombe hors du plateau. */
+  readonly onPick: (coord: Coord | undefined) => void;
   readonly toggleViewer: () => void;
 }
 
 type DragKind = "pan" | "rotate";
+
+/**
+ * Un pan et un clic partent du même bouton. En deçà de ce déplacement cumulé, le
+ * geste est lu comme un clic — sans quoi la moindre tremblote de souris pendant
+ * l'appui annulerait la désignation.
+ */
+const CLICK_SLOP = 4;
 
 interface Drag {
   readonly kind: DragKind;
   readonly pointerId: number;
   x: number;
   y: number;
+  /** Déplacement cumulé depuis l'appui, en pixels. */
+  travelled: number;
 }
 
 /** Gauche : déplacement. Droit ou milieu : rotation libre. */
@@ -59,7 +70,7 @@ function sameCoord(a: Coord | undefined, b: Coord | undefined): boolean {
 }
 
 export function attachControls(options: ControlsOptions): void {
-  const { canvas, getCamera, setCamera, pickTile, setHovered, toggleViewer } = options;
+  const { canvas, getCamera, setCamera, pickTile, setHovered, onPick, toggleViewer } = options;
 
   let drag: Drag | undefined;
   let hovered: Coord | undefined;
@@ -100,7 +111,7 @@ export function attachControls(options: ControlsOptions): void {
     const kind = dragKindOf(event.button);
     if (kind === undefined) return;
     canvas.setPointerCapture(event.pointerId);
-    drag = { kind, pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+    drag = { kind, pointerId: event.pointerId, x: event.clientX, y: event.clientY, travelled: 0 };
   });
 
   canvas.addEventListener("pointermove", (event) => {
@@ -109,6 +120,7 @@ export function attachControls(options: ControlsOptions): void {
       const dy = event.clientY - drag.y;
       drag.x = event.clientX;
       drag.y = event.clientY;
+      drag.travelled += Math.abs(dx) + Math.abs(dy);
 
       if (drag.kind === "pan") update((camera) => panBy(camera, dx, dy));
       else update((camera) => rotateBy(camera, dx * RADIANS_PER_PIXEL));
@@ -120,6 +132,8 @@ export function attachControls(options: ControlsOptions): void {
     if (drag === undefined || drag.pointerId !== event.pointerId) return;
     // L'aimantation ne se déclenche qu'au relâchement d'une rotation à la main.
     if (drag.kind === "rotate") update(snapRotation);
+    // Un pan qui n'a presque pas bougé est un clic : il désigne la case visée.
+    if (drag.kind === "pan" && drag.travelled <= CLICK_SLOP) onPick(pickTile(pointOf(event)));
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     drag = undefined;
   };

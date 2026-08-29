@@ -1,4 +1,4 @@
-import type { ActionError, Coord, GameState, Piece, PlayerId } from "@occulis/core";
+import type { ActionError, Coord, GameState, Piece, PlayerId, Tile } from "@occulis/core";
 import type { CommandFault } from "./command.js";
 
 /**
@@ -64,4 +64,17 @@ export function describeOutcome(outcome: NonNullable<GameState["outcome"]>): str
 
 export function describeTurn(turn: number, activePlayer: PlayerId, viewer: PlayerId): string {
   return `Tour ${turn} · au trait : ${activePlayer} · vue du joueur ${viewer}`;
+}
+
+/**
+ * Lecture d'une case désignée au clic, sous la forme exacte attendue par la
+ * saisie de coups — de quoi recopier la coordonnée dans le champ.
+ *
+ * Ne rapporte que du terrain : le relief est public (implementation-notes #10),
+ * alors qu'annoncer la pièce présente divulguerait une position hors LOS.
+ */
+export function describeTile(tile: Tile | undefined): string {
+  if (tile === undefined) return "Hors plateau.";
+  const relief = `${tile.coord.x},${tile.coord.y} · hauteur ${tile.height}`;
+  return tile.passable ? relief : `${relief} · infranchissable`;
 }

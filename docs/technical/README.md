@@ -21,8 +21,8 @@ justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ic
 
 | Fichier | Couvre | Paquet |
 |---|---|---|
-| [core.md](core.md) | Les règles du jeu : plateau, hauteur, ligne de vue, déplacement, capture, fog of war | `packages/core` |
-| [engine.md](engine.md) | Le moteur de rendu : projection isométrique, caméra, désignation à la souris, couches, code couleur | `apps/web` |
+| [core.md](core.md) | Les règles du jeu : plateau, hauteur, ligne de vue, déplacement, capture, fog of war, types de pièces | `packages/core` |
+| [engine.md](engine.md) | Le moteur de rendu et le client : projection isométrique, caméra, désignation à la souris, couches, code couleur, saisie de coups | `apps/web` |
 | [server.md](server.md) | Le serveur : Worker, Durable Object de partie, base D1, protocole réseau | `apps/server` |
 | [infra.md](infra.md) | L'outillage et la CI/CD : environnements, migrations, déploiement | `tooling/infra`, `.github` |
 
@@ -30,10 +30,11 @@ justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ic
 
 ```
                     packages/core  ── logique de jeu pure, aucune dépendance de rendu
+                    │                 y compris les types de pièces (pieces/)
                     ┌──────┴──────┐
                     │             │
               apps/web       apps/server
-          moteur de rendu   Worker + Durable Object
+        rendu + partie locale  Worker + Durable Object
                                   │
                                   ├── D1 (log d'actions = source de vérité)
                                   └── sert apps/web/dist via le binding ASSETS
@@ -44,23 +45,29 @@ justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ic
 
 Les deux consommateurs de `packages/core` en importent **le même code source** (`main` du
 paquet pointe sur `./src/index.ts`, pas sur un build). Client et serveur déployés ensemble
-partagent donc rigoureusement les mêmes règles, puisqu'ils viennent du même commit.
+partagent donc rigoureusement les mêmes règles, puisqu'ils viennent du même commit. C'est
+la raison pour laquelle le roster provisoire lui-même vit dans `core` et non dans chaque
+application : le comportement d'une pièce est de la logique de jeu, et le dupliquer serait
+le laisser diverger.
 
 ## L'état réel du câblage
 
 C'est le point le plus important à comprendre avant de lire le reste, et le plus facile à
 se tromper : **le client et le serveur ne se parlent pas encore.**
 
-- `apps/web` ne contient **aucun appel réseau** — ni `fetch`, ni `WebSocket`. Son point
-  d'entrée `main()` (`apps/web/src/main.ts`) construit une partie locale avec
-  `demoGame()` (`apps/web/src/scenario.ts`) et l'affiche. Il n'envoie jamais d'action :
-  aucune interaction de jeu n'est branchée, seule la caméra répond.
+- `apps/web` ne contient **aucun appel réseau** — ni `fetch`, ni `WebSocket`. La partie est
+  jouée **en local**, en hot-seat : `Match` (`apps/web/src/match.ts`) détient l'état réel
+  et les deux `PlayerKnowledge`, et un coup se joue en tapant ses coordonnées
+  (`apps/web/src/ui/console.ts`).
 - `apps/server` est un squelette complet et cohérent (Worker, Durable Object, schéma D1,
   protocole), mais **rien ne l'appelle**. Le type `ClientMessage`
   (`apps/server/src/protocol.ts`) n'a pas d'émetteur.
 - Il n'existe donc à ce jour **aucun chemin de bout en bout** entre une action jouée et
-  un état persisté. Les deux moitiés sont écrites contre la même `packages/core` et
-  s'emboîteront, mais la jonction reste à faire.
+  un état persisté.
+
+La jonction est cependant préparée : `Match` tient exactement ce que le Durable Object
+tiendra et n'expose au rendu que des `PlayerView`. Câbler le serveur reviendra à remplacer
+cette classe par un transport, sans toucher au rendu ni à la saisie.
 
 ## Règle de maintenance
 

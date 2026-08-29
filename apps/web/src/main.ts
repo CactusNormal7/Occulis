@@ -52,6 +52,7 @@ async function main(): Promise<void> {
       input: element<HTMLInputElement>("command-input"),
       log: element<HTMLElement>("command-log"),
       status: element<HTMLElement>("status"),
+      readout: element<HTMLElement>("tile-readout"),
     },
     match,
     viewer: () => viewer,
@@ -74,6 +75,9 @@ async function main(): Promise<void> {
       tileAt(toProjectionSpace(camera, point), match.board, toProjection(camera)),
     setHovered: (coord) => {
       hovered = coord;
+    },
+    onPick: (coord) => {
+      gameConsole.showTile(coord);
     },
     toggleViewer: () => {
       look(opponentOf(viewer));

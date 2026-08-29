@@ -57,6 +57,19 @@
   opacity: 0.7;
 }
 
+/*
+ * Lecture d'une case au clic. Du terrain, donc de la géométrie : elle reste en
+ * blanc atténué et n'emprunte aucune couleur d'état (docs/design.md 8.1).
+ */
+#tile-readout {
+  margin-top: 4px;
+  color: var(--ink-soft);
+}
+
+#tile-readout:empty {
+  display: none;
+}
+
 #command-log:empty {
   display: none;
 }

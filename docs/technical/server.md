@@ -191,6 +191,11 @@ plutôt que le laisser diverger en silence.
 | `DEFAULT_SCENARIO` | `apps/server/src/scenarios.ts` | Scénario des nouvelles parties — `"demo-0"` |
 | `scenarioFor()` | `apps/server/src/scenarios.ts` | Nom → `{ board, pieces }` ; **lève** si inconnu |
 
+Le registre ne définit **aucun type de pièce lui-même** : il appelle
+`provisionalRuleset()` de `@occulis/core` (`packages/core/src/pieces/roster.ts`). Client et
+serveur doivent appliquer exactement les mêmes règles, donc une seule définition — voir
+[core.md](core.md), section `pieces/`.
+
 **Les règles sont versionnées par partie, pas par connexion.** Une partie démarrée sous un
 ruleset s'y termine, y compris à travers un déploiement — le pilier « temps de réflexion
 illimité » implique des parties qui traversent les mises en production. Conséquence
@@ -198,7 +203,7 @@ directe : **les anciennes versions doivent rester chargeables ici indéfiniment*
 retirer une entrée du registre tant qu'une partie peut la référencer.
 
 **Attention** : ni le roster ni les cartes ne sont actés (`docs/design.md` points ouverts 5
-et 12). Le contenu de ces deux fichiers reprend la démo de rendu pour que le squelette
+et 12). Le roster provisoire et le scénario de démonstration existent pour que le squelette
 tourne. **Ce n'est pas du contenu de jeu, et il ne faut bâtir aucun équilibrage dessus.**
 
 ---
@@ -285,8 +290,9 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
   existent, rien ne les lit ni ne les écrit.
 - **`matches.finished_at` et `matches.outcome` ne sont jamais renseignés** : rien ne clôt
   une partie en base quand `GameState.outcome` devient non nul.
-- **Aucun test** dans `apps/server`. Le workflow CI est prêt à les exécuter : `pnpm -r test`
-  ne lance que les paquets déclarant un script `test`, en ajouter un suffira.
+- **Aucun test** dans `apps/server`, seul paquet du dépôt dans ce cas. Le workflow CI est
+  prêt à les exécuter : `pnpm -r test` ne lance que les paquets déclarant un script `test`,
+  en ajouter un suffira.
 - **Aucun test d'hibernation**, alors que `CLAUDE.md` en demande un explicitement.
 - **`VITE_SERVER_URL` n'existe nulle part dans le code**, contrairement à ce que
   `CLAUDE.md` laisse entendre. Sur le web, le client étant servi par le même Worker, une

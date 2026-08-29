@@ -31,23 +31,36 @@ coord.ts ──► board.ts ──► los.ts ──────┐
    │            │                      │
    │            └──► movement.ts ──┐   │
    ▼                               ▼   ▼
-piece.ts ──────────────────► state.ts ──► actions.ts
+pieces/profiles.ts ──────────► pieces/piece-type.ts
                                    │
-                                   └──► fog.ts
+pieces/piece.ts ──────────────► state.ts ──► actions.ts
+pieces/ruleset.ts                  │
+pieces/roster.ts                   └──► fog.ts
 ```
+
+`los.ts` et `movement.ts` ne connaissent que la géométrie et les profils chiffrés
+(`pieces/profiles.ts`), jamais la hiérarchie de classes qui les déclare — c'est ce qui
+évite un graphe de dépendances circulaire.
 
 | Fichier | Rôle |
 |---|---|
 | `packages/core/src/coord.ts` | Coordonnées, clés de hachage, adjacence, distances |
 | `packages/core/src/board.ts` | `Tile` et `Board` immuable |
-| `packages/core/src/piece.ts` | `Piece`, `PieceDefinition`, `Ruleset` |
-| `packages/core/src/los.ts` | Raycast, ligne de vue, champ de vision |
+| `packages/core/src/pieces/piece.ts` | `Piece` : l'enregistrement de données d'une pièce en jeu |
+| `packages/core/src/pieces/profiles.ts` | `MovementProfile`, `VisionProfile` : les caractéristiques chiffrées |
+| `packages/core/src/pieces/piece-type.ts` | `PieceType` (classe abstraite) et `ConfigurablePieceType` |
+| `packages/core/src/pieces/roster.ts` | `Scout`, `Commander`, `provisionalRuleset()` — **provisoires** |
+| `packages/core/src/pieces/ruleset.ts` | `Ruleset` : table `kind` → `PieceType` d'une partie |
+| `packages/core/src/los.ts` | Raycast et ligne de vue — **géométrie seule** |
 | `packages/core/src/movement.ts` | Cases atteignables, portée de mêlée |
 | `packages/core/src/state.ts` | État de partie et accesseurs |
 | `packages/core/src/actions.ts` | Coups légaux, validation, application, fin de partie |
 | `packages/core/src/fog.ts` | Mémoire du joueur et vue transmissible |
 | `packages/core/src/result.ts` | `Result<T, E>` |
 | `packages/core/src/testing.ts` | Fabriques de scénarios — **tests uniquement, non exporté** par `index.ts` |
+
+`packages/core/src/pieces/index.ts` réexporte les cinq modules du dossier ; `index.ts`
+réexporte tout sauf `testing.ts`.
 
 ---
 
@@ -71,8 +84,9 @@ type Adjacency = "orthogonal" | "octile"
 | `manhattanDistance()` | `|dx| + |dy|` |
 
 La topologie **n'est pas une constante globale** : elle est portée par
-`MovementProfile.adjacency`, donc déclarée pièce par pièce. `docs/design.md` ne l'ayant
-pas tranchée, ce choix laisse le futur roster décider au cas par cas.
+`MovementProfile.adjacency`, donc déclarée type de pièce par type de pièce.
+`docs/design.md` ne l'ayant pas tranchée, ce choix laisse le futur roster décider au cas
+par cas.
 
 ---
 
@@ -126,33 +140,111 @@ Tout autre caractère lève. Utilisé par les tests, par `apps/web/src/scenario.
 
 ---
 
-## `piece.ts` — pièces et ruleset
+## `pieces/` — un type de pièce = une classe
+
+C'est la séparation centrale du paquet : **les données d'un côté, les règles de l'autre.**
+
+### `pieces/piece.ts` — la donnée
 
 ```ts
 type PlayerId = "A" | "B"
 type PieceKind = string          // le roster reste à définir (design.md point ouvert 12)
 
-interface MovementProfile { steps: number; adjacency: Adjacency; canClimb: boolean }
-interface VisionProfile   { range: number }   // Chebyshev ; Infinity = limité par l'occultation seule
-interface PieceDefinition { kind; movement; vision; isCommander: boolean }
-interface Piece           { id; kind; owner; coord }
+interface Piece { id: PieceId; kind: PieceKind; owner: PlayerId; coord: Coord }
 ```
 
-| Fonction / méthode | Rôle |
+`Piece` est délibérément un **enregistrement de données et non une instance de classe** :
+identité, camp, position, rien d'autre. Une pièce ne porte donc jamais ses propres règles.
+Deux raisons, toutes deux structurantes :
+
+- cet objet **traverse le réseau tel quel** (`PlayerView`, `fog.ts`) et doit rester
+  sérialisable en JSON sans perte ;
+- l'état de partie est **reconstruit en rejouant le log d'actions** — ce qui suppose des
+  données inertes d'un côté et des règles versionnées de l'autre, jamais les deux mêlées.
+
+| Fonction | Rôle |
 |---|---|
 | `opponentOf()` | `"A"` ↔ `"B"` |
-| `Ruleset` (constructeur) | Indexe des `PieceDefinition` par `kind` |
-| `Ruleset.get()` | La définition ; **lève** si le type est inconnu |
 
-Deux points à connaître avant de bâtir dessus :
+### `pieces/profiles.ts` — les caractéristiques chiffrées
 
-- **Aucun roster n'est défini dans `core`.** Les définitions sont fournies par l'appelant :
-  `apps/web/src/scenario.ts` côté client, `apps/server/src/rulesets.ts` côté serveur.
-- **`Piece` ne porte pas sa hauteur** : elle se dérive de `board.heightAt(piece.coord)`.
-- **`PieceDefinition` n'a aucun champ visuel.** Toute correspondance type → forme
-  appartient au rendu (`apps/web/src/draw/pieces.ts`).
-- Conformément à `docs/design.md`, la différenciation passe par la capacité et le
-  mouvement, **jamais par des points de vie** : `Piece` n'a pas de robustesse.
+```ts
+interface MovementProfile { steps: number; adjacency: Adjacency; canClimb: boolean }
+interface VisionProfile   { range: number }   // Chebyshev ; Infinity = limité par l'occultation seule
+```
+
+Elles vivent dans leur propre module pour que `movement.ts` et `los.ts`, qui les
+consomment, n'aient pas à connaître la hiérarchie de classes qui les déclare.
+
+`canClimb` est déclaré par type — grimper comme capacité générique ou spécifique n'est pas
+tranché (`docs/design.md` point ouvert 7).
+
+### `pieces/piece-type.ts` — le comportement
+
+`PieceType` est une **classe abstraite** qui encode les règles communes à toute pièce et
+les expose comme autant de points de redéfinition. **Une instance par type de pièce et par
+ruleset**, jamais une par pièce en jeu.
+
+| Membre | Rôle |
+|---|---|
+| `kind`, `movement`, `vision` | Abstraits : chaque type les déclare |
+| `isCommander` | Accesseur, `false` par défaut. La capture d'une pièce maîtresse met fin à la partie |
+| `destinationsFrom()` | Cases atteignables en un tour ; délègue à `reachableTiles()` |
+| `canSee()` | Voit-elle `to` depuis `from` ? Portée d'abord, occultation ensuite |
+| `fieldOfView()` | Champ de vision complet, **dérivé de `canSee()`** via `collectVisible()` |
+| `canStrike()` | Peut-elle frapper `to` ? Adjacence du type, puis règle de dénivelé |
+| `visionRangeCovers()` | Protégée. Isolée pour qu'une redéfinition de `canSee()` puisse réutiliser la seule portée |
+
+**C'est la pièce qui définit ce qu'elle voit**, et non un appelant qui recalculerait un
+champ de vision à partir d'une portée brute. Une pièce future à la vision particulière —
+relais de vue, téléporteur (`docs/design.md` points ouverts 8 et 9) — redéfinit `canSee()`
+et **aucun appelant ne change** : `fog.ts` demande son champ de vision à la pièce.
+`fieldOfView()` étant dérivé de `canSee()`, la redéfinition se propage seule.
+
+`ConfigurablePieceType extends PieceType` complète la hiérarchie : un type **configuré à
+la construction, sans comportement propre**, à partir d'un `PieceProfile`
+(`{ kind, movement, vision, isCommander? }`). C'est ce qui permet à un scénario, un test
+ou un futur éditeur de carte de fournir ses définitions **sans écrire de classe**.
+
+### `pieces/ruleset.ts` — la table d'une partie
+
+| Méthode | Rôle |
+|---|---|
+| `Ruleset` (constructeur) | Indexe des `PieceType` par leur `kind` |
+| `get()` | Le type ; **lève** si le `kind` est inconnu |
+| `typeOf()` | Raccourci de loin le plus fréquent : d'une pièce en jeu vers ses règles |
+| `kinds()` | Les types déclarés |
+
+Les règles sont **versionnées par partie et non par connexion** : un `Ruleset` est
+construit une fois au démarrage et ne change plus, ce qui suppose qu'il **ne détient aucun
+état**.
+
+### `pieces/roster.ts` — le roster provisoire
+
+| Élément | Rôle |
+|---|---|
+| `Scout` | Éclaireur : 3 pas, vision 6, octile, grimpe |
+| `Commander` | Pièce maîtresse : 1 pas, vision 3, octile, grimpe ; `isCommander` vrai |
+| `provisionalRuleset()` | `new Ruleset([new Scout(), new Commander()])` |
+
+**Attention.** Aucun roster n'est acté (`docs/design.md` point ouvert 12). Ces deux classes
+reprennent trait pour trait les définitions qui servaient déjà à la démo de rendu et au
+squelette serveur — elles ne font que leur donner **un seul lieu de définition au lieu de
+trois copies**. Ce n'est pas du contenu de jeu et **il ne faut bâtir aucun équilibrage
+dessus**.
+
+Le principe « aucun roster dans `core` » est donc infléchi, et l'arbitrage est consigné
+dans `docs/implementation-notes.md` (point 12) : le comportement d'une pièce est de la
+logique de jeu, et doit être partagé par le client et le serveur sinon il se duplique.
+
+Détail d'implémentation à connaître : `kind`, `movement` et `vision` y sont annotés **au
+type large** (`PieceKind`, `MovementProfile`) et non au littéral, pour qu'une sous-classe
+puisse se spécialiser sans que TypeScript ne fige la valeur de la classe de base.
+
+`Piece` ne porte pas sa hauteur : elle se dérive de `board.heightAt(piece.coord)`. Aucun
+type de `pieces/` n'a de champ visuel — toute correspondance type → forme appartient au
+rendu (`apps/web/src/draw/pieces.ts`). Conformément à `docs/design.md`, la différenciation
+passe par la capacité et le mouvement, **jamais par des points de vie**.
 
 ---
 
@@ -161,20 +253,29 @@ Deux points à connaître avant de bâtir dessus :
 Raycast 2D de type Bresenham avec comparaison de hauteur interpolée case par case. **Pas
 de moteur 3D** (`docs/design.md` section 5.1).
 
+Ce module **ne connaît que la géométrie**. Ce qu'une pièce voit réellement est défini par
+son type.
+
 | Fonction | Rôle |
 |---|---|
 | `rasterizeLine()` | Cases traversées par le segment, extrémités incluses |
 | `inCanonicalOrder()` (privée) | Fixe le sens de parcours du tracé |
 | `hasLineOfSight()` | Y a-t-il vue entre deux cases |
-| `visibleFrom()` | Cases visibles depuis un point, dans une portée |
+| `collectVisible()` | Cases visibles depuis un point, **filtrées par un test fourni par l'appelant** |
+| `visibleFrom()` | Champ de vision purement géométrique : portée de Chebyshev et occultation |
+
+`collectVisible(board, origin, canSee)` est le point d'extension : `PieceType.fieldOfView()`
+lui passe son propre critère, si bien qu'une pièce à la vision particulière n'a **rien à
+réécrire du raycast**. `visibleFrom()` n'en est qu'un cas particulier — portée de Chebyshev
+plus `hasLineOfSight()` — conservé pour les usages purement géométriques et les tests.
 
 ### La hauteur du regard
 
 `EYE_HEIGHT = 1` (constante privée). Une pièce sur une case de hauteur `h` regarde depuis
 `h + 1` ; un mur de hauteur `h` occupe l'espace jusqu'à `h`. L'occultation est testée avec
 `>=` : **un mur exactement à hauteur du regard bloque** — raser un sommet ne laisse pas
-voir derrière. C'est une interprétation encodée faute de décision explicite, consignée
-dans `docs/implementation-notes.md` (point 11).
+voir derrière. Interprétation encodée faute de décision explicite, consignée dans
+`docs/implementation-notes.md` (point 11).
 
 `hasLineOfSight()` interpole linéairement la hauteur de visée entre les deux yeux le long
 du tracé, et compare chaque obstacle traversé à cette hauteur. Deux exceptions
@@ -189,18 +290,19 @@ LOS donnerait des situations où A voit B sans que B ne voie A — inacceptable 
 information cachée. `inCanonicalOrder()` fixe donc un ordre déterministe des extrémités
 **avant** le tracé.
 
-**Ne pas casser cette propriété.** Toute modification de `hasLineOfSight()` doit préserver
-`hasLineOfSight(b, a, b) === hasLineOfSight(b, b, a)`.
+**Ne pas casser cette propriété.** Le test « occulte tout type de pièce de la même façon :
+le relief ne se négocie pas » (`pieces/piece-type.test.ts`) la verrouille au niveau des
+types de pièces : redéfinir `canSee()` ne doit jamais permettre de traverser le relief.
 
 ### Portée et hauteur
 
-`visibleFrom(board, origin, range)` : `range` est une distance de **Chebyshev horizontale**.
-La hauteur n'étend ni ne réduit la portée de vision — elle ne joue que sur l'occultation
-(`docs/design.md` section 5.3). Une pièce sur une tour voit *plus loin* uniquement parce
-que moins d'obstacles la gênent, jamais parce que sa portée augmente.
+La portée est une distance de **Chebyshev horizontale**. La hauteur n'étend ni ne réduit la
+portée de vision — elle ne joue que sur l'occultation (`docs/design.md` section 5.3). Une
+pièce sur une tour voit *plus loin* uniquement parce que moins d'obstacles la gênent,
+jamais parce que sa portée augmente.
 
 Une pièce **n'occulte pas** la vue : seul le relief le fait (`implementation-notes.md`
-point 5). `visibleFrom()` ne consulte donc aucun état de pièces.
+point 5). Le module ne consulte donc aucun état de pièces.
 
 ---
 
@@ -216,6 +318,10 @@ interface MoveOption { coord: Coord; cost: number; kind: MoveKind }
 | `reachableTiles()` | Cases atteignables depuis une case, avec coût et nature du déplacement |
 | `canMeleeReach()` | La règle de dénivelé en mêlée. **Ne teste pas l'adjacence** |
 
+Les deux sont appelées à travers `PieceType.destinationsFrom()` et `PieceType.canStrike()`,
+qui y ajoutent respectivement le profil et l'adjacence du type. Le reste du paquet ne les
+appelle plus directement.
+
 ### Les règles de verticalité (`docs/design.md` section 5.3)
 
 - **Descendre est libre**, sans limite de dénivelé : seul le pas horizontal coûte. Dans le
@@ -226,8 +332,6 @@ interface MoveOption { coord: Coord; cost: number; kind: MoveKind }
   après le parcours, au coût `profile.steps`. Un mur de hauteur 3 se gravit en 3 tours.
 - **Un dénivelé de 2 niveaux ou plus en un pas est infranchissable** : la condition
   `tile.height === originHeight + 1` l'exclut.
-- `canClimb` est déclaré par pièce — grimper comme capacité générique ou spécifique n'est
-  pas tranché (`docs/design.md` point ouvert 7).
 
 Le paramètre `occupied` porte les cases tenues par une pièce : elles bloquent le passage,
 et pas seulement l'arrivée.
@@ -260,7 +364,7 @@ type Outcome =
 | `pieceAt()` | La pièce sur une case, par balayage linéaire |
 | `occupancy()` | Ensemble des cases occupées |
 | `piecesOf()` | Les pièces d'un joueur |
-| `commanderOf()` | La pièce maîtresse d'un joueur |
+| `commanderOf()` | La pièce maîtresse d'un joueur, via `ruleset.typeOf(piece).isCommander` |
 
 `createGame()` lève sur identifiant dupliqué, sur deux pièces à la même case, ou sur une
 pièce posée sur une case infranchissable. Ce sont des erreurs de programmation, pas des
@@ -282,13 +386,20 @@ type Action =
 
 | Fonction | Rôle |
 |---|---|
+| `occupancyWithout()` (privée) | Occupation vue par une pièce donnée : sa propre case exclue |
 | `destinationsFor()` (privée) | Destinations légales d'une pièce, **sa case de départ incluse** |
-| `capturablesFrom()` (privée) | Adversaires capturables depuis une case donnée |
+| `capturablesFrom()` (privée) | Adversaires capturables depuis une case, via `PieceType.canStrike()` |
 | `legalActions()` | Toutes les actions légales du joueur au trait |
 | `validateAction()` | Valide une action ; `Result<Action, ActionError>` |
+| `validateCapture()` (privée) | La partie capture de la validation |
 | `withOutcome()` (privée) | Détermine la fin de partie après une action |
 | `applyAction()` | Valide puis applique ; `Result<GameState, ActionError>` |
 | `isCommanderThreatened()` | La pièce maîtresse est-elle capturable au coup suivant |
+
+`destinationsFor()` reçoit l'occupation **en paramètre** plutôt que de la recalculer :
+`legalActions()` et `isCommanderThreatened()` la calculent une fois par lot et non par
+pièce. `occupancyWithout()` en retire la case de la pièce examinée, qu'elle libère en
+partant.
 
 ### Une action = le tour complet d'une pièce
 
@@ -308,8 +419,8 @@ capture), **ensuite** l'absence de coup légal (pat). La reddition court-circuit
 `applyAction()`.
 
 Le pat est le pat classique : aucun coup légal du tout. **Aucune règle
-anti-blocage/anti-répétition n'existe** — c'est un point explicitement reporté
-(`docs/design.md` point ouvert 4). De même, **il n'y a pas de détection de mat** :
+anti-blocage/anti-répétition n'existe** — point explicitement reporté (`docs/design.md`
+point ouvert 4). De même, **il n'y a pas de détection de mat** :
 `isCommanderThreatened()` répond « menacé », pas « mat ».
 
 ### `ActionError`
@@ -317,16 +428,18 @@ anti-blocage/anti-répétition n'existe** — c'est un point explicitement repor
 `game-over` · `unknown-piece` · `not-your-piece` · `unreachable` · `must-do-something` ·
 `unknown-target` · `target-is-friendly` · `target-out-of-melee`.
 
-Ces codes traversent le réseau tels quels : `ServerMessage` de type `rejected`
-(`apps/server/src/protocol.ts`) les transporte.
+Ces codes traversent le réseau tels quels (`ServerMessage` de type `rejected`,
+`apps/server/src/protocol.ts`) et sont traduits en français par `describeActionError()`
+(`apps/web/src/ui/messages.ts`).
 
 ### Un piège de performance
 
 `legalActions()` appelle `destinationsFor()` pour chaque pièce, et `withOutcome()` appelle
 `legalActions()` à chaque application d'action pour détecter le pat.
-`isCommanderThreatened()` fait de même pour chaque pièce adverse. Rien n'est mémoïsé.
-C'est sans conséquence à l'échelle actuelle (quelques dizaines de cases, jeu au tour par
-tour), mais à garder en tête avant d'ajouter une recherche en profondeur.
+`isCommanderThreatened()` fait de même pour chaque pièce adverse. Le calcul d'occupation
+est mutualisé, mais rien d'autre n'est mémoïsé. C'est sans conséquence à l'échelle actuelle
+(quelques dizaines de cases, jeu au tour par tour), mais à garder en tête avant d'ajouter
+une recherche en profondeur.
 
 ---
 
@@ -351,9 +464,14 @@ interface PlayerView {
 | Fonction | Rôle |
 |---|---|
 | `emptyKnowledge()` | Connaissance vierge d'un joueur |
-| `visibleTilesFor()` | Union des champs de vision de toutes les pièces d'un joueur |
+| `visibleTilesFor()` | Union des champs de vision des pièces d'un joueur |
 | `observe()` | Fait avancer la mémoire après un changement d'état |
 | `viewFor()` | Produit l'état transmissible à un joueur |
+
+`visibleTilesFor()` **demande son champ de vision à chaque type de pièce**
+(`ruleset.typeOf(piece).fieldOfView(...)`) au lieu de le calculer à partir d'une portée
+brute. C'est ce qui fait qu'une pièce à la vision particulière ne demande aucune
+modification ici.
 
 ### La règle de la mémoire fantôme
 
@@ -391,7 +509,7 @@ serait contournable via les devtools.
 
 ## Tests
 
-57 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
+67 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
 
 | Fichier | Couvre |
 |---|---|
@@ -399,16 +517,22 @@ serait contournable via les devtools.
 | `packages/core/src/movement.test.ts` | Parcours, verticalité, grimpe, blocage par occupation |
 | `packages/core/src/actions.test.ts` | Coups légaux, validation, capture, fin de partie |
 | `packages/core/src/fog.test.ts` | Visibilité, mémoire fantôme, contenu de `PlayerView` |
+| `packages/core/src/pieces/piece-type.test.ts` | Vision, mêlée et déplacement définis par le type ; dérivation de `fieldOfView` depuis `canSee` y compris redéfini ; extension par héritage |
 
-`packages/core/src/testing.ts` fournit `definePiece()`, `testRuleset()` et `placePiece()`.
-**Il n'est pas réexporté par `index.ts`** : c'est du support de test, pas de l'API.
+`packages/core/src/testing.ts` fournit `definePiece()` (qui renvoie un
+`ConfigurablePieceType`), `testRuleset()` et `placePiece()`. **Il n'est pas réexporté par
+`index.ts`** : c'est du support de test, pas de l'API. Le roster provisoire partagé par le
+client et le serveur vit dans `pieces/roster.ts`, pas ici.
 
 ## Non implémenté
 
 Tout ce qui suit est listé comme ouvert en section 10 de `docs/design.md` et **n'a
 volontairement pas été codé** : attaque à distance différée, pièges, cases de déploiement,
-règle anti-répétition, détection du mat, roster de pièces, téléporteurs, poussée,
+règle anti-répétition, détection du mat, roster de pièces définitif, téléporteurs, poussée,
 objets bloquant la LOS.
 
-Avant d'implémenter l'un d'eux, relire la section 6 de `docs/design.md` (pistes déjà
-écartées) et `docs/implementation-notes.md` (interprétations non validées).
+La hiérarchie `PieceType` est le point d'entrée prévu pour plusieurs d'entre eux : une
+vision particulière se code en redéfinissant `canSee()`, une portée de frappe particulière
+en redéfinissant `canStrike()`. Mais **avant d'implémenter l'un d'eux**, relire la section 6
+de `docs/design.md` (pistes déjà écartées) et `docs/implementation-notes.md`
+(interprétations non validées).

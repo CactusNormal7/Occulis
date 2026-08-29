@@ -1,4 +1,4 @@
-import type { PlayerId } from "@occulis/core";
+import type { Coord, PlayerId } from "@occulis/core";
 import type { Match } from "../match.js";
 import { parseCommand, toAction } from "./command.js";
 import {
@@ -6,6 +6,7 @@ import {
   describeFault,
   describeMove,
   describeOutcome,
+  describeTile,
   describeTurn,
 } from "./messages.js";
 
@@ -22,6 +23,8 @@ export interface ConsoleElements {
   readonly input: HTMLInputElement;
   readonly log: HTMLElement;
   readonly status: HTMLElement;
+  /** Lecture de la case désignée au clic. */
+  readonly readout: HTMLElement;
 }
 
 export interface ConsoleOptions {
@@ -36,14 +39,22 @@ export interface ConsoleOptions {
 export interface GameConsole {
   /** Réaffiche la ligne d'état, par exemple après un changement de point de vue. */
   refresh(): void;
+  /** Affiche la case désignée au clic, ou signale un clic hors plateau. */
+  showTile(coord: Coord | undefined): void;
 }
 
 export function attachConsole(options: ConsoleOptions): GameConsole {
   const { elements, match, viewer, onPlayed } = options;
-  const { form, input, log, status } = elements;
+  const { form, input, log, status, readout } = elements;
 
   const refresh = (): void => {
     status.textContent = describeTurn(match.state.turn, match.activePlayer, viewer());
+  };
+
+  const showTile = (coord: Coord | undefined): void => {
+    readout.textContent = describeTile(
+      coord === undefined ? undefined : match.board.getTile(coord),
+    );
   };
 
   const report = (message: string, accepted: boolean): void => {
@@ -96,5 +107,5 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
   });
 
   refresh();
-  return { refresh };
+  return { refresh, showTile };
 }
