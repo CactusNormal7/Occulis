@@ -43,6 +43,16 @@ function dragKindOf(button: number): DragKind | undefined {
   return undefined;
 }
 
+/**
+ * Les raccourcis clavier sont posés sur `window` pour rester actifs hors du
+ * canevas ; ils doivent donc s'effacer devant une saisie en cours, sans quoi une
+ * espace tapée dans le champ de commande changerait de point de vue.
+ */
+function isTyping(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+}
+
 function sameCoord(a: Coord | undefined, b: Coord | undefined): boolean {
   if (a === undefined || b === undefined) return a === b;
   return coordEquals(a, b);
@@ -124,6 +134,7 @@ export function attachControls(options: ControlsOptions): void {
   });
 
   window.addEventListener("keydown", (event) => {
+    if (isTyping(event.target)) return;
     if (event.key === "ArrowLeft") update((camera) => turn(camera, -1));
     else if (event.key === "ArrowRight") update((camera) => turn(camera, 1));
     else if (event.key === " ") toggleViewer();

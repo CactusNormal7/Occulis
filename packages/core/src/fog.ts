@@ -1,7 +1,6 @@
 import type { Board } from "./board.js";
 import { type Coord, type CoordKey, coordKey } from "./coord.js";
-import { visibleFrom } from "./los.js";
-import type { Piece, PieceId, PieceKind, PlayerId } from "./piece.js";
+import type { Piece, PieceId, PieceKind, PlayerId } from "./pieces/index.js";
 import { type GameState, piecesOf } from "./state.js";
 
 /** Dernière position connue d'une pièce adverse, à afficher en fantôme estompé. */
@@ -23,12 +22,18 @@ export function emptyKnowledge(player: PlayerId): PlayerKnowledge {
   return { player, visible: new Set(), remembered: new Map() };
 }
 
-/** Union des champs de vision des pièces d'un joueur. */
+/**
+ * Union des champs de vision des pièces d'un joueur.
+ *
+ * Le champ est demandé à chaque type de pièce plutôt que calculé ici à partir
+ * d'une portée : c'est la pièce qui définit ce qu'elle voit (`PieceType.canSee`).
+ */
 export function visibleTilesFor(board: Board, state: GameState, player: PlayerId): Set<CoordKey> {
   const visible = new Set<CoordKey>();
   for (const piece of piecesOf(state, player)) {
-    const { range } = state.ruleset.get(piece.kind).vision;
-    for (const key of visibleFrom(board, piece.coord, range)) visible.add(key);
+    for (const key of state.ruleset.typeOf(piece).fieldOfView(board, piece.coord)) {
+      visible.add(key);
+    }
   }
   return visible;
 }

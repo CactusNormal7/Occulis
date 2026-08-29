@@ -1,6 +1,6 @@
 import type { Board } from "./board.js";
 import { type Coord, type CoordKey, coordKey, neighbors } from "./coord.js";
-import type { MovementProfile } from "./piece.js";
+import type { MovementProfile } from "./pieces/profiles.js";
 
 export type MoveKind = "walk" | "climb";
 
