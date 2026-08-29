@@ -129,13 +129,21 @@ ne soit pas la seule trace d'une décision de DA.
   rotation reste un recalcul de projection sur les coordonnées logiques : les quatre coins
   de chaque case sont projetés individuellement, ce qui garde le pavage jointif à n'importe
   quel angle intermédiaire.
-- **Saisie des coups au clavier, provisoire.** Tant que la sélection à la souris n'est
-  pas câblée, un coup se joue en tapant ses coordonnées (`1,6 2,5` déplace, `1,6 2,5 x
-  3,5` capture, `abandon` abandonne) dans un champ HTML posé par-dessus le canevas. Ce
-  n'est pas une décision d'interface : c'est le moyen le plus court d'exercer la logique
-  déjà implémentée, et il disparaîtra ou coexistera avec la sélection au clic. La partie
-  se joue en hot-seat, la vue suivant le joueur au trait — chaque camp conservant sa
-  propre mémoire du fog, comme le fera le serveur.
+- **Deux façons de jouer un coup, toutes deux provisoires.** À la souris : cliquer une de
+  ses pièces la sélectionne et fait apparaître ses destinations légales, cliquer une
+  destination l'y déplace, cliquer un adversaire adjacent le capture sans bouger. Au
+  clavier : taper les coordonnées (`1,6 2,5` déplace, `1,6 2,5 x 3,5` capture, `abandon`
+  abandonne) dans un champ HTML posé par-dessus le canevas. Le clavier reste nécessaire
+  pour enchaîner un déplacement *et* une capture dans le même tour, que le clic ne sait
+  pas exprimer. Aucune des deux n'est une décision d'interface arrêtée : ce sont des
+  moyens d'exercer la logique déjà implémentée. La partie se joue en hot-seat, la vue
+  suivant le joueur au trait — chaque camp conservant sa propre mémoire du fog, comme le
+  fera le serveur.
+- **Le déplacement est animé, jamais instantané.** La pièce glisse d'une case à l'autre,
+  hauteur comprise, avec départ et arrivée adoucis. L'action est appliquée à l'état
+  immédiatement : seule la position à l'écran est interpolée, et le passage de main attend
+  la fin du glissement pour que la pièce ne disparaisse pas en plein vol en devenant
+  adverse.
 
 - **Caméra : zoom et déplacement.** Molette pour zoomer vers le curseur, drag gauche pour
   déplacer la vue. Le facteur de zoom vit dans la projection et non dans la transformation

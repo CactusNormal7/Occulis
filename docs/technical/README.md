@@ -22,7 +22,7 @@ justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ic
 | Fichier | Couvre | Paquet |
 |---|---|---|
 | [core.md](core.md) | Les règles du jeu : plateau, hauteur, ligne de vue, déplacement, capture, fog of war, types de pièces | `packages/core` |
-| [engine.md](engine.md) | Le moteur de rendu et le client : projection isométrique, caméra, désignation à la souris, couches, code couleur, saisie de coups | `apps/web` |
+| [engine.md](engine.md) | Le moteur de rendu et le client : projection isométrique, caméra, sélection et déplacement animé, couches, code couleur, saisie de coups | `apps/web` |
 | [server.md](server.md) | Le serveur : Worker, Durable Object de partie, base D1, protocole réseau | `apps/server` |
 | [infra.md](infra.md) | L'outillage et la CI/CD : environnements, migrations, déploiement | `tooling/infra`, `.github` |
 
@@ -56,8 +56,9 @@ C'est le point le plus important à comprendre avant de lire le reste, et le plu
 se tromper : **le client et le serveur ne se parlent pas encore.**
 
 - `apps/web` ne contient **aucun appel réseau** — ni `fetch`, ni `WebSocket`. La partie est
-  jouée **en local**, en hot-seat : `Match` (`apps/web/src/match.ts`) détient l'état réel
-  et les deux `PlayerKnowledge`, et un coup se joue en tapant ses coordonnées
+  jouée **en local**, en hot-seat : `Match` (`apps/web/src/game/match.ts`) détient l'état
+  réel et les deux `PlayerKnowledge`. Un coup se joue au clic
+  (`apps/web/src/game/selection.ts`) ou en tapant ses coordonnées
   (`apps/web/src/ui/console.ts`).
 - `apps/server` est un squelette complet et cohérent (Worker, Durable Object, schéma D1,
   protocole), mais **rien ne l'appelle**. Le type `ClientMessage`

@@ -1,5 +1,5 @@
 import type { Graphics } from "pixi.js";
-import type { IsoProjection, ScreenPoint } from "../iso.js";
+import type { IsoProjection, ScreenPoint } from "../view/iso.js";
 import { PIECES } from "../theme.js";
 
 /**

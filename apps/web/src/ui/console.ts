@@ -1,5 +1,5 @@
-import type { Coord, PlayerId } from "@occulis/core";
-import type { Match } from "../match.js";
+import type { Action, ActionError, Coord, GameState, PlayerId, Result } from "@occulis/core";
+import type { Match } from "../game/match.js";
 import { parseCommand, toAction } from "./command.js";
 import {
   describeActionError,
@@ -11,11 +11,15 @@ import {
 } from "./messages.js";
 
 /**
- * Saisie de coups au clavier : le joueur entre des coordonnées, le coup est joué.
+ * Saisie de coups au clavier et comptes rendus de partie.
  *
  * Seul module de l'interface à toucher le DOM. La grammaire est dans `command.ts`,
  * les textes dans `messages.ts` : il ne reste ici que le branchement des
  * événements et l'écriture dans la page.
+ *
+ * L'application d'une action lui est **fournie** (`play`) plutôt que prise sur
+ * `Match` : c'est l'appelant qui décide ce qu'un coup déclenche — animation,
+ * passage de main — et ce module n'en sait rien.
  */
 
 export interface ConsoleElements {
@@ -32,8 +36,7 @@ export interface ConsoleOptions {
   readonly match: Match;
   /** Point de vue affiché, que la console rappelle dans la ligne d'état. */
   readonly viewer: () => PlayerId;
-  /** Appelé après un coup accepté, pour que la vue rendue suive la partie. */
-  readonly onPlayed: () => void;
+  readonly play: (action: Action) => Result<GameState, ActionError>;
 }
 
 export interface GameConsole {
@@ -41,10 +44,12 @@ export interface GameConsole {
   refresh(): void;
   /** Affiche la case désignée au clic, ou signale un clic hors plateau. */
   showTile(coord: Coord | undefined): void;
+  /** Joue une action venue d'ailleurs — un clic sur le plateau — et la rapporte. */
+  playAction(action: Action): boolean;
 }
 
 export function attachConsole(options: ConsoleOptions): GameConsole {
-  const { elements, match, viewer, onPlayed } = options;
+  const { elements, match, viewer, play } = options;
   const { form, input, log, status, readout } = elements;
 
   const refresh = (): void => {
@@ -62,6 +67,31 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
     log.dataset["state"] = accepted ? "ok" : "ko";
   };
 
+  const playAction = (action: Action): boolean => {
+    // Le résumé est composé avant de jouer : dans l'état suivant, la pièce
+    // déplacée n'est plus à sa place et la capturée n'existe plus.
+    const moved = action.kind === "move" ? match.state.pieces.get(action.pieceId) : undefined;
+    const captured =
+      action.kind === "move" && action.capture !== undefined
+        ? match.state.pieces.get(action.capture)
+        : undefined;
+
+    const played = play(action);
+    if (!played.ok) {
+      report(describeActionError(played.error), false);
+      return false;
+    }
+
+    const summary =
+      action.kind === "move" && moved !== undefined
+        ? describeMove(moved, action.to, captured)
+        : "Abandon.";
+    const outcome = played.value.outcome;
+    report(outcome === null ? summary : `${summary} ${describeOutcome(outcome)}`, true);
+    refresh();
+    return true;
+  };
+
   const submit = (raw: string): void => {
     const command = parseCommand(raw);
     if (!command.ok) {
@@ -75,30 +105,7 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
       return;
     }
 
-    // Lus avant de jouer : la pièce déplacée et la capturée ne sont plus à leur
-    // place — ni même présentes — dans l'état suivant.
-    const moved = command.value.kind === "move" ? match.pieceAt(command.value.from) : undefined;
-    const captured =
-      command.value.kind === "move" && command.value.capture !== undefined
-        ? match.pieceAt(command.value.capture)
-        : undefined;
-
-    const played = match.play(action.value);
-    if (!played.ok) {
-      report(describeActionError(played.error), false);
-      return;
-    }
-
-    input.value = "";
-    const outcome = played.value.outcome;
-    const summary =
-      command.value.kind === "resign" || moved === undefined
-        ? "Abandon."
-        : describeMove(moved, command.value.to, captured);
-    report(outcome === null ? summary : `${summary} ${describeOutcome(outcome)}`, true);
-
-    onPlayed();
-    refresh();
+    if (playAction(action.value)) input.value = "";
   };
 
   form.addEventListener("submit", (event) => {
@@ -107,5 +114,5 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
   });
 
   refresh();
-  return { refresh, showTile };
+  return { refresh, showTile, playAction };
 }

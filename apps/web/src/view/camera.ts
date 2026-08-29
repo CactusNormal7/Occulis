@@ -1,6 +1,6 @@
 import type { Board, Coord } from "@occulis/core";
 import { type IsoProjection, type ScreenPoint, QUARTER_TURN, lerpAngle, snapAngle } from "./iso.js";
-import { METRICS } from "./theme.js";
+import { METRICS } from "../theme.js";
 
 /**
  * État de caméra. Module pur : ni Pixi, ni DOM, ni événement — les entrées

@@ -173,7 +173,7 @@ type ServerMessage =
 **Pourquoi `WireView` existe** : `PlayerView.visible` est un `ReadonlySet`, et
 `JSON.stringify` sérialise un `Set` en `{}`. `encodeView()` le convertit en tableau. Tout
 futur client devra faire la conversion inverse avant de passer la vue au rendu — `Scene`
-(`apps/web/src/scene.ts`) attend bien un `Set`.
+(`apps/web/src/scene/scene.ts`) attend bien un `Set`.
 
 **Pourquoi la version est négociée** : un client téléchargé (cible Electron) embarque un
 vieux `core` et calcule donc les coups légaux avec de vieilles règles. Le serveur doit
@@ -192,7 +192,7 @@ plutôt que le laisser diverger en silence.
 | `scenarioFor()` | `apps/server/src/scenarios.ts` | Nom → `{ board, pieces }` ; **lève** si inconnu |
 
 Le registre ne définit **aucun type de pièce lui-même** : il appelle
-`provisionalRuleset()` de `@occulis/core` (`packages/core/src/pieces/roster.ts`). Client et
+`provisionalRuleset()` de `@occulis/core` (`packages/core/src/pieces/roster/`). Client et
 serveur doivent appliquer exactement les mêmes règles, donc une seule définition — voir
 [core.md](core.md), section `pieces/`.
 

@@ -8,8 +8,8 @@ import {
   snapRotation,
   turn,
   zoomAt,
-} from "./camera.js";
-import type { ScreenPoint } from "./iso.js";
+} from "../view/camera.js";
+import type { ScreenPoint } from "../view/iso.js";
 
 /**
  * Seul module du client qui écoute des événements. Il ne dessine rien et ne

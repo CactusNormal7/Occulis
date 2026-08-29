@@ -1,6 +1,6 @@
 import type { Graphics } from "pixi.js";
 import type { Board, Tile } from "@occulis/core";
-import { type IsoProjection, cliffQuads, flattenQuad, tileQuad } from "../iso.js";
+import { type IsoProjection, cliffQuads, flattenQuad, tileQuad } from "../view/iso.js";
 import { GEOMETRY } from "../theme.js";
 
 /**

@@ -17,7 +17,7 @@ passé en paramètre.
 
 **2. Immuabilité.** `Board`, `GameState`, `PlayerKnowledge` et `PlayerView` ne sont jamais
 mutés : `applyAction()` et `observe()` renvoient de nouvelles valeurs. Le client s'appuie
-directement sur cette propriété — `Scene.render()` (`apps/web/src/scene.ts`) détecte les
+directement sur cette propriété — `Scene.render()` (`apps/web/src/scene/scene.ts`) détecte les
 changements par **identité de référence**.
 
 Les erreurs sont retournées via `Result<T, E>` (`packages/core/src/result.ts`), **jamais
@@ -31,11 +31,12 @@ coord.ts ──► board.ts ──► los.ts ──────┐
    │            │                      │
    │            └──► movement.ts ──┐   │
    ▼                               ▼   ▼
-pieces/profiles.ts ──────────► pieces/piece-type.ts
-                                   │
-pieces/piece.ts ──────────────► state.ts ──► actions.ts
+pieces/profiles.ts ──────────► pieces/piece-type.ts ◄── pieces/roster/{scout,commander}.ts
+                                   │        ▲
+pieces/piece.ts ──────────────► state.ts    └── pieces/configurable-piece-type.ts
 pieces/ruleset.ts                  │
-pieces/roster.ts                   └──► fog.ts
+                                   ├──► actions.ts
+                                   └──► fog.ts
 ```
 
 `los.ts` et `movement.ts` ne connaissent que la géométrie et les profils chiffrés
@@ -48,9 +49,12 @@ pieces/roster.ts                   └──► fog.ts
 | `packages/core/src/board.ts` | `Tile` et `Board` immuable |
 | `packages/core/src/pieces/piece.ts` | `Piece` : l'enregistrement de données d'une pièce en jeu |
 | `packages/core/src/pieces/profiles.ts` | `MovementProfile`, `VisionProfile` : les caractéristiques chiffrées |
-| `packages/core/src/pieces/piece-type.ts` | `PieceType` (classe abstraite) et `ConfigurablePieceType` |
-| `packages/core/src/pieces/roster.ts` | `Scout`, `Commander`, `provisionalRuleset()` — **provisoires** |
+| `packages/core/src/pieces/piece-type.ts` | `PieceType` : la classe abstraite, et elle seule |
+| `packages/core/src/pieces/configurable-piece-type.ts` | `ConfigurablePieceType` : un type décrit par des données |
 | `packages/core/src/pieces/ruleset.ts` | `Ruleset` : table `kind` → `PieceType` d'une partie |
+| `packages/core/src/pieces/roster/scout.ts` | `Scout` — **provisoire** |
+| `packages/core/src/pieces/roster/commander.ts` | `Commander` — **provisoire** |
+| `packages/core/src/pieces/roster/index.ts` | Assemble le roster : `provisionalRuleset()` |
 | `packages/core/src/los.ts` | Raycast et ligne de vue — **géométrie seule** |
 | `packages/core/src/movement.ts` | Cases atteignables, portée de mêlée |
 | `packages/core/src/state.ts` | État de partie et accesseurs |
@@ -59,8 +63,9 @@ pieces/roster.ts                   └──► fog.ts
 | `packages/core/src/result.ts` | `Result<T, E>` |
 | `packages/core/src/testing.ts` | Fabriques de scénarios — **tests uniquement, non exporté** par `index.ts` |
 
-`packages/core/src/pieces/index.ts` réexporte les cinq modules du dossier ; `index.ts`
-réexporte tout sauf `testing.ts`.
+**Une classe concrète par fichier**, toutes dans `roster/`.
+`packages/core/src/pieces/index.ts` réexporte le dossier ; `index.ts` réexporte tout sauf
+`testing.ts`.
 
 ---
 
@@ -123,7 +128,7 @@ Deux décisions structurantes (`docs/design.md` section 5.1) :
 
 `Board` **n'expose aucune borne** (largeur, hauteur, rectangle englobant) : seulement
 `tileCount`. Un appelant qui a besoin des extrémités doit balayer `allTiles()` — c'est ce
-que fait `pivotOf()` (`apps/web/src/camera.ts`).
+que fait `pivotOf()` (`apps/web/src/view/camera.ts`).
 
 ### `Board.fromAscii()`
 
@@ -135,7 +140,7 @@ Une ligne = un `y` croissant, un caractère = un `x` croissant.
 | `.` | Hors-carte : aucune case |
 | `~` | Case infranchissable de hauteur 0 (gouffre, eau) — n'occulte pas |
 
-Tout autre caractère lève. Utilisé par les tests, par `apps/web/src/scenario.ts` et par
+Tout autre caractère lève. Utilisé par les tests, par `apps/web/src/game/scenario.ts` et par
 `scenarioFor()` (`apps/server/src/scenarios.ts`).
 
 ---
@@ -201,10 +206,20 @@ relais de vue, téléporteur (`docs/design.md` points ouverts 8 et 9) — redéf
 et **aucun appelant ne change** : `fog.ts` demande son champ de vision à la pièce.
 `fieldOfView()` étant dérivé de `canSee()`, la redéfinition se propage seule.
 
-`ConfigurablePieceType extends PieceType` complète la hiérarchie : un type **configuré à
-la construction, sans comportement propre**, à partir d'un `PieceProfile`
-(`{ kind, movement, vision, isCommander? }`). C'est ce qui permet à un scénario, un test
-ou un futur éditeur de carte de fournir ses définitions **sans écrire de classe**.
+Le fichier ne contient **que la classe abstraite**. Toute classe concrète vit dans son
+propre fichier : les deux du roster dans `roster/`, la variante pilotée par données
+juste en dessous.
+
+### `pieces/configurable-piece-type.ts` — un type sans comportement
+
+`ConfigurablePieceType extends PieceType` est un type **configuré à la construction**, à
+partir d'un `PieceProfile` (`{ kind, movement, vision, isCommander? }`). C'est ce qui
+permet à un scénario, un test ou un futur éditeur de carte de fournir ses définitions
+**sans écrire de classe**.
+
+La ligne de partage : une pièce qui n'a que des chiffres passe par ici ; une pièce qui a
+un *comportement* — voir autrement, frapper autrement — hérite de `PieceType` dans son
+propre fichier.
 
 ### `pieces/ruleset.ts` — la table d'une partie
 
@@ -219,19 +234,31 @@ Les règles sont **versionnées par partie et non par connexion** : un `Ruleset`
 construit une fois au démarrage et ne change plus, ce qui suppose qu'il **ne détient aucun
 état**.
 
-### `pieces/roster.ts` — le roster provisoire
+### `pieces/roster/` — le roster provisoire
 
-| Élément | Rôle |
-|---|---|
-| `Scout` | Éclaireur : 3 pas, vision 6, octile, grimpe |
-| `Commander` | Pièce maîtresse : 1 pas, vision 3, octile, grimpe ; `isCommander` vrai |
-| `provisionalRuleset()` | `new Ruleset([new Scout(), new Commander()])` |
+**Une classe par fichier**, assemblées par `roster/index.ts`.
+
+| Fichier | Classe | Caractéristiques, déclarées dans la classe |
+|---|---|---|
+| `roster/scout.ts` | `Scout` | 6 pas, vision 20, octile, grimpe |
+| `roster/commander.ts` | `Commander` | 3 pas, vision 14, octile, grimpe ; `isCommander` vrai |
+| `roster/index.ts` | — | `provisionalRuleset()` : `new Ruleset([new Scout(), new Commander()])` |
+
+**Les portées sont volontairement généreuses.** Les cartes de démonstration font au plus
+une dizaine de cases de côté : à ces portées, **seule l'occultation limite la vue**. C'est
+délibéré — cela rend la ligne de vue et le déplacement observables sans que des portées
+serrées ne masquent le comportement qu'on cherche à vérifier. Ce n'est pas un équilibrage.
 
 **Attention.** Aucun roster n'est acté (`docs/design.md` point ouvert 12). Ces deux classes
-reprennent trait pour trait les définitions qui servaient déjà à la démo de rendu et au
-squelette serveur — elles ne font que leur donner **un seul lieu de définition au lieu de
-trois copies**. Ce n'est pas du contenu de jeu et **il ne faut bâtir aucun équilibrage
-dessus**.
+existent pour que le client, le serveur et les tests partagent **un seul lieu de définition
+au lieu de trois copies**. Ce n'est pas du contenu de jeu et **il ne faut bâtir aucun
+équilibrage dessus**.
+
+Corollaire pour les tests : une vérification de *règle* ne doit jamais s'appuyer sur ces
+valeurs, sous peine de casser au premier réglage. `piece-type.test.ts` exerce donc le
+comportement sur des types construits pour le test ; `roster/roster.test.ts` ne vérifie que
+des propriétés qui tiennent quelles que soient les valeurs (l'éclaireur voit plus loin que
+la pièce maîtresse, par exemple).
 
 Le principe « aucun roster dans `core` » est donc infléchi, et l'arbitrage est consigné
 dans `docs/implementation-notes.md` (point 12) : le comportement d'une pièce est de la
@@ -243,7 +270,7 @@ puisse se spécialiser sans que TypeScript ne fige la valeur de la classe de bas
 
 `Piece` ne porte pas sa hauteur : elle se dérive de `board.heightAt(piece.coord)`. Aucun
 type de `pieces/` n'a de champ visuel — toute correspondance type → forme appartient au
-rendu (`apps/web/src/draw/pieces.ts`). Conformément à `docs/design.md`, la différenciation
+rendu (`apps/web/src/scene/pieces.ts`). Conformément à `docs/design.md`, la différenciation
 passe par la capacité et le mouvement, **jamais par des points de vie**.
 
 ---
@@ -492,7 +519,7 @@ n'apparaisse jamais deux fois.
 la carte, seules les *pièces* sont masquées hors LOS (`implementation-notes.md` point 10).
 Le rendu estompe le terrain non visible sans le cacher. Un consommateur de `PlayerView`
 doit donc recevoir le plateau séparément — c'est ce que fait `SceneInput`
-(`apps/web/src/scene.ts`), qui porte `board` et `view` côte à côte.
+(`apps/web/src/scene/scene.ts`), qui porte `board` et `view` côte à côte.
 
 Il n'existe par conséquent **aucune notion de « case mémorisée »** : seulement
 `visible` (éclairée) contre tout le reste (estompé). Le souvenir ne concerne que les
@@ -509,7 +536,7 @@ serait contournable via les devtools.
 
 ## Tests
 
-67 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
+70 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
 
 | Fichier | Couvre |
 |---|---|
@@ -517,12 +544,13 @@ serait contournable via les devtools.
 | `packages/core/src/movement.test.ts` | Parcours, verticalité, grimpe, blocage par occupation |
 | `packages/core/src/actions.test.ts` | Coups légaux, validation, capture, fin de partie |
 | `packages/core/src/fog.test.ts` | Visibilité, mémoire fantôme, contenu de `PlayerView` |
-| `packages/core/src/pieces/piece-type.test.ts` | Vision, mêlée et déplacement définis par le type ; dérivation de `fieldOfView` depuis `canSee` y compris redéfini ; extension par héritage |
+| `packages/core/src/pieces/piece-type.test.ts` | Vision, mêlée et déplacement définis par le type ; dérivation de `fieldOfView` depuis `canSee` y compris redéfini ; extension par héritage. **Indépendant du roster** |
+| `packages/core/src/pieces/roster/roster.test.ts` | Propriétés du roster provisoire : différenciation par capacité, héritage du comportement commun, portée couvrant la carte de démonstration, indexation par `kind` |
 
 `packages/core/src/testing.ts` fournit `definePiece()` (qui renvoie un
 `ConfigurablePieceType`), `testRuleset()` et `placePiece()`. **Il n'est pas réexporté par
 `index.ts`** : c'est du support de test, pas de l'API. Le roster provisoire partagé par le
-client et le serveur vit dans `pieces/roster.ts`, pas ici.
+client et le serveur vit dans `pieces/roster/`, pas ici.
 
 ## Non implémenté
 

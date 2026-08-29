@@ -17,10 +17,14 @@ import type { PieceKind } from "./piece.js";
  *
  * Une instance par type de pièce et par ruleset, jamais une par pièce en jeu : les
  * pièces sur le plateau sont des données inertes (`Piece`), les règles sont ici.
+ *
+ * Les sous-classes concrètes vivent une par fichier dans `roster/`.
  */
 export abstract class PieceType {
   abstract readonly kind: PieceKind;
+  /** Portée de déplacement et topologie, fixées par la classe. */
   abstract readonly movement: MovementProfile;
+  /** Portée de vision, fixée par la classe. */
   abstract readonly vision: VisionProfile;
 
   /**
@@ -68,39 +72,5 @@ export abstract class PieceType {
   /** Isolé pour qu'une redéfinition de `canSee` puisse réutiliser la seule portée. */
   protected visionRangeCovers(from: Coord, to: Coord): boolean {
     return chebyshevDistance(from, to) <= this.vision.range;
-  }
-}
-
-/** Caractéristiques d'un type de pièce décrit par des données plutôt que par une classe. */
-export interface PieceProfile {
-  readonly kind: PieceKind;
-  readonly movement: MovementProfile;
-  readonly vision: VisionProfile;
-  readonly isCommander?: boolean;
-}
-
-/**
- * Type de pièce configuré à la construction, sans comportement propre.
- *
- * C'est ce qui permet à un appelant — un scénario, un test, un futur éditeur de
- * carte — de fournir ses propres définitions sans écrire de classe, comme c'était
- * le cas avant l'introduction de la hiérarchie.
- */
-export class ConfigurablePieceType extends PieceType {
-  readonly kind: PieceKind;
-  readonly movement: MovementProfile;
-  readonly vision: VisionProfile;
-  private readonly commander: boolean;
-
-  constructor(profile: PieceProfile) {
-    super();
-    this.kind = profile.kind;
-    this.movement = profile.movement;
-    this.vision = profile.vision;
-    this.commander = profile.isCommander ?? false;
-  }
-
-  override get isCommander(): boolean {
-    return this.commander;
   }
 }

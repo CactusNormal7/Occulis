@@ -62,14 +62,28 @@ export const PLAYERS = {
 } as const;
 
 /**
- * Emplacements réservés du code couleur d'état. Aucun n'est consommé à ce stade :
- * ni la sélection ni l'affichage des coups légaux ne sont implémentés.
+ * Code couleur d'état. Distinct des couleurs de camp par construction : une case
+ * mise en avant ne doit jamais se confondre avec une pièce.
  */
 export const STATE = {
   selection: 0xf5d76e,
-  legalMove: 0x74d3c4,
+  legalMove: 0x6aa9ff,
+  /** Réservé : grimper consomme le tour entier et mériterait un marquage propre. */
   climb: 0x9b8cf0,
   threat: 0xe0785f,
+} as const;
+
+/** Marquage de la pièce sélectionnée et de ce qu'elle peut faire ce tour-ci. */
+export const SELECTION = {
+  piece: STATE.selection,
+  pieceWidth: 2.5,
+  pieceFillAlpha: 0.12,
+  destination: STATE.legalMove,
+  destinationWidth: 1.5,
+  destinationFillAlpha: 0.1,
+  strike: STATE.threat,
+  strikeWidth: 2.5,
+  strikeFillAlpha: 0.16,
 } as const;
 
 export const PIECES = {
