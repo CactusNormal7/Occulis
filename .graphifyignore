@@ -1,0 +1,18 @@
+# Reprend .gitignore (que .graphifyignore remplace, il ne s'y ajoute pas)
+node_modules/
+dist/
+.DS_Store
+*.log
+.vite/
+.env
+.env.local
+.wrangler/
+.venv/
+
+# Sorties de graphify
+graphify-out/
+
+# Le manuel de graphify lui-même, commité dans .claude/skills/ : c'est de la
+# documentation d'outil, pas du contenu Occulis. .claude/CLAUDE.md et
+# .claude/settings.json restent inclus, eux sont bien de la config projet.
+.claude/skills/
