@@ -1,30 +1,10 @@
-import {
-  Board,
-  type GameState,
-  type Piece,
-  Ruleset,
-  createGame,
-} from "@occulis/core";
+import { Board, type GameState, type Piece, createGame, provisionalRuleset } from "@occulis/core";
 
 /**
  * Scénario de démonstration du rendu. Ce n'est PAS du contenu de jeu : ni le roster
  * ni les cartes ne sont actés (docs/design.md points ouverts 5 et 12). Il n'existe
  * que pour donner à voir hauteur, occultation et fog of war sur un cas concret.
  */
-const DEMO_RULESET = new Ruleset([
-  {
-    kind: "scout",
-    movement: { steps: 3, adjacency: "octile", canClimb: true },
-    vision: { range: 6 },
-    isCommander: false,
-  },
-  {
-    kind: "commander",
-    movement: { steps: 1, adjacency: "octile", canClimb: true },
-    vision: { range: 3 },
-    isCommander: true,
-  },
-]);
 
 /** Une arête rocheuse en diagonale coupe la carte en deux moitiés sans vue mutuelle. */
 const DEMO_MAP = [
@@ -50,5 +30,5 @@ export function demoBoard(): Board {
 }
 
 export function demoGame(): GameState {
-  return createGame(demoBoard(), DEMO_RULESET, [...DEMO_PIECES]);
+  return createGame(demoBoard(), provisionalRuleset(), [...DEMO_PIECES]);
 }

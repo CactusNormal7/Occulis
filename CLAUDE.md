@@ -9,7 +9,7 @@ Jeu de plateau tactique compétitif 1v1 en ligne, vue isométrique 2D, DA minima
 - Monorepo pnpm workspaces, TypeScript strict partout.
 - `packages/core` — logique de jeu pure (règles, plateau, hauteur, calcul de LOS, résolution des tours). **Aucune dépendance de rendu.** Testée avec Vitest.
 - `apps/server` — Worker Cloudflare + Durable Object de partie, consomme `@occulis/core`. Squelette : transport, cycle de vie du DO, schéma D1. Ni authentification, ni matchmaking, ni ELO.
-- `apps/web` — rendu (Vite + PixiJS/WebGL), consomme `@occulis/core`. La rotation isométrique et les recalculs de projection vivent ici (`src/iso.ts`), jamais dans `core`. Le code couleur est centralisé dans `src/theme.ts`, **seul fichier du client autorisé à contenir une valeur de couleur** — une règle ESLint le vérifie. Les modules purs (`iso`, `camera`, `picking`) n'importent ni Pixi ni le DOM et sont testés.
+- `apps/web` — rendu (Vite + PixiJS/WebGL), consomme `@occulis/core`. La rotation isométrique et les recalculs de projection vivent ici (`src/iso.ts`), jamais dans `core`. Le code couleur est centralisé dans `src/theme.ts`, **seul fichier du client autorisé à contenir une valeur de couleur** — une règle ESLint le vérifie. Les modules purs (`iso`, `camera`, `picking`, `match`, `ui/command`) n'importent ni Pixi ni le DOM et sont testés ; `ui/console.ts` est le seul module à toucher le DOM, `controls.ts` le seul à écouter le canevas.
 - Séparation logique/rendu actée dès le départ (docs/design.md section 8) pour permettre un futur portage moteur (C++ envisagé mais explicitement reporté, hors scope pour l'instant).
 - Pas de backend écrit à ce jour, mais l'infrastructure cible est **décidée** — voir la section « Infrastructure et CI/CD » plus bas et [docs/architecture.md](docs/architecture.md). Quand le multijoueur en ligne sera implémenté : le serveur doit être **autoritaire** et ne jamais transmettre au client des données hors LOS de ce joueur (le fog of war doit être appliqué serveur-side, pas seulement caché visuellement côté client — sans quoi il est contournable via devtools).
 
@@ -58,8 +58,12 @@ comme pour la section 10 du design doc.
 
 - `coord.ts` — coordonnées, clés de hachage, adjacence (`orthogonal` / `octile`), distances.
 - `board.ts` — `Tile` (hauteur + franchissabilité) et `Board` immuable. Un **mur est une case haute**, jamais un flag ; une case absente est hors-carte. `Board.fromAscii` construit un plateau depuis une carte texte (pratique en test).
-- `piece.ts` — `Piece`, `PieceDefinition`, `Ruleset`. **Aucun roster n'y est défini** : les définitions sont fournies par l'appelant.
-- `los.ts` — raycast, LOS, champ de vision. La LOS est **symétrique par construction** (l'ordre des extrémités est canonicalisé avant le tracé de Bresenham) ; ne pas casser cette propriété.
+- `pieces/` — **un type de pièce = une classe**.
+  - `piece.ts` — `Piece`, l'enregistrement de données d'une pièce en jeu (identité, camp, position). Volontairement inerte et sérialisable : c'est lui qui traverse le réseau et que le log d'actions rejoue.
+  - `piece-type.ts` — `PieceType`, classe abstraite qui porte le comportement (déplacement, vision, frappe) et sert de point d'extension par héritage ; `ConfigurablePieceType` pour un type décrit par des données plutôt que par une classe.
+  - `roster.ts` — `Scout` et `Commander`, **provisoires** : ils ne font que donner un lieu unique aux définitions qui servaient déjà à la démo et au serveur. Aucun roster n'est acté (design.md point ouvert 12) et rien ne doit s'équilibrer dessus.
+  - `ruleset.ts` — `Ruleset`, table `kind` → `PieceType` d'une partie, fournie par l'appelant et versionnée par partie.
+- `los.ts` — raycast et LOS, **géométrie seule** : ce qu'une pièce voit réellement est défini par son type (`PieceType.canSee` / `fieldOfView`), jamais recalculé ailleurs à partir d'une portée brute. La LOS est **symétrique par construction** (l'ordre des extrémités est canonicalisé avant le tracé de Bresenham) ; ne pas casser cette propriété.
 - `movement.ts` — cases atteignables et portée de mêlée, avec les règles de verticalité de la section 5.3.
 - `state.ts` / `actions.ts` — état de partie immuable, génération des coups légaux, application d'une action, fin de partie. Les erreurs sont retournées via `Result`, jamais levées.
 - `fog.ts` — état *connu* de chaque joueur (mémoire fantôme) et `viewFor`, qui produit la vue transmissible sans aucune donnée hors LOS. C'est ce que le futur serveur devra envoyer.
@@ -67,9 +71,11 @@ comme pour la section 10 du design doc.
 
 ## État du projet
 
-Logique de jeu posée et testée (57 tests dans `core`) : plateau à hauteur, LOS, verticalité, déplacement, capture de mêlée, tours alternés, fog of war avec mémoire, abandon et pat.
+Logique de jeu posée et testée (67 tests dans `core`) : plateau à hauteur, LOS, verticalité, déplacement, capture de mêlée, tours alternés, fog of war avec mémoire, abandon et pat.
 
-Moteur de rendu isométrique filaire fonctionnel (26 tests dans `apps/web`) : traits blancs, zoom vers le curseur, déplacement, rotation libre aimantée sur le quart de tour, surbrillance de la case survolée, occlusion des pièces par le relief, fog of war à l'écran. La DA et la caméra sont actées provisoirement en section 8.1 du design doc. Aucune interaction de jeu n'est encore câblée : ni sélection de pièce, ni affichage des coups légaux.
+Moteur de rendu isométrique filaire fonctionnel (43 tests dans `apps/web`) : traits blancs, zoom vers le curseur, déplacement, rotation libre aimantée sur le quart de tour, surbrillance de la case survolée, occlusion des pièces par le relief, fog of war à l'écran. La DA et la caméra sont actées provisoirement en section 8.1 du design doc.
+
+Une partie de démonstration est jouable en hot-seat par **saisie de coordonnées** (`ui/command.ts` pour la grammaire, `ui/console.ts` pour le branchement DOM) : `1,6 2,5` déplace, `1,6 2,5 x 3,5` capture, `abandon` abandonne. La vue suit le joueur au trait et chaque camp garde sa propre mémoire du fog (`match.ts`). L'interaction à la souris n'est en revanche toujours pas câblée : ni sélection de pièce, ni affichage des coups légaux.
 
 Non implémenté volontairement, car listé comme ouvert en section 10 du design doc : attaque à distance différée, pièges, déploiement, règle anti-répétition, détection du mat, roster de pièces. Pas de backend ni de design system (ce dernier est explicitement prévu pour plus tard par l'utilisateur).
 

@@ -1,6 +1,5 @@
-import { type Coord, type CoordKey, areAdjacent, coordEquals, coordKey } from "./coord.js";
-import { canMeleeReach, reachableTiles } from "./movement.js";
-import { type Piece, type PieceId, type PlayerId, opponentOf } from "./piece.js";
+import { type Coord, type CoordKey, coordEquals, coordKey } from "./coord.js";
+import { type Piece, type PieceId, type PlayerId, opponentOf } from "./pieces/index.js";
 import { type Result, err, ok } from "./result.js";
 import { type GameState, commanderOf, occupancy, piecesOf } from "./state.js";
 
@@ -31,34 +30,50 @@ export type ActionError =
   | { readonly code: "target-is-friendly"; readonly targetId: PieceId }
   | { readonly code: "target-out-of-melee"; readonly targetId: PieceId };
 
+/**
+ * Cases occupées vues par une pièce donnée : les siennes exclues, puisqu'elle les
+ * libère en partant. Calculé une fois par lot d'appels et non par pièce, la
+ * génération des coups légaux le demandant pour chaque pièce du camp au trait.
+ */
+function occupancyWithout(occupied: ReadonlySet<CoordKey>, piece: Piece): Set<CoordKey> {
+  const without = new Set(occupied);
+  without.delete(coordKey(piece.coord));
+  return without;
+}
+
 /** Destinations légales d'une pièce, sa case de départ incluse (frapper sur place). */
-function destinationsFor(state: GameState, piece: Piece): Map<CoordKey, Coord> {
-  const profile = state.ruleset.get(piece.kind).movement;
-  const occupied = occupancy(state);
-  occupied.delete(coordKey(piece.coord));
+function destinationsFor(
+  state: GameState,
+  piece: Piece,
+  occupied: ReadonlySet<CoordKey>,
+): Map<CoordKey, Coord> {
+  const reachable = state.ruleset
+    .typeOf(piece)
+    .destinationsFrom(state.board, piece.coord, occupancyWithout(occupied, piece));
 
   const destinations = new Map<CoordKey, Coord>([[coordKey(piece.coord), piece.coord]]);
-  for (const option of reachableTiles(state.board, piece.coord, profile, occupied).values()) {
+  for (const option of reachable.values()) {
     destinations.set(coordKey(option.coord), option.coord);
   }
   return destinations;
 }
 
-/** Adversaires capturables depuis `from` par `piece` (adjacence + règle de dénivelé). */
+/** Adversaires capturables depuis `from` par `piece` — la portée est celle du type. */
 function capturablesFrom(state: GameState, piece: Piece, from: Coord): Piece[] {
-  const { adjacency } = state.ruleset.get(piece.kind).movement;
-  return piecesOf(state, opponentOf(piece.owner)).filter(
-    (target) =>
-      areAdjacent(from, target.coord, adjacency) && canMeleeReach(state.board, from, target.coord),
+  const type = state.ruleset.typeOf(piece);
+  return piecesOf(state, opponentOf(piece.owner)).filter((target) =>
+    type.canStrike(state.board, from, target.coord),
   );
 }
 
 export function legalActions(state: GameState): Action[] {
   if (state.outcome !== null) return [];
 
+  const occupied = occupancy(state);
   const actions: Action[] = [];
+
   for (const piece of piecesOf(state, state.activePlayer)) {
-    for (const to of destinationsFor(state, piece).values()) {
+    for (const to of destinationsFor(state, piece, occupied).values()) {
       const stayingPut = coordEquals(to, piece.coord);
       if (!stayingPut) actions.push({ kind: "move", pieceId: piece.id, to });
       for (const target of capturablesFrom(state, piece, to)) {
@@ -75,30 +90,47 @@ export function validateAction(state: GameState, action: Action): Result<Action,
 
   const piece = state.pieces.get(action.pieceId);
   if (piece === undefined) return err({ code: "unknown-piece", pieceId: action.pieceId });
-  if (piece.owner !== state.activePlayer) return err({ code: "not-your-piece", pieceId: action.pieceId });
+  if (piece.owner !== state.activePlayer) {
+    return err({ code: "not-your-piece", pieceId: action.pieceId });
+  }
 
   const stayingPut = coordEquals(action.to, piece.coord);
-  if (!stayingPut && !destinationsFor(state, piece).has(coordKey(action.to))) {
+  if (!stayingPut && !destinationsFor(state, piece, occupancy(state)).has(coordKey(action.to))) {
     return err({ code: "unreachable", to: action.to });
   }
   if (stayingPut && action.capture === undefined) return err({ code: "must-do-something" });
+  if (action.capture === undefined) return ok(action);
 
-  if (action.capture !== undefined) {
-    const target = state.pieces.get(action.capture);
-    if (target === undefined) return err({ code: "unknown-target", targetId: action.capture });
-    if (target.owner === piece.owner) return err({ code: "target-is-friendly", targetId: action.capture });
-    if (!capturablesFrom(state, piece, action.to).some((c) => c.id === target.id)) {
-      return err({ code: "target-out-of-melee", targetId: action.capture });
-    }
+  return validateCapture(state, piece, action.to, action.capture);
+}
+
+/** `origin` est la case d'où la pièce frappe, c'est-à-dire sa destination. */
+function validateCapture(
+  state: GameState,
+  piece: Piece,
+  origin: Coord,
+  targetId: PieceId,
+): Result<Action, ActionError> {
+  const target = state.pieces.get(targetId);
+  if (target === undefined) return err({ code: "unknown-target", targetId });
+  if (target.owner === piece.owner) return err({ code: "target-is-friendly", targetId });
+  if (!capturablesFrom(state, piece, origin).some((candidate) => candidate.id === target.id)) {
+    return err({ code: "target-out-of-melee", targetId });
   }
-  return ok(action);
+  return ok({ kind: "move", pieceId: piece.id, to: origin, capture: targetId });
 }
 
 function withOutcome(state: GameState): GameState {
   if (state.outcome !== null) return state;
+
   for (const player of ["A", "B"] as const) {
     if (commanderOf(state, player) === undefined) {
-      return { ...state, outcome: { kind: "victory", winner: opponentOf(player), reason: "commander-captured" } };
+      const outcome = {
+        kind: "victory",
+        winner: opponentOf(player),
+        reason: "commander-captured",
+      } as const;
+      return { ...state, outcome };
     }
   }
   if (legalActions(state).length === 0) {
@@ -140,9 +172,12 @@ export function isCommanderThreatened(state: GameState, player: PlayerId): boole
   const commander = commanderOf(state, player);
   if (commander === undefined) return false;
 
+  const occupied = occupancy(state);
   for (const enemy of piecesOf(state, opponentOf(player))) {
-    for (const from of destinationsFor(state, enemy).values()) {
-      if (capturablesFrom(state, enemy, from).some((target) => target.id === commander.id)) return true;
+    for (const from of destinationsFor(state, enemy, occupied).values()) {
+      if (capturablesFrom(state, enemy, from).some((target) => target.id === commander.id)) {
+        return true;
+      }
     }
   }
   return false;

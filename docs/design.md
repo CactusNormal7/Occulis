@@ -129,6 +129,14 @@ ne soit pas la seule trace d'une décision de DA.
   rotation reste un recalcul de projection sur les coordonnées logiques : les quatre coins
   de chaque case sont projetés individuellement, ce qui garde le pavage jointif à n'importe
   quel angle intermédiaire.
+- **Saisie des coups au clavier, provisoire.** Tant que la sélection à la souris n'est
+  pas câblée, un coup se joue en tapant ses coordonnées (`1,6 2,5` déplace, `1,6 2,5 x
+  3,5` capture, `abandon` abandonne) dans un champ HTML posé par-dessus le canevas. Ce
+  n'est pas une décision d'interface : c'est le moyen le plus court d'exercer la logique
+  déjà implémentée, et il disparaîtra ou coexistera avec la sélection au clic. La partie
+  se joue en hot-seat, la vue suivant le joueur au trait — chaque camp conservant sa
+  propre mémoire du fog, comme le fera le serveur.
+
 - **Caméra : zoom et déplacement.** Molette pour zoomer vers le curseur, drag gauche pour
   déplacer la vue. Le facteur de zoom vit dans la projection et non dans la transformation
   du conteneur de rendu, afin que l'épaisseur des traits reste constante à l'écran quel que

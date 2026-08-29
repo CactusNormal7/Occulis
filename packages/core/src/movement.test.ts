@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Board } from "./board.js";
 import { type Coord, coordKey } from "./coord.js";
 import { canMeleeReach, reachableTiles } from "./movement.js";
-import type { MovementProfile } from "./piece.js";
+import type { MovementProfile } from "./pieces/index.js";
 
 const walker = (overrides: Partial<MovementProfile> = {}): MovementProfile => ({
   steps: 1,
@@ -11,7 +11,8 @@ const walker = (overrides: Partial<MovementProfile> = {}): MovementProfile => ({
   ...overrides,
 });
 
-const at = (map: Map<string, { cost: number; kind: string }>, coord: Coord) => map.get(coordKey(coord));
+const at = (map: Map<string, { cost: number; kind: string }>, coord: Coord) =>
+  map.get(coordKey(coord));
 
 describe("reachableTiles — déplacement horizontal", () => {
   it("atteint les cases à portée et exclut la case de départ", () => {
@@ -31,8 +32,12 @@ describe("reachableTiles — déplacement horizontal", () => {
     // La barrière infranchissable en (0,1)-(1,1) impose un détour : (2,1) est à
     // 3 pas par le contour alors qu'il serait à 2 en traversant.
     const board = Board.fromAscii(["000", "~~0", "000"]);
-    expect(at(reachableTiles(board, { x: 0, y: 0 }, walker({ steps: 2 })), { x: 2, y: 1 })).toBeUndefined();
-    expect(at(reachableTiles(board, { x: 0, y: 0 }, walker({ steps: 3 })), { x: 2, y: 1 })?.cost).toBe(3);
+    expect(
+      at(reachableTiles(board, { x: 0, y: 0 }, walker({ steps: 2 })), { x: 2, y: 1 }),
+    ).toBeUndefined();
+    expect(
+      at(reachableTiles(board, { x: 0, y: 0 }, walker({ steps: 3 })), { x: 2, y: 1 })?.cost,
+    ).toBe(3);
   });
 
   it("n'autorise jamais à s'arrêter sur une case infranchissable", () => {

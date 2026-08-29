@@ -83,19 +83,40 @@ export function hasLineOfSight(board: Board, from: Coord, to: Coord): boolean {
 }
 
 /**
- * Cases visibles depuis un point d'observation. `range` est une distance de
- * Chebyshev horizontale : la hauteur n'étend ni ne réduit la portée de vision,
- * elle ne joue que sur l'occultation. Cf. docs/design.md section 5.3.
+ * Cases visibles depuis un point, filtrées par le test fourni par l'appelant.
+ *
+ * Ce module ne connaît que la géométrie : ce qu'une pièce voit réellement est
+ * défini par son type (`PieceType.canSee` / `fieldOfView`), qui passe ici son
+ * propre critère. Une pièce à la vision particulière n'a donc rien à réécrire du
+ * raycast.
  */
-export function visibleFrom(board: Board, origin: Coord, range = Number.POSITIVE_INFINITY): Set<CoordKey> {
+export function collectVisible(
+  board: Board,
+  origin: Coord,
+  canSee: (target: Coord) => boolean,
+): Set<CoordKey> {
   const visible = new Set<CoordKey>();
   if (!board.contains(origin)) return visible;
 
   for (const tile of board.allTiles()) {
-    if (chebyshevDistance(origin, tile.coord) > range) continue;
-    if (hasLineOfSight(board, origin, tile.coord)) {
-      visible.add(coordKey(tile.coord));
-    }
+    if (canSee(tile.coord)) visible.add(coordKey(tile.coord));
   }
   return visible;
+}
+
+/**
+ * Champ de vision purement géométrique : portée de Chebyshev horizontale et
+ * occultation. La hauteur n'étend ni ne réduit la portée, elle ne joue que sur
+ * l'occultation (docs/design.md section 5.3).
+ */
+export function visibleFrom(
+  board: Board,
+  origin: Coord,
+  range = Number.POSITIVE_INFINITY,
+): Set<CoordKey> {
+  return collectVisible(
+    board,
+    origin,
+    (target) => chebyshevDistance(origin, target) <= range && hasLineOfSight(board, origin, target),
+  );
 }
