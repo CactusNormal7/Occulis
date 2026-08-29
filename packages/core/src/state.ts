@@ -1,9 +1,13 @@
 import type { Board } from "./board.js";
 import { type Coord, type CoordKey, coordEquals, coordKey } from "./coord.js";
-import { type Piece, type PieceId, type PlayerId, type Ruleset } from "./piece.js";
+import type { Piece, PieceId, PlayerId, Ruleset } from "./pieces/index.js";
 
 export type Outcome =
-  | { readonly kind: "victory"; readonly winner: PlayerId; readonly reason: "commander-captured" | "resignation" }
+  | {
+      readonly kind: "victory";
+      readonly winner: PlayerId;
+      readonly reason: "commander-captured" | "resignation";
+    }
   /** Pat : le joueur au trait n'a plus aucun coup légal (docs/design.md section 7). */
   | { readonly kind: "draw"; readonly reason: "stalemate" };
 
@@ -26,7 +30,9 @@ export function createGame(
   const byId = new Map<PieceId, Piece>();
   const seenCoords = new Set<CoordKey>();
   for (const piece of pieces) {
-    if (byId.has(piece.id)) throw new Error(`createGame: identifiant de pièce dupliqué "${piece.id}"`);
+    if (byId.has(piece.id)) {
+      throw new Error(`createGame: identifiant de pièce dupliqué "${piece.id}"`);
+    }
     const key = coordKey(piece.coord);
     if (seenCoords.has(key)) throw new Error(`createGame: deux pièces sur la case ${key}`);
     if (!board.isPassable(piece.coord)) {
@@ -56,5 +62,5 @@ export function piecesOf(state: GameState, player: PlayerId): Piece[] {
 }
 
 export function commanderOf(state: GameState, player: PlayerId): Piece | undefined {
-  return piecesOf(state, player).find((piece) => state.ruleset.get(piece.kind).isCommander);
+  return piecesOf(state, player).find((piece) => state.ruleset.typeOf(piece).isCommander);
 }

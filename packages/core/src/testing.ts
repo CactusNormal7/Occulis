@@ -1,10 +1,18 @@
 import type { Adjacency } from "./coord.js";
-import type { Piece, PieceDefinition, PieceId, PlayerId } from "./piece.js";
-import { Ruleset } from "./piece.js";
+import {
+  ConfigurablePieceType,
+  type Piece,
+  type PieceId,
+  type PieceType,
+  type PlayerId,
+  Ruleset,
+} from "./pieces/index.js";
 
 /**
  * Fabriques de test uniquement. Aucun roster n'est acté dans docs/design.md
- * (point ouvert 12) : ces définitions sont des supports de scénario, pas du contenu.
+ * (point ouvert 12) : ces types sont des supports de scénario, pas du contenu.
+ * Le roster provisoire partagé par le client et le serveur vit dans
+ * `pieces/roster.ts`.
  */
 export interface DefineOptions {
   readonly steps?: number;
@@ -14,8 +22,8 @@ export interface DefineOptions {
   readonly isCommander?: boolean;
 }
 
-export function definePiece(kind: string, options: DefineOptions = {}): PieceDefinition {
-  return {
+export function definePiece(kind: string, options: DefineOptions = {}): PieceType {
+  return new ConfigurablePieceType({
     kind,
     movement: {
       steps: options.steps ?? 1,
@@ -24,11 +32,11 @@ export function definePiece(kind: string, options: DefineOptions = {}): PieceDef
     },
     vision: { range: options.vision ?? Number.POSITIVE_INFINITY },
     isCommander: options.isCommander ?? false,
-  };
+  });
 }
 
-export function testRuleset(...definitions: PieceDefinition[]): Ruleset {
-  return new Ruleset(definitions);
+export function testRuleset(...types: PieceType[]): Ruleset {
+  return new Ruleset(types);
 }
 
 export function placePiece(
