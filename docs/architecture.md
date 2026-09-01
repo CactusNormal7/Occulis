@@ -197,6 +197,15 @@ Points de conception à ne pas défaire :
 
 Un workflow séparé, **sur tag**, buildera et signera les binaires Electron par OS.
 
+**`.github/workflows/infra.yml`**, à déclenchement manuel (`workflow_dispatch`), exécute à
+distance les mêmes actions que `pnpm infra` (`src/actions.ts`, via la variante non interactive
+`src/ci.ts`) : créer/supprimer un environnement de branche, migrer, déployer, interroger une
+base. Objectif : piloter les environnements depuis un navigateur ou un téléphone, sans poste
+local allumé, sans dupliquer la logique ni les garde-fous de l'outil. `dev`, `tail` et `login`
+en sont exclus (ils exigent un vrai terminal). Ce n'est pas le mécanisme de sélection des
+branches hébergées de la section 4 — celui-ci reste le manifeste versionné — mais un accès
+distant à l'outillage qui l'édite.
+
 `VITE_SERVER_URL` n'est aujourd'hui lue nulle part : le Worker servant à la fois les assets
 et l'API, le client web tape sa propre origine. Elle ne redeviendra nécessaire que pour le
 build Electron, où elle sera **gravée dans le binaire distribué** — l'URL de production doit

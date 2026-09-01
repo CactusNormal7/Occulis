@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "tsx src/cli.tsx",
+    "ci": "tsx src/ci.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

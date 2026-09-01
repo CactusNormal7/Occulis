@@ -1,0 +1,88 @@
+name: Infra (manuel)
+
+# Déclenchement manuel des actions de tooling/infra (wrangler/D1) sans poste local
+# allumé : la TUI (pnpm infra) reste l'outil de référence, ce workflow réutilise le
+# même catalogue d'actions (src/actions.ts) via src/ci.ts, sa variante non interactive.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Action infra à exécuter"
+        required: true
+        type: choice
+        options:
+          - status
+          - list
+          - create-db
+          - create-branch-env
+          - delete-branch-env
+          - migrate
+          - deploy
+          - sql
+          - info
+          - deployments
+      branch:
+        description: "Branche ciblée (create-branch-env / delete-branch-env uniquement — vide = branche depuis laquelle ce workflow est lancé)"
+        required: false
+        type: string
+      env:
+        description: "Environnement wrangler : staging, production, ou le slug d'une branche — requis pour create-db / migrate / deploy / sql / info / deployments"
+        required: false
+        type: string
+      query:
+        description: "Requête SQL (action sql) ou confirmation du nom de branche (delete-branch-env, retaper le nom exact)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+# Deux déclenchements de la même action sur la même cible ne doivent pas se chevaucher
+# (ex: deux migrations concurrentes) ; des actions ou cibles différentes, si.
+concurrency:
+  group: infra-${{ inputs.action }}-${{ inputs.branch || inputs.env || github.ref }}
+
+jobs:
+  infra:
+    name: ${{ inputs.action }}
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+          fetch-depth: 0
+
+      # actions/checkout laisse HEAD détaché : create-branch-env et delete-branch-env
+      # dérivent l'environnement du nom de branche courant (src/git.ts, currentBranch),
+      # il leur faut donc une vraie branche locale, pas un détaché.
+      - name: Basculer sur la branche ciblée
+        if: inputs.action == 'create-branch-env' || inputs.action == 'delete-branch-env'
+        env:
+          TARGET_BRANCH: ${{ inputs.branch || github.ref_name }}
+        run: git checkout -B "$TARGET_BRANCH"
+
+      - name: Identité git pour le commit du manifeste
+        if: inputs.action == 'create-branch-env' || inputs.action == 'delete-branch-env'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Exécuter l'action
+        working-directory: tooling/infra
+        env:
+          INFRA_ACTION: ${{ inputs.action }}
+          INFRA_ENV: ${{ inputs.env }}
+          INFRA_QUERY: ${{ inputs.query }}
+        run: pnpm run ci -- "$INFRA_ACTION" "$INFRA_ENV" "$INFRA_QUERY"

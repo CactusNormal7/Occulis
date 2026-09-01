@@ -15,6 +15,15 @@ bloc `[env.<slug>]` de `wrangler.toml`, base D1 distante, entrée de
 (pathspec, le reste de l'index est laissé tel quel) et `git push`. La suppression détruit
 aussi le Worker et la base distante, et demande de retaper le nom de la branche.
 
+## À distance (sans poste local allumé)
+
+`.github/workflows/infra.yml` (déclenchement manuel, `workflow_dispatch`) exécute
+n'importe quelle action non interactive de ce catalogue sur les runners GitHub — pratique
+depuis un téléphone ou un navigateur. Il réutilise `src/actions.ts` via `src/ci.ts`, la
+variante sans TUI (`pnpm run ci -- <action> [env] [query]`) : mêmes actions, mêmes garde-fous,
+aucune logique dupliquée. `dev`, `tail` et `login` en sont exclus (ils exigent un vrai
+terminal) — pour ceux-là, ou pour la navigation visuelle, `pnpm infra` en local reste l'outil.
+
 ## Navigation
 
 - `↑` `↓` / `j` `k`, chiffres `1`-`9` puis `0`, **clic** et **molette** ;
