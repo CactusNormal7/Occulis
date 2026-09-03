@@ -55,8 +55,9 @@ Déclenché sur `push` de **toute** branche et sur toute `pull_request`.
 Node 22, pnpm, `pnpm install --frozen-lockfile`, puis dans l'ordre :
 `pnpm typecheck` → `pnpm lint` → `pnpm test` → `pnpm build`.
 
-`pnpm -r test` n'exécute que les paquets déclarant un script `test`. Ajouter des tests à
-`apps/server` suffira donc à les voir passer ici, **sans toucher au workflow**.
+`pnpm -r test` n'exécute que les paquets déclarant un script `test` : `packages/core`,
+`apps/web` et `tooling/infra` en déclarent un. Ajouter des tests à `apps/server` suffira
+donc à les voir passer ici, **sans toucher au workflow**.
 
 ### `target` — résoudre la branche
 
@@ -106,6 +107,7 @@ Lancée par `pnpm infra`. Interface Ink (React dans le terminal) qui pilote wran
 | `tooling/infra/src/deploy-manifest.ts` | Lecture/écriture du manifeste de déploiement |
 | `tooling/infra/src/git.ts` | Branche courante, commit ciblé, push |
 | `tooling/infra/src/wrangler.ts` | Exécution de processus et parsing de la sortie wrangler |
+| `tooling/infra/src/*.test.ts` | Tests de `config.ts`, `toml.ts` et `deploy-manifest.ts` (Vitest) |
 
 ### `config.ts` — chemins et conventions
 
@@ -260,6 +262,28 @@ retrait se fait depuis Settings → Environments.
 
 ---
 
+## Les tests
+
+`tooling/infra/src/*.test.ts`, exécutés par `pnpm test` à la racine — donc par la CI, qui
+n'a rien eu à déclarer pour cela.
+
+| Fichier | Ce qu'il verrouille |
+|---|---|
+| `config.test.ts` | `dbName()`, `slugifyBranch()`, `envFlag()` et surtout **`isBranchEnv()`**, le prédicat qui empêche la suppression d'atteindre la production ou la recette |
+| `toml.test.ts` | Le bloc généré est complet (route, assets, DO, D1) ; `appendEnvBlock()` est idempotent ; **`removeEnvBlock()` annule exactement `appendEnvBlock()`** et ne mange pas le bloc suivant ; `patchDatabaseId()` n'écrit que sous le bloc visé |
+| `deploy-manifest.test.ts` | La résolution d'une cible par nom de branche **ou** par slug ; viser `main` renvoie l'entrée `production` ; `listBranchEnvNames()` fait bien l'union toml ∪ manifeste |
+
+Ces trois modules écrivent dans des fichiers dont le chemin vient de `config.ts` : les tests
+détournent `TOML` et `DEPLOY_MANIFEST` vers des fichiers temporaires (`vi.mock` sur
+`./config.js`) plutôt que de découper le code en couche pure et couche IO. Ils exercent
+ainsi le vrai code d'écriture, sans que le dépôt ne serve de bac à sable.
+
+Un détail qui coûte cher à retrouver : `vi.hoisted` remonte **au-dessus des imports
+statiques**, donc le chemin temporaire doit être calculé avec des imports dynamiques —
+sinon il référence des liaisons pas encore initialisées.
+
+---
+
 ## Points d'attention
 
 - **Node 22 est requis par wrangler**, malgré son message d'erreur qui annonce v20. La CI
@@ -276,8 +300,9 @@ retrait se fait depuis Settings → Environments.
 - **Le manifeste et le toml doivent rester cohérents.** Les deux actions d'environnement de
   branche les modifient ensemble et les committent ensemble ; les éditer à la main
   séparément est le moyen le plus simple de casser un déploiement.
-- **`tooling/infra` n'a aucun test.** Les fonctions de `toml.ts` et `deploy-manifest.ts`
-  sont pourtant pures et faciles à couvrir.
+- **Les runners wrangler et les actions ne sont pas testés** : les tests couvrent la
+  manipulation de fichiers (`toml.ts`, `deploy-manifest.ts`) et les conventions
+  (`config.ts`), pas l'enchaînement d'une action, qui appellerait le vrai wrangler.
 
 ## Voir aussi
 
