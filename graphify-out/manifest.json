@@ -1,517 +1,527 @@
 {
-  "/home/cactus/dev/Occulis/.claude/settings.json": {
-    "mtime": 1788002727.1758602,
+  ".claude/settings.json": {
+    "mtime": 1788450361.3473196,
     "ast_hash": "4710fc03c6b3347532ffd8285edf8548",
     "semantic_hash": "4710fc03c6b3347532ffd8285edf8548"
   },
-  "/home/cactus/dev/Occulis/.github/deploy-environments.json": {
-    "mtime": 1787943180.1747837,
+  ".github/deploy-environments.json": {
+    "mtime": 1788450361.351423,
     "ast_hash": "16b8cfde9be532afed087c1a1b6a1f6e",
     "semantic_hash": "16b8cfde9be532afed087c1a1b6a1f6e"
   },
-  "/home/cactus/dev/Occulis/.prettierrc.json": {
+  ".prettierrc.json": {
     "mtime": 1787399323.7384763,
     "ast_hash": "b5d47c82afe3ac7a0eb07c12a96e9a99",
     "semantic_hash": "b5d47c82afe3ac7a0eb07c12a96e9a99"
   },
-  "/home/cactus/dev/Occulis/.vscode/settings.json": {
-    "mtime": 1788002781.1775231,
+  ".vscode/settings.json": {
+    "mtime": 1788450361.3555264,
     "ast_hash": "0da1f8b9bf439c0ad1476a9e21e9f9fb",
     "semantic_hash": "0da1f8b9bf439c0ad1476a9e21e9f9fb"
   },
-  "/home/cactus/dev/Occulis/apps/server/migrations/0001_init.sql": {
+  "apps/server/migrations/0001_init.sql": {
     "mtime": 1787897526.5341823,
     "ast_hash": "0f363a4d1146fae5d3b96c3c1169d5a0",
     "semantic_hash": "0f363a4d1146fae5d3b96c3c1169d5a0"
   },
-  "/home/cactus/dev/Occulis/apps/server/migrations/0002_users.sql": {
-    "mtime": 1787943083.7416613,
+  "apps/server/migrations/0002_users.sql": {
+    "mtime": 1788450297.0407622,
     "ast_hash": "3bc4c505f47e6874f552fab9a7fd35f3",
     "semantic_hash": "3bc4c505f47e6874f552fab9a7fd35f3"
   },
-  "/home/cactus/dev/Occulis/apps/server/package.json": {
+  "apps/server/package.json": {
     "mtime": 1787897526.5341823,
     "ast_hash": "6a11757bc61382f5749cffc1a45033d6",
     "semantic_hash": "6a11757bc61382f5749cffc1a45033d6"
   },
-  "/home/cactus/dev/Occulis/apps/server/src/env.d.ts": {
+  "apps/server/src/env.d.ts": {
     "mtime": 1787897526.5384598,
     "ast_hash": "9e384546ddbaebe4fcbd9b15bc6bf3d2",
     "semantic_hash": "9e384546ddbaebe4fcbd9b15bc6bf3d2"
   },
-  "/home/cactus/dev/Occulis/apps/server/src/index.ts": {
+  "apps/server/src/index.ts": {
     "mtime": 1787897526.5384598,
     "ast_hash": "b0e77485da60cda635069f10da9eb699",
     "semantic_hash": "b0e77485da60cda635069f10da9eb699"
   },
-  "/home/cactus/dev/Occulis/apps/server/src/match-do.ts": {
+  "apps/server/src/match-do.ts": {
     "mtime": 1787897526.5384598,
     "ast_hash": "41239ec798903ba6e210f785ab6ae1cb",
     "semantic_hash": "41239ec798903ba6e210f785ab6ae1cb"
   },
-  "/home/cactus/dev/Occulis/apps/server/src/protocol.ts": {
+  "apps/server/src/protocol.ts": {
     "mtime": 1787897526.5384598,
     "ast_hash": "9b9478673cf01d472d8a1c98c676a4f0",
     "semantic_hash": "9b9478673cf01d472d8a1c98c676a4f0"
   },
-  "/home/cactus/dev/Occulis/apps/server/src/rulesets.ts": {
-    "mtime": 1787998437.2005856,
-    "ast_hash": "aac17a10052112959102e4aede89607e",
-    "semantic_hash": "aac17a10052112959102e4aede89607e"
+  "apps/server/src/rulesets.ts": {
+    "mtime": 1788455519.6674697,
+    "ast_hash": "dc343b11b0b6e9c9595454fbed989812",
+    "semantic_hash": ""
   },
-  "/home/cactus/dev/Occulis/apps/server/src/scenarios.ts": {
+  "apps/server/src/scenarios.ts": {
     "mtime": 1787897526.5384598,
     "ast_hash": "68d95e057a665630117403ca31764279",
     "semantic_hash": "68d95e057a665630117403ca31764279"
   },
-  "/home/cactus/dev/Occulis/apps/server/tsconfig.json": {
+  "apps/server/tsconfig.json": {
     "mtime": 1787897526.5384598,
     "ast_hash": "07b8a7be77fd138b6cbe2b0aa080c3fc",
     "semantic_hash": "07b8a7be77fd138b6cbe2b0aa080c3fc"
   },
-  "/home/cactus/dev/Occulis/apps/web/package.json": {
-    "mtime": 1787942846.9814417,
+  "apps/web/package.json": {
+    "mtime": 1788450361.3555264,
     "ast_hash": "215d4b174c1715ec3dbadbaef38ceaef",
     "semantic_hash": "215d4b174c1715ec3dbadbaef38ceaef"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/game/match.test.ts": {
-    "mtime": 1787998437.2046695,
+  "apps/web/src/game/match.test.ts": {
+    "mtime": 1788450361.35963,
     "ast_hash": "8546be60ae5c3bf731b9edd41c192810",
     "semantic_hash": "8546be60ae5c3bf731b9edd41c192810"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/game/match.ts": {
-    "mtime": 1787998437.2046695,
+  "apps/web/src/game/match.ts": {
+    "mtime": 1788450361.35963,
     "ast_hash": "a14c3157a5c0964415f41bd40d34b6a9",
     "semantic_hash": "a14c3157a5c0964415f41bd40d34b6a9"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/game/scenario.ts": {
-    "mtime": 1787998437.2046695,
+  "apps/web/src/game/scenario.ts": {
+    "mtime": 1788450361.35963,
     "ast_hash": "50d1d5608dc88980e628e1db4a71acbc",
     "semantic_hash": "50d1d5608dc88980e628e1db4a71acbc"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/game/selection.test.ts": {
-    "mtime": 1788001793.8160686,
+  "apps/web/src/game/selection.test.ts": {
+    "mtime": 1788450361.35963,
     "ast_hash": "5a9fea298de2cad08ecde91969522d48",
     "semantic_hash": "5a9fea298de2cad08ecde91969522d48"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/game/selection.ts": {
-    "mtime": 1788001634.5745938,
+  "apps/web/src/game/selection.ts": {
+    "mtime": 1788450361.35963,
     "ast_hash": "61cef30a906075eb5bb0f4890b328590",
     "semantic_hash": "61cef30a906075eb5bb0f4890b328590"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/input/controls.ts": {
-    "mtime": 1788001506.9604182,
+  "apps/web/src/input/controls.ts": {
+    "mtime": 1788450361.35963,
     "ast_hash": "dd7ac356202b7da862a80bc9dac90c92",
     "semantic_hash": "dd7ac356202b7da862a80bc9dac90c92"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/main.ts": {
-    "mtime": 1788002151.0299702,
+  "apps/web/src/main.ts": {
+    "mtime": 1788450361.35963,
     "ast_hash": "b0a4aa3bece798fe2ebae4b3867f0911",
     "semantic_hash": "b0a4aa3bece798fe2ebae4b3867f0911"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/scene/overlay.ts": {
-    "mtime": 1788001634.5869975,
+  "apps/web/src/scene/overlay.ts": {
+    "mtime": 1788450361.3637335,
     "ast_hash": "121f7ff790ea217993ac936fadf87bf2",
     "semantic_hash": "121f7ff790ea217993ac936fadf87bf2"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/scene/pieces.ts": {
-    "mtime": 1788001506.9604182,
+  "apps/web/src/scene/pieces.ts": {
+    "mtime": 1788450361.3637335,
     "ast_hash": "ee7063e7e92b9f4c80604bffb306133d",
     "semantic_hash": "ee7063e7e92b9f4c80604bffb306133d"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/scene/scene.ts": {
-    "mtime": 1788002151.075607,
+  "apps/web/src/scene/scene.ts": {
+    "mtime": 1788450361.3637335,
     "ast_hash": "4150b2bf62bbd2b30cc734eb25cdb3c8",
     "semantic_hash": "4150b2bf62bbd2b30cc734eb25cdb3c8"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/scene/terrain.ts": {
-    "mtime": 1788001506.9604182,
+  "apps/web/src/scene/terrain.ts": {
+    "mtime": 1788450361.3637335,
     "ast_hash": "ebf770f30ad4b9d7c89bde5c9aba3656",
     "semantic_hash": "ebf770f30ad4b9d7c89bde5c9aba3656"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/theme.ts": {
-    "mtime": 1788001600.2182417,
+  "apps/web/src/theme.ts": {
+    "mtime": 1788450361.3637335,
     "ast_hash": "d5bb4cee65bdb96a3e5becf4384bfe81",
     "semantic_hash": "d5bb4cee65bdb96a3e5becf4384bfe81"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/ui/command.test.ts": {
-    "mtime": 1787998437.2046695,
+  "apps/web/src/ui/command.test.ts": {
+    "mtime": 1788450361.3637335,
     "ast_hash": "84be11094122d6275f27f9968a0c5fbc",
     "semantic_hash": "84be11094122d6275f27f9968a0c5fbc"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/ui/command.ts": {
-    "mtime": 1787998437.2046695,
+  "apps/web/src/ui/command.ts": {
+    "mtime": 1788450361.3637335,
     "ast_hash": "b068a75feb629a286928b40e6414e812",
     "semantic_hash": "b068a75feb629a286928b40e6414e812"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/ui/console.ts": {
-    "mtime": 1788001701.9224718,
+  "apps/web/src/ui/console.ts": {
+    "mtime": 1788450361.3637335,
     "ast_hash": "aba252930b6f6a5901f7dd2ea8014444",
     "semantic_hash": "aba252930b6f6a5901f7dd2ea8014444"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/ui/messages.test.ts": {
-    "mtime": 1787998685.166314,
+  "apps/web/src/ui/messages.test.ts": {
+    "mtime": 1788450361.367837,
     "ast_hash": "e6a49af03af10a84013fe66f0bfdefc5",
     "semantic_hash": "e6a49af03af10a84013fe66f0bfdefc5"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/ui/messages.ts": {
-    "mtime": 1787998661.055806,
+  "apps/web/src/ui/messages.ts": {
+    "mtime": 1788450361.367837,
     "ast_hash": "30a7f6dd9896a40d8ef924cea6b6dc63",
     "semantic_hash": "30a7f6dd9896a40d8ef924cea6b6dc63"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/ui/palette.ts": {
-    "mtime": 1787998437.2046695,
+  "apps/web/src/ui/palette.ts": {
+    "mtime": 1788450361.367837,
     "ast_hash": "263618b6a23e4c5634ddf1ec94c86d82",
     "semantic_hash": "263618b6a23e4c5634ddf1ec94c86d82"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/view/animation.test.ts": {
-    "mtime": 1788001746.79044,
+  "apps/web/src/view/animation.test.ts": {
+    "mtime": 1788450361.367837,
     "ast_hash": "087b97eb72f3c4b5c41db605382bae2f",
     "semantic_hash": "087b97eb72f3c4b5c41db605382bae2f"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/view/animation.ts": {
-    "mtime": 1788002151.0922022,
+  "apps/web/src/view/animation.ts": {
+    "mtime": 1788450361.367837,
     "ast_hash": "65eb22d1a9feb60ac24b097ee7105d63",
     "semantic_hash": "65eb22d1a9feb60ac24b097ee7105d63"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/view/camera.test.ts": {
-    "mtime": 1787942846.9814417,
+  "apps/web/src/view/camera.test.ts": {
+    "mtime": 1788450361.367837,
     "ast_hash": "fc6549c0d1aa27c432faef337a42cd1d",
     "semantic_hash": "fc6549c0d1aa27c432faef337a42cd1d"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/view/camera.ts": {
-    "mtime": 1788001506.9562843,
+  "apps/web/src/view/camera.ts": {
+    "mtime": 1788450361.367837,
     "ast_hash": "ca6a981e385741da8056626fc8525ffd",
     "semantic_hash": "ca6a981e385741da8056626fc8525ffd"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/view/iso.test.ts": {
-    "mtime": 1787942846.9855037,
+  "apps/web/src/view/iso.test.ts": {
+    "mtime": 1788450361.367837,
     "ast_hash": "9b0a27fcaad8863c35cda93c67f86b33",
     "semantic_hash": "9b0a27fcaad8863c35cda93c67f86b33"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/view/iso.ts": {
-    "mtime": 1787942846.9855037,
+  "apps/web/src/view/iso.ts": {
+    "mtime": 1788450361.3719406,
     "ast_hash": "931d1c44524cd36b203b8881579b2c6f",
     "semantic_hash": "931d1c44524cd36b203b8881579b2c6f"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/view/picking.test.ts": {
-    "mtime": 1787942846.9855037,
+  "apps/web/src/view/picking.test.ts": {
+    "mtime": 1788450361.3719406,
     "ast_hash": "c7fb8d8db7c30285dd074115bb4e3e52",
     "semantic_hash": "c7fb8d8db7c30285dd074115bb4e3e52"
   },
-  "/home/cactus/dev/Occulis/apps/web/src/view/picking.ts": {
-    "mtime": 1787942846.9855037,
+  "apps/web/src/view/picking.ts": {
+    "mtime": 1788450361.3719406,
     "ast_hash": "6a344720105583c0a2ded8af66ea3b07",
     "semantic_hash": "6a344720105583c0a2ded8af66ea3b07"
   },
-  "/home/cactus/dev/Occulis/apps/web/tsconfig.json": {
+  "apps/web/tsconfig.json": {
     "mtime": 1787399392.7540708,
     "ast_hash": "cc8e26be9318509443243a2c22a66d8b",
     "semantic_hash": "cc8e26be9318509443243a2c22a66d8b"
   },
-  "/home/cactus/dev/Occulis/eslint.config.js": {
-    "mtime": 1787942846.9855037,
+  "eslint.config.js": {
+    "mtime": 1788450361.376044,
     "ast_hash": "ea351afd438bf2028a65ef1e472c5805",
     "semantic_hash": "ea351afd438bf2028a65ef1e472c5805"
   },
-  "/home/cactus/dev/Occulis/package.json": {
+  "package.json": {
     "mtime": 1787897526.5384598,
     "ast_hash": "6d1b1be4d5320204f497240fd6cba726",
     "semantic_hash": "6d1b1be4d5320204f497240fd6cba726"
   },
-  "/home/cactus/dev/Occulis/packages/core/package.json": {
+  "packages/core/package.json": {
     "mtime": 1787399269.7700915,
     "ast_hash": "7f7d7a387be2df31016cc6cd07fa86bc",
     "semantic_hash": "7f7d7a387be2df31016cc6cd07fa86bc"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/actions.test.ts": {
+  "packages/core/src/actions.test.ts": {
     "mtime": 1787771159.966498,
     "ast_hash": "b9c2de41c493e29ef19f22114bc8a1b5",
     "semantic_hash": "b9c2de41c493e29ef19f22114bc8a1b5"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/actions.ts": {
-    "mtime": 1787998437.2087536,
+  "packages/core/src/actions.ts": {
+    "mtime": 1788450361.4211826,
     "ast_hash": "ae7edbe704c1f7f8a84582bf7b0f80c0",
     "semantic_hash": "ae7edbe704c1f7f8a84582bf7b0f80c0"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/board.ts": {
+  "packages/core/src/board.ts": {
     "mtime": 1787770827.3001306,
     "ast_hash": "59dc3685d23fbb527a087e6a192a0976",
     "semantic_hash": "59dc3685d23fbb527a087e6a192a0976"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/coord.ts": {
+  "packages/core/src/coord.ts": {
     "mtime": 1787770809.5253143,
     "ast_hash": "b08a77d89339de5175c7a3b0c40bd8cf",
     "semantic_hash": "b08a77d89339de5175c7a3b0c40bd8cf"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/fog.test.ts": {
+  "packages/core/src/fog.test.ts": {
     "mtime": 1787771290.559319,
     "ast_hash": "db931156960d79d384f7ad3fb07589a1",
     "semantic_hash": "db931156960d79d384f7ad3fb07589a1"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/fog.ts": {
-    "mtime": 1787998437.2087536,
+  "packages/core/src/fog.ts": {
+    "mtime": 1788450361.4211826,
     "ast_hash": "7eabad9d969772355252ba5c79b447df",
     "semantic_hash": "7eabad9d969772355252ba5c79b447df"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/index.ts": {
-    "mtime": 1787998437.2087536,
+  "packages/core/src/index.ts": {
+    "mtime": 1788450361.4211826,
     "ast_hash": "062cd5f13059c25720761ff322f006a2",
     "semantic_hash": "062cd5f13059c25720761ff322f006a2"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/los.test.ts": {
+  "packages/core/src/los.test.ts": {
     "mtime": 1787771027.2203612,
     "ast_hash": "f44707b8936ef3bc48cb9c39b6bc9ae9",
     "semantic_hash": "f44707b8936ef3bc48cb9c39b6bc9ae9"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/los.ts": {
-    "mtime": 1787998437.2087536,
+  "packages/core/src/los.ts": {
+    "mtime": 1788450361.425286,
     "ast_hash": "166bab0a1b85d8be850f187681c781aa",
     "semantic_hash": "166bab0a1b85d8be850f187681c781aa"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/movement.test.ts": {
-    "mtime": 1787998437.2087536,
+  "packages/core/src/movement.test.ts": {
+    "mtime": 1788450361.425286,
     "ast_hash": "11df981ea3d5b755ee56214928a09bce",
     "semantic_hash": "11df981ea3d5b755ee56214928a09bce"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/movement.ts": {
-    "mtime": 1787998437.2087536,
+  "packages/core/src/movement.ts": {
+    "mtime": 1788450361.425286,
     "ast_hash": "ef1d6b1ac017c6d618cb54d55dc53c1e",
     "semantic_hash": "ef1d6b1ac017c6d618cb54d55dc53c1e"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/pieces/configurable-piece-type.ts": {
-    "mtime": 1788001408.2708583,
+  "packages/core/src/pieces/configurable-piece-type.ts": {
+    "mtime": 1788450361.425286,
     "ast_hash": "cce1d982d61d0c1c9feced5ea0a83a9c",
     "semantic_hash": "cce1d982d61d0c1c9feced5ea0a83a9c"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/pieces/index.ts": {
-    "mtime": 1788001424.682808,
+  "packages/core/src/pieces/index.ts": {
+    "mtime": 1788450361.425286,
     "ast_hash": "35f7f71754a62254e18c770177c6ed6a",
     "semantic_hash": "35f7f71754a62254e18c770177c6ed6a"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/pieces/piece-type.test.ts": {
-    "mtime": 1788001458.335101,
+  "packages/core/src/pieces/piece-type.test.ts": {
+    "mtime": 1788450361.425286,
     "ast_hash": "1cb675ae0bdd917e31127b87eff0148f",
     "semantic_hash": "1cb675ae0bdd917e31127b87eff0148f"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/pieces/piece-type.ts": {
-    "mtime": 1788001408.2667263,
+  "packages/core/src/pieces/piece-type.ts": {
+    "mtime": 1788450361.425286,
     "ast_hash": "0dbcd567a6c57c61df7ce1a25ed70b9d",
     "semantic_hash": "0dbcd567a6c57c61df7ce1a25ed70b9d"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/pieces/piece.ts": {
-    "mtime": 1787998437.2128375,
+  "packages/core/src/pieces/piece.ts": {
+    "mtime": 1788450361.425286,
     "ast_hash": "b2542cb915bf7c74d8bcae4902c71043",
     "semantic_hash": "b2542cb915bf7c74d8bcae4902c71043"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/pieces/profiles.ts": {
-    "mtime": 1787998437.2128375,
+  "packages/core/src/pieces/profiles.ts": {
+    "mtime": 1788450361.425286,
     "ast_hash": "804c24e2f024a7b719227f6ab77e2b8a",
     "semantic_hash": "804c24e2f024a7b719227f6ab77e2b8a"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/pieces/roster/commander.ts": {
-    "mtime": 1788001424.6786761,
+  "packages/core/src/pieces/roster/commander.ts": {
+    "mtime": 1788450361.4293895,
     "ast_hash": "0d33faf3138c091797f3f22da724f03b",
     "semantic_hash": "0d33faf3138c091797f3f22da724f03b"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/pieces/roster/index.ts": {
-    "mtime": 1788001424.6786761,
+  "packages/core/src/pieces/roster/index.ts": {
+    "mtime": 1788450361.4293895,
     "ast_hash": "d2221e288a653d401262d05493743cbf",
     "semantic_hash": "d2221e288a653d401262d05493743cbf"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/pieces/roster/roster.test.ts": {
-    "mtime": 1788001458.335101,
+  "packages/core/src/pieces/roster/roster.test.ts": {
+    "mtime": 1788450361.4293895,
     "ast_hash": "93e3132afe92cec4b12a21f5ba8a9003",
     "semantic_hash": "93e3132afe92cec4b12a21f5ba8a9003"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/pieces/roster/scout.ts": {
-    "mtime": 1788001424.6786761,
+  "packages/core/src/pieces/roster/scout.ts": {
+    "mtime": 1788450361.4293895,
     "ast_hash": "68a05e5a38f2af4febecf3c66844d34f",
     "semantic_hash": "68a05e5a38f2af4febecf3c66844d34f"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/pieces/ruleset.ts": {
-    "mtime": 1787998437.2128375,
+  "packages/core/src/pieces/ruleset.ts": {
+    "mtime": 1788450361.4293895,
     "ast_hash": "a77f0b3599e54c85ae6903276b0e9922",
     "semantic_hash": "a77f0b3599e54c85ae6903276b0e9922"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/result.ts": {
+  "packages/core/src/result.ts": {
     "mtime": 1787770903.6319826,
     "ast_hash": "c434318b1e4fa366f72d7be50af21b04",
     "semantic_hash": "c434318b1e4fa366f72d7be50af21b04"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/state.ts": {
-    "mtime": 1787998437.2128375,
+  "packages/core/src/state.ts": {
+    "mtime": 1788450361.4293895,
     "ast_hash": "65bccefb4a7ebd93c21daf03bf35cd75",
     "semantic_hash": "65bccefb4a7ebd93c21daf03bf35cd75"
   },
-  "/home/cactus/dev/Occulis/packages/core/src/testing.ts": {
-    "mtime": 1788001424.68694,
-    "ast_hash": "1c4d52769d76dde8533d5f65b07a90fe",
-    "semantic_hash": "1c4d52769d76dde8533d5f65b07a90fe"
+  "packages/core/src/testing.ts": {
+    "mtime": 1788455519.6674697,
+    "ast_hash": "96a5924c060182d1f628c4ed96b25ef0",
+    "semantic_hash": ""
   },
-  "/home/cactus/dev/Occulis/packages/core/tsconfig.json": {
+  "packages/core/tsconfig.json": {
     "mtime": 1787399272.0138497,
     "ast_hash": "8c03bd0d9472ca43238293ba9d7cd74e",
     "semantic_hash": "8c03bd0d9472ca43238293ba9d7cd74e"
   },
-  "/home/cactus/dev/Occulis/tooling/infra/package.json": {
-    "mtime": 1787897526.542737,
-    "ast_hash": "a0885a15541640edd26acf5e219ecf0d",
-    "semantic_hash": "a0885a15541640edd26acf5e219ecf0d"
+  "tooling/infra/package.json": {
+    "mtime": 1788450321.3985448,
+    "ast_hash": "e73958932e4219e3613b4b0c5b5677bb",
+    "semantic_hash": ""
   },
-  "/home/cactus/dev/Occulis/tooling/infra/src/actions.ts": {
-    "mtime": 1787943083.7457209,
-    "ast_hash": "b3d451629289b96b7093a91e2f94453b",
-    "semantic_hash": "b3d451629289b96b7093a91e2f94453b"
+  "tooling/infra/src/actions.ts": {
+    "mtime": 1788455519.6674697,
+    "ast_hash": "5ec1acd439fbfc866892376404bb2ace",
+    "semantic_hash": ""
   },
-  "/home/cactus/dev/Occulis/tooling/infra/src/cli.tsx": {
-    "mtime": 1787943083.7457209,
+  "tooling/infra/src/cli.tsx": {
+    "mtime": 1788450297.0407622,
     "ast_hash": "2408893026822b5cace7b638d9cadf10",
     "semantic_hash": "2408893026822b5cace7b638d9cadf10"
   },
-  "/home/cactus/dev/Occulis/tooling/infra/src/components/App.tsx": {
-    "mtime": 1787943083.7457209,
-    "ast_hash": "879ae375732cb773a4f2574d14bf7325",
-    "semantic_hash": "879ae375732cb773a4f2574d14bf7325"
+  "tooling/infra/src/components/App.tsx": {
+    "mtime": 1788455519.6674697,
+    "ast_hash": "114b7a5125e49a2f3957ae475421968f",
+    "semantic_hash": ""
   },
-  "/home/cactus/dev/Occulis/tooling/infra/src/components/OutputPane.tsx": {
-    "mtime": 1787943083.7457209,
+  "tooling/infra/src/components/OutputPane.tsx": {
+    "mtime": 1788450297.0448625,
     "ast_hash": "a83a714b9ee9eeedce506e9f440c4603",
     "semantic_hash": "a83a714b9ee9eeedce506e9f440c4603"
   },
-  "/home/cactus/dev/Occulis/tooling/infra/src/components/SelectList.tsx": {
-    "mtime": 1787943083.7457209,
+  "tooling/infra/src/components/SelectList.tsx": {
+    "mtime": 1788450297.0448625,
     "ast_hash": "89c9efcbc1cddfff841fe7fd53e25a67",
     "semantic_hash": "89c9efcbc1cddfff841fe7fd53e25a67"
   },
-  "/home/cactus/dev/Occulis/tooling/infra/src/components/theme.ts": {
-    "mtime": 1787943083.7457209,
+  "tooling/infra/src/components/theme.ts": {
+    "mtime": 1788450297.0448625,
     "ast_hash": "cb22d2934fdd74880c835052e58ebe32",
     "semantic_hash": "cb22d2934fdd74880c835052e58ebe32"
   },
-  "/home/cactus/dev/Occulis/tooling/infra/src/components/useMouse.ts": {
+  "tooling/infra/src/components/useMouse.ts": {
     "mtime": 1787897526.542737,
     "ast_hash": "d1aff6a62c8fcdc522ddf077d08f3ed3",
     "semantic_hash": "d1aff6a62c8fcdc522ddf077d08f3ed3"
   },
-  "/home/cactus/dev/Occulis/tooling/infra/src/config.ts": {
-    "mtime": 1787943083.7457209,
-    "ast_hash": "1b6f7b685907cbaa6c53e10656dc617c",
-    "semantic_hash": "1b6f7b685907cbaa6c53e10656dc617c"
+  "tooling/infra/src/config.ts": {
+    "mtime": 1788455519.6674697,
+    "ast_hash": "e4ef67e4a6273426ee83fc35197e4380",
+    "semantic_hash": ""
   },
-  "/home/cactus/dev/Occulis/tooling/infra/src/deploy-manifest.ts": {
-    "mtime": 1787943083.7457209,
-    "ast_hash": "a7b1f02b576cc6dbd4b78c6433636fa4",
-    "semantic_hash": "a7b1f02b576cc6dbd4b78c6433636fa4"
+  "tooling/infra/src/deploy-manifest.ts": {
+    "mtime": 1788455519.6674697,
+    "ast_hash": "bfc6a8d8ec5164a6f69428fd30574c53",
+    "semantic_hash": ""
   },
-  "/home/cactus/dev/Occulis/tooling/infra/src/git.ts": {
-    "mtime": 1787943083.7457209,
+  "tooling/infra/src/git.ts": {
+    "mtime": 1788450297.0448625,
     "ast_hash": "c7be699125aa02b24586a9a676fe6ca1",
     "semantic_hash": "c7be699125aa02b24586a9a676fe6ca1"
   },
-  "/home/cactus/dev/Occulis/tooling/infra/src/toml.ts": {
-    "mtime": 1787943083.7457209,
+  "tooling/infra/src/toml.ts": {
+    "mtime": 1788450297.0448625,
     "ast_hash": "676173c69a96f521991fa277d296ad95",
     "semantic_hash": "676173c69a96f521991fa277d296ad95"
   },
-  "/home/cactus/dev/Occulis/tooling/infra/src/wrangler.ts": {
-    "mtime": 1787943083.7457209,
+  "tooling/infra/src/wrangler.ts": {
+    "mtime": 1788450297.0448625,
     "ast_hash": "630253cc65805d7decaa5e99345ce99f",
     "semantic_hash": "630253cc65805d7decaa5e99345ce99f"
   },
-  "/home/cactus/dev/Occulis/tooling/infra/tsconfig.json": {
+  "tooling/infra/tsconfig.json": {
     "mtime": 1787897526.542737,
     "ast_hash": "a101aa0914938600765e760d3544bc4d",
     "semantic_hash": "a101aa0914938600765e760d3544bc4d"
   },
-  "/home/cactus/dev/Occulis/tsconfig.base.json": {
+  "tsconfig.base.json": {
     "mtime": 1787399267.4827478,
     "ast_hash": "73844dc45cfb5e8de673778dea478ee7",
     "semantic_hash": "73844dc45cfb5e8de673778dea478ee7"
   },
-  "/home/cactus/dev/Occulis/.claude/CLAUDE.md": {
-    "mtime": 1788002711.8294256,
+  ".claude/CLAUDE.md": {
+    "mtime": 1788450361.3473196,
     "ast_hash": "db73b0edd7ffbc61ceac177130730865",
     "semantic_hash": "db73b0edd7ffbc61ceac177130730865"
   },
-  "/home/cactus/dev/Occulis/.github/deploy-environments.README.md": {
-    "mtime": 1787943083.7416613,
-    "ast_hash": "e8a73bafd4c344af4071cecb0ddb15c3",
-    "semantic_hash": "e8a73bafd4c344af4071cecb0ddb15c3"
+  ".github/deploy-environments.README.md": {
+    "mtime": 1788455519.6674697,
+    "ast_hash": "457e76359761898b812313ad506ddf8c",
+    "semantic_hash": ""
   },
-  "/home/cactus/dev/Occulis/.github/workflows/ci.yml": {
+  ".github/workflows/ci.yml": {
     "mtime": 1787931417.3918724,
     "ast_hash": "907b5ef3dd6efc6c41112fb93eb0460d",
     "semantic_hash": "907b5ef3dd6efc6c41112fb93eb0460d"
   },
-  "/home/cactus/dev/Occulis/CLAUDE.md": {
-    "mtime": 1788002118.7555592,
-    "ast_hash": "cfa70ebdf268f9325c2c0ec4ab61566d",
-    "semantic_hash": "cfa70ebdf268f9325c2c0ec4ab61566d"
+  "CLAUDE.md": {
+    "mtime": 1788455519.6674697,
+    "ast_hash": "213b472d78d8ca497a9a677b19dcfbb4",
+    "semantic_hash": ""
   },
-  "/home/cactus/dev/Occulis/apps/web/index.html": {
-    "mtime": 1787998671.453291,
+  "apps/web/index.html": {
+    "mtime": 1788450361.3555264,
     "ast_hash": "7f388a95e5edbbfd3e5b138911fdd98d",
     "semantic_hash": "7f388a95e5edbbfd3e5b138911fdd98d"
   },
-  "/home/cactus/dev/Occulis/docs/architecture.md": {
-    "mtime": 1787943083.7416613,
-    "ast_hash": "ba78e8f0c1cf676b21d9c53b912a689e",
-    "semantic_hash": "ba78e8f0c1cf676b21d9c53b912a689e"
+  "docs/architecture.md": {
+    "mtime": 1788455519.6674697,
+    "ast_hash": "bc4964b8a24c87f5072f3b3559cd88fb",
+    "semantic_hash": ""
   },
-  "/home/cactus/dev/Occulis/docs/costs.md": {
+  "docs/costs.md": {
     "mtime": 1787850052.9872015,
     "ast_hash": "78cc7b07546553156ffa12e97870c466",
     "semantic_hash": "78cc7b07546553156ffa12e97870c466"
   },
-  "/home/cactus/dev/Occulis/docs/design.md": {
-    "mtime": 1788002055.7697127,
+  "docs/design.md": {
+    "mtime": 1788450361.3719406,
     "ast_hash": "fffc3d8e50966e5758a3a730d4283cda",
     "semantic_hash": "fffc3d8e50966e5758a3a730d4283cda"
   },
-  "/home/cactus/dev/Occulis/docs/implementation-notes.md": {
-    "mtime": 1788002055.7738516,
+  "docs/implementation-notes.md": {
+    "mtime": 1788450361.3719406,
     "ast_hash": "170190abc9ff9cd67b48c4902c05557b",
     "semantic_hash": "170190abc9ff9cd67b48c4902c05557b"
   },
-  "/home/cactus/dev/Occulis/docs/setup.md": {
-    "mtime": 1787943083.7416613,
-    "ast_hash": "a50096a05781b87fa4d72d01886d3f48",
-    "semantic_hash": "a50096a05781b87fa4d72d01886d3f48"
+  "docs/setup.md": {
+    "mtime": 1788455519.6674697,
+    "ast_hash": "af8ae24a37a7ece83ec3791afaf1af52",
+    "semantic_hash": ""
   },
-  "/home/cactus/dev/Occulis/docs/technical/README.md": {
-    "mtime": 1788002118.7555592,
+  "docs/technical/README.md": {
+    "mtime": 1788450361.3719406,
     "ast_hash": "e78fa77aba8920d77b059ce32472b48d",
     "semantic_hash": "e78fa77aba8920d77b059ce32472b48d"
   },
-  "/home/cactus/dev/Occulis/docs/technical/core.md": {
-    "mtime": 1788001885.1495574,
+  "docs/technical/core.md": {
+    "mtime": 1788450361.3719406,
     "ast_hash": "117faf9be0250f9847770591183a53c2",
     "semantic_hash": "117faf9be0250f9847770591183a53c2"
   },
-  "/home/cactus/dev/Occulis/docs/technical/engine.md": {
-    "mtime": 1788002032.6138248,
+  "docs/technical/engine.md": {
+    "mtime": 1788450361.376044,
     "ast_hash": "c40ff7d24661b35f998ecf35ea403603",
     "semantic_hash": "c40ff7d24661b35f998ecf35ea403603"
   },
-  "/home/cactus/dev/Occulis/docs/technical/infra.md": {
-    "mtime": 1787988371.786896,
-    "ast_hash": "75e2f361859a84ecbf0161764b15dc8f",
-    "semantic_hash": "75e2f361859a84ecbf0161764b15dc8f"
+  "docs/technical/infra.md": {
+    "mtime": 1788455519.6674697,
+    "ast_hash": "e6ad8cad3c130b8566d7ebd5cab0df10",
+    "semantic_hash": ""
   },
-  "/home/cactus/dev/Occulis/docs/technical/server.md": {
-    "mtime": 1788001841.3578877,
+  "docs/technical/server.md": {
+    "mtime": 1788450361.376044,
     "ast_hash": "2c09c01370056ba77b67352883c3a6f1",
     "semantic_hash": "2c09c01370056ba77b67352883c3a6f1"
   },
-  "/home/cactus/dev/Occulis/pnpm-workspace.yaml": {
+  "pnpm-workspace.yaml": {
     "mtime": 1787897526.542737,
     "ast_hash": "3a92f282b979a60851c9d371f114dc14",
     "semantic_hash": "3a92f282b979a60851c9d371f114dc14"
   },
-  "/home/cactus/dev/Occulis/tooling/infra/README.md": {
-    "mtime": 1787943083.7457209,
-    "ast_hash": "00affb9279246355965b3245178d8158",
-    "semantic_hash": "00affb9279246355965b3245178d8158"
+  "tooling/infra/README.md": {
+    "mtime": 1788455519.6674697,
+    "ast_hash": "6aad68bf903e3a48cf3adeb8d28e8588",
+    "semantic_hash": ""
+  },
+  "tooling/infra/src/ci.ts": {
+    "mtime": 1788450321.3985448,
+    "ast_hash": "c45b30e70fd18284821ff67198372dce",
+    "semantic_hash": ""
+  },
+  ".github/workflows/infra.yml": {
+    "mtime": 1788455519.6674697,
+    "ast_hash": "b943344e6fe7a22e939a73f5d36bb7f1",
+    "semantic_hash": ""
   }
 }
