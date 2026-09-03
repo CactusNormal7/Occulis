@@ -262,9 +262,10 @@ retrait se fait depuis Settings → Environments.
 
 ## Points d'attention
 
-- **Node 22 est requis par wrangler.** La CI l'utilise ; `package.json` déclare seulement
-  `>=20`. Sur une machine en Node 20, les commandes wrangler (donc une grande partie de la
-  TUI) échouent.
+- **Node 22 est requis par wrangler**, malgré son message d'erreur qui annonce v20. La CI
+  l'utilise et `package.json` déclare `engines.node: ">=22"`. Sur une machine en Node 20,
+  les commandes wrangler (donc une grande partie de la TUI) échouent — la TUI elle-même,
+  Ink et tsx, tourne pourtant sans problème, ce qui rend le diagnostic trompeur.
 - **`.wrangler/` doit rester dans `.gitignore`** : c'est de l'état local. `checkConfig()`
   le vérifie.
 - **Les placeholders `REMPLACER_PAR_L_ID`** dans `wrangler.toml` signalent un
