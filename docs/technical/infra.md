@@ -287,7 +287,9 @@ sinon il référence des liaisons pas encore initialisées.
 ## Points d'attention
 
 - **Node 22 est requis par wrangler**, malgré son message d'erreur qui annonce v20. La CI
-  l'utilise et `package.json` déclare `engines.node: ">=22"`. Sur une machine en Node 20,
+  l'utilise, `.nvmrc` épingle Node 24 en local et `package.json` déclare
+  `engines.node: ">=22"` — les trois sont cohérents, mais **CI et poste de travail ne
+  tournent pas sur la même version majeure**. Sur une machine en Node 20,
   les commandes wrangler (donc une grande partie de la TUI) échouent — la TUI elle-même,
   Ink et tsx, tourne pourtant sans problème, ce qui rend le diagnostic trompeur.
 - **`.wrangler/` doit rester dans `.gitignore`** : c'est de l'état local. `checkConfig()`
