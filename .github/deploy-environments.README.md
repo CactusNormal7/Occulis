@@ -18,4 +18,6 @@ Ajouter une branche suppose trois choses cohérentes entre elles :
 `pnpm infra` → **Créer un environnement de branche** fait les trois d'un coup depuis la
 branche courante, applique les migrations, puis committe et pousse ce fichier et
 `apps/server/wrangler.toml`. **Supprimer un environnement de branche** les défait (Worker et
-base distante compris). Édition manuelle possible, mais garder les trois cohérents.
+base distante compris) pour **n'importe quelle cible, depuis n'importe quelle branche** — le
+retrait est committé sur la branche courante, et chaque autre branche garde sa propre copie
+de ce fichier. Édition manuelle possible, mais garder les trois cohérents.

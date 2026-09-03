@@ -233,8 +233,11 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
    versionné `.github/deploy-environments.json`, que la CI lit. `pnpm infra` l'édite dans les
    deux sens (« Créer / Supprimer un environnement de branche ») : création ou destruction du
    même geste du bloc `[env.<nom>]` du toml, de la base D1 et de l'entrée du manifeste, puis
-   commit et push de `wrangler.toml` et du manifeste. Reste à traiter séparément : le seed des
-   bases (point 4) et la vérification bout en bout de l'attache d'URL (point 2).
+   commit et push de `wrangler.toml` et du manifeste. La création part de la branche courante ;
+   la suppression prend une cible explicite et fonctionne depuis n'importe quelle branche, pour
+   qu'un environnement reste défaisable après la fusion de sa branche. Reste à traiter
+   séparément : le seed des bases (point 4) et la vérification bout en bout de l'attache d'URL
+   (point 2).
 4. **Seed des previews.** Une base neuve est vide : sans script de seed, un preview de branche
    est inutilisable pour tester. C'est le vrai travail caché de l'automatisation.
 5. **Base par branche ou base partagée préfixée.** La seconde évite tout script de création et

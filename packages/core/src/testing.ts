@@ -12,7 +12,7 @@ import {
  * Fabriques de test uniquement. Aucun roster n'est acté dans docs/design.md
  * (point ouvert 12) : ces types sont des supports de scénario, pas du contenu.
  * Le roster provisoire partagé par le client et le serveur vit dans
- * `pieces/roster.ts`.
+ * `pieces/roster/`.
  */
 export interface DefineOptions {
   readonly steps?: number;

@@ -3,6 +3,7 @@ import {
   ROOT,
   dbName,
   envFlag,
+  isBranchEnv,
   slugifyBranch,
   PLACEHOLDER,
   TOML,
@@ -26,7 +27,7 @@ import {
 import { currentBranch, pathsHaveChanges, commitPaths, pushCurrentBranch } from "./git.js";
 import {
   upsertDeployEnvironment,
-  deployEnvironmentExists,
+  findDeployEnvironment,
   removeDeployEnvironment,
 } from "./deploy-manifest.js";
 
@@ -46,6 +47,11 @@ export interface ActionDef {
   needsEnv?: boolean;
   /** Exclut `local` du sélecteur d'environnement. */
   remoteOnly?: boolean;
+  /**
+   * Restreint le sélecteur aux environnements de branche (toml ∪ manifeste, hors fixes).
+   * Une action ainsi marquée vise une cible explicite, jamais la branche courante.
+   */
+  branchEnvsOnly?: boolean;
   /** Demande une saisie libre (ex: requête SQL). */
   prompt?: string;
   /**
@@ -213,21 +219,28 @@ export const ACTIONS: ActionDef[] = [
   {
     id: "delete-branch-env",
     label: "Supprimer un environnement de branche",
-    hint: "branche courante → détruit worker + base D1, retire le bloc et l'entrée, push",
-    prompt: "Retape le nom de la branche courante pour confirmer la suppression",
+    hint: "n'importe quel environnement, depuis n'importe quelle branche",
+    needsEnv: true,
+    branchEnvsOnly: true,
+    prompt: "Retape le nom de l'environnement (ou de sa branche) pour confirmer la suppression",
     async run(ctx) {
-      const branch = await currentBranch();
-      if (!branch)
-        return ctx.log("Impossible de déterminer la branche courante (HEAD détaché ?).", "fail");
-      if (branch === "main" || branch === "staging")
-        return ctx.log(`« ${branch} » est un environnement fixe — suppression refusée.`, "fail");
-      if ((ctx.query ?? "").trim() !== branch)
+      const target = (ctx.env ?? "").trim();
+      if (!target) return ctx.log("Aucun environnement ciblé.", "fail");
+
+      // La cible est explicite, jamais déduite de la branche courante : un environnement
+      // doit rester supprimable une fois sa branche fusionnée ou effacée.
+      const entry = findDeployEnvironment(target);
+      const env = entry?.wranglerEnv ?? slugifyBranch(target);
+      if (!isBranchEnv(env))
+        return ctx.log(`« ${env} » est un environnement fixe — suppression refusée.`, "fail");
+      if (!envBlockExists(env) && !entry)
+        return ctx.log(`Aucun environnement « ${env} » — rien à supprimer.`, "warn");
+
+      const confirmation = (ctx.query ?? "").trim();
+      if (confirmation !== target && confirmation !== env && confirmation !== entry?.branch)
         return ctx.log("Confirmation incorrecte — rien n'a été supprimé.", "warn");
 
-      const env = slugifyBranch(branch);
-      const name = dbName(env);
-      if (!envBlockExists(env) && !deployEnvironmentExists(branch))
-        return ctx.log(`Aucun environnement pour « ${branch} » — rien à supprimer.`, "warn");
+      const name = entry?.d1Database ?? dbName(env);
 
       // L'ordre compte : le Worker se supprime via --env, qui lit encore son bloc
       // dans wrangler.toml — donc avant de retirer ce bloc.
@@ -240,21 +253,42 @@ export const ACTIONS: ActionDef[] = [
       else ctx.log(`${name} n'existe pas côté Cloudflare.`, "warn");
 
       if (removeEnvBlock(env)) ctx.log(`wrangler.toml : bloc [env.${env}] retiré.`, "ok");
-      if (removeDeployEnvironment(branch))
-        ctx.log(`.github/deploy-environments.json : entrée « ${branch} » retirée.`, "ok");
+      if (entry && removeDeployEnvironment(entry.branch))
+        ctx.log(`.github/deploy-environments.json : entrée « ${entry.branch} » retirée.`, "ok");
 
+      // Les ressources Cloudflare sont déjà détruites : à partir d'ici, plus rien ne doit
+      // interrompre le compte rendu, seulement dire ce qui reste à faire à la main.
+      const branch = await currentBranch();
       const tracked = [TOML, DEPLOY_MANIFEST];
       ctx.log("Commit et push", "step");
-      if (await pathsHaveChanges(tracked)) {
-        if (
-          (await commitPaths(`infra: suppression de l'environnement ${branch}`, tracked, (l) =>
-            ctx.log(l, "raw"),
-          )) !== 0
-        )
-          return ctx.log("git commit a échoué — committe et pousse à la main.", "fail");
-        if ((await pushCurrentBranch((l) => ctx.log(l, "raw"))) !== 0)
-          return ctx.log("git push a échoué — pousse la branche à la main.", "fail");
+      if (!(await pathsHaveChanges(tracked))) {
+        ctx.log("wrangler.toml et le manifeste étaient déjà à jour — rien à committer.", "warn");
+      } else if (!branch) {
+        ctx.log(
+          "HEAD détaché : wrangler.toml et le manifeste sont modifiés mais non committés.",
+          "warn",
+        );
+      } else if (
+        (await commitPaths(`infra: suppression de l'environnement ${env}`, tracked, (l) =>
+          ctx.log(l, "raw"),
+        )) !== 0
+      ) {
+        ctx.log("git commit a échoué — committe et pousse à la main.", "fail");
+      } else if ((await pushCurrentBranch((l) => ctx.log(l, "raw"))) !== 0) {
+        ctx.log("git push a échoué — pousse la branche à la main.", "fail");
+      } else {
+        ctx.log(`Retrait committé et poussé sur « ${branch} ».`, "ok");
       }
+
+      // Le manifeste est versionné : chaque branche porte sa propre copie, et c'est la
+      // copie de la branche poussée que la CI lit. Retirer l'entrée ici ne la retire donc
+      // pas de la branche concernée, qui redéploierait contre une base désormais absente.
+      if (entry && branch && entry.branch !== branch)
+        ctx.log(
+          `« ${entry.branch} » garde sa propre copie du manifeste : supprime cette branche ou reporte-y le retrait, sinon un push la redéploierait.`,
+          "warn",
+        );
+
       ctx.log(
         "Environnement supprimé. L'environnement GitHub Actions homonyme, s'il existe, est inoffensif (retrait depuis Settings → Environments).",
         "ok",

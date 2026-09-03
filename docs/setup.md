@@ -148,8 +148,10 @@ Pour une branche de travail, `pnpm infra` → **Créer un environnement de branc
 d'un geste depuis la branche courante : bloc `[env.<slug>]` dans `wrangler.toml`, base D1
 distante et son `database_id`, migrations, entrée dans `.github/deploy-environments.json`,
 puis commit et push de ces deux seuls fichiers — la CI enchaîne migrations et déploiement.
-**Supprimer un environnement de branche** fait l'inverse : suppression du Worker et de la
-base distante, retrait du bloc et de l'entrée, commit et push.
+**Supprimer un environnement de branche** fait l'inverse — suppression du Worker et de la
+base distante, retrait du bloc et de l'entrée, commit et push — mais sur une **cible
+choisie** : n'importe quel environnement, depuis n'importe quelle branche, y compris après
+la fusion ou l'effacement de la branche concernée.
 
 ## 7. Ce qui reste à écrire
 
