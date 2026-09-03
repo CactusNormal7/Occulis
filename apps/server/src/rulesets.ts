@@ -5,7 +5,7 @@ import { type Ruleset, provisionalRuleset } from "@occulis/core";
  * `matches.ruleset_version` et ne change jamais de version en cours de route, ce qui
  * suppose que les anciennes restent chargeables ici indéfiniment.
  *
- * Les types de pièces eux-mêmes vivent dans `@occulis/core` (`pieces/roster.ts`) :
+ * Les types de pièces eux-mêmes vivent dans `@occulis/core` (`pieces/roster/`) :
  * client et serveur doivent appliquer exactement les mêmes règles, donc une seule
  * définition. Ce roster reste provisoire (docs/design.md point ouvert 12) et ne doit
  * servir de base à aucun équilibrage.
