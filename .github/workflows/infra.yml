@@ -85,4 +85,6 @@ jobs:
           INFRA_ACTION: ${{ inputs.action }}
           INFRA_ENV: ${{ inputs.env }}
           INFRA_QUERY: ${{ inputs.query }}
-        run: pnpm run ci -- "$INFRA_ACTION" "$INFRA_ENV" "$INFRA_QUERY"
+        # Pas de « -- » : contrairement à npm, pnpm le transmet tel quel au script
+        # sous-jacent plutôt que de le n'utiliser que comme séparateur.
+        run: pnpm run ci "$INFRA_ACTION" "$INFRA_ENV" "$INFRA_QUERY"
