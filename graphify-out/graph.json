@@ -334,36 +334,6 @@
       "norm_label": "d1database"
     },
     {
-      "label": "feature/engine",
-      "file_type": "code",
-      "source_file": ".github/deploy-environments.json",
-      "source_location": "L10",
-      "_origin": "ast",
-      "id": "github_deploy_environments_feature_engine",
-      "community": 13,
-      "norm_label": "feature/engine"
-    },
-    {
-      "label": "wranglerEnv",
-      "file_type": "code",
-      "source_file": ".github/deploy-environments.json",
-      "source_location": "L11",
-      "_origin": "ast",
-      "id": "github_deploy_environments_feature_engine_wranglerenv",
-      "community": 13,
-      "norm_label": "wranglerenv"
-    },
-    {
-      "label": "d1Database",
-      "file_type": "code",
-      "source_file": ".github/deploy-environments.json",
-      "source_location": "L12",
-      "_origin": "ast",
-      "id": "github_deploy_environments_feature_engine_d1database",
-      "community": 13,
-      "norm_label": "d1database"
-    },
-    {
       "label": ".prettierrc.json",
       "file_type": "code",
       "source_file": ".prettierrc.json",
@@ -590,7 +560,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_server_src_index_ts_src_index",
-      "community": 3,
+      "community": 5,
       "norm_label": "index.ts"
     },
     {
@@ -600,7 +570,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_index_fetch",
-      "community": 3,
+      "community": 5,
       "norm_label": "fetch()"
     },
     {
@@ -610,7 +580,7 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "src_index_creatematch",
-      "community": 3,
+      "community": 5,
       "norm_label": "creatematch()"
     },
     {
@@ -630,7 +600,7 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_match_do_matchconfig",
-      "community": 3,
+      "community": 5,
       "norm_label": "matchconfig"
     },
     {
@@ -650,7 +620,7 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "src_match_do_matchdo",
-      "community": 3,
+      "community": 5,
       "norm_label": "matchdo"
     },
     {
@@ -660,7 +630,7 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "src_match_do_matchdo_fetch",
-      "community": 3,
+      "community": 5,
       "norm_label": ".fetch()"
     },
     {
@@ -670,7 +640,7 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "src_match_do_matchdo_websocketmessage",
-      "community": 3,
+      "community": 5,
       "norm_label": ".websocketmessage()"
     },
     {
@@ -680,7 +650,7 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "src_match_do_matchdo_play",
-      "community": 3,
+      "community": 5,
       "norm_label": ".play()"
     },
     {
@@ -690,7 +660,7 @@
       "source_location": "L99",
       "_origin": "ast",
       "id": "src_match_do_matchdo_appendtolog",
-      "community": 3,
+      "community": 5,
       "norm_label": ".appendtolog()"
     },
     {
@@ -700,7 +670,7 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "src_match_do_matchdo_broadcastviews",
-      "community": 3,
+      "community": 5,
       "norm_label": ".broadcastviews()"
     },
     {
@@ -710,7 +680,7 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "src_match_do_matchdo_send",
-      "community": 3,
+      "community": 5,
       "norm_label": ".send()"
     },
     {
@@ -720,7 +690,7 @@
       "source_location": "L122",
       "_origin": "ast",
       "id": "src_match_do_matchdo_config",
-      "community": 3,
+      "community": 5,
       "norm_label": ".config()"
     },
     {
@@ -730,7 +700,7 @@
       "source_location": "L132",
       "_origin": "ast",
       "id": "src_match_do_matchdo_load",
-      "community": 3,
+      "community": 5,
       "norm_label": ".load()"
     },
     {
@@ -790,7 +760,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_rulesets",
-      "community": 3,
+      "community": 5,
       "norm_label": "rulesets.ts"
     },
     {
@@ -800,7 +770,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_rulesets_registry",
-      "community": 3,
+      "community": 5,
       "norm_label": "registry"
     },
     {
@@ -810,7 +780,7 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_rulesets_rulesetfor",
-      "community": 3,
+      "community": 5,
       "norm_label": "rulesetfor()"
     },
     {
@@ -1330,7 +1300,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "game_selection",
-      "community": 5,
+      "community": 3,
       "norm_label": "selection.ts"
     },
     {
@@ -1340,7 +1310,7 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "game_selection_selection",
-      "community": 5,
+      "community": 3,
       "norm_label": "selection"
     },
     {
@@ -1350,7 +1320,7 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "game_selection_clickoutcome",
-      "community": 5,
+      "community": 3,
       "norm_label": "clickoutcome"
     },
     {
@@ -1360,7 +1330,7 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "game_selection_selectionfor",
-      "community": 5,
+      "community": 3,
       "norm_label": "selectionfor()"
     },
     {
@@ -1370,7 +1340,7 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "game_selection_resolveclick",
-      "community": 5,
+      "community": 3,
       "norm_label": "resolveclick()"
     },
     {
@@ -1390,7 +1360,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "input_controls_controlsoptions",
-      "community": 0,
+      "community": 62,
       "norm_label": "controlsoptions"
     },
     {
@@ -1490,7 +1460,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "scene_overlay",
-      "community": 18,
+      "community": 14,
       "norm_label": "overlay.ts"
     },
     {
@@ -1500,7 +1470,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "scene_overlay_mark",
-      "community": 18,
+      "community": 14,
       "norm_label": "mark"
     },
     {
@@ -1510,7 +1480,7 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "scene_overlay_marktile",
-      "community": 18,
+      "community": 14,
       "norm_label": "marktile()"
     },
     {
@@ -1520,7 +1490,7 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "scene_overlay_drawhover",
-      "community": 18,
+      "community": 14,
       "norm_label": "drawhover()"
     },
     {
@@ -1570,7 +1540,7 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "scene_scene_sceneinput",
-      "community": 1,
+      "community": 62,
       "norm_label": "sceneinput"
     },
     {
@@ -1580,7 +1550,7 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "scene_scene_occupant",
-      "community": 5,
+      "community": 18,
       "norm_label": "occupant"
     },
     {
@@ -1720,7 +1690,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_theme",
-      "community": 18,
+      "community": 63,
       "norm_label": "theme.ts"
     },
     {
@@ -1730,7 +1700,7 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_theme_metrics",
-      "community": 18,
+      "community": 63,
       "norm_label": "metrics"
     },
     {
@@ -1740,7 +1710,7 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "src_theme_geometry",
-      "community": 18,
+      "community": 63,
       "norm_label": "geometry"
     },
     {
@@ -1750,7 +1720,7 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "src_theme_hover",
-      "community": 18,
+      "community": 14,
       "norm_label": "hover"
     },
     {
@@ -1770,7 +1740,7 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "src_theme_state",
-      "community": 18,
+      "community": 63,
       "norm_label": "state"
     },
     {
@@ -1810,7 +1780,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "ui_command_test_move",
-      "community": 6,
+      "community": 62,
       "norm_label": "move"
     },
     {
@@ -2080,7 +2050,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "ui_palette",
-      "community": 18,
+      "community": 63,
       "norm_label": "palette.ts"
     },
     {
@@ -2090,7 +2060,7 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "ui_palette_csscolor",
-      "community": 18,
+      "community": 63,
       "norm_label": "csscolor()"
     },
     {
@@ -2100,7 +2070,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "ui_palette_applypalette",
-      "community": 18,
+      "community": 63,
       "norm_label": "applypalette()"
     },
     {
@@ -2140,7 +2110,7 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "view_animation_moveanimation",
-      "community": 51,
+      "community": 62,
       "norm_label": "moveanimation"
     },
     {
@@ -2160,7 +2130,7 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "view_animation_startmove",
-      "community": 51,
+      "community": 0,
       "norm_label": "startmove()"
     },
     {
@@ -2170,7 +2140,7 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "view_animation_advance",
-      "community": 51,
+      "community": 0,
       "norm_label": "advance()"
     },
     {
@@ -2250,7 +2220,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "view_camera_camera",
-      "community": 0,
+      "community": 62,
       "norm_label": "camera"
     },
     {
@@ -2440,7 +2410,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "view_iso_isoprojection",
-      "community": 14,
+      "community": 62,
       "norm_label": "isoprojection"
     },
     {
@@ -2450,7 +2420,7 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "view_iso_screenpoint",
-      "community": 0,
+      "community": 62,
       "norm_label": "screenpoint"
     },
     {
@@ -2460,7 +2430,7 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "view_iso_quad",
-      "community": 14,
+      "community": 62,
       "norm_label": "quad"
     },
     {
@@ -2640,7 +2610,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "view_picking",
-      "community": 14,
+      "community": 62,
       "norm_label": "picking.ts"
     },
     {
@@ -3170,7 +3140,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_actions_test",
-      "community": 6,
+      "community": 3,
       "norm_label": "actions.test.ts"
     },
     {
@@ -3180,7 +3150,7 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "src_actions_test_ruleset",
-      "community": 1,
+      "community": 3,
       "norm_label": "ruleset"
     },
     {
@@ -3200,7 +3170,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "src_actions_test_duel",
-      "community": 1,
+      "community": 3,
       "norm_label": "duel()"
     },
     {
@@ -3210,7 +3180,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "packages_core_src_actions_ts_src_actions",
-      "community": 6,
+      "community": 3,
       "norm_label": "actions.ts"
     },
     {
@@ -3240,7 +3210,7 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "src_actions_occupancywithout",
-      "community": 6,
+      "community": 3,
       "norm_label": "occupancywithout()"
     },
     {
@@ -3250,7 +3220,7 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "src_actions_destinationsfor",
-      "community": 6,
+      "community": 3,
       "norm_label": "destinationsfor()"
     },
     {
@@ -3260,7 +3230,7 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "src_actions_capturablesfrom",
-      "community": 6,
+      "community": 3,
       "norm_label": "capturablesfrom()"
     },
     {
@@ -3270,7 +3240,7 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "src_actions_legalactions",
-      "community": 6,
+      "community": 3,
       "norm_label": "legalactions()"
     },
     {
@@ -3280,7 +3250,7 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "src_actions_validateaction",
-      "community": 6,
+      "community": 3,
       "norm_label": "validateaction()"
     },
     {
@@ -3290,7 +3260,7 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "src_actions_validatecapture",
-      "community": 6,
+      "community": 3,
       "norm_label": "validatecapture()"
     },
     {
@@ -3300,7 +3270,7 @@
       "source_location": "L123",
       "_origin": "ast",
       "id": "src_actions_withoutcome",
-      "community": 6,
+      "community": 3,
       "norm_label": "withoutcome()"
     },
     {
@@ -3310,7 +3280,7 @@
       "source_location": "L142",
       "_origin": "ast",
       "id": "src_actions_applyaction",
-      "community": 6,
+      "community": 3,
       "norm_label": "applyaction()"
     },
     {
@@ -3320,7 +3290,7 @@
       "source_location": "L171",
       "_origin": "ast",
       "id": "src_actions_iscommanderthreatened",
-      "community": 6,
+      "community": 3,
       "norm_label": "iscommanderthreatened()"
     },
     {
@@ -3340,7 +3310,7 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_board_tile",
-      "community": 1,
+      "community": 62,
       "norm_label": "tile"
     },
     {
@@ -3350,7 +3320,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "src_board_tilespec",
-      "community": 1,
+      "community": 62,
       "norm_label": "tilespec"
     },
     {
@@ -3360,7 +3330,7 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "src_board_board",
-      "community": 1,
+      "community": 62,
       "norm_label": "board"
     },
     {
@@ -3370,7 +3340,7 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "src_board_board_constructor",
-      "community": 1,
+      "community": 62,
       "norm_label": ".constructor()"
     },
     {
@@ -3380,7 +3350,7 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "src_board_board_tilecount",
-      "community": 1,
+      "community": 62,
       "norm_label": ".tilecount()"
     },
     {
@@ -3390,7 +3360,7 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "src_board_board_gettile",
-      "community": 1,
+      "community": 62,
       "norm_label": ".gettile()"
     },
     {
@@ -3400,7 +3370,7 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "src_board_board_contains",
-      "community": 1,
+      "community": 62,
       "norm_label": ".contains()"
     },
     {
@@ -3410,7 +3380,7 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "src_board_board_heightat",
-      "community": 1,
+      "community": 62,
       "norm_label": ".heightat()"
     },
     {
@@ -3420,7 +3390,7 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "src_board_board_ispassable",
-      "community": 1,
+      "community": 62,
       "norm_label": ".ispassable()"
     },
     {
@@ -3430,7 +3400,7 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "src_board_board_alltiles",
-      "community": 1,
+      "community": 62,
       "norm_label": ".alltiles()"
     },
     {
@@ -3440,7 +3410,7 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "src_board_board_flat",
-      "community": 1,
+      "community": 62,
       "norm_label": ".flat()"
     },
     {
@@ -3450,7 +3420,7 @@
       "source_location": "L83",
       "_origin": "ast",
       "id": "src_board_board_fromascii",
-      "community": 1,
+      "community": 62,
       "norm_label": ".fromascii()"
     },
     {
@@ -3470,7 +3440,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_coord_coord",
-      "community": 1,
+      "community": 62,
       "norm_label": "coord"
     },
     {
@@ -3480,7 +3450,7 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_coord_coordkey",
-      "community": 1,
+      "community": 3,
       "norm_label": "coordkey"
     },
     {
@@ -3500,7 +3470,7 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_coord_coordequals",
-      "community": 5,
+      "community": 3,
       "norm_label": "coordequals()"
     },
     {
@@ -3600,7 +3570,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_fog_test",
-      "community": 1,
+      "community": 3,
       "norm_label": "fog.test.ts"
     },
     {
@@ -3610,7 +3580,7 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_fog_test_ruleset",
-      "community": 1,
+      "community": 3,
       "norm_label": "ruleset"
     },
     {
@@ -3620,7 +3590,7 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "src_fog_test_unwrap",
-      "community": 1,
+      "community": 3,
       "norm_label": "unwrap()"
     },
     {
@@ -3630,7 +3600,7 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_fog_test_corridor",
-      "community": 1,
+      "community": 3,
       "norm_label": "corridor()"
     },
     {
@@ -3640,7 +3610,7 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "src_fog_test_ambush",
-      "community": 1,
+      "community": 3,
       "norm_label": "ambush()"
     },
     {
@@ -3650,7 +3620,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_fog",
-      "community": 1,
+      "community": 3,
       "norm_label": "fog.ts"
     },
     {
@@ -3690,7 +3660,7 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "src_fog_visibletilesfor",
-      "community": 1,
+      "community": 3,
       "norm_label": "visibletilesfor()"
     },
     {
@@ -4000,7 +3970,7 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "pieces_piece_type_test_clairvoyant_cansee",
-      "community": 1,
+      "community": 62,
       "norm_label": ".cansee()"
     },
     {
@@ -4050,7 +4020,7 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "pieces_piece_type_piecetype_iscommander",
-      "community": 6,
+      "community": 1,
       "norm_label": ".iscommander()"
     },
     {
@@ -4130,7 +4100,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "pieces_piece_opponentof",
-      "community": 6,
+      "community": 3,
       "norm_label": "opponentof()"
     },
     {
@@ -4140,7 +4110,7 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "pieces_piece_pieceid",
-      "community": 5,
+      "community": 3,
       "norm_label": "pieceid"
     },
     {
@@ -4160,7 +4130,7 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "pieces_piece_piece",
-      "community": 1,
+      "community": 3,
       "norm_label": "piece"
     },
     {
@@ -4320,7 +4290,7 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "pieces_ruleset_ruleset_typeof",
-      "community": 1,
+      "community": 3,
       "norm_label": ".typeof()"
     },
     {
@@ -4340,7 +4310,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_result",
-      "community": 6,
+      "community": 3,
       "norm_label": "result.ts"
     },
     {
@@ -4360,7 +4330,7 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_result_ok",
-      "community": 6,
+      "community": 3,
       "norm_label": "ok()"
     },
     {
@@ -4370,7 +4340,7 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_result_err",
-      "community": 6,
+      "community": 3,
       "norm_label": "err()"
     },
     {
@@ -4380,7 +4350,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_state",
-      "community": 1,
+      "community": 3,
       "norm_label": "state.ts"
     },
     {
@@ -4420,7 +4390,7 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "src_state_pieceat",
-      "community": 5,
+      "community": 3,
       "norm_label": "pieceat()"
     },
     {
@@ -4430,7 +4400,7 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "src_state_occupancy",
-      "community": 6,
+      "community": 3,
       "norm_label": "occupancy()"
     },
     {
@@ -4440,7 +4410,7 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "src_state_piecesof",
-      "community": 6,
+      "community": 3,
       "norm_label": "piecesof()"
     },
     {
@@ -4450,7 +4420,7 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "src_state_commanderof",
-      "community": 6,
+      "community": 3,
       "norm_label": "commanderof()"
     },
     {
@@ -4490,7 +4460,7 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "src_testing_testruleset",
-      "community": 1,
+      "community": 3,
       "norm_label": "testruleset()"
     },
     {
@@ -4500,7 +4470,7 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "src_testing_placepiece",
-      "community": 1,
+      "community": 3,
       "norm_label": "placepiece()"
     },
     {
@@ -4674,10 +4644,20 @@
       "norm_label": "typecheck"
     },
     {
+      "label": "test",
+      "file_type": "code",
+      "source_file": "tooling/infra/package.json",
+      "source_location": "L13",
+      "_origin": "ast",
+      "id": "infra_package_scripts_test",
+      "community": 8,
+      "norm_label": "test"
+    },
+    {
       "label": "dependencies",
       "file_type": "code",
       "source_file": "tooling/infra/package.json",
-      "source_location": "L14",
+      "source_location": "L15",
       "_origin": "ast",
       "id": "infra_package_dependencies",
       "community": 8,
@@ -4687,7 +4667,7 @@
       "label": "ink",
       "file_type": "code",
       "source_file": "tooling/infra/package.json",
-      "source_location": "L15",
+      "source_location": "L16",
       "_origin": "ast",
       "id": "infra_package_dependencies_ink",
       "community": 8,
@@ -4697,7 +4677,7 @@
       "label": "ink-text-input",
       "file_type": "code",
       "source_file": "tooling/infra/package.json",
-      "source_location": "L16",
+      "source_location": "L17",
       "_origin": "ast",
       "id": "infra_package_dependencies_ink_text_input",
       "community": 8,
@@ -4707,7 +4687,7 @@
       "label": "react",
       "file_type": "code",
       "source_file": "tooling/infra/package.json",
-      "source_location": "L17",
+      "source_location": "L18",
       "_origin": "ast",
       "id": "infra_package_dependencies_react",
       "community": 8,
@@ -4717,7 +4697,7 @@
       "label": "devDependencies",
       "file_type": "code",
       "source_file": "tooling/infra/package.json",
-      "source_location": "L19",
+      "source_location": "L20",
       "_origin": "ast",
       "id": "infra_package_devdependencies",
       "community": 8,
@@ -4727,7 +4707,7 @@
       "label": "@types/node",
       "file_type": "code",
       "source_file": "tooling/infra/package.json",
-      "source_location": "L20",
+      "source_location": "L21",
       "_origin": "ast",
       "id": "infra_package_devdependencies_types_node",
       "community": 8,
@@ -4737,7 +4717,7 @@
       "label": "@types/react",
       "file_type": "code",
       "source_file": "tooling/infra/package.json",
-      "source_location": "L21",
+      "source_location": "L22",
       "_origin": "ast",
       "id": "infra_package_devdependencies_types_react",
       "community": 8,
@@ -4747,7 +4727,7 @@
       "label": "tsx",
       "file_type": "code",
       "source_file": "tooling/infra/package.json",
-      "source_location": "L22",
+      "source_location": "L23",
       "_origin": "ast",
       "id": "infra_package_devdependencies_tsx",
       "community": 8,
@@ -4757,11 +4737,21 @@
       "label": "typescript",
       "file_type": "code",
       "source_file": "tooling/infra/package.json",
-      "source_location": "L23",
+      "source_location": "L24",
       "_origin": "ast",
       "id": "infra_package_devdependencies_typescript",
       "community": 8,
       "norm_label": "typescript"
+    },
+    {
+      "label": "vitest",
+      "file_type": "code",
+      "source_file": "tooling/infra/package.json",
+      "source_location": "L25",
+      "_origin": "ast",
+      "id": "infra_package_devdependencies_vitest",
+      "community": 8,
+      "norm_label": "vitest"
     },
     {
       "label": "actions.ts",
@@ -5164,6 +5154,16 @@
       "norm_label": "usemouse()"
     },
     {
+      "label": "config.test.ts",
+      "file_type": "code",
+      "source_file": "tooling/infra/src/config.test.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_config_test",
+      "community": 2,
+      "norm_label": "config.test.ts"
+    },
+    {
       "label": "config.ts",
       "file_type": "code",
       "source_file": "tooling/infra/src/config.ts",
@@ -5292,6 +5292,26 @@
       "id": "src_config_envflag",
       "community": 2,
       "norm_label": "envflag()"
+    },
+    {
+      "label": "deploy-manifest.test.ts",
+      "file_type": "code",
+      "source_file": "tooling/infra/src/deploy-manifest.test.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_deploy_manifest_test",
+      "community": 64,
+      "norm_label": "deploy-manifest.test.ts"
+    },
+    {
+      "label": "FIXTURE",
+      "file_type": "code",
+      "source_file": "tooling/infra/src/deploy-manifest.test.ts",
+      "source_location": "L30",
+      "_origin": "ast",
+      "id": "src_deploy_manifest_test_fixture",
+      "community": 64,
+      "norm_label": "fixture"
     },
     {
       "label": "deploy-manifest.ts",
@@ -5442,6 +5462,26 @@
       "id": "src_git_pushcurrentbranch",
       "community": 2,
       "norm_label": "pushcurrentbranch()"
+    },
+    {
+      "label": "toml.test.ts",
+      "file_type": "code",
+      "source_file": "tooling/infra/src/toml.test.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_toml_test",
+      "community": 65,
+      "norm_label": "toml.test.ts"
+    },
+    {
+      "label": "read()",
+      "file_type": "code",
+      "source_file": "tooling/infra/src/toml.test.ts",
+      "source_location": "L49",
+      "_origin": "ast",
+      "id": "src_toml_test_read",
+      "community": 65,
+      "norm_label": "read()"
     },
     {
       "label": "toml.ts",
@@ -6160,7 +6200,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "docs_design",
-      "community": 18,
+      "community": 63,
       "norm_label": "design.md"
     },
     {
@@ -6400,7 +6440,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "docs_implementation_notes",
-      "community": 6,
+      "community": 63,
       "norm_label": "implementation-notes.md"
     },
     {
@@ -6410,7 +6450,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "docs_implementation_notes_notes_d_impl\u00e9mentation_interpr\u00e9tations_\u00e0_valider",
-      "community": 6,
+      "community": 63,
       "norm_label": "notes d'implementation \u2014 interpretations a valider"
     },
     {
@@ -6420,7 +6460,7 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "docs_implementation_notes_interpr\u00e9tations_encod\u00e9es",
-      "community": 6,
+      "community": 63,
       "norm_label": "interpretations encodees"
     },
     {
@@ -6430,7 +6470,7 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "docs_implementation_notes_d\u00e9cisions_volontairement_non_impl\u00e9ment\u00e9es",
-      "community": 6,
+      "community": 63,
       "norm_label": "decisions volontairement non implementees"
     },
     {
@@ -6440,7 +6480,7 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "docs_implementation_notes_correctifs_notables",
-      "community": 6,
+      "community": 63,
       "norm_label": "correctifs notables"
     },
     {
@@ -7357,7 +7397,7 @@
       "label": "`target` \u2014 r\u00e9soudre la branche",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L61",
+      "source_location": "L62",
       "_origin": "ast",
       "id": "technical_infra_target_r\u00e9soudre_la_branche",
       "community": 23,
@@ -7367,7 +7407,7 @@
       "label": "`deploy` \u2014 le d\u00e9ploiement",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L66",
+      "source_location": "L67",
       "_origin": "ast",
       "id": "technical_infra_deploy_le_d\u00e9ploiement",
       "community": 23,
@@ -7377,7 +7417,7 @@
       "label": "Concurrence",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L81",
+      "source_location": "L82",
       "_origin": "ast",
       "id": "technical_infra_concurrence",
       "community": 23,
@@ -7387,7 +7427,7 @@
       "label": "`tooling/infra` \u2014 la TUI",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L88",
+      "source_location": "L89",
       "_origin": "ast",
       "id": "technical_infra_tooling_infra_la_tui",
       "community": 23,
@@ -7397,7 +7437,7 @@
       "label": "Modules",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L93",
+      "source_location": "L94",
       "_origin": "ast",
       "id": "technical_infra_modules",
       "community": 23,
@@ -7407,7 +7447,7 @@
       "label": "`config.ts` \u2014 chemins et conventions",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L110",
+      "source_location": "L112",
       "_origin": "ast",
       "id": "technical_infra_config_ts_chemins_et_conventions",
       "community": 23,
@@ -7417,7 +7457,7 @@
       "label": "`toml.ts` \u2014 \u00e9dition de `wrangler.toml`",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L125",
+      "source_location": "L127",
       "_origin": "ast",
       "id": "technical_infra_toml_ts_\u00e9dition_de_wrangler_toml",
       "community": 23,
@@ -7427,7 +7467,7 @@
       "label": "`deploy-manifest.ts` \u2014 \u00e9dition du manifeste",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L142",
+      "source_location": "L144",
       "_origin": "ast",
       "id": "technical_infra_deploy_manifest_ts_\u00e9dition_du_manifeste",
       "community": 23,
@@ -7437,7 +7477,7 @@
       "label": "`git.ts`",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L158",
+      "source_location": "L160",
       "_origin": "ast",
       "id": "technical_infra_git_ts",
       "community": 23,
@@ -7447,7 +7487,7 @@
       "label": "`wrangler.ts` \u2014 ex\u00e9cution de processus",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L170",
+      "source_location": "L172",
       "_origin": "ast",
       "id": "technical_infra_wrangler_ts_ex\u00e9cution_de_processus",
       "community": 23,
@@ -7457,7 +7497,7 @@
       "label": "Les actions de la TUI",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L191",
+      "source_location": "L193",
       "_origin": "ast",
       "id": "technical_infra_les_actions_de_la_tui",
       "community": 23,
@@ -7467,7 +7507,7 @@
       "label": "\u00ab Cr\u00e9er un environnement de branche \u00bb",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L218",
+      "source_location": "L220",
       "_origin": "ast",
       "id": "technical_infra_cr\u00e9er_un_environnement_de_branche",
       "community": 23,
@@ -7477,17 +7517,27 @@
       "label": "\u00ab Supprimer un environnement de branche \u00bb",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L232",
+      "source_location": "L234",
       "_origin": "ast",
       "id": "technical_infra_supprimer_un_environnement_de_branche",
       "community": 23,
       "norm_label": "\u00ab supprimer un environnement de branche \u00bb"
     },
     {
+      "label": "Les tests",
+      "file_type": "document",
+      "source_file": "docs/technical/infra.md",
+      "source_location": "L265",
+      "_origin": "ast",
+      "id": "technical_infra_les_tests",
+      "community": 23,
+      "norm_label": "les tests"
+    },
+    {
       "label": "Points d'attention",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L263",
+      "source_location": "L287",
       "_origin": "ast",
       "id": "technical_infra_points_d_attention",
       "community": 23,
@@ -7497,7 +7547,7 @@
       "label": "Voir aussi",
       "file_type": "document",
       "source_file": "docs/technical/infra.md",
-      "source_location": "L281",
+      "source_location": "L307",
       "_origin": "ast",
       "id": "technical_infra_voir_aussi",
       "community": 23,
@@ -7784,7 +7834,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 5,
       "norm_label": "pnpm workspace package globs",
       "id": "pnpm_workspace_packages"
     },
@@ -7810,7 +7860,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 5,
       "norm_label": "@occulis/server package.json",
       "id": "server_package_manifest"
     },
@@ -7927,7 +7977,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 5,
       "norm_label": "matches table",
       "id": "migrations_0001_init_matches"
     },
@@ -7940,7 +7990,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 5,
       "norm_label": "match_actions table",
       "id": "migrations_0001_init_match_actions"
     },
@@ -7966,7 +8016,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 5,
       "norm_label": "matchdo.fetch()",
       "id": "src_match_do_fetch"
     },
@@ -7979,7 +8029,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 5,
       "norm_label": "matchdo.websocketmessage()",
       "id": "src_match_do_websocketmessage"
     },
@@ -7992,7 +8042,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 5,
       "norm_label": "matchdo.play()",
       "id": "src_match_do_play"
     },
@@ -8005,7 +8055,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 5,
       "norm_label": "matchdo.appendtolog()",
       "id": "src_match_do_appendtolog"
     },
@@ -8018,7 +8068,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 5,
       "norm_label": "matchdo.broadcastviews()",
       "id": "src_match_do_broadcastviews"
     },
@@ -8031,7 +8081,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 5,
       "norm_label": "matchdo.send()",
       "id": "src_match_do_send"
     },
@@ -8044,7 +8094,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 5,
       "norm_label": "matchdo.config()",
       "id": "src_match_do_config"
     },
@@ -8057,7 +8107,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 5,
       "norm_label": "matchdo.load()",
       "id": "src_match_do_load"
     },
@@ -8070,7 +8120,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 5,
       "norm_label": "protocol_version constant",
       "id": "src_protocol_protocol_version"
     },
@@ -8083,7 +8133,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 5,
       "norm_label": "current_ruleset_version constant",
       "id": "src_rulesets_current_ruleset_version"
     },
@@ -8096,7 +8146,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 5,
       "norm_label": "occulis project overview",
       "id": "claude_occulis_project"
     },
@@ -8109,7 +8159,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 5,
       "norm_label": "docs/design.md (game design reference)",
       "id": "claude_design_doc"
     },
@@ -8122,7 +8172,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 5,
       "norm_label": "docs/architecture.md (infra/server architecture reference)",
       "id": "claude_architecture_doc"
     },
@@ -8135,7 +8185,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 5,
       "norm_label": "docs/costs.md (infra cost estimates)",
       "id": "claude_costs_doc"
     },
@@ -8148,7 +8198,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 5,
       "norm_label": "docs/setup.md (install procedure)",
       "id": "claude_setup_doc"
     },
@@ -8161,7 +8211,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 5,
       "norm_label": "docs/implementation-notes.md",
       "id": "claude_implementation_notes_doc"
     },
@@ -8174,7 +8224,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 5,
       "norm_label": "docs/technical/ (per-package technical docs)",
       "id": "claude_technical_docs"
     },
@@ -8187,7 +8237,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 5,
       "norm_label": "packages/core (pure game logic)",
       "id": "claude_packages_core"
     },
@@ -8200,7 +8250,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 5,
       "norm_label": "apps/server (cloudflare worker + do)",
       "id": "claude_apps_server"
     },
@@ -8213,7 +8263,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 12,
+      "community": 5,
       "norm_label": "apps/web (vite + pixijs rendering)",
       "id": "claude_apps_web"
     },
@@ -8227,7 +8277,7 @@
       "author": null,
       "contributor": null,
       "rationale": "No Math.random/Date.now/clock in core: replaying an action log must reconstruct the exact game state for persistence and server-side reconstruction; any non-determinism would silently break this.",
-      "community": 12,
+      "community": 5,
       "norm_label": "packages/core strict determinism invariant",
       "id": "claude_core_determinism_invariant"
     },
@@ -8241,7 +8291,7 @@
       "author": null,
       "contributor": null,
       "rationale": "los.ts canonicalizes endpoint order before Bresenham raycast so line-of-sight is symmetric by construction; must not be broken.",
-      "community": 12,
+      "community": 5,
       "norm_label": "los symmetry-by-construction",
       "id": "claude_los_symmetry"
     },
@@ -8255,7 +8305,7 @@
       "author": null,
       "contributor": null,
       "rationale": "The match Durable Object holds GameState and both PlayerKnowledge and sends each player only their own viewFor(); a client cannot receive what the DO never sends, so fog cannot be bypassed via devtools.",
-      "community": 3,
+      "community": 5,
       "norm_label": "fog of war is structural, not applicative",
       "id": "claude_fog_structural"
     },
@@ -8269,7 +8319,7 @@
       "author": null,
       "contributor": null,
       "rationale": "A DO holding an open WebSocket without hibernating costs ~20000x more with no functional difference; must be covered by a dedicated test.",
-      "community": 3,
+      "community": 5,
       "norm_label": "durable object must hibernate",
       "id": "claude_do_hibernation"
     },
@@ -8283,7 +8333,7 @@
       "author": null,
       "contributor": null,
       "rationale": "A second, global DO serves as the matchmaking queue; its single-threading eliminates double pairing by construction.",
-      "community": 3,
+      "community": 5,
       "norm_label": "global matchmaking durable object",
       "id": "claude_matchmaking_do"
     },
@@ -8297,7 +8347,7 @@
       "author": null,
       "contributor": null,
       "rationale": "The DO's in-memory state is a reconstructible cache; the D1 action log is authoritative, relying entirely on core's determinism invariant.",
-      "community": 3,
+      "community": 5,
       "norm_label": "d1 action log is the source of truth",
       "id": "claude_d1_source_of_truth"
     },
@@ -8311,7 +8361,7 @@
       "author": null,
       "contributor": null,
       "rationale": "A match started under ruleset v3 finishes under v3; since the client target is a downloadable Electron app with unlimited thinking time, matches span deployments and old clients embed old core.",
-      "community": 3,
+      "community": 5,
       "norm_label": "rules versioned per match, not per connection",
       "id": "claude_ruleset_versioning"
     },
@@ -8378,7 +8428,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 3,
+      "community": 5,
       "norm_label": "default_scenario",
       "id": "src_scenarios_default_scenario"
     },
@@ -8495,7 +8545,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 5,
+      "community": 3,
       "norm_label": "selection.ts test suite",
       "id": "game_selection_test_suite"
     },
@@ -8521,7 +8571,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 6,
+      "community": 63,
       "norm_label": "messages.ts test suite",
       "id": "ui_messages_test_suite"
     },
@@ -8534,7 +8584,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 51,
+      "community": 0,
       "norm_label": "animation.test.ts suite",
       "id": "view_animation_test_suite"
     },
@@ -8599,7 +8649,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 14,
+      "community": 51,
       "norm_label": "packages/core/src/index.ts (barrel, referenced)",
       "id": "src_index"
     },
@@ -9301,7 +9351,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 14,
+      "community": 53,
       "norm_label": "pipeline gestes/saisie \u2192 application \u2192 rendu",
       "id": "engine_pipeline_concept"
     },
@@ -9842,16 +9892,6 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": ".github/deploy-environments.json",
-      "source_location": "L10",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "github_deploy_environments",
-      "target": "github_deploy_environments_feature_engine"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".github/deploy-environments.json",
       "source_location": "L2",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -9907,26 +9947,6 @@
       "confidence_score": 1.0,
       "source": "github_deploy_environments_staging",
       "target": "github_deploy_environments_staging_wranglerenv"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".github/deploy-environments.json",
-      "source_location": "L12",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "github_deploy_environments_feature_engine",
-      "target": "github_deploy_environments_feature_engine_d1database"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".github/deploy-environments.json",
-      "source_location": "L11",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "github_deploy_environments_feature_engine",
-      "target": "github_deploy_environments_feature_engine_wranglerenv"
     },
     {
       "relation": "contains",
@@ -24806,9 +24826,9 @@
       "source_file": "tooling/infra/package.json",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "infra_package_scripts",
-      "target": "infra_package_scripts_ci",
-      "confidence_score": 1.0
+      "target": "infra_package_scripts_ci"
     },
     {
       "relation": "contains",
@@ -24819,6 +24839,16 @@
       "confidence_score": 1.0,
       "source": "infra_package_scripts",
       "target": "infra_package_scripts_start"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tooling/infra/package.json",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "infra_package_scripts",
+      "target": "infra_package_scripts_test",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -24899,6 +24929,16 @@
       "confidence_score": 1.0,
       "source": "infra_package_devdependencies",
       "target": "infra_package_devdependencies_typescript"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tooling/infra/package.json",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "infra_package_devdependencies",
+      "target": "infra_package_devdependencies_vitest",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -25032,9 +25072,9 @@
       "source_file": "tooling/infra/src/actions.ts",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tooling_infra_src_actions_ts_src_actions",
-      "target": "src_config_isbranchenv",
-      "confidence_score": 1.0
+      "target": "src_config_isbranchenv"
     },
     {
       "relation": "imports",
@@ -25098,9 +25138,9 @@
       "source_file": "tooling/infra/src/actions.ts",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tooling_infra_src_actions_ts_src_actions",
-      "target": "src_deploy_manifest_finddeployenvironment",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_finddeployenvironment"
     },
     {
       "relation": "imports",
@@ -25351,9 +25391,9 @@
       "source_file": "tooling/infra/src/ci.ts",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_ci",
-      "target": "src_actions_level",
-      "confidence_score": 1.0
+      "target": "src_actions_level"
     },
     {
       "relation": "imports",
@@ -25621,9 +25661,9 @@
       "source_file": "tooling/infra/src/ci.ts",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_ci",
-      "target": "src_actions_actions",
-      "confidence_score": 1.0
+      "target": "src_actions_actions"
     },
     {
       "relation": "imports_from",
@@ -25632,9 +25672,9 @@
       "source_file": "tooling/infra/src/ci.ts",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_ci",
-      "target": "components_theme",
-      "confidence_score": 1.0
+      "target": "components_theme"
     },
     {
       "relation": "imports",
@@ -25643,9 +25683,9 @@
       "source_file": "tooling/infra/src/ci.ts",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_ci",
-      "target": "components_theme_level_color",
-      "confidence_score": 1.0
+      "target": "components_theme_level_color"
     },
     {
       "relation": "imports",
@@ -25654,9 +25694,9 @@
       "source_file": "tooling/infra/src/ci.ts",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_ci",
-      "target": "components_theme_level_prefix",
-      "confidence_score": 1.0
+      "target": "components_theme_level_prefix"
     },
     {
       "relation": "imports_from",
@@ -25665,9 +25705,9 @@
       "source_file": "tooling/infra/src/ci.ts",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_ci",
-      "target": "src_actions",
-      "confidence_score": 1.0
+      "target": "src_actions"
     },
     {
       "relation": "contains",
@@ -25675,9 +25715,9 @@
       "source_file": "tooling/infra/src/ci.ts",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_ci",
-      "target": "src_ci_action",
-      "confidence_score": 1.0
+      "target": "src_ci_action"
     },
     {
       "relation": "contains",
@@ -25685,9 +25725,9 @@
       "source_file": "tooling/infra/src/ci.ts",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_ci",
-      "target": "src_ci_color_code",
-      "confidence_score": 1.0
+      "target": "src_ci_color_code"
     },
     {
       "relation": "contains",
@@ -25695,9 +25735,9 @@
       "source_file": "tooling/infra/src/ci.ts",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_ci",
-      "target": "src_ci_log",
-      "confidence_score": 1.0
+      "target": "src_ci_log"
     },
     {
       "relation": "imports",
@@ -25925,9 +25965,9 @@
       "source_file": "tooling/infra/src/components/App.tsx",
       "source_location": "L34",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_app",
-      "target": "components_app_envitems",
-      "confidence_score": 1.0
+      "target": "components_app_envitems"
     },
     {
       "relation": "contains",
@@ -26108,9 +26148,9 @@
       "source_file": "tooling/infra/src/components/App.tsx",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_app",
-      "target": "src_deploy_manifest",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest"
     },
     {
       "relation": "imports",
@@ -26119,9 +26159,9 @@
       "source_file": "tooling/infra/src/components/App.tsx",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_app",
-      "target": "src_deploy_manifest_finddeployenvironment",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_finddeployenvironment"
     },
     {
       "relation": "imports",
@@ -26130,9 +26170,9 @@
       "source_file": "tooling/infra/src/components/App.tsx",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_app",
-      "target": "src_deploy_manifest_listbranchenvnames",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_listbranchenvnames"
     },
     {
       "relation": "imports_from",
@@ -26185,9 +26225,9 @@
       "source_file": "tooling/infra/src/components/App.tsx",
       "source_location": "L43",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_app_envitems",
-      "target": "src_config_dbname",
-      "confidence_score": 1.0
+      "target": "src_config_dbname"
     },
     {
       "relation": "calls",
@@ -26196,9 +26236,9 @@
       "source_file": "tooling/infra/src/components/App.tsx",
       "source_location": "L46",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_app_envitems",
-      "target": "src_config_listenvnames",
-      "confidence_score": 1.0
+      "target": "src_config_listenvnames"
     },
     {
       "relation": "calls",
@@ -26207,9 +26247,9 @@
       "source_file": "tooling/infra/src/components/App.tsx",
       "source_location": "L37",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_app_envitems",
-      "target": "src_deploy_manifest_finddeployenvironment",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_finddeployenvironment"
     },
     {
       "relation": "calls",
@@ -26218,9 +26258,9 @@
       "source_file": "tooling/infra/src/components/App.tsx",
       "source_location": "L36",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_app_envitems",
-      "target": "src_deploy_manifest_listbranchenvnames",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_listbranchenvnames"
     },
     {
       "relation": "calls",
@@ -26657,6 +26697,61 @@
       "target": "components_usemouse_usemouse"
     },
     {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "tooling/infra/src/config.test.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_config_test",
+      "target": "src_config",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "tooling/infra/src/config.test.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_config_test",
+      "target": "src_config_dbname",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "tooling/infra/src/config.test.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_config_test",
+      "target": "src_config_envflag",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "tooling/infra/src/config.test.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_config_test",
+      "target": "src_config_isbranchenv",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "tooling/infra/src/config.test.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_config_test",
+      "target": "src_config_slugifybranch",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tooling/infra/src/config.ts",
@@ -26722,9 +26817,9 @@
       "source_file": "tooling/infra/src/config.ts",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_config",
-      "target": "src_config_isbranchenv",
-      "confidence_score": 1.0
+      "target": "src_config_isbranchenv"
     },
     {
       "relation": "contains",
@@ -26971,9 +27066,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest",
-      "target": "src_config_envname",
-      "confidence_score": 1.0
+      "target": "src_config_envname"
     },
     {
       "relation": "references",
@@ -26982,9 +27077,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest_deployenvironment",
-      "target": "src_config_envname",
-      "confidence_score": 1.0
+      "target": "src_config_envname"
     },
     {
       "relation": "imports",
@@ -27084,9 +27179,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest",
-      "target": "src_config_isbranchenv",
-      "confidence_score": 1.0
+      "target": "src_config_isbranchenv"
     },
     {
       "relation": "imports",
@@ -27095,9 +27190,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest",
-      "target": "src_config_listenvnames",
-      "confidence_score": 1.0
+      "target": "src_config_listenvnames"
     },
     {
       "relation": "calls",
@@ -27133,12 +27228,22 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "tooling/infra/src/deploy-manifest.test.ts",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "src_deploy_manifest_test",
+      "target": "src_deploy_manifest_test_fixture",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest",
-      "target": "src_deploy_manifest_deployenvironment",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_deployenvironment"
     },
     {
       "relation": "contains",
@@ -27146,9 +27251,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L43",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest",
-      "target": "src_deploy_manifest_finddeployenvironment",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_finddeployenvironment"
     },
     {
       "relation": "contains",
@@ -27156,9 +27261,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L51",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest",
-      "target": "src_deploy_manifest_listbranchenvnames",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_listbranchenvnames"
     },
     {
       "relation": "contains",
@@ -27166,9 +27271,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L36",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest",
-      "target": "src_deploy_manifest_listdeployenvironments",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_listdeployenvironments"
     },
     {
       "relation": "contains",
@@ -27186,9 +27291,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest",
-      "target": "src_deploy_manifest_read",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_read"
     },
     {
       "relation": "contains",
@@ -27216,9 +27321,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L17",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest",
-      "target": "src_deploy_manifest_write",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_write"
     },
     {
       "relation": "calls",
@@ -27227,9 +27332,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L37",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest_listdeployenvironments",
-      "target": "src_deploy_manifest_read",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_read"
     },
     {
       "relation": "calls",
@@ -27238,9 +27343,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L57",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest_removedeployenvironment",
-      "target": "src_deploy_manifest_read",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_read"
     },
     {
       "relation": "calls",
@@ -27249,9 +27354,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest_upsertdeployenvironment",
-      "target": "src_deploy_manifest_read",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_read"
     },
     {
       "relation": "calls",
@@ -27260,9 +27365,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L60",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest_removedeployenvironment",
-      "target": "src_deploy_manifest_write",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_write"
     },
     {
       "relation": "calls",
@@ -27271,9 +27376,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L32",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest_upsertdeployenvironment",
-      "target": "src_deploy_manifest_write",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_write"
     },
     {
       "relation": "calls",
@@ -27292,9 +27397,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L44",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest_finddeployenvironment",
-      "target": "src_deploy_manifest_listdeployenvironments",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_listdeployenvironments"
     },
     {
       "relation": "calls",
@@ -27303,9 +27408,9 @@
       "source_file": "tooling/infra/src/deploy-manifest.ts",
       "source_location": "L52",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_deploy_manifest_listbranchenvnames",
-      "target": "src_deploy_manifest_listdeployenvironments",
-      "confidence_score": 1.0
+      "target": "src_deploy_manifest_listdeployenvironments"
     },
     {
       "relation": "calls",
@@ -27524,6 +27629,16 @@
       "weight": 1.0,
       "source": "src_git_pushcurrentbranch",
       "target": "src_wrangler_runstreaming"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tooling/infra/src/toml.test.ts",
+      "source_location": "L49",
+      "weight": 1.0,
+      "source": "src_toml_test",
+      "target": "src_toml_test_read",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -28167,9 +28282,9 @@
       "source_file": ".claude/CLAUDE.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_claude",
-      "target": "claude_claude_graphify",
-      "confidence_score": 1.0
+      "target": "claude_claude_graphify"
     },
     {
       "relation": "contains",
@@ -28177,9 +28292,9 @@
       "source_file": ".github/deploy-environments.README.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "github_deploy_environments_readme",
-      "target": "github_deploy_environments_readme_branches_d\u00e9ploy\u00e9es",
-      "confidence_score": 1.0
+      "target": "github_deploy_environments_readme_branches_d\u00e9ploy\u00e9es"
     },
     {
       "relation": "contains",
@@ -28187,9 +28302,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude",
-      "target": "claude_occulis",
-      "confidence_score": 1.0
+      "target": "claude_occulis"
     },
     {
       "relation": "contains",
@@ -28197,9 +28312,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_occulis",
-      "target": "claude_commandes",
-      "confidence_score": 1.0
+      "target": "claude_commandes"
     },
     {
       "relation": "contains",
@@ -28207,9 +28322,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_occulis",
-      "target": "claude_conventions",
-      "confidence_score": 1.0
+      "target": "claude_conventions"
     },
     {
       "relation": "contains",
@@ -28217,9 +28332,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L86",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_occulis",
-      "target": "claude_graphify",
-      "confidence_score": 1.0
+      "target": "claude_graphify"
     },
     {
       "relation": "contains",
@@ -28227,9 +28342,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L39",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_occulis",
-      "target": "claude_infrastructure_et_ci_cd",
-      "confidence_score": 1.0
+      "target": "claude_infrastructure_et_ci_cd"
     },
     {
       "relation": "contains",
@@ -28237,9 +28352,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L58",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_occulis",
-      "target": "claude_modules_de_packages_core",
-      "confidence_score": 1.0
+      "target": "claude_modules_de_packages_core"
     },
     {
       "relation": "contains",
@@ -28247,9 +28362,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_occulis",
-      "target": "claude_stack_et_architecture",
-      "confidence_score": 1.0
+      "target": "claude_stack_et_architecture"
     },
     {
       "relation": "contains",
@@ -28257,9 +28372,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L74",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_occulis",
-      "target": "claude_\u00e9tat_du_projet",
-      "confidence_score": 1.0
+      "target": "claude_\u00e9tat_du_projet"
     },
     {
       "relation": "contains",
@@ -28267,9 +28382,9 @@
       "source_file": "docs/architecture.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture",
-      "target": "docs_architecture_occulis_architecture_technique",
-      "confidence_score": 1.0
+      "target": "docs_architecture_occulis_architecture_technique"
     },
     {
       "relation": "cites",
@@ -28317,9 +28432,9 @@
       "source_file": "docs/architecture.md",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_occulis_architecture_technique",
-      "target": "docs_architecture_1_cible_de_distribution",
-      "confidence_score": 1.0
+      "target": "docs_architecture_1_cible_de_distribution"
     },
     {
       "relation": "contains",
@@ -28327,9 +28442,9 @@
       "source_file": "docs/architecture.md",
       "source_location": "L35",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_occulis_architecture_technique",
-      "target": "docs_architecture_2_h\u00e9bergement_cloudflare_worker_durable_objects",
-      "confidence_score": 1.0
+      "target": "docs_architecture_2_h\u00e9bergement_cloudflare_worker_durable_objects"
     },
     {
       "relation": "contains",
@@ -28337,9 +28452,9 @@
       "source_file": "docs/architecture.md",
       "source_location": "L59",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_occulis_architecture_technique",
-      "target": "docs_architecture_3_base_de_donn\u00e9es_d1",
-      "confidence_score": 1.0
+      "target": "docs_architecture_3_base_de_donn\u00e9es_d1"
     },
     {
       "relation": "contains",
@@ -28347,9 +28462,9 @@
       "source_file": "docs/architecture.md",
       "source_location": "L98",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_occulis_architecture_technique",
-      "target": "docs_architecture_4_environnements",
-      "confidence_score": 1.0
+      "target": "docs_architecture_4_environnements"
     },
     {
       "relation": "contains",
@@ -28357,9 +28472,9 @@
       "source_file": "docs/architecture.md",
       "source_location": "L160",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_occulis_architecture_technique",
-      "target": "docs_architecture_5_ci_cd",
-      "confidence_score": 1.0
+      "target": "docs_architecture_5_ci_cd"
     },
     {
       "relation": "contains",
@@ -28367,9 +28482,9 @@
       "source_file": "docs/architecture.md",
       "source_location": "L214",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_occulis_architecture_technique",
-      "target": "docs_architecture_6_co\u00fbts",
-      "confidence_score": 1.0
+      "target": "docs_architecture_6_co\u00fbts"
     },
     {
       "relation": "contains",
@@ -28377,9 +28492,9 @@
       "source_file": "docs/architecture.md",
       "source_location": "L223",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_occulis_architecture_technique",
-      "target": "docs_architecture_7_points_ouverts",
-      "confidence_score": 1.0
+      "target": "docs_architecture_7_points_ouverts"
     },
     {
       "relation": "contains",
@@ -28387,9 +28502,9 @@
       "source_file": "docs/architecture.md",
       "source_location": "L21",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_1_cible_de_distribution",
-      "target": "docs_architecture_cons\u00e9quence_versionner_les_r\u00e8gles_par_partie",
-      "confidence_score": 1.0
+      "target": "docs_architecture_cons\u00e9quence_versionner_les_r\u00e8gles_par_partie"
     },
     {
       "relation": "contains",
@@ -28397,9 +28512,9 @@
       "source_file": "docs/architecture.md",
       "source_location": "L86",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_3_base_de_donn\u00e9es_d1",
-      "target": "docs_architecture_le_log_d_actions_est_la_source_de_v\u00e9rit\u00e9",
-      "confidence_score": 1.0
+      "target": "docs_architecture_le_log_d_actions_est_la_source_de_v\u00e9rit\u00e9"
     },
     {
       "relation": "contains",
@@ -28407,9 +28522,9 @@
       "source_file": "docs/architecture.md",
       "source_location": "L71",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_3_base_de_donn\u00e9es_d1",
-      "target": "docs_architecture_r\u00e9partition_des_donn\u00e9es",
-      "confidence_score": 1.0
+      "target": "docs_architecture_r\u00e9partition_des_donn\u00e9es"
     },
     {
       "relation": "contains",
@@ -28417,9 +28532,9 @@
       "source_file": "docs/architecture.md",
       "source_location": "L140",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_architecture_4_environnements",
-      "target": "docs_architecture_s\u00e9lection_des_branches_h\u00e9berg\u00e9es",
-      "confidence_score": 1.0
+      "target": "docs_architecture_s\u00e9lection_des_branches_h\u00e9berg\u00e9es"
     },
     {
       "relation": "references",
@@ -28457,9 +28572,9 @@
       "source_file": "docs/costs.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_costs",
-      "target": "docs_costs_occulis_estimation_des_co\u00fbts",
-      "confidence_score": 1.0
+      "target": "docs_costs_occulis_estimation_des_co\u00fbts"
     },
     {
       "relation": "cites",
@@ -28487,9 +28602,9 @@
       "source_file": "docs/costs.md",
       "source_location": "L44",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_costs_occulis_estimation_des_co\u00fbts",
-      "target": "docs_costs_co\u00fbts_hors_h\u00e9bergement",
-      "confidence_score": 1.0
+      "target": "docs_costs_co\u00fbts_hors_h\u00e9bergement"
     },
     {
       "relation": "contains",
@@ -28497,9 +28612,9 @@
       "source_file": "docs/costs.md",
       "source_location": "L30",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_costs_occulis_estimation_des_co\u00fbts",
-      "target": "docs_costs_l_hibernation_est_une_condition_pas_une_optimisation",
-      "confidence_score": 1.0
+      "target": "docs_costs_l_hibernation_est_une_condition_pas_une_optimisation"
     },
     {
       "relation": "contains",
@@ -28507,9 +28622,9 @@
       "source_file": "docs/costs.md",
       "source_location": "L38",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_costs_occulis_estimation_des_co\u00fbts",
-      "target": "docs_costs_non_chiffr\u00e9",
-      "confidence_score": 1.0
+      "target": "docs_costs_non_chiffr\u00e9"
     },
     {
       "relation": "contains",
@@ -28517,9 +28632,9 @@
       "source_file": "docs/design.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design",
-      "target": "docs_design_occulis_document_de_conception_r\u00e9capitulatif_d_it\u00e9ration",
-      "confidence_score": 1.0
+      "target": "docs_design_occulis_document_de_conception_r\u00e9capitulatif_d_it\u00e9ration"
     },
     {
       "relation": "cites",
@@ -28567,9 +28682,9 @@
       "source_file": "docs/design.md",
       "source_location": "L166",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_occulis_document_de_conception_r\u00e9capitulatif_d_it\u00e9ration",
-      "target": "docs_design_10_r\u00e9capitulatif_points_ouverts_\u00e0_trancher_\u00e0_date_de_ce_document",
-      "confidence_score": 1.0
+      "target": "docs_design_10_r\u00e9capitulatif_points_ouverts_\u00e0_trancher_\u00e0_date_de_ce_document"
     },
     {
       "relation": "contains",
@@ -28577,9 +28692,9 @@
       "source_file": "docs/design.md",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_occulis_document_de_conception_r\u00e9capitulatif_d_it\u00e9ration",
-      "target": "docs_design_1_pitch",
-      "confidence_score": 1.0
+      "target": "docs_design_1_pitch"
     },
     {
       "relation": "contains",
@@ -28587,9 +28702,9 @@
       "source_file": "docs/design.md",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_occulis_document_de_conception_r\u00e9capitulatif_d_it\u00e9ration",
-      "target": "docs_design_2_piliers_de_design_non_n\u00e9gociables_valid\u00e9s",
-      "confidence_score": 1.0
+      "target": "docs_design_2_piliers_de_design_non_n\u00e9gociables_valid\u00e9s"
     },
     {
       "relation": "contains",
@@ -28597,9 +28712,9 @@
       "source_file": "docs/design.md",
       "source_location": "L21",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_occulis_document_de_conception_r\u00e9capitulatif_d_it\u00e9ration",
-      "target": "docs_design_3_r\u00e8gles_de_capture_\u00e9tat_valid\u00e9",
-      "confidence_score": 1.0
+      "target": "docs_design_3_r\u00e8gles_de_capture_\u00e9tat_valid\u00e9"
     },
     {
       "relation": "contains",
@@ -28607,9 +28722,9 @@
       "source_file": "docs/design.md",
       "source_location": "L42",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_occulis_document_de_conception_r\u00e9capitulatif_d_it\u00e9ration",
-      "target": "docs_design_4_pi\u00e8ges",
-      "confidence_score": 1.0
+      "target": "docs_design_4_pi\u00e8ges"
     },
     {
       "relation": "contains",
@@ -28617,9 +28732,9 @@
       "source_file": "docs/design.md",
       "source_location": "L48",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_occulis_document_de_conception_r\u00e9capitulatif_d_it\u00e9ration",
-      "target": "docs_design_5_ligne_de_vue_los_hauteur_fog_of_war",
-      "confidence_score": 1.0
+      "target": "docs_design_5_ligne_de_vue_los_hauteur_fog_of_war"
     },
     {
       "relation": "contains",
@@ -28627,9 +28742,9 @@
       "source_file": "docs/design.md",
       "source_location": "L77",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_occulis_document_de_conception_r\u00e9capitulatif_d_it\u00e9ration",
-      "target": "docs_design_6_historique_des_it\u00e9rations_sur_le_tour_et_la_capture_pour_ne_pas_revalider_ce_qui_a_\u00e9t\u00e9_\u00e9cart\u00e9",
-      "confidence_score": 1.0
+      "target": "docs_design_6_historique_des_it\u00e9rations_sur_le_tour_et_la_capture_pour_ne_pas_revalider_ce_qui_a_\u00e9t\u00e9_\u00e9cart\u00e9"
     },
     {
       "relation": "contains",
@@ -28637,9 +28752,9 @@
       "source_file": "docs/design.md",
       "source_location": "L89",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_occulis_document_de_conception_r\u00e9capitulatif_d_it\u00e9ration",
-      "target": "docs_design_7_d\u00e9ploiement_et_fin_de_partie",
-      "confidence_score": 1.0
+      "target": "docs_design_7_d\u00e9ploiement_et_fin_de_partie"
     },
     {
       "relation": "contains",
@@ -28647,9 +28762,9 @@
       "source_file": "docs/design.md",
       "source_location": "L98",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_occulis_document_de_conception_r\u00e9capitulatif_d_it\u00e9ration",
-      "target": "docs_design_8_choix_technique",
-      "confidence_score": 1.0
+      "target": "docs_design_8_choix_technique"
     },
     {
       "relation": "contains",
@@ -28657,9 +28772,9 @@
       "source_file": "docs/design.md",
       "source_location": "L154",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_occulis_document_de_conception_r\u00e9capitulatif_d_it\u00e9ration",
-      "target": "docs_design_9_nom_du_projet",
-      "confidence_score": 1.0
+      "target": "docs_design_9_nom_du_projet"
     },
     {
       "relation": "contains",
@@ -28667,9 +28782,9 @@
       "source_file": "docs/design.md",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_3_r\u00e8gles_de_capture_\u00e9tat_valid\u00e9",
-      "target": "docs_design_3_1_attaque_de_m\u00eal\u00e9e_r\u00e8gle_de_base_toutes_les_pi\u00e8ces",
-      "confidence_score": 1.0
+      "target": "docs_design_3_1_attaque_de_m\u00eal\u00e9e_r\u00e8gle_de_base_toutes_les_pi\u00e8ces"
     },
     {
       "relation": "contains",
@@ -28677,9 +28792,9 @@
       "source_file": "docs/design.md",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_3_r\u00e8gles_de_capture_\u00e9tat_valid\u00e9",
-      "target": "docs_design_3_2_attaque_\u00e0_distance_capacit\u00e9_sp\u00e9ciale_certaines_pi\u00e8ces_seulement",
-      "confidence_score": 1.0
+      "target": "docs_design_3_2_attaque_\u00e0_distance_capacit\u00e9_sp\u00e9ciale_certaines_pi\u00e8ces_seulement"
     },
     {
       "relation": "contains",
@@ -28687,9 +28802,9 @@
       "source_file": "docs/design.md",
       "source_location": "L36",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_3_r\u00e8gles_de_capture_\u00e9tat_valid\u00e9",
-      "target": "docs_design_3_3_point_ouvert_non_r\u00e9solu",
-      "confidence_score": 1.0
+      "target": "docs_design_3_3_point_ouvert_non_r\u00e9solu"
     },
     {
       "relation": "contains",
@@ -28697,9 +28812,9 @@
       "source_file": "docs/design.md",
       "source_location": "L50",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_5_ligne_de_vue_los_hauteur_fog_of_war",
-      "target": "docs_design_5_1_d\u00e9cision_fondatrice",
-      "confidence_score": 1.0
+      "target": "docs_design_5_1_d\u00e9cision_fondatrice"
     },
     {
       "relation": "contains",
@@ -28707,9 +28822,9 @@
       "source_file": "docs/design.md",
       "source_location": "L54",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_5_ligne_de_vue_los_hauteur_fog_of_war",
-      "target": "docs_design_5_2_distinction_fondamentale_visibilit\u00e9_port\u00e9e",
-      "confidence_score": 1.0
+      "target": "docs_design_5_2_distinction_fondamentale_visibilit\u00e9_port\u00e9e"
     },
     {
       "relation": "contains",
@@ -28717,9 +28832,9 @@
       "source_file": "docs/design.md",
       "source_location": "L60",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_5_ligne_de_vue_los_hauteur_fog_of_war",
-      "target": "docs_design_5_3_r\u00e8gles_de_hauteur_m\u00eal\u00e9e_adjacence",
-      "confidence_score": 1.0
+      "target": "docs_design_5_3_r\u00e8gles_de_hauteur_m\u00eal\u00e9e_adjacence"
     },
     {
       "relation": "contains",
@@ -28727,9 +28842,9 @@
       "source_file": "docs/design.md",
       "source_location": "L71",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_5_ligne_de_vue_los_hauteur_fog_of_war",
-      "target": "docs_design_5_4_fog_of_war_confirm\u00e9",
-      "confidence_score": 1.0
+      "target": "docs_design_5_4_fog_of_war_confirm\u00e9"
     },
     {
       "relation": "contains",
@@ -28737,9 +28852,9 @@
       "source_file": "docs/design.md",
       "source_location": "L107",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_8_choix_technique",
-      "target": "docs_design_8_1_direction_artistique_et_cam\u00e9ra_d\u00e9cisions_provisoires",
-      "confidence_score": 1.0
+      "target": "docs_design_8_1_direction_artistique_et_cam\u00e9ra_d\u00e9cisions_provisoires"
     },
     {
       "relation": "contains",
@@ -28747,9 +28862,9 @@
       "source_file": "docs/design.md",
       "source_location": "L188",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_10_r\u00e9capitulatif_points_ouverts_\u00e0_trancher_\u00e0_date_de_ce_document",
-      "target": "docs_design_cadre_g\u00e9n\u00e9ral",
-      "confidence_score": 1.0
+      "target": "docs_design_cadre_g\u00e9n\u00e9ral"
     },
     {
       "relation": "contains",
@@ -28757,9 +28872,9 @@
       "source_file": "docs/design.md",
       "source_location": "L181",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_10_r\u00e9capitulatif_points_ouverts_\u00e0_trancher_\u00e0_date_de_ce_document",
-      "target": "docs_design_design_des_pi\u00e8ces_capacit\u00e9s_sp\u00e9ciales_mentionn\u00e9es_jamais_d\u00e9taill\u00e9es",
-      "confidence_score": 1.0
+      "target": "docs_design_design_des_pi\u00e8ces_capacit\u00e9s_sp\u00e9ciales_mentionn\u00e9es_jamais_d\u00e9taill\u00e9es"
     },
     {
       "relation": "contains",
@@ -28767,9 +28882,9 @@
       "source_file": "docs/design.md",
       "source_location": "L168",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_10_r\u00e9capitulatif_points_ouverts_\u00e0_trancher_\u00e0_date_de_ce_document",
-      "target": "docs_design_m\u00e9caniques_de_jeu",
-      "confidence_score": 1.0
+      "target": "docs_design_m\u00e9caniques_de_jeu"
     },
     {
       "relation": "contains",
@@ -28777,9 +28892,9 @@
       "source_file": "docs/design.md",
       "source_location": "L176",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_design_10_r\u00e9capitulatif_points_ouverts_\u00e0_trancher_\u00e0_date_de_ce_document",
-      "target": "docs_design_verticalit\u00e9_hauteur",
-      "confidence_score": 1.0
+      "target": "docs_design_verticalit\u00e9_hauteur"
     },
     {
       "relation": "contains",
@@ -28787,9 +28902,9 @@
       "source_file": "docs/implementation-notes.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_implementation_notes",
-      "target": "docs_implementation_notes_notes_d_impl\u00e9mentation_interpr\u00e9tations_\u00e0_valider",
-      "confidence_score": 1.0
+      "target": "docs_implementation_notes_notes_d_impl\u00e9mentation_interpr\u00e9tations_\u00e0_valider"
     },
     {
       "relation": "references",
@@ -28827,9 +28942,9 @@
       "source_file": "docs/implementation-notes.md",
       "source_location": "L44",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_implementation_notes_notes_d_impl\u00e9mentation_interpr\u00e9tations_\u00e0_valider",
-      "target": "docs_implementation_notes_correctifs_notables",
-      "confidence_score": 1.0
+      "target": "docs_implementation_notes_correctifs_notables"
     },
     {
       "relation": "contains",
@@ -28837,9 +28952,9 @@
       "source_file": "docs/implementation-notes.md",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_implementation_notes_notes_d_impl\u00e9mentation_interpr\u00e9tations_\u00e0_valider",
-      "target": "docs_implementation_notes_d\u00e9cisions_volontairement_non_impl\u00e9ment\u00e9es",
-      "confidence_score": 1.0
+      "target": "docs_implementation_notes_d\u00e9cisions_volontairement_non_impl\u00e9ment\u00e9es"
     },
     {
       "relation": "contains",
@@ -28847,9 +28962,9 @@
       "source_file": "docs/implementation-notes.md",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_implementation_notes_notes_d_impl\u00e9mentation_interpr\u00e9tations_\u00e0_valider",
-      "target": "docs_implementation_notes_interpr\u00e9tations_encod\u00e9es",
-      "confidence_score": 1.0
+      "target": "docs_implementation_notes_interpr\u00e9tations_encod\u00e9es"
     },
     {
       "relation": "contains",
@@ -28857,9 +28972,9 @@
       "source_file": "docs/setup.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_setup",
-      "target": "docs_setup_occulis_mise_en_place_de_l_infrastructure",
-      "confidence_score": 1.0
+      "target": "docs_setup_occulis_mise_en_place_de_l_infrastructure"
     },
     {
       "relation": "references",
@@ -28897,9 +29012,9 @@
       "source_file": "docs/setup.md",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_setup_occulis_mise_en_place_de_l_infrastructure",
-      "target": "docs_setup_0_pr\u00e9alables",
-      "confidence_score": 1.0
+      "target": "docs_setup_0_pr\u00e9alables"
     },
     {
       "relation": "contains",
@@ -28907,9 +29022,9 @@
       "source_file": "docs/setup.md",
       "source_location": "L33",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_setup_occulis_mise_en_place_de_l_infrastructure",
-      "target": "docs_setup_1_outillage_local",
-      "confidence_score": 1.0
+      "target": "docs_setup_1_outillage_local"
     },
     {
       "relation": "contains",
@@ -28917,9 +29032,9 @@
       "source_file": "docs/setup.md",
       "source_location": "L45",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_setup_occulis_mise_en_place_de_l_infrastructure",
-      "target": "docs_setup_2_d\u00e9veloppement_local",
-      "confidence_score": 1.0
+      "target": "docs_setup_2_d\u00e9veloppement_local"
     },
     {
       "relation": "contains",
@@ -28927,9 +29042,9 @@
       "source_file": "docs/setup.md",
       "source_location": "L57",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_setup_occulis_mise_en_place_de_l_infrastructure",
-      "target": "docs_setup_3_cr\u00e9er_les_bases_distantes",
-      "confidence_score": 1.0
+      "target": "docs_setup_3_cr\u00e9er_les_bases_distantes"
     },
     {
       "relation": "contains",
@@ -28937,9 +29052,9 @@
       "source_file": "docs/setup.md",
       "source_location": "L73",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_setup_occulis_mise_en_place_de_l_infrastructure",
-      "target": "docs_setup_4_premier_d\u00e9ploiement_en_recette",
-      "confidence_score": 1.0
+      "target": "docs_setup_4_premier_d\u00e9ploiement_en_recette"
     },
     {
       "relation": "contains",
@@ -28947,9 +29062,9 @@
       "source_file": "docs/setup.md",
       "source_location": "L90",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_setup_occulis_mise_en_place_de_l_infrastructure",
-      "target": "docs_setup_5_secrets_pour_la_ci",
-      "confidence_score": 1.0
+      "target": "docs_setup_5_secrets_pour_la_ci"
     },
     {
       "relation": "contains",
@@ -28957,9 +29072,9 @@
       "source_file": "docs/setup.md",
       "source_location": "L127",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_setup_occulis_mise_en_place_de_l_infrastructure",
-      "target": "docs_setup_6_d\u00e9clencher_un_d\u00e9ploiement",
-      "confidence_score": 1.0
+      "target": "docs_setup_6_d\u00e9clencher_un_d\u00e9ploiement"
     },
     {
       "relation": "contains",
@@ -28967,9 +29082,9 @@
       "source_file": "docs/setup.md",
       "source_location": "L156",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_setup_occulis_mise_en_place_de_l_infrastructure",
-      "target": "docs_setup_7_ce_qui_reste_\u00e0_\u00e9crire",
-      "confidence_score": 1.0
+      "target": "docs_setup_7_ce_qui_reste_\u00e0_\u00e9crire"
     },
     {
       "relation": "references",
@@ -29027,9 +29142,9 @@
       "source_file": "docs/technical/README.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_readme",
-      "target": "technical_readme_documentation_technique",
-      "confidence_score": 1.0
+      "target": "technical_readme_documentation_technique"
     },
     {
       "relation": "cites",
@@ -29047,9 +29162,9 @@
       "source_file": "docs/technical/README.md",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_readme_documentation_technique",
-      "target": "technical_readme_carte_du_syst\u00e8me",
-      "confidence_score": 1.0
+      "target": "technical_readme_carte_du_syst\u00e8me"
     },
     {
       "relation": "contains",
@@ -29057,9 +29172,9 @@
       "source_file": "docs/technical/README.md",
       "source_location": "L53",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_readme_documentation_technique",
-      "target": "technical_readme_l_\u00e9tat_r\u00e9el_du_c\u00e2blage",
-      "confidence_score": 1.0
+      "target": "technical_readme_l_\u00e9tat_r\u00e9el_du_c\u00e2blage"
     },
     {
       "relation": "contains",
@@ -29067,9 +29182,9 @@
       "source_file": "docs/technical/README.md",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_readme_documentation_technique",
-      "target": "technical_readme_les_quatre_documents",
-      "confidence_score": 1.0
+      "target": "technical_readme_les_quatre_documents"
     },
     {
       "relation": "contains",
@@ -29077,9 +29192,9 @@
       "source_file": "docs/technical/README.md",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_readme_documentation_technique",
-      "target": "technical_readme_p\u00e9rim\u00e8tre_et_ce_que_ces_documents_ne_sont_pas",
-      "confidence_score": 1.0
+      "target": "technical_readme_p\u00e9rim\u00e8tre_et_ce_que_ces_documents_ne_sont_pas"
     },
     {
       "relation": "contains",
@@ -29087,9 +29202,9 @@
       "source_file": "docs/technical/README.md",
       "source_location": "L73",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_readme_documentation_technique",
-      "target": "technical_readme_r\u00e8gle_de_maintenance",
-      "confidence_score": 1.0
+      "target": "technical_readme_r\u00e8gle_de_maintenance"
     },
     {
       "relation": "references",
@@ -29167,9 +29282,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core",
-      "target": "technical_core_la_logique_de_jeu_packages_core",
-      "confidence_score": 1.0
+      "target": "technical_core_la_logique_de_jeu_packages_core"
     },
     {
       "relation": "contains",
@@ -29177,9 +29292,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L406",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_la_logique_de_jeu_packages_core",
-      "target": "technical_core_actions_ts_coups_l\u00e9gaux_et_r\u00e9solution",
-      "confidence_score": 1.0
+      "target": "technical_core_actions_ts_coups_l\u00e9gaux_et_r\u00e9solution"
     },
     {
       "relation": "contains",
@@ -29187,9 +29302,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L98",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_la_logique_de_jeu_packages_core",
-      "target": "technical_core_board_ts_le_plateau",
-      "confidence_score": 1.0
+      "target": "technical_core_board_ts_le_plateau"
     },
     {
       "relation": "contains",
@@ -29197,9 +29312,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_la_logique_de_jeu_packages_core",
-      "target": "technical_core_carte_des_modules",
-      "confidence_score": 1.0
+      "target": "technical_core_carte_des_modules"
     },
     {
       "relation": "contains",
@@ -29207,9 +29322,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L72",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_la_logique_de_jeu_packages_core",
-      "target": "technical_core_coord_ts_coordonn\u00e9es_et_grille",
-      "confidence_score": 1.0
+      "target": "technical_core_coord_ts_coordonn\u00e9es_et_grille"
     },
     {
       "relation": "contains",
@@ -29217,9 +29332,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_la_logique_de_jeu_packages_core",
-      "target": "technical_core_deux_invariants_fondateurs",
-      "confidence_score": 1.0
+      "target": "technical_core_deux_invariants_fondateurs"
     },
     {
       "relation": "contains",
@@ -29227,9 +29342,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L473",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_la_logique_de_jeu_packages_core",
-      "target": "technical_core_fog_ts_m\u00e9moire_du_joueur_et_vue_transmissible",
-      "confidence_score": 1.0
+      "target": "technical_core_fog_ts_m\u00e9moire_du_joueur_et_vue_transmissible"
     },
     {
       "relation": "contains",
@@ -29237,9 +29352,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L278",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_la_logique_de_jeu_packages_core",
-      "target": "technical_core_los_ts_la_ligne_de_vue",
-      "confidence_score": 1.0
+      "target": "technical_core_los_ts_la_ligne_de_vue"
     },
     {
       "relation": "contains",
@@ -29247,9 +29362,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L336",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_la_logique_de_jeu_packages_core",
-      "target": "technical_core_movement_ts_d\u00e9placement_et_port\u00e9e_de_m\u00eal\u00e9e",
-      "confidence_score": 1.0
+      "target": "technical_core_movement_ts_d\u00e9placement_et_port\u00e9e_de_m\u00eal\u00e9e"
     },
     {
       "relation": "contains",
@@ -29257,9 +29372,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L555",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_la_logique_de_jeu_packages_core",
-      "target": "technical_core_non_impl\u00e9ment\u00e9",
-      "confidence_score": 1.0
+      "target": "technical_core_non_impl\u00e9ment\u00e9"
     },
     {
       "relation": "contains",
@@ -29267,9 +29382,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L148",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_la_logique_de_jeu_packages_core",
-      "target": "technical_core_pieces_un_type_de_pi\u00e8ce_une_classe",
-      "confidence_score": 1.0
+      "target": "technical_core_pieces_un_type_de_pi\u00e8ce_une_classe"
     },
     {
       "relation": "contains",
@@ -29277,9 +29392,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L371",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_la_logique_de_jeu_packages_core",
-      "target": "technical_core_state_ts_l_\u00e9tat_de_partie",
-      "confidence_score": 1.0
+      "target": "technical_core_state_ts_l_\u00e9tat_de_partie"
     },
     {
       "relation": "contains",
@@ -29287,9 +29402,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L537",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_la_logique_de_jeu_packages_core",
-      "target": "technical_core_tests",
-      "confidence_score": 1.0
+      "target": "technical_core_tests"
     },
     {
       "relation": "contains",
@@ -29297,9 +29412,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L133",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_board_ts_le_plateau",
-      "target": "technical_core_board_fromascii",
-      "confidence_score": 1.0
+      "target": "technical_core_board_fromascii"
     },
     {
       "relation": "contains",
@@ -29307,9 +29422,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L213",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_pieces_un_type_de_pi\u00e8ce_une_classe",
-      "target": "technical_core_pieces_configurable_piece_type_ts_un_type_sans_comportement",
-      "confidence_score": 1.0
+      "target": "technical_core_pieces_configurable_piece_type_ts_un_type_sans_comportement"
     },
     {
       "relation": "contains",
@@ -29317,9 +29432,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L152",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_pieces_un_type_de_pi\u00e8ce_une_classe",
-      "target": "technical_core_pieces_piece_ts_la_donn\u00e9e",
-      "confidence_score": 1.0
+      "target": "technical_core_pieces_piece_ts_la_donn\u00e9e"
     },
     {
       "relation": "contains",
@@ -29327,9 +29442,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L187",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_pieces_un_type_de_pi\u00e8ce_une_classe",
-      "target": "technical_core_pieces_piece_type_ts_le_comportement",
-      "confidence_score": 1.0
+      "target": "technical_core_pieces_piece_type_ts_le_comportement"
     },
     {
       "relation": "contains",
@@ -29337,9 +29452,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L174",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_pieces_un_type_de_pi\u00e8ce_une_classe",
-      "target": "technical_core_pieces_profiles_ts_les_caract\u00e9ristiques_chiffr\u00e9es",
-      "confidence_score": 1.0
+      "target": "technical_core_pieces_profiles_ts_les_caract\u00e9ristiques_chiffr\u00e9es"
     },
     {
       "relation": "contains",
@@ -29347,9 +29462,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L237",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_pieces_un_type_de_pi\u00e8ce_une_classe",
-      "target": "technical_core_pieces_roster_le_roster_provisoire",
-      "confidence_score": 1.0
+      "target": "technical_core_pieces_roster_le_roster_provisoire"
     },
     {
       "relation": "contains",
@@ -29357,9 +29472,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L224",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_pieces_un_type_de_pi\u00e8ce_une_classe",
-      "target": "technical_core_pieces_ruleset_ts_la_table_d_une_partie",
-      "confidence_score": 1.0
+      "target": "technical_core_pieces_ruleset_ts_la_table_d_une_partie"
     },
     {
       "relation": "contains",
@@ -29367,9 +29482,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L299",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_los_ts_la_ligne_de_vue",
-      "target": "technical_core_la_hauteur_du_regard",
-      "confidence_score": 1.0
+      "target": "technical_core_la_hauteur_du_regard"
     },
     {
       "relation": "contains",
@@ -29377,9 +29492,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L312",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_los_ts_la_ligne_de_vue",
-      "target": "technical_core_la_sym\u00e9trie_garantie_par_construction",
-      "confidence_score": 1.0
+      "target": "technical_core_la_sym\u00e9trie_garantie_par_construction"
     },
     {
       "relation": "contains",
@@ -29387,9 +29502,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L324",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_los_ts_la_ligne_de_vue",
-      "target": "technical_core_port\u00e9e_et_hauteur",
-      "confidence_score": 1.0
+      "target": "technical_core_port\u00e9e_et_hauteur"
     },
     {
       "relation": "contains",
@@ -29397,9 +29512,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L352",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_movement_ts_d\u00e9placement_et_port\u00e9e_de_m\u00eal\u00e9e",
-      "target": "technical_core_les_r\u00e8gles_de_verticalit\u00e9_docs_design_md_section_5_3",
-      "confidence_score": 1.0
+      "target": "technical_core_les_r\u00e8gles_de_verticalit\u00e9_docs_design_md_section_5_3"
     },
     {
       "relation": "contains",
@@ -29407,9 +29522,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L453",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_actions_ts_coups_l\u00e9gaux_et_r\u00e9solution",
-      "target": "technical_core_actionerror",
-      "confidence_score": 1.0
+      "target": "technical_core_actionerror"
     },
     {
       "relation": "contains",
@@ -29417,9 +29532,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L442",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_actions_ts_coups_l\u00e9gaux_et_r\u00e9solution",
-      "target": "technical_core_ordre_de_d\u00e9tection_de_la_fin_de_partie",
-      "confidence_score": 1.0
+      "target": "technical_core_ordre_de_d\u00e9tection_de_la_fin_de_partie"
     },
     {
       "relation": "contains",
@@ -29427,9 +29542,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L462",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_actions_ts_coups_l\u00e9gaux_et_r\u00e9solution",
-      "target": "technical_core_un_pi\u00e8ge_de_performance",
-      "confidence_score": 1.0
+      "target": "technical_core_un_pi\u00e8ge_de_performance"
     },
     {
       "relation": "contains",
@@ -29437,9 +29552,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L431",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_actions_ts_coups_l\u00e9gaux_et_r\u00e9solution",
-      "target": "technical_core_une_action_le_tour_complet_d_une_pi\u00e8ce",
-      "confidence_score": 1.0
+      "target": "technical_core_une_action_le_tour_complet_d_une_pi\u00e8ce"
     },
     {
       "relation": "contains",
@@ -29447,9 +29562,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L516",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_fog_ts_m\u00e9moire_du_joueur_et_vue_transmissible",
-      "target": "technical_core_ce_que_playerview_ne_contient_pas",
-      "confidence_score": 1.0
+      "target": "technical_core_ce_que_playerview_ne_contient_pas"
     },
     {
       "relation": "contains",
@@ -29457,9 +29572,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L503",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_fog_ts_m\u00e9moire_du_joueur_et_vue_transmissible",
-      "target": "technical_core_la_r\u00e8gle_de_la_m\u00e9moire_fant\u00f4me",
-      "confidence_score": 1.0
+      "target": "technical_core_la_r\u00e8gle_de_la_m\u00e9moire_fant\u00f4me"
     },
     {
       "relation": "contains",
@@ -29467,9 +29582,9 @@
       "source_file": "docs/technical/core.md",
       "source_location": "L528",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_core_fog_ts_m\u00e9moire_du_joueur_et_vue_transmissible",
-      "target": "technical_core_pourquoi_c_est_le_fog_structurel",
-      "confidence_score": 1.0
+      "target": "technical_core_pourquoi_c_est_le_fog_structurel"
     },
     {
       "relation": "references",
@@ -29507,9 +29622,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine",
-      "target": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "confidence_score": 1.0
+      "target": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web"
     },
     {
       "relation": "contains",
@@ -29517,9 +29632,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L70",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_carte_des_modules",
-      "confidence_score": 1.0
+      "target": "technical_engine_carte_des_modules"
     },
     {
       "relation": "contains",
@@ -29527,9 +29642,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_ce_que_le_client_fait_et_ne_fait_pas",
-      "confidence_score": 1.0
+      "target": "technical_engine_ce_que_le_client_fait_et_ne_fait_pas"
     },
     {
       "relation": "contains",
@@ -29537,9 +29652,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L271",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_game_match_ts_la_partie_locale",
-      "confidence_score": 1.0
+      "target": "technical_engine_game_match_ts_la_partie_locale"
     },
     {
       "relation": "contains",
@@ -29547,9 +29662,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L292",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_game_selection_ts_s\u00e9lection_et_clic",
-      "confidence_score": 1.0
+      "target": "technical_engine_game_selection_ts_s\u00e9lection_et_clic"
     },
     {
       "relation": "contains",
@@ -29557,9 +29672,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L587",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_index_html_et_ui_console_css",
-      "confidence_score": 1.0
+      "target": "technical_engine_index_html_et_ui_console_css"
     },
     {
       "relation": "contains",
@@ -29567,9 +29682,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L412",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_input_controls_ts_les_gestes_du_canevas",
-      "confidence_score": 1.0
+      "target": "technical_engine_input_controls_ts_les_gestes_du_canevas"
     },
     {
       "relation": "contains",
@@ -29577,9 +29692,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L605",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_invariants_\u00e0_ne_pas_casser",
-      "confidence_score": 1.0
+      "target": "technical_engine_invariants_\u00e0_ne_pas_casser"
     },
     {
       "relation": "contains",
@@ -29587,9 +29702,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L17",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_l_organisation_des_dossiers",
-      "confidence_score": 1.0
+      "target": "technical_engine_l_organisation_des_dossiers"
     },
     {
       "relation": "contains",
@@ -29597,9 +29712,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L33",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_le_pipeline_de_bout_en_bout",
-      "confidence_score": 1.0
+      "target": "technical_engine_le_pipeline_de_bout_en_bout"
     },
     {
       "relation": "contains",
@@ -29607,9 +29722,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L560",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_main_ts_la_racine_de_composition",
-      "confidence_score": 1.0
+      "target": "technical_engine_main_ts_la_racine_de_composition"
     },
     {
       "relation": "contains",
@@ -29617,9 +29732,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L642",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_non_impl\u00e9ment\u00e9",
-      "confidence_score": 1.0
+      "target": "technical_engine_non_impl\u00e9ment\u00e9"
     },
     {
       "relation": "contains",
@@ -29627,9 +29742,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L451",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_scene_scene_ts_couches_tri_et_animation",
-      "confidence_score": 1.0
+      "target": "technical_engine_scene_scene_ts_couches_tri_et_animation"
     },
     {
       "relation": "contains",
@@ -29637,9 +29752,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L494",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_scene_terrain_ts_scene_pieces_ts_scene_overlay_ts",
-      "confidence_score": 1.0
+      "target": "technical_engine_scene_terrain_ts_scene_pieces_ts_scene_overlay_ts"
     },
     {
       "relation": "contains",
@@ -29647,9 +29762,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L627",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_tests",
-      "confidence_score": 1.0
+      "target": "technical_engine_tests"
     },
     {
       "relation": "contains",
@@ -29657,9 +29772,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L527",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_theme_ts_le_code_couleur",
-      "confidence_score": 1.0
+      "target": "technical_engine_theme_ts_le_code_couleur"
     },
     {
       "relation": "contains",
@@ -29667,9 +29782,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L337",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_ui_command_ts_la_grammaire_de_saisie",
-      "confidence_score": 1.0
+      "target": "technical_engine_ui_command_ts_la_grammaire_de_saisie"
     },
     {
       "relation": "contains",
@@ -29677,9 +29792,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L363",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_ui_messages_ts_tous_les_textes",
-      "confidence_score": 1.0
+      "target": "technical_engine_ui_messages_ts_tous_les_textes"
     },
     {
       "relation": "contains",
@@ -29687,9 +29802,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L383",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_ui_palette_ts_et_ui_console_ts",
-      "confidence_score": 1.0
+      "target": "technical_engine_ui_palette_ts_et_ui_console_ts"
     },
     {
       "relation": "contains",
@@ -29697,9 +29812,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L241",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_view_animation_ts_le_d\u00e9placement_interpol\u00e9",
-      "confidence_score": 1.0
+      "target": "technical_engine_view_animation_ts_le_d\u00e9placement_interpol\u00e9"
     },
     {
       "relation": "contains",
@@ -29707,9 +29822,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L176",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_view_camera_ts_\u00e9tat_de_cam\u00e9ra",
-      "confidence_score": 1.0
+      "target": "technical_engine_view_camera_ts_\u00e9tat_de_cam\u00e9ra"
     },
     {
       "relation": "contains",
@@ -29717,9 +29832,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L96",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_view_iso_ts_projection_et_g\u00e9om\u00e9trie",
-      "confidence_score": 1.0
+      "target": "technical_engine_view_iso_ts_projection_et_g\u00e9om\u00e9trie"
     },
     {
       "relation": "contains",
@@ -29727,9 +29842,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L226",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_le_moteur_de_rendu_et_le_client_apps_web",
-      "target": "technical_engine_view_picking_ts_quelle_case_est_sous_le_curseur",
-      "confidence_score": 1.0
+      "target": "technical_engine_view_picking_ts_quelle_case_est_sous_le_curseur"
     },
     {
       "relation": "contains",
@@ -29737,9 +29852,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L164",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_view_iso_ts_projection_et_g\u00e9om\u00e9trie",
-      "target": "technical_engine_cliffquads_et_l_ordre_du_peintre",
-      "confidence_score": 1.0
+      "target": "technical_engine_cliffquads_et_l_ordre_du_peintre"
     },
     {
       "relation": "contains",
@@ -29747,9 +29862,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L130",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_view_iso_ts_projection_et_g\u00e9om\u00e9trie",
-      "target": "technical_engine_la_projection_elle_m\u00eame",
-      "confidence_score": 1.0
+      "target": "technical_engine_la_projection_elle_m\u00eame"
     },
     {
       "relation": "contains",
@@ -29757,9 +29872,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L141",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_view_iso_ts_projection_et_g\u00e9om\u00e9trie",
-      "target": "technical_engine_tilequad_pourquoi_les_quatre_coins_sont_projet\u00e9s_s\u00e9par\u00e9ment",
-      "confidence_score": 1.0
+      "target": "technical_engine_tilequad_pourquoi_les_quatre_coins_sont_projet\u00e9s_s\u00e9par\u00e9ment"
     },
     {
       "relation": "contains",
@@ -29767,9 +29882,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L215",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_view_camera_ts_\u00e9tat_de_cam\u00e9ra",
-      "target": "technical_engine_settle",
-      "confidence_score": 1.0
+      "target": "technical_engine_settle"
     },
     {
       "relation": "contains",
@@ -29777,9 +29892,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L204",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_view_camera_ts_\u00e9tat_de_cam\u00e9ra",
-      "target": "technical_engine_zoomat_pourquoi_le_point_sous_le_curseur_ne_bouge_pas",
-      "confidence_score": 1.0
+      "target": "technical_engine_zoomat_pourquoi_le_point_sous_le_curseur_ne_bouge_pas"
     },
     {
       "relation": "contains",
@@ -29787,9 +29902,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L317",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_game_selection_ts_s\u00e9lection_et_clic",
-      "target": "technical_engine_la_machine_\u00e0_\u00e9tats_telle_que_resolveclick_l_encode",
-      "confidence_score": 1.0
+      "target": "technical_engine_la_machine_\u00e0_\u00e9tats_telle_que_resolveclick_l_encode"
     },
     {
       "relation": "contains",
@@ -29797,9 +29912,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L435",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_input_controls_ts_les_gestes_du_canevas",
-      "target": "technical_engine_clic_contre_gliss\u00e9",
-      "confidence_score": 1.0
+      "target": "technical_engine_clic_contre_gliss\u00e9"
     },
     {
       "relation": "contains",
@@ -29807,9 +29922,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L443",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_input_controls_ts_les_gestes_du_canevas",
-      "target": "technical_engine_les_raccourcis_clavier_et_la_saisie",
-      "confidence_score": 1.0
+      "target": "technical_engine_les_raccourcis_clavier_et_la_saisie"
     },
     {
       "relation": "contains",
@@ -29817,9 +29932,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L469",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_scene_scene_ts_couches_tri_et_animation",
-      "target": "technical_engine_conditions_de_r\u00e9\u00e9mission",
-      "confidence_score": 1.0
+      "target": "technical_engine_conditions_de_r\u00e9\u00e9mission"
     },
     {
       "relation": "contains",
@@ -29827,9 +29942,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L477",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_scene_scene_ts_couches_tri_et_animation",
-      "target": "technical_engine_la_liste_unique_de_drawable",
-      "confidence_score": 1.0
+      "target": "technical_engine_la_liste_unique_de_drawable"
     },
     {
       "relation": "contains",
@@ -29837,9 +29952,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L551",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_theme_ts_le_code_couleur",
-      "target": "technical_engine_la_r\u00e8gle_est_m\u00e9canique_pas_conventionnelle",
-      "confidence_score": 1.0
+      "target": "technical_engine_la_r\u00e8gle_est_m\u00e9canique_pas_conventionnelle"
     },
     {
       "relation": "contains",
@@ -29847,9 +29962,9 @@
       "source_file": "docs/technical/engine.md",
       "source_location": "L570",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_engine_main_ts_la_racine_de_composition",
-      "target": "technical_engine_play_et_le_passage_de_main_diff\u00e9r\u00e9",
-      "confidence_score": 1.0
+      "target": "technical_engine_play_et_le_passage_de_main_diff\u00e9r\u00e9"
     },
     {
       "relation": "references",
@@ -29877,9 +29992,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra",
-      "target": "technical_infra_outillage_et_ci_cd_tooling_infra_github",
-      "confidence_score": 1.0
+      "target": "technical_infra_outillage_et_ci_cd_tooling_infra_github"
     },
     {
       "relation": "contains",
@@ -29887,9 +30002,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_outillage_et_ci_cd_tooling_infra_github",
-      "target": "technical_infra_github_deploy_environments_json_le_m\u00e9canisme_de_s\u00e9lection",
-      "confidence_score": 1.0
+      "target": "technical_infra_github_deploy_environments_json_le_m\u00e9canisme_de_s\u00e9lection"
     },
     {
       "relation": "contains",
@@ -29897,9 +30012,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L41",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_outillage_et_ci_cd_tooling_infra_github",
-      "target": "technical_infra_github_workflows_ci_yml_le_pipeline",
-      "confidence_score": 1.0
+      "target": "technical_infra_github_workflows_ci_yml_le_pipeline"
     },
     {
       "relation": "contains",
@@ -29907,9 +30022,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L191",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_outillage_et_ci_cd_tooling_infra_github",
-      "target": "technical_infra_les_actions_de_la_tui",
-      "confidence_score": 1.0
+      "target": "technical_infra_les_actions_de_la_tui"
     },
     {
       "relation": "contains",
@@ -29917,8 +30032,18 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_outillage_et_ci_cd_tooling_infra_github",
-      "target": "technical_infra_les_quatre_environnements",
+      "target": "technical_infra_les_quatre_environnements"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/technical/infra.md",
+      "source_location": "L265",
+      "weight": 1.0,
+      "source": "technical_infra_outillage_et_ci_cd_tooling_infra_github",
+      "target": "technical_infra_les_tests",
       "confidence_score": 1.0
     },
     {
@@ -29927,9 +30052,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L263",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_outillage_et_ci_cd_tooling_infra_github",
-      "target": "technical_infra_points_d_attention",
-      "confidence_score": 1.0
+      "target": "technical_infra_points_d_attention"
     },
     {
       "relation": "contains",
@@ -29937,9 +30062,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L88",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_outillage_et_ci_cd_tooling_infra_github",
-      "target": "technical_infra_tooling_infra_la_tui",
-      "confidence_score": 1.0
+      "target": "technical_infra_tooling_infra_la_tui"
     },
     {
       "relation": "contains",
@@ -29947,9 +30072,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L281",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_outillage_et_ci_cd_tooling_infra_github",
-      "target": "technical_infra_voir_aussi",
-      "confidence_score": 1.0
+      "target": "technical_infra_voir_aussi"
     },
     {
       "relation": "contains",
@@ -29957,9 +30082,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L53",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_github_workflows_ci_yml_le_pipeline",
-      "target": "technical_infra_checks_les_v\u00e9rifications",
-      "confidence_score": 1.0
+      "target": "technical_infra_checks_les_v\u00e9rifications"
     },
     {
       "relation": "contains",
@@ -29967,9 +30092,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L81",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_github_workflows_ci_yml_le_pipeline",
-      "target": "technical_infra_concurrence",
-      "confidence_score": 1.0
+      "target": "technical_infra_concurrence"
     },
     {
       "relation": "contains",
@@ -29977,9 +30102,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L66",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_github_workflows_ci_yml_le_pipeline",
-      "target": "technical_infra_deploy_le_d\u00e9ploiement",
-      "confidence_score": 1.0
+      "target": "technical_infra_deploy_le_d\u00e9ploiement"
     },
     {
       "relation": "contains",
@@ -29987,9 +30112,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L61",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_github_workflows_ci_yml_le_pipeline",
-      "target": "technical_infra_target_r\u00e9soudre_la_branche",
-      "confidence_score": 1.0
+      "target": "technical_infra_target_r\u00e9soudre_la_branche"
     },
     {
       "relation": "contains",
@@ -29997,9 +30122,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L110",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_tooling_infra_la_tui",
-      "target": "technical_infra_config_ts_chemins_et_conventions",
-      "confidence_score": 1.0
+      "target": "technical_infra_config_ts_chemins_et_conventions"
     },
     {
       "relation": "contains",
@@ -30007,9 +30132,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L142",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_tooling_infra_la_tui",
-      "target": "technical_infra_deploy_manifest_ts_\u00e9dition_du_manifeste",
-      "confidence_score": 1.0
+      "target": "technical_infra_deploy_manifest_ts_\u00e9dition_du_manifeste"
     },
     {
       "relation": "contains",
@@ -30017,9 +30142,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L158",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_tooling_infra_la_tui",
-      "target": "technical_infra_git_ts",
-      "confidence_score": 1.0
+      "target": "technical_infra_git_ts"
     },
     {
       "relation": "contains",
@@ -30027,9 +30152,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L93",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_tooling_infra_la_tui",
-      "target": "technical_infra_modules",
-      "confidence_score": 1.0
+      "target": "technical_infra_modules"
     },
     {
       "relation": "contains",
@@ -30037,9 +30162,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L125",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_tooling_infra_la_tui",
-      "target": "technical_infra_toml_ts_\u00e9dition_de_wrangler_toml",
-      "confidence_score": 1.0
+      "target": "technical_infra_toml_ts_\u00e9dition_de_wrangler_toml"
     },
     {
       "relation": "contains",
@@ -30047,9 +30172,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L170",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_tooling_infra_la_tui",
-      "target": "technical_infra_wrangler_ts_ex\u00e9cution_de_processus",
-      "confidence_score": 1.0
+      "target": "technical_infra_wrangler_ts_ex\u00e9cution_de_processus"
     },
     {
       "relation": "contains",
@@ -30057,9 +30182,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L218",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_les_actions_de_la_tui",
-      "target": "technical_infra_cr\u00e9er_un_environnement_de_branche",
-      "confidence_score": 1.0
+      "target": "technical_infra_cr\u00e9er_un_environnement_de_branche"
     },
     {
       "relation": "contains",
@@ -30067,9 +30192,9 @@
       "source_file": "docs/technical/infra.md",
       "source_location": "L232",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_infra_les_actions_de_la_tui",
-      "target": "technical_infra_supprimer_un_environnement_de_branche",
-      "confidence_score": 1.0
+      "target": "technical_infra_supprimer_un_environnement_de_branche"
     },
     {
       "relation": "references",
@@ -30107,9 +30232,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server",
-      "target": "technical_server_le_serveur_apps_server",
-      "confidence_score": 1.0
+      "target": "technical_server_le_serveur_apps_server"
     },
     {
       "relation": "contains",
@@ -30117,9 +30242,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_le_serveur_apps_server",
-      "target": "technical_server_fichiers",
-      "confidence_score": 1.0
+      "target": "technical_server_fichiers"
     },
     {
       "relation": "contains",
@@ -30127,9 +30252,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L44",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_le_serveur_apps_server",
-      "target": "technical_server_index_ts_le_worker",
-      "confidence_score": 1.0
+      "target": "technical_server_index_ts_le_worker"
     },
     {
       "relation": "contains",
@@ -30137,9 +30262,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L269",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_le_serveur_apps_server",
-      "target": "technical_server_invariants_\u00e0_ne_pas_casser",
-      "confidence_score": 1.0
+      "target": "technical_server_invariants_\u00e0_ne_pas_casser"
     },
     {
       "relation": "contains",
@@ -30147,9 +30272,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L211",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_le_serveur_apps_server",
-      "target": "technical_server_le_sch\u00e9ma_d1",
-      "confidence_score": 1.0
+      "target": "technical_server_le_sch\u00e9ma_d1"
     },
     {
       "relation": "contains",
@@ -30157,9 +30282,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L78",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_le_serveur_apps_server",
-      "target": "technical_server_match_do_ts_matchdo",
-      "confidence_score": 1.0
+      "target": "technical_server_match_do_ts_matchdo"
     },
     {
       "relation": "contains",
@@ -30167,9 +30292,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L282",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_le_serveur_apps_server",
-      "target": "technical_server_non_impl\u00e9ment\u00e9",
-      "confidence_score": 1.0
+      "target": "technical_server_non_impl\u00e9ment\u00e9"
     },
     {
       "relation": "contains",
@@ -30177,9 +30302,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L154",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_le_serveur_apps_server",
-      "target": "technical_server_protocol_ts",
-      "confidence_score": 1.0
+      "target": "technical_server_protocol_ts"
     },
     {
       "relation": "contains",
@@ -30187,9 +30312,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L185",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_le_serveur_apps_server",
-      "target": "technical_server_rulesets_ts_et_scenarios_ts_les_registres_versionn\u00e9s",
-      "confidence_score": 1.0
+      "target": "technical_server_rulesets_ts_et_scenarios_ts_les_registres_versionn\u00e9s"
     },
     {
       "relation": "contains",
@@ -30197,9 +30322,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_le_serveur_apps_server",
-      "target": "technical_server_r\u00e9partition_des_responsabilit\u00e9s",
-      "confidence_score": 1.0
+      "target": "technical_server_r\u00e9partition_des_responsabilit\u00e9s"
     },
     {
       "relation": "contains",
@@ -30207,9 +30332,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L238",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_le_serveur_apps_server",
-      "target": "technical_server_wrangler_toml_bindings_et_environnements",
-      "confidence_score": 1.0
+      "target": "technical_server_wrangler_toml_bindings_et_environnements"
     },
     {
       "relation": "contains",
@@ -30217,9 +30342,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L94",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_match_do_ts_matchdo",
-      "target": "technical_server_l_hibernation_le_point_de_co\u00fbt",
-      "confidence_score": 1.0
+      "target": "technical_server_l_hibernation_le_point_de_co\u00fbt"
     },
     {
       "relation": "contains",
@@ -30227,9 +30352,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L113",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_match_do_ts_matchdo",
-      "target": "technical_server_le_cycle_d_une_action",
-      "confidence_score": 1.0
+      "target": "technical_server_le_cycle_d_une_action"
     },
     {
       "relation": "contains",
@@ -30237,9 +30362,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L133",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_match_do_ts_matchdo",
-      "target": "technical_server_load_la_reconstruction_par_rejeu",
-      "confidence_score": 1.0
+      "target": "technical_server_load_la_reconstruction_par_rejeu"
     },
     {
       "relation": "contains",
@@ -30247,9 +30372,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L216",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_le_sch\u00e9ma_d1",
-      "target": "technical_server_migrations_0001_init_sql",
-      "confidence_score": 1.0
+      "target": "technical_server_migrations_0001_init_sql"
     },
     {
       "relation": "contains",
@@ -30257,9 +30382,9 @@
       "source_file": "docs/technical/server.md",
       "source_location": "L227",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "technical_server_le_sch\u00e9ma_d1",
-      "target": "technical_server_migrations_0002_users_sql",
-      "confidence_score": 1.0
+      "target": "technical_server_migrations_0002_users_sql"
     },
     {
       "relation": "contains",
@@ -30267,9 +30392,9 @@
       "source_file": "tooling/infra/README.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "infra_readme",
-      "target": "infra_readme_occulis_infra",
-      "confidence_score": 1.0
+      "target": "infra_readme_occulis_infra"
     },
     {
       "relation": "contains",
@@ -30277,9 +30402,9 @@
       "source_file": "tooling/infra/README.md",
       "source_location": "L34",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "infra_readme_occulis_infra",
-      "target": "infra_readme_navigation",
-      "confidence_score": 1.0
+      "target": "infra_readme_navigation"
     },
     {
       "relation": "contains",
@@ -30287,9 +30412,9 @@
       "source_file": "tooling/infra/README.md",
       "source_location": "L40",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "infra_readme_occulis_infra",
-      "target": "infra_readme_structure",
-      "confidence_score": 1.0
+      "target": "infra_readme_structure"
     },
     {
       "relation": "contains",
@@ -30297,9 +30422,9 @@
       "source_file": "tooling/infra/README.md",
       "source_location": "L25",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "infra_readme_occulis_infra",
-      "target": "infra_readme_\u00e0_distance_sans_poste_local_allum\u00e9",
-      "confidence_score": 1.0
+      "target": "infra_readme_\u00e0_distance_sans_poste_local_allum\u00e9"
     },
     {
       "relation": "implements",
@@ -31361,5 +31486,5 @@
       "source_file": "tooling/infra/src/actions.ts"
     }
   ],
-  "built_at_commit": "831db3bab49695b24c167740f3f20a7a86010760"
+  "built_at_commit": "3397a0662c09a53e19b5c624f4538b2e899c7f8d"
 }
