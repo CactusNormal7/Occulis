@@ -22,15 +22,15 @@ on:
           - info
           - deployments
       branch:
-        description: "Branche ciblée (create-branch-env / delete-branch-env uniquement — vide = branche depuis laquelle ce workflow est lancé)"
+        description: "Branche de travail — create-branch-env : celle dont on crée l'environnement ; delete-branch-env : celle où committer le retrait (vide = branche depuis laquelle ce workflow est lancé)"
         required: false
         type: string
       env:
-        description: "Environnement wrangler : staging, production, ou le slug d'une branche — requis pour create-db / migrate / deploy / sql / info / deployments"
+        description: "Environnement wrangler : staging, production, ou le slug d'une branche — requis pour create-db / migrate / deploy / sql / info / deployments, et pour delete-branch-env où il désigne l'environnement À SUPPRIMER"
         required: false
         type: string
       query:
-        description: "Requête SQL (action sql) ou confirmation du nom de branche (delete-branch-env, retaper le nom exact)"
+        description: "Requête SQL (action sql) ou confirmation (delete-branch-env : retaper l'environnement ciblé, ou le nom de sa branche)"
         required: false
         type: string
 
@@ -55,10 +55,12 @@ jobs:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 0
 
-      # actions/checkout laisse HEAD détaché : create-branch-env et delete-branch-env
-      # dérivent l'environnement du nom de branche courant (src/git.ts, currentBranch),
-      # il leur faut donc une vraie branche locale, pas un détaché.
-      - name: Basculer sur la branche ciblée
+      # actions/checkout laisse HEAD détaché : create-branch-env dérive l'environnement du
+      # nom de branche courant, et les deux actions committent puis poussent le manifeste
+      # (src/git.ts, currentBranch) — il leur faut une vraie branche locale, pas un détaché.
+      # delete-branch-env, lui, prend sa cible dans `env` : il supprime n'importe quel
+      # environnement depuis n'importe quelle branche.
+      - name: Basculer sur la branche de travail
         if: inputs.action == 'create-branch-env' || inputs.action == 'delete-branch-env'
         env:
           TARGET_BRANCH: ${{ inputs.branch || github.ref_name }}

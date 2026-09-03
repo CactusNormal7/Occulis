@@ -6,6 +6,7 @@ import { OutputPane, type LogLine } from "./OutputPane.js";
 import { ACCENT } from "./theme.js";
 import { ACTIONS, type ActionDef } from "../actions.js";
 import { listEnvNames, dbName, type EnvName } from "../config.js";
+import { listBranchEnvNames, findDeployEnvironment } from "../deploy-manifest.js";
 import { configuredDatabaseId } from "../toml.js";
 import { PLACEHOLDER } from "../config.js";
 
@@ -28,6 +29,29 @@ function tomlBadge(env: EnvName): string {
   return !id || id.startsWith(PLACEHOLDER) ? `${env} (à créer)` : `${env} (ok)`;
 }
 
+// Une action ciblant un environnement de branche ne propose que ceux-là : la cible est
+// explicite, indépendante de la branche courante. Les autres gardent la liste complète.
+function envItems(action: ActionDef): Item[] {
+  if (action.branchEnvsOnly)
+    return listBranchEnvNames().map((env) => {
+      const entry = findDeployEnvironment(env);
+      return {
+        key: env,
+        label: env,
+        hint: entry
+          ? `${entry.d1Database}  ·  branche ${entry.branch}`
+          : `${dbName(env)}  ·  hors manifeste`,
+      };
+    });
+  return listEnvNames()
+    .filter((env) => !(action.remoteOnly && env === "local"))
+    .map((env) => ({
+      key: env,
+      label: env,
+      hint: env === "local" ? "SQLite émulé par wrangler dev" : dbName(env),
+    }));
+}
+
 export function App({ onInteractive, onQuit }: Props): React.ReactElement {
   const { exit } = useApp();
   const [phase, setPhase] = useState<Phase>("menu");
@@ -46,6 +70,13 @@ export function App({ onInteractive, onQuit }: Props): React.ReactElement {
         .map(tomlBadge)
         .join("   ·   "),
     [phase],
+  );
+
+  // Recalculé à chaque entrée dans la phase : une action précédente a pu créer ou
+  // supprimer un environnement.
+  const envChoices = useMemo(
+    () => (phase === "env" && action ? envItems(action) : []),
+    [phase, action],
   );
 
   const menuItems: Item[] = ACTIONS.map((a) => ({
@@ -125,11 +156,13 @@ export function App({ onInteractive, onQuit }: Props): React.ReactElement {
     [action, exit, onInteractive, proceed],
   );
 
+  // Échap est porté par SelectList : sans liste à l'écran (saisie libre, ou aucun
+  // environnement à cibler), personne ne le capterait.
   useInput(
     (_input, key) => {
-      if (phase === "prompt" && key.escape) setPhase("menu");
+      if (key.escape) setPhase("menu");
     },
-    { isActive: phase === "prompt" },
+    { isActive: phase === "prompt" || (phase === "env" && envChoices.length === 0) },
   );
 
   return (
@@ -170,18 +203,16 @@ export function App({ onInteractive, onQuit }: Props): React.ReactElement {
         <>
           <Text color="cyan">{`  ${action?.label} — choisir l'environnement`}</Text>
           <Text> </Text>
-          <SelectList
-            items={listEnvNames()
-              .filter((e) => !(action?.remoteOnly && e === "local"))
-              .map((e) => ({
-                key: e,
-                label: e,
-                hint: e === "local" ? "SQLite émulé par wrangler dev" : dbName(e),
-              }))}
-            firstRow={FIRST_ROW + 2}
-            onSelect={onEnvSelect}
-            onCancel={() => setPhase("menu")}
-          />
+          {envChoices.length === 0 ? (
+            <Text color="gray">{"  Aucun environnement de branche — rien à cibler."}</Text>
+          ) : (
+            <SelectList
+              items={envChoices}
+              firstRow={FIRST_ROW + 2}
+              onSelect={onEnvSelect}
+              onCancel={() => setPhase("menu")}
+            />
+          )}
           <Text> </Text>
           <Text color="gray" dimColor>
             {"  Échap  retour"}
