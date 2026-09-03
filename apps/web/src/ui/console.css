@@ -1,0 +1,88 @@
+/*
+ * Habillage de la saisie de coups : mise en page seulement.
+ *
+ * Aucune couleur en dur ici : les propriétés personnalisées `--ink`, `--panel`,
+ * `--accepted` et `--refused` sont posées par `palette.ts` à partir des tokens de
+ * `src/theme.ts`, seul détenteur du code couleur du client (docs/design.md 8.1).
+ */
+
+#console {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  min-width: 320px;
+  padding: 12px 14px;
+  border: 1px solid var(--ink-faint);
+  background: var(--panel);
+  color: var(--ink);
+  font:
+    13px/1.5 ui-monospace,
+    "SF Mono",
+    Menlo,
+    Consolas,
+    monospace;
+}
+
+#console p {
+  margin: 0;
+}
+
+#console form {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+#console label {
+  opacity: 0.55;
+  text-transform: lowercase;
+}
+
+#command-input {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid var(--ink-faint);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+#command-input:focus {
+  outline: none;
+  border-color: var(--ink-soft);
+}
+
+#status {
+  opacity: 0.7;
+}
+
+/*
+ * Lecture d'une case au clic. Du terrain, donc de la géométrie : elle reste en
+ * blanc atténué et n'emprunte aucune couleur d'état (docs/design.md 8.1).
+ */
+#tile-readout {
+  margin-top: 4px;
+  color: var(--ink-soft);
+}
+
+#tile-readout:empty {
+  display: none;
+}
+
+#command-log:empty {
+  display: none;
+}
+
+#command-log[data-state="ok"] {
+  color: var(--accepted);
+}
+
+#command-log[data-state="ko"] {
+  color: var(--refused);
+}
+
+#command-help {
+  margin-top: 8px;
+  opacity: 0.45;
+}

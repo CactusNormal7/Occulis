@@ -104,6 +104,53 @@ Un seul déplacement/action par pièce par tour reste la règle de base actée, 
 - C++ : envisagé un temps pour la performance et la portabilité (Steam, mobile, app native), ces deux justifications ont été démontées (charge de calcul du jeu négligeable pour justifier du C++ ; le web est en réalité plus portable "gratuitement" que du C++ brut sur mobile/mutliplateforme). La vraie motivation identifiée était un objectif d'apprentissage du langage, assumé comme tel. Décision actée : le C++ est explicitement reporté à plus tard, sur un projet dédié plus petit et mieux adapté à l'apprentissage, découplé du développement d'Occulis. Possibilité d'un portage futur du moteur en C++ une fois le langage maîtrisé et le game design stabilisé — mais pas maintenant.
 - Recommandation actée : séparer dès le début la logique de jeu (règles, calcul LOS, résolution des tours) du rendu (WebGL/PixiJS), pour faciliter un éventuel portage futur.
 
+### 8.1 Direction artistique et caméra — décisions provisoires
+
+Ces quatre points ont été arrêtés lors de l'implémentation du moteur de rendu. Ils sont
+explicitement **provisoires** : aucun design system n'est encore posé, et le porteur du
+projet a indiqué que le code couleur évoluerait. Ils sont consignés ici pour que le code
+ne soit pas la seule trace d'une décision de DA.
+
+- **Code couleur : le blanc porte la géométrie, la couleur porte l'état de jeu.** Tout le
+  terrain est blanc ; le fog of war, la hauteur et l'infranchissabilité se lisent par alpha
+  et par épaisseur de trait, jamais par teinte. La couleur est réservée à l'information de
+  partie (camps, et plus tard sélection, coups légaux, menace). Conséquence directe : un
+  trait coloré signifie toujours quelque chose. La contrainte est verrouillée
+  mécaniquement — une règle ESLint interdit toute valeur de couleur hors de
+  `apps/web/src/theme.ts`, seul détenteur du code couleur.
+- **Rendu filaire par défaut, sans remplissage.** Les faces des cases ne sont pas remplies ;
+  seule la case survolée reçoit un aplat blanc de faible opacité. En l'absence de surfaces
+  opaques, le volume est restitué par une atténuation des traits en profondeur. Le
+  remplissage existe comme token à opacité nulle : repasser à des faces opaques, et
+  retrouver une occlusion par surface, ne demande que de relever cette valeur.
+- **Rotation libre avec aimantation.** La rotation se fait au drag (bouton droit ou milieu),
+  de façon continue, et s'aimante sur le quart de tour le plus proche au relâchement ; les
+  flèches gauche/droite conservent le quart de tour direct. Conformément à la section 8, la
+  rotation reste un recalcul de projection sur les coordonnées logiques : les quatre coins
+  de chaque case sont projetés individuellement, ce qui garde le pavage jointif à n'importe
+  quel angle intermédiaire.
+- **Deux façons de jouer un coup, toutes deux provisoires.** À la souris : cliquer une de
+  ses pièces la sélectionne et fait apparaître ses destinations légales, cliquer une
+  destination l'y déplace, cliquer un adversaire adjacent le capture sans bouger. Au
+  clavier : taper les coordonnées (`1,6 2,5` déplace, `1,6 2,5 x 3,5` capture, `abandon`
+  abandonne) dans un champ HTML posé par-dessus le canevas. Le clavier reste nécessaire
+  pour enchaîner un déplacement *et* une capture dans le même tour, que le clic ne sait
+  pas exprimer. Aucune des deux n'est une décision d'interface arrêtée : ce sont des
+  moyens d'exercer la logique déjà implémentée. La partie se joue en hot-seat, la vue
+  suivant le joueur au trait — chaque camp conservant sa propre mémoire du fog, comme le
+  fera le serveur.
+- **Le déplacement est animé, jamais instantané.** La pièce glisse d'une case à l'autre,
+  hauteur comprise, avec départ et arrivée adoucis. L'action est appliquée à l'état
+  immédiatement : seule la position à l'écran est interpolée, et le passage de main attend
+  la fin du glissement pour que la pièce ne disparaisse pas en plein vol en devenant
+  adverse.
+
+- **Caméra : zoom et déplacement.** Molette pour zoomer vers le curseur, drag gauche pour
+  déplacer la vue. Le facteur de zoom vit dans la projection et non dans la transformation
+  du conteneur de rendu, afin que l'épaisseur des traits reste constante à l'écran quel que
+  soit le niveau de zoom — exigence propre à une DA filaire.
+
+
 ## 9. Nom du projet
 
 Nom retenu : Occulis.

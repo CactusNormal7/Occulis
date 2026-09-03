@@ -70,3 +70,21 @@ class_name = "MatchDO"
 binding = "DB"
 database_name = "occulis-prod"
 database_id = "a26529e1-ba11-4c6f-9ba8-4865a3b0c6af"
+
+[env.feature-engine]
+name = "occulis-feature-engine"
+
+routes = [{ pattern = "occulis-feature-engine.0kl.fr", custom_domain = true }]
+
+[env.feature-engine.assets]
+directory = "../web/dist"
+binding = "ASSETS"
+
+[[env.feature-engine.durable_objects.bindings]]
+name = "MATCH"
+class_name = "MatchDO"
+
+[[env.feature-engine.d1_databases]]
+binding = "DB"
+database_name = "occulis-feature-engine"
+database_id = "e30e4df3-275c-4a55-b34c-a88701ce7ab1"

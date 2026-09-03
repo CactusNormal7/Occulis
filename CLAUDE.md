@@ -9,7 +9,7 @@ Jeu de plateau tactique compétitif 1v1 en ligne, vue isométrique 2D, DA minima
 - Monorepo pnpm workspaces, TypeScript strict partout.
 - `packages/core` — logique de jeu pure (règles, plateau, hauteur, calcul de LOS, résolution des tours). **Aucune dépendance de rendu.** Testée avec Vitest.
 - `apps/server` — Worker Cloudflare + Durable Object de partie, consomme `@occulis/core`. Squelette : transport, cycle de vie du DO, schéma D1. Ni authentification, ni matchmaking, ni ELO.
-- `apps/web` — rendu (Vite + PixiJS/WebGL), consomme `@occulis/core`. La rotation isométrique et les recalculs de projection vivent ici (`src/iso.ts`), jamais dans `core`.
+- `apps/web` — rendu (Vite + PixiJS/WebGL), consomme `@occulis/core`. La rotation isométrique et les recalculs de projection vivent ici (`src/iso.ts`), jamais dans `core`. Le code couleur est centralisé dans `src/theme.ts`, **seul fichier du client autorisé à contenir une valeur de couleur** — une règle ESLint le vérifie. **Le dossier dit la dépendance** : `view/` (projection, caméra, désignation, animation) et `game/` (partie, sélection, scénario) sont purs — ni Pixi ni DOM — et portent tous les tests ; `scene/` dessine (Pixi), `input/` écoute le canevas et `ui/` touche le DOM.
 - Séparation logique/rendu actée dès le départ (docs/design.md section 8) pour permettre un futur portage moteur (C++ envisagé mais explicitement reporté, hors scope pour l'instant).
 - Pas de backend écrit à ce jour, mais l'infrastructure cible est **décidée** — voir la section « Infrastructure et CI/CD » plus bas et [docs/architecture.md](docs/architecture.md). Quand le multijoueur en ligne sera implémenté : le serveur doit être **autoritaire** et ne jamais transmettre au client des données hors LOS de ce joueur (le fog of war doit être appliqué serveur-side, pas seulement caché visuellement côté client — sans quoi il est contournable via devtools).
 
@@ -18,7 +18,7 @@ Jeu de plateau tactique compétitif 1v1 en ligne, vue isométrique 2D, DA minima
 ```bash
 pnpm install
 pnpm dev          # lance apps/web (Vite)
-pnpm test         # tests de packages/core (Vitest)
+pnpm test         # tests de packages/core et apps/web (Vitest)
 pnpm --filter @occulis/web build && cd apps/server && pnpm exec wrangler dev   # serveur en local
 pnpm typecheck
 pnpm lint
@@ -27,6 +27,7 @@ pnpm infra        # TUI Cloudflare (tooling/infra) — bases D1, migrations, dé
 
 ## Conventions
 
+- **La documentation technique de [docs/technical/](docs/technical/) se met à jour dans le même commit que le code qu'elle décrit.** Elle explique le fonctionnement réel de bout en bout, fonction par fonction, avec leur emplacement : `core.md` (`packages/core`), `engine.md` (`apps/web`), `server.md` (`apps/server`), `infra.md` (`tooling/infra` et la CI). Une fonction ajoutée, renommée, supprimée ou déplacée, un comportement modifié, un invariant touché → corriger le document du paquet concerné avant de considérer le changement comme terminé. Une doc de référence fausse est pire que pas de doc : elle fait perdre du temps en donnant l'illusion d'être fiable. Le *pourquoi* d'une décision reste dans `docs/design.md` ou `docs/architecture.md`, jamais dans `docs/technical/`.
 - Toute nouvelle règle de gameplay implémentée dans `packages/core` doit correspondre à une décision déjà actée dans `docs/design.md`. Si elle correspond à un point ouvert (section 10), demander avant d'implémenter plutôt que de choisir une interprétation arbitraire — plusieurs points (ex: attaque à distance combinable avec un déplacement, résolution des zones qui se chevauchent) ont un impact direct sur l'équilibrage.
 - La LOS est calculée par raycast 2D (`packages/core/src/los.ts`, type Bresenham) avec comparaison de hauteur interpolée case par case — pas de moteur 3D. Voir docs/design.md section 5.1 pour le raisonnement.
 - Grille : coordonnées entières `{x, y}` + hauteur de case séparée (`Tile.height`), jamais un simple array de valeurs numériques (cf. décision fondatrice section 5.1).
@@ -52,14 +53,19 @@ comme pour la section 10 du design doc.
 - **Quatre environnements** : local (`wrangler dev`, SQLite local), preview par branche (`occulis-<branche>.0kl.fr`), recette (`occulis-staging.0kl.fr`), prod (`occulis.0kl.fr`, sur `main`). **Une branche = un environnement complet** (client + Worker + DO + base), jamais un preview du client seul : une branche qui touche `core` change les règles et serait sinon testée contre celles de `main`.
 - **Les branches hébergées sont sélectionnées explicitement**, pas déployées automatiquement : on doit pouvoir en ajouter et en retirer à volonté, pour que la population d'environnements soit décidée et non subie. Le mécanisme est le manifeste `.github/deploy-environments.json`, édité dans les deux sens par `pnpm infra` (« Créer / Supprimer un environnement de branche »).
 - **CI/CD** : `.github/workflows/ci.yml`. Les vérifications (`typecheck → lint → test → build`) tournent sur toute branche et toute PR ; le déploiement ne concerne que les branches listées dans **`.github/deploy-environments.json`** (`main` → production, `staging` → recette). Une branche absente du manifeste passe la CI sans être déployée : c'est là le mécanisme de sélection des environnements. Les migrations D1 précèdent toujours le déploiement. Un workflow séparé, sur tag, buildera et signera les binaires Electron.
-- `VITE_SERVER_URL` est injectée au build, donc **gravée dans le binaire distribué** : l'URL de production doit être définitive avant le premier build public.
+- **L'URL du serveur n'est pas encore un sujet dans le code** : aucune variable de ce type n'existe, et le client est servi par le Worker lui-même (binding `ASSETS`), donc de même origine — une URL relative suffira sur le web. La contrainte connue ne vaudra que pour la distribution Electron, où le client n'est plus de même origine : l'URL y sera injectée au build et donc **gravée dans le binaire distribué**, ce qui impose de la figer avant le premier build public.
 
 ## Modules de `packages/core`
 
 - `coord.ts` — coordonnées, clés de hachage, adjacence (`orthogonal` / `octile`), distances.
 - `board.ts` — `Tile` (hauteur + franchissabilité) et `Board` immuable. Un **mur est une case haute**, jamais un flag ; une case absente est hors-carte. `Board.fromAscii` construit un plateau depuis une carte texte (pratique en test).
-- `piece.ts` — `Piece`, `PieceDefinition`, `Ruleset`. **Aucun roster n'y est défini** : les définitions sont fournies par l'appelant.
-- `los.ts` — raycast, LOS, champ de vision. La LOS est **symétrique par construction** (l'ordre des extrémités est canonicalisé avant le tracé de Bresenham) ; ne pas casser cette propriété.
+- `pieces/` — **un type de pièce = une classe**.
+  - `piece.ts` — `Piece`, l'enregistrement de données d'une pièce en jeu (identité, camp, position). Volontairement inerte et sérialisable : c'est lui qui traverse le réseau et que le log d'actions rejoue.
+  - `piece-type.ts` — `PieceType`, classe abstraite qui porte le comportement (déplacement, vision, frappe) et sert de point d'extension par héritage. Elle seule y vit ; toute classe concrète a son propre fichier.
+  - `configurable-piece-type.ts` — `ConfigurablePieceType`, pour un type décrit par des données plutôt que par une classe.
+  - `roster/` — **une classe par fichier** (`scout.ts`, `commander.ts`), assemblées par `index.ts`. **Provisoires** : elles donnent un lieu unique aux définitions que le client, le serveur et les tests partagent. Aucun roster n'est acté (design.md point ouvert 12) et rien ne doit s'équilibrer dessus. Leurs portées sont volontairement généreuses (implementation-notes 14) : une vérification de règle ne doit jamais s'appuyer dessus.
+  - `ruleset.ts` — `Ruleset`, table `kind` → `PieceType` d'une partie, fournie par l'appelant et versionnée par partie.
+- `los.ts` — raycast et LOS, **géométrie seule** : ce qu'une pièce voit réellement est défini par son type (`PieceType.canSee` / `fieldOfView`), jamais recalculé ailleurs à partir d'une portée brute. La LOS est **symétrique par construction** (l'ordre des extrémités est canonicalisé avant le tracé de Bresenham) ; ne pas casser cette propriété.
 - `movement.ts` — cases atteignables et portée de mêlée, avec les règles de verticalité de la section 5.3.
 - `state.ts` / `actions.ts` — état de partie immuable, génération des coups légaux, application d'une action, fin de partie. Les erreurs sont retournées via `Result`, jamais levées.
 - `fog.ts` — état *connu* de chaque joueur (mémoire fantôme) et `viewFor`, qui produit la vue transmissible sans aucune donnée hors LOS. C'est ce que le futur serveur devra envoyer.
@@ -67,7 +73,11 @@ comme pour la section 10 du design doc.
 
 ## État du projet
 
-Logique de jeu posée et testée (57 tests) : plateau à hauteur, LOS, verticalité, déplacement, capture de mêlée, tours alternés, fog of war avec mémoire, abandon et pat. Rendu isométrique filaire fonctionnel avec rotation et fog of war à l'écran.
+Logique de jeu posée et testée (70 tests dans `core`) : plateau à hauteur, LOS, verticalité, déplacement, capture de mêlée, tours alternés, fog of war avec mémoire, abandon et pat.
+
+Moteur de rendu isométrique filaire fonctionnel (67 tests dans `apps/web`) : traits blancs, zoom vers le curseur, déplacement, rotation libre aimantée sur le quart de tour, surbrillance de la case survolée, occlusion des pièces par le relief, fog of war à l'écran. La DA et la caméra sont actées provisoirement en section 8.1 du design doc.
+
+Une partie de démonstration est jouable en hot-seat, de deux façons : **au clic** (sélectionner une pièce affiche ses destinations légales, cliquer une destination l'y déplace avec une animation, cliquer un adversaire adjacent le capture sur place) et **par saisie de coordonnées** (`1,6 2,5` déplace, `1,6 2,5 x 3,5` capture, `abandon` abandonne). Le clavier reste seul capable d'enchaîner déplacement et capture dans le même tour. La sélection **filtre `legalActions`, elle ne redéduit jamais la légalité** (`game/selection.ts`). La vue suit le joueur au trait, le passage de main attendant la fin de l'animation, et chaque camp garde sa propre mémoire du fog (`game/match.ts`).
 
 Non implémenté volontairement, car listé comme ouvert en section 10 du design doc : attaque à distance différée, pièges, déploiement, règle anti-répétition, détection du mat, roster de pièces. Pas de backend ni de design system (ce dernier est explicitement prévu pour plus tard par l'utilisateur).
 
