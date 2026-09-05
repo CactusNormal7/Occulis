@@ -48,6 +48,8 @@ export function describeActionError(error: ActionError): string {
       return "On ne capture pas une pièce de son propre camp.";
     case "target-out-of-melee":
       return "Cible hors de portée de mêlée depuis cette case.";
+    case "leaves-commander-exposed":
+      return "Coup interdit : il laisserait votre pièce maîtresse en prise.";
   }
 }
 
@@ -56,14 +58,28 @@ export function describeMove(piece: Piece, to: Coord, captured: Piece | undefine
   return captured === undefined ? move : `${move}, capture de ${captured.id}`;
 }
 
+const VICTORY_REASONS: Record<
+  Extract<NonNullable<GameState["outcome"]>, { kind: "victory" }>["reason"],
+  string
+> = {
+  resignation: "abandon",
+  checkmate: "mat",
+  "commander-captured": "pièce maîtresse capturée",
+};
+
 export function describeOutcome(outcome: NonNullable<GameState["outcome"]>): string {
   if (outcome.kind === "draw") return "Partie nulle : pat, plus aucun coup légal.";
-  const reason = outcome.reason === "resignation" ? "abandon" : "pièce maîtresse capturée";
-  return `Victoire de ${outcome.winner} (${reason}).`;
+  return `Victoire de ${outcome.winner} (${VICTORY_REASONS[outcome.reason]}).`;
 }
 
-export function describeTurn(turn: number, activePlayer: PlayerId, viewer: PlayerId): string {
-  return `Tour ${turn} · au trait : ${activePlayer} · vue du joueur ${viewer}`;
+export function describeTurn(
+  turn: number,
+  activePlayer: PlayerId,
+  viewer: PlayerId,
+  check = false,
+): string {
+  const line = `Tour ${turn} · au trait : ${activePlayer} · vue du joueur ${viewer}`;
+  return check ? `${line} · ÉCHEC` : line;
 }
 
 /**

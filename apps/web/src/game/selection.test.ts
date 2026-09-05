@@ -10,13 +10,21 @@ import {
 } from "@occulis/core";
 import { resolveClick, selectionFor } from "./selection.js";
 
-const BOARD = Board.fromAscii(["00000", "00000", "00000", "00000", "00000"]);
+/**
+ * Assez grand pour que les deux pièces maîtresses soient hors d'atteinte des
+ * éclaireurs : sous la règle « échecs strict », une maîtresse en prise permanente
+ * ne laisse plus aucun coup légal. Les portées du roster provisoire sont
+ * volontairement démesurées (docs/implementation-notes #14), donc une carte
+ * étriquée les mettrait mécaniquement en échec — un artefact de fixture, pas la
+ * règle qu'on veut éprouver ici.
+ */
+const BOARD = Board.flat(14, 14);
 
 const PIECES: readonly Piece[] = [
   { id: "a-scout", kind: "scout", owner: "A", coord: { x: 0, y: 0 } },
-  { id: "a-cmd", kind: "commander", owner: "A", coord: { x: 0, y: 4 } },
+  { id: "a-cmd", kind: "commander", owner: "A", coord: { x: 0, y: 13 } },
   { id: "b-scout", kind: "scout", owner: "B", coord: { x: 1, y: 0 } },
-  { id: "b-cmd", kind: "commander", owner: "B", coord: { x: 4, y: 4 } },
+  { id: "b-cmd", kind: "commander", owner: "B", coord: { x: 13, y: 13 } },
 ];
 
 function game(): GameState {
@@ -116,7 +124,7 @@ describe("resolveClick", () => {
     const state = game();
     const selection = selectionFor(state, pieceOf(state, "a-scout"));
 
-    const outcome = resolveClick(state, selection, { x: 0, y: 4 });
+    const outcome = resolveClick(state, selection, { x: 0, y: 13 });
 
     expect(outcome.kind).toBe("select");
     if (outcome.kind === "select") expect(outcome.selection.piece.id).toBe("a-cmd");

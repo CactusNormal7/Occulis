@@ -1,3 +1,4 @@
+import { isCommanderThreatened } from "./actions.js";
 import type { Board } from "./board.js";
 import { type Coord, type CoordKey, coordKey } from "./coord.js";
 import type { Piece, PieceId, PieceKind, PlayerId } from "./pieces/index.js";
@@ -81,6 +82,13 @@ export interface PlayerView {
   readonly activePlayer: PlayerId;
   readonly turn: number;
   readonly outcome: GameState["outcome"];
+  /**
+   * Pièce maîtresse du destinataire menacée. Transmis, et seulement pour lui : sous
+   * la règle « échecs strict » le moteur refuse les coups qui laissent la maîtresse
+   * en prise, donc son porteur doit savoir pourquoi. L'état de l'adversaire n'est
+   * pas transmis — il révélerait où se trouve sa pièce maîtresse.
+   */
+  readonly check: boolean;
   readonly visible: ReadonlySet<CoordKey>;
   readonly ownPieces: readonly Piece[];
   readonly visibleEnemies: readonly Piece[];
@@ -109,6 +117,7 @@ export function viewFor(state: GameState, knowledge: PlayerKnowledge): PlayerVie
     activePlayer: state.activePlayer,
     turn: state.turn,
     outcome: state.outcome,
+    check: isCommanderThreatened(state, player),
     visible: knowledge.visible,
     ownPieces,
     visibleEnemies,

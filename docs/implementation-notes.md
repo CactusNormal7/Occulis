@@ -23,6 +23,7 @@ faciles à changer, et doivent être confirmés ou corrigés avec le porteur du 
 | 12 | Lieu du roster | Les types de pièces sont désormais des **classes** (`pieces/piece-type.ts`) et les deux types provisoires — `Scout`, `Commander` — vivent dans `packages/core/src/pieces/roster/`. Le principe « aucun roster dans `core` » est donc infléchi : le comportement d'une pièce (vision, déplacement, frappe) est de la logique de jeu et doit être partagé par le client et le serveur, sinon il se duplique. `Ruleset` continue d'accepter n'importe quels types fournis par l'appelant, et `ConfigurablePieceType` permet toujours de définir une pièce par des données. Ces deux classes restent des supports de démo, pas du contenu. | `pieces/roster/` |
 | 13 | Saisie des coups | Deux entrées coexistent : sélection au clic (une pièce, puis une destination ou un adversaire adjacent) et saisie de coordonnées (`1,6 2,5`, `1,6 2,5 x 3,5`, `abandon`). Le clavier reste seul capable d'enchaîner déplacement et capture dans le même tour. Purement provisoire : c'est un moyen de jouer la logique déjà implémentée, pas une décision d'interface. | `apps/web/src/ui/command.ts`, `apps/web/src/game/selection.ts` |
 | 14 | Portées du roster provisoire | `Scout` et `Commander` ont des portées de vision volontairement bien supérieures aux cartes de démonstration : sur celles-ci, seule l'occultation limite la vue. Choisi pour rendre LOS et déplacement observables, pas pour équilibrer quoi que ce soit. Une vérification de règle ne doit donc jamais s'appuyer sur ces valeurs. | `pieces/roster/` |
+| 15 | Taille des cartes de test | Les fixtures de `apps/web` ont dû être agrandies en même temps que la règle « échecs strict » : sur une carte étriquée, un éclaireur à 6 pas met la maîtresse adverse en échec permanent, ce qui supprime **tous** ses coups légaux. Ce n'est pas la règle qui est en cause mais l'écart entre les portées provisoires et la taille des cartes de démo — symptôme direct de l'interprétation 14. La carte de démonstration réelle (10×8, coupée par l'arête) reste jouable. | `apps/web/src/game/*.test.ts` |
 
 ## Décisions volontairement non implémentées
 
@@ -35,11 +36,10 @@ reçu **aucune** implémentation, même partielle, pour ne pas figer un équilib
 - phase de déploiement (point ouvert 5) ;
 - roster de pièces (point ouvert 12) — `Ruleset` attend des types fournis par
   l'appelant ; les seuls qui existent sont des supports de test et les deux classes
-  provisoires de la démo (voir l'interprétation 12) ;
-- détection du mat. Seuls la capture de la pièce maîtresse, l'abandon et le pat sont
-  implémentés. Le mat suppose de savoir si un coup laissant sa propre pièce maîtresse
-  en prise est illégal — question qui n'a pas de réponse évidente sous fog of war,
-  puisqu'un joueur peut ignorer la menace. À trancher avant d'aller plus loin.
+  provisoires de la démo (voir l'interprétation 12).
+
+La **détection du mat** ne figure plus ici : elle est implémentée, sur une décision
+explicite du porteur du projet (« échecs strict », `docs/design.md` section 7.1).
 
 ## Correctifs notables
 

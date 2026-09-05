@@ -14,6 +14,7 @@ export interface WireView {
   readonly activePlayer: PlayerId;
   readonly turn: number;
   readonly outcome: PlayerView["outcome"];
+  readonly check: boolean;
   readonly visible: readonly string[];
   readonly ownPieces: PlayerView["ownPieces"];
   readonly visibleEnemies: PlayerView["visibleEnemies"];

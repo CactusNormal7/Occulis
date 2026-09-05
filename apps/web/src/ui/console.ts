@@ -53,7 +53,12 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
   const { form, input, log, status, readout } = elements;
 
   const refresh = (): void => {
-    status.textContent = describeTurn(match.state.turn, match.activePlayer, viewer());
+    status.textContent = describeTurn(
+      match.state.turn,
+      match.activePlayer,
+      viewer(),
+      match.viewFor(viewer()).check,
+    );
   };
 
   const showTile = (coord: Coord | undefined): void => {

@@ -53,13 +53,15 @@ describe("Match", () => {
     const match = new Match(ridgeGame());
 
     // Le scout de A grimpe sur l'arête, d'où il voit par-dessus, puis redescend.
+    // B occupe ses tours par un aller-retour de sa maîtresse, tenue assez loin
+    // pour que le scout perché ne la menace jamais.
     expect(match.play({ kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } }).ok).toBe(true);
-    expect(match.play({ kind: "move", pieceId: "b-cmd", to: { x: 7, y: 1 } }).ok).toBe(true);
+    expect(match.play({ kind: "move", pieceId: "b-cmd", to: { x: 14, y: 2 } }).ok).toBe(true);
     expect(match.play({ kind: "move", pieceId: "a-scout", to: { x: 2, y: 0 } }).ok).toBe(true);
 
     expect(match.viewFor("A").visibleEnemies.map((piece) => piece.id)).toContain("b-scout");
 
-    expect(match.play({ kind: "move", pieceId: "b-cmd", to: { x: 8, y: 1 } }).ok).toBe(true);
+    expect(match.play({ kind: "move", pieceId: "b-cmd", to: { x: 15, y: 2 } }).ok).toBe(true);
     expect(match.play({ kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } }).ok).toBe(true);
 
     const view = match.viewFor("A");
@@ -69,13 +71,25 @@ describe("Match", () => {
   });
 });
 
-/** Une arête de hauteur 1 coupe la vue au sol ; la franchir du regard demande d'y monter. */
+/**
+ * Une arête de hauteur 1 coupe la vue au sol ; la franchir du regard demande d'y
+ * monter. Elle est aussi infranchissable à pied depuis l'ouest — on ne marche pas
+ * vers le haut — ce qui tient l'éclaireur de B loin de la maîtresse de A.
+ *
+ * La carte est large pour que les maîtresses restent hors de portée : sous
+ * « échecs strict » une maîtresse en prise interdit tout autre coup, et les portées
+ * du roster provisoire sont démesurées (docs/implementation-notes #14).
+ */
 function ridgeGame(): GameState {
-  const board = Board.fromAscii(["001100000", "001100000"]);
+  const board = Board.fromAscii([
+    "0011000000000000",
+    "0011000000000000",
+    "0011000000000000",
+  ]);
   return createGame(board, provisionalRuleset(), [
     { id: "a-scout", kind: "scout", owner: "A", coord: { x: 0, y: 0 } },
-    { id: "a-cmd", kind: "commander", owner: "A", coord: { x: 0, y: 1 } },
+    { id: "a-cmd", kind: "commander", owner: "A", coord: { x: 0, y: 2 } },
     { id: "b-scout", kind: "scout", owner: "B", coord: { x: 7, y: 0 } },
-    { id: "b-cmd", kind: "commander", owner: "B", coord: { x: 8, y: 1 } },
+    { id: "b-cmd", kind: "commander", owner: "B", coord: { x: 15, y: 2 } },
   ]);
 }

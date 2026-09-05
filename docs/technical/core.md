@@ -378,12 +378,21 @@ interface GameState {
   activePlayer: PlayerId;
   turn: number;              // incrémenté à chaque action
   outcome: Outcome | null;
+  history: readonly ActionRecord[];   // les coups joués, dans l'ordre
 }
 
+interface ActionRecord { player: PlayerId; action: Action }
+
 type Outcome =
-  | { kind: "victory"; winner: PlayerId; reason: "commander-captured" | "resignation" }
+  | { kind: "victory"; winner: PlayerId;
+      reason: "commander-captured" | "resignation" | "checkmate" }
   | { kind: "draw";    reason: "stalemate" }
 ```
+
+`history` est le log d'actions, tenu **dans** l'état plutôt qu'à côté pour qu'il ne puisse
+pas diverger de la position qu'il décrit. C'est ce que le serveur persiste en D1 et rejoue
+(`docs/architecture.md` section 3) ; `ActionRecord` porte le camp qui a joué, que la
+position seule ne dit plus.
 
 | Fonction | Rôle |
 |---|---|
@@ -418,9 +427,13 @@ type Action =
 | `capturablesFrom()` (privée) | Adversaires capturables depuis une case, via `PieceType.canStrike()` |
 | `legalActions()` | Toutes les actions légales du joueur au trait |
 | `validateAction()` | Valide une action ; `Result<Action, ActionError>` |
+| `validateShape()` (privée) | Validation hors mise en échec : appartenance, portée, cible |
 | `validateCapture()` (privée) | La partie capture de la validation |
+| `project()` (privée) | Effets matériels d'un coup, **sans** validation ni fin de partie |
+| `leavesCommanderExposed()` (privée) | Le coup laisse-t-il sa propre maîtresse en prise |
 | `withOutcome()` (privée) | Détermine la fin de partie après une action |
 | `applyAction()` | Valide puis applique ; `Result<GameState, ActionError>` |
+| `replay()` | Rejoue un log depuis un état de départ ; `Result<GameState, ReplayError>` |
 | `isCommanderThreatened()` | La pièce maîtresse est-elle capturable au coup suivant |
 
 `destinationsFor()` reçoit l'occupation **en paramètre** plutôt que de la recalculer :
@@ -439,21 +452,40 @@ la pièce, ce qui exprime « frapper un adverse adjacent sans bouger »
 (`implementation-notes.md` point 2). Le cas est refusé sans capture — l'erreur
 `must-do-something` existe pour empêcher de passer son tour.
 
+### Mise en échec : la règle « échecs strict »
+
+**Un coup qui laisse sa propre pièce maîtresse capturable est illégal**, y compris quand
+la menace est hors de la ligne de vue de son auteur (`docs/design.md` section 7). C'est ce
+que teste `leavesCommanderExposed()`, et c'est la règle qui donne son sens au mat : sans
+elle un joueur mat pourrait toujours jouer et se faire simplement capturer.
+
+`project()` existe pour ça. Tester la légalité d'un coup exige de regarder la position
+qu'il produit ; passer par `applyAction()` rappellerait `legalActions()` et bouclerait sans
+fin. `project()` n'applique que les effets matériels, ne valide rien, et **ne change pas le
+trait** — la position produite est une hypothèse, pas un tour joué.
+
+`isCommanderThreatened()` reste volontairement *pseudo-légal* : il ne filtre pas les coups
+adverses par leur propre légalité. Une pièce elle-même clouée met donc en échec, comme aux
+échecs.
+
+L'abandon échappe à la règle : `resign` reste valide même sans aucun coup jouable.
+
 ### Ordre de détection de la fin de partie
 
 `withOutcome()` teste **d'abord** la disparition d'une pièce maîtresse (victoire par
-capture), **ensuite** l'absence de coup légal (pat). La reddition court-circuite tout dans
-`applyAction()`.
+capture — inatteignable en jeu normal depuis la règle ci-dessus, gardée pour les positions
+construites sans maîtresse), **ensuite** l'absence de coup légal. C'est là que mat et pat
+se séparent, et rien d'autre ne les distingue : maîtresse menacée → `checkmate`, maîtresse
+hors de danger → `stalemate`. La reddition court-circuite tout dans `applyAction()`.
 
-Le pat est le pat classique : aucun coup légal du tout. **Aucune règle
-anti-blocage/anti-répétition n'existe** — point explicitement reporté (`docs/design.md`
-point ouvert 4). De même, **il n'y a pas de détection de mat** :
-`isCommanderThreatened()` répond « menacé », pas « mat ».
+**Aucune règle anti-blocage/anti-répétition n'existe** — point explicitement reporté
+(`docs/design.md` point ouvert 4). `history` en fournit désormais le support.
 
 ### `ActionError`
 
 `game-over` · `unknown-piece` · `not-your-piece` · `unreachable` · `must-do-something` ·
-`unknown-target` · `target-is-friendly` · `target-out-of-melee`.
+`unknown-target` · `target-is-friendly` · `target-out-of-melee` ·
+`leaves-commander-exposed`.
 
 Ces codes traversent le réseau tels quels (`ServerMessage` de type `rejected`,
 `apps/server/src/protocol.ts`) et sont traduits en français par `describeActionError()`
@@ -461,10 +493,11 @@ Ces codes traversent le réseau tels quels (`ServerMessage` de type `rejected`,
 
 ### Un piège de performance
 
-`legalActions()` appelle `destinationsFor()` pour chaque pièce, et `withOutcome()` appelle
-`legalActions()` à chaque application d'action pour détecter le pat.
-`isCommanderThreatened()` fait de même pour chaque pièce adverse. Le calcul d'occupation
-est mutualisé, mais rien d'autre n'est mémoïsé. C'est sans conséquence à l'échelle actuelle
+`legalActions()` appelle `destinationsFor()` pour chaque pièce, puis **`project()` et
+`isCommanderThreatened()` pour chacun des coups candidats** — c'est le coût de la règle
+« échecs strict », et il multiplie le travail par le nombre de coups. `withOutcome()`
+appelle `legalActions()` à chaque application d'action pour séparer mat et pat. Le calcul
+d'occupation est mutualisé, mais rien d'autre n'est mémoïsé. C'est sans conséquence à l'échelle actuelle
 (quelques dizaines de cases, jeu au tour par tour), mais à garder en tête avant d'ajouter
 une recherche en profondeur.
 
@@ -481,6 +514,7 @@ interface PlayerKnowledge {
 
 interface PlayerView {
   player; activePlayer; turn; outcome;
+  check: boolean;                       // maîtresse du destinataire menacée
   visible: ReadonlySet<CoordKey>;
   ownPieces: readonly Piece[];
   visibleEnemies: readonly Piece[];
@@ -509,6 +543,11 @@ modification ici.
    n'a aucun moyen de savoir qu'elle a bougé.
 2. Toute pièce adverse actuellement visible est (re)mémorisée à sa position, avec le
    `turn` courant en `lastSeenTurn`.
+
+`check` ne vaut que pour le destinataire. Sous « échecs strict » le moteur refuse les coups
+qui laissent la maîtresse en prise : son porteur doit donc savoir pourquoi, et l'information
+lui est de fait publique. Celui de l'adversaire n'est **pas** transmis — il révélerait où se
+trouve sa pièce maîtresse.
 
 `viewFor()` retire des fantômes les pièces actuellement vues, pour qu'une même pièce
 n'apparaisse jamais deux fois.

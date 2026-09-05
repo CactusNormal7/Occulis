@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { type Action, applyAction, isCommanderThreatened, legalActions, validateAction } from "./actions.js";
+import {
+  type Action,
+  applyAction,
+  isCommanderThreatened,
+  legalActions,
+  replay,
+  validateAction,
+} from "./actions.js";
 import { Board } from "./board.js";
 import type { Result } from "./result.js";
 import { type GameState, createGame, pieceAt } from "./state.js";
@@ -139,16 +146,20 @@ describe("applyAction — capture de mêlée", () => {
   });
 
   it("applique l'asymétrie de hauteur : on frappe vers le bas, pas deux niveaux vers le haut", () => {
-    // Le scout de A est au sol, celui de B perché deux niveaux plus haut.
-    const board = Board.fromAscii(["03", "00"]);
+    // Le scout de A est au sol, celui de B perché deux niveaux plus haut. Les deux
+    // pièces maîtresses sont tenues à l'écart pour que seule la hauteur décide.
+    const board = Board.fromAscii(["0300", "0000"]);
     const cliff = createGame(board, ruleset, [
       placePiece("a-scout", "scout", "A", 0, 0),
       placePiece("a-cmd", "commander", "A", 0, 1),
       placePiece("b-scout", "scout", "B", 1, 0),
-      placePiece("b-cmd", "commander", "B", 1, 1),
+      placePiece("b-cmd", "commander", "B", 3, 1),
     ]);
     const upward: Action = { kind: "move", pieceId: "a-scout", to: { x: 0, y: 0 }, capture: "b-scout" };
-    expect(validateAction(cliff, upward).ok).toBe(false);
+    expect(validateAction(cliff, upward)).toEqual({
+      ok: false,
+      error: { code: "target-out-of-melee", targetId: "b-scout" },
+    });
 
     const bTurn = { ...cliff, activePlayer: "B" as const };
     const downward: Action = { kind: "move", pieceId: "b-scout", to: { x: 1, y: 0 }, capture: "a-scout" };
@@ -220,5 +231,107 @@ describe("pieceAt", () => {
     const state = duel();
     expect(pieceAt(state, { x: 0, y: 0 })?.id).toBe("a-scout");
     expect(pieceAt(state, { x: 3, y: 1 })).toBeUndefined();
+  });
+});
+
+describe("échec et mat", () => {
+  /**
+   * A n'a que sa pièce maîtresse en (0,0). Le scout de B en (0,1) la frappe depuis
+   * une corniche de hauteur 2 : elle ne peut pas riposter vers le haut (section 5.3),
+   * et sa seule case de fuite (1,0) est couverte depuis (1,1), elle aussi perchée.
+   */
+  function matingNet(): GameState {
+    return createGame(Board.fromAscii(["0000", "2220", "0000"]), ruleset, [
+      placePiece("a-cmd", "commander", "A", 0, 0),
+      placePiece("b-striker", "scout", "B", 0, 1),
+      placePiece("b-cover", "scout", "B", 2, 1),
+      placePiece("b-cmd", "commander", "B", 3, 2),
+    ]);
+  }
+
+  it("interdit un coup qui laisse sa propre pièce maîtresse en prise", () => {
+    // Le scout de A cloue le sien : s'écarter en (1,1) ouvrirait à b-scout la route
+    // de (1,0), d'où il frapperait la pièce maîtresse restée en (0,0).
+    const pinned = createGame(Board.flat(5, 2), ruleset, [
+      placePiece("a-cmd", "commander", "A", 0, 0),
+      placePiece("a-scout", "scout", "A", 1, 0),
+      placePiece("b-scout", "scout", "B", 2, 0),
+      placePiece("b-cmd", "commander", "B", 4, 1),
+    ]);
+
+    const sidestep: Action = { kind: "move", pieceId: "a-scout", to: { x: 1, y: 1 } };
+    expect(validateAction(pinned, sidestep)).toEqual({
+      ok: false,
+      error: { code: "leaves-commander-exposed" },
+    });
+    expect(legalActions(pinned)).not.toContainEqual(sidestep);
+
+    // Prendre le cloueur reste licite : la menace disparaît avec lui.
+    const capture: Action = { kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 }, capture: "b-scout" };
+    expect(validateAction(pinned, capture).ok).toBe(true);
+  });
+
+  it("laisse l'abandon possible même sans aucun coup jouable", () => {
+    const mated = { ...matingNet(), activePlayer: "A" as const };
+    expect(isCommanderThreatened(mated, "A")).toBe(true);
+    expect(legalActions(mated)).toEqual([]);
+    expect(validateAction(mated, { kind: "resign" }).ok).toBe(true);
+  });
+
+  it("déclare le mat quand la pièce maîtresse est menacée et sans parade", () => {
+    const before = { ...matingNet(), activePlayer: "B" as const };
+    const pieces = new Map(before.pieces);
+    pieces.set("b-cover", { ...pieces.get("b-cover")!, coord: { x: 2, y: 1 } });
+
+    const after = unwrap(applyAction(before, { kind: "move", pieceId: "b-cover", to: { x: 1, y: 1 } }));
+    expect(after.activePlayer).toBe("A");
+    expect(after.outcome).toEqual({ kind: "victory", winner: "B", reason: "checkmate" });
+  });
+
+  it("distingue le pat du mat : sans menace, aucune parade vaut nulle", () => {
+    const board = Board.fromAscii(["000~0"]);
+    const state = createGame(board, ruleset, [
+      placePiece("a-cmd", "commander", "A", 0, 0),
+      placePiece("b-cmd", "commander", "B", 4, 0),
+    ]);
+    const after = unwrap(applyAction(state, { kind: "move", pieceId: "a-cmd", to: { x: 1, y: 0 } }));
+    expect(isCommanderThreatened(after, "B")).toBe(false);
+    expect(after.outcome).toEqual({ kind: "draw", reason: "stalemate" });
+  });
+});
+
+describe("historique et rejeu", () => {
+  it("consigne chaque coup joué avec son auteur", () => {
+    const first: Action = { kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } };
+    const after = unwrap(applyAction(duel(), first));
+    expect(after.history).toEqual([{ player: "A", action: first }]);
+  });
+
+  it("rejoue un log et retrouve exactement la même position", () => {
+    const start = duel();
+    const log: Action[] = [
+      { kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } },
+      { kind: "move", pieceId: "b-scout", to: { x: 4, y: 0 } },
+      { kind: "move", pieceId: "a-scout", to: { x: 2, y: 0 } },
+    ];
+    const played = log.reduce((state, action) => unwrap(applyAction(state, action)), start);
+    const rebuilt = unwrap(replay(start, log));
+
+    expect(rebuilt.turn).toBe(played.turn);
+    expect(rebuilt.activePlayer).toBe(played.activePlayer);
+    expect([...rebuilt.pieces.values()]).toEqual([...played.pieces.values()]);
+    expect(rebuilt.history).toEqual(played.history);
+  });
+
+  it("signale le coup fautif d'un log corrompu plutôt que de diverger en silence", () => {
+    const start = duel();
+    const log: Action[] = [
+      { kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } },
+      { kind: "move", pieceId: "b-scout", to: { x: 0, y: 0 } },
+    ];
+    expect(replay(start, log)).toEqual({
+      ok: false,
+      error: { code: "unreachable", to: { x: 0, y: 0 }, seq: 1 },
+    });
   });
 });

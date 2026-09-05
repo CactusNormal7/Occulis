@@ -95,6 +95,19 @@ Un seul déplacement/action par pièce par tour reste la règle de base actée, 
 - Roi (pièce maîtresse) : gardé simple pour l'instant (mouvement/règles standards, pas de spécificité), avec possibilité d'évolution plus tard.
 - Fin de partie : abandon possible, et égalité/nulle prévue "de la même manière qu'aux échecs, plus aucun coup possible sans attaque à part entière" — interprété comme un pat classique (aucun coup légal du tout, ni déplacement ni attaque). Point explicitement reporté par le porteur du projet : aucune décision prise sur une éventuelle règle anti-blocage/anti-répétition (équivalent de la règle des 50 coups aux échecs), pour éviter des parties qui tournent en rond sans jamais qu'aucune pièce maîtresse ne soit menacée.
 
+### 7.1 Mise en échec et mat — tranché : « échecs strict »
+
+Décision actée : **un coup qui laisse sa propre pièce maîtresse capturable au tour suivant est illégal, exactement comme aux échecs — y compris quand la menace est hors de la ligne de vue de son auteur.**
+
+Deux autres lectures avaient été posées et sont écartées :
+
+- *Illégal seulement si la menace est visible.* Aucune fuite d'information, mais la légalité d'un coup dépendrait alors de la connaissance du joueur : `packages/core` aurait dû prendre un `PlayerKnowledge` en paramètre, et le mat serait devenu « aucune parade parmi les menaces connues » — une notion différente pour chaque camp.
+- *Jamais illégal (capture du roi).* La partie se termine à la capture effective de la maîtresse. Le plus simple, mais le pilier « victoire par mat » de la section 1 disparaît : il n'y aurait plus de mat, seulement des captures.
+
+Conséquence assumée : le moteur peut refuser un coup à cause d'une menace que le joueur ne voit pas, ce qui lui apprend indirectement qu'elle existe. C'est le prix payé pour garder une notion de mat unique et symétrique. La vue transmise à un joueur porte donc un drapeau `check` pour sa propre pièce maîtresse — jamais pour celle de l'adversaire, qui trahirait sa position.
+
+Le mat en découle sans règle supplémentaire : plus aucun coup légal **et** pièce maîtresse menacée = mat ; plus aucun coup légal et maîtresse hors de danger = pat.
+
 ## 8. Choix technique
 
 - Stack retenue : rendu 2D isométrique via WebGL (probable PixiJS ou équivalent), en JavaScript/TypeScript. Pas Unity, pas de moteur 3D.
@@ -170,7 +183,7 @@ Historique de la recherche de nom : plusieurs pistes explorées et écartées co
 1. Résolution de plusieurs attaques-zones qui se chevauchent sur la même pièce au même moment de résolution.
 2. Une attaque à distance déclarée consomme-t-elle tout le tour de la pièce, ou est-elle combinable avec un déplacement le même tour ?
 3. LOS au moment de la déclaration vs au moment de la résolution d'une attaque à distance différée.
-4. Règle anti-blocage/anti-répétition en plus du pat classique (reporté).
+4. Règle anti-blocage/anti-répétition en plus du pat classique (reporté). Le support technique existe désormais (`GameState.history`), mais aucun critère n'est choisi.
 5. Cases de déploiement : setup unique et fixe, ou choix parmi plusieurs emplacements ?
 
 ### Verticalité / hauteur
