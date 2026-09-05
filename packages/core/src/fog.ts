@@ -1,7 +1,14 @@
-import { isCommanderThreatened } from "./actions.js";
+import {
+  type Action,
+  type ActionError,
+  type ReplayError,
+  applyAction,
+  isCommanderThreatened,
+} from "./actions.js";
 import type { Board } from "./board.js";
 import { type Coord, type CoordKey, coordKey } from "./coord.js";
 import type { Piece, PieceId, PieceKind, PlayerId } from "./pieces/index.js";
+import { type Result, err, ok } from "./result.js";
 import { type GameState, piecesOf } from "./state.js";
 
 /** Dernière position connue d'une pièce adverse, à afficher en fantôme estompé. */
@@ -123,4 +130,59 @@ export function viewFor(state: GameState, knowledge: PlayerKnowledge): PlayerVie
     visibleEnemies,
     ghosts,
   };
+}
+
+/**
+ * Une partie et ce que chaque joueur en sait — l'unité que tient le Durable Object.
+ *
+ * La mémoire fantôme dépend de **toutes** les positions traversées, pas seulement de
+ * la dernière : reconstruire une partie depuis son log suppose donc de faire avancer
+ * la connaissance à chaque coup. Comme le serveur reconstruit à chaque réveil
+ * (docs/architecture.md section 3) et que le client tient la même chose en hot-seat,
+ * l'opération vit ici plutôt que d'être réécrite des deux côtés.
+ */
+export interface MatchMemory {
+  readonly state: GameState;
+  readonly knowledge: Record<PlayerId, PlayerKnowledge>;
+}
+
+export function startMemory(state: GameState): MatchMemory {
+  return {
+    state,
+    knowledge: {
+      A: observe(emptyKnowledge("A"), state),
+      B: observe(emptyKnowledge("B"), state),
+    },
+  };
+}
+
+export function advanceMemory(
+  memory: MatchMemory,
+  action: Action,
+): Result<MatchMemory, ActionError> {
+  const played = applyAction(memory.state, action);
+  if (!played.ok) return played;
+
+  const state = played.value;
+  return ok({
+    state,
+    knowledge: {
+      A: observe(memory.knowledge.A, state),
+      B: observe(memory.knowledge.B, state),
+    },
+  });
+}
+
+/** Rejoue un log en faisant avancer la mémoire des deux joueurs à chaque position. */
+export function replayMemory(
+  initial: GameState,
+  log: readonly Action[],
+): Result<MatchMemory, ReplayError> {
+  let memory = startMemory(initial);
+  for (const [seq, action] of log.entries()) {
+    const advanced = advanceMemory(memory, action);
+    if (!advanced.ok) return err({ ...advanced.error, seq });
+    memory = advanced.value;
+  }
+  return ok(memory);
 }

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@occulis/core": "workspace:*"
@@ -14,6 +15,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260827.1",
     "typescript": "^5.7.2",
-    "wrangler": "^4.127.0"
+    "wrangler": "^4.127.0",
+    "vitest": "^2.1.8"
   }
 }

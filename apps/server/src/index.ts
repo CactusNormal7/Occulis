@@ -1,13 +1,18 @@
-import { CURRENT_RULESET_VERSION } from "./rulesets.js";
-import { DEFAULT_SCENARIO } from "./scenarios.js";
-import type { MatchConfig } from "./match-do.js";
+import { QUEUE_SINGLETON } from "./queue-do.js";
+import { startMatch } from "./match-setup.js";
 
 export { MatchDO } from "./match-do.js";
+export { QueueDO } from "./queue-do.js";
 
 /**
- * Le Worker ne détient aucun état de partie : il authentifie, écrit en D1, puis
- * route vers le Durable Object qui porte la partie. Deux joueurs de la même partie
- * atteignent forcément la même instance (docs/architecture.md section 2).
+ * Le Worker ne détient aucun état de partie : il route vers le Durable Object qui la
+ * porte. Deux joueurs de la même partie atteignent forcément la même instance
+ * (docs/architecture.md section 2).
+ *
+ * ATTENTION : il n'y a toujours aucune authentification (docs/setup.md section 7).
+ * L'identité annoncée à la file d'attente n'est vérifiée par personne. Ce qui est
+ * garanti, c'est qu'une connexion à une partie est liée à un **siège** : sans le
+ * jeton tiré à la création, on n'obtient la vue d'aucun des deux camps.
  */
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -15,6 +20,10 @@ export default {
 
     if (url.pathname === "/api/matches" && request.method === "POST") {
       return createMatch(request, env);
+    }
+
+    if (url.pathname === "/api/queue") {
+      return env.QUEUE.get(env.QUEUE.idFromName(QUEUE_SINGLETON)).fetch(request);
     }
 
     const matchId = url.pathname.match(/^\/match\/([\w-]+)$/)?.[1];
@@ -28,26 +37,9 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
+/** Création directe d'une partie, hors file d'attente — parties privées et tests. */
 async function createMatch(request: Request, env: Env): Promise<Response> {
   const { playerA, playerB } = (await request.json()) as { playerA: string; playerB: string };
-  const matchId = crypto.randomUUID();
-
-  const config: MatchConfig = {
-    matchId,
-    rulesetVersion: CURRENT_RULESET_VERSION,
-    scenario: DEFAULT_SCENARIO,
-  };
-
-  await env.DB.prepare(
-    `INSERT INTO matches (id, player_a, player_b, ruleset_version, scenario, started_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-  )
-    .bind(matchId, playerA, playerB, config.rulesetVersion, config.scenario, Date.now())
-    .run();
-
-  await env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(
-    new Request("https://do/init", { method: "POST", body: JSON.stringify(config) }),
-  );
-
-  return Response.json({ matchId });
+  const match = await startMatch(env, playerA, playerB);
+  return Response.json(match);
 }

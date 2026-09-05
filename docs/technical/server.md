@@ -30,12 +30,16 @@ Trois principes, actés dans `docs/architecture.md` :
 
 | Fichier | Rôle |
 |---|---|
-| `apps/server/src/index.ts` | Worker : routage, création de partie, service du client |
+| `apps/server/src/index.ts` | Worker : routage et service du client |
 | `apps/server/src/match-do.ts` | `MatchDO` : le Durable Object de partie |
+| `apps/server/src/queue-do.ts` | `QueueDO` : la file d'attente globale de matchmaking |
+| `apps/server/src/match-setup.ts` | Création d'une partie : ligne D1, jetons de siège, init du DO |
+| `apps/server/src/seating.ts` | **Pur** — jeton de siège → camp, et autorité de tour |
+| `apps/server/src/pairing.ts` | **Pur** — la file d'attente comme structure de données |
 | `apps/server/src/protocol.ts` | Messages client/serveur et version de protocole |
 | `apps/server/src/rulesets.ts` | Registre des rulesets par version |
 | `apps/server/src/scenarios.ts` | Registre des scénarios de départ |
-| `apps/server/src/env.d.ts` | Type des bindings : `DB`, `MATCH`, `ASSETS` |
+| `apps/server/src/env.d.ts` | Type des bindings : `DB`, `MATCH`, `QUEUE`, `ASSETS` |
 | `apps/server/wrangler.toml` | Configuration et environnements |
 | `apps/server/migrations/*.sql` | Schéma D1 |
 
@@ -48,21 +52,24 @@ en D1, puis route vers le Durable Object.
 
 | Route | Méthode | Traitement |
 |---|---|---|
-| `/api/matches` | `POST` | `createMatch()` |
-| `/match/:id` | toute | `env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(request)` |
+| `/api/matches` | `POST` | `createMatch()` — partie directe, hors file d'attente |
+| `/api/queue?player=<id>` | WebSocket | `env.QUEUE.get(idFromName("global")).fetch(request)` |
+| `/match/:id?seat=<jeton>` | WebSocket | `env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(request)` |
 | tout le reste | toute | `env.ASSETS.fetch(request)` — le client statique |
 
 | Fonction | Emplacement | Rôle |
 |---|---|---|
 | `fetch()` (handler par défaut) | `apps/server/src/index.ts` | Routage |
-| `createMatch()` | `apps/server/src/index.ts` | Crée l'identifiant, écrit la ligne `matches`, initialise le DO |
+| `createMatch()` | `apps/server/src/index.ts` | Lit `playerA`/`playerB`, délègue à `startMatch()` |
+| `startMatch()` | `apps/server/src/match-setup.ts` | Identifiant, jetons de siège, ligne `matches`, `POST /init` |
 
 **`idFromName(matchId)`** est le point clé : deux joueurs de la même partie atteignent
 forcément la même instance de DO, sans annuaire ni coordination.
 
-`createMatch()` enchaîne : `crypto.randomUUID()` pour l'identifiant, un `INSERT` dans
-`matches` (avec `CURRENT_RULESET_VERSION` et `DEFAULT_SCENARIO`), puis un `POST /init`
-vers le DO pour y déposer la configuration. Il répond `{ matchId }`.
+`startMatch()` enchaîne : `crypto.randomUUID()` pour l'identifiant **et pour chacun des
+deux jetons de siège**, un `INSERT` dans `matches` (avec `CURRENT_RULESET_VERSION` et
+`DEFAULT_SCENARIO`), puis un `POST /init` vers le DO pour y déposer la configuration.
+Il répond `{ matchId, seats }`.
 
 `crypto.randomUUID()` et `Date.now()` sont utilisés **ici, dans le Worker** — pas dans
 `packages/core`. L'invariant de déterminisme ne porte que sur `core` : l'identifiant et
@@ -110,25 +117,51 @@ incompatible avec l'hibernation.
 `fetch()` refuse une requête sans `?player=A|B` (400) ou sans en-tête
 `Upgrade: websocket` (426).
 
+### Le siège : à qui parle-t-on ?
+
+Se connecter à une partie exige un **jeton de siège**, tiré à la création et connu des
+seuls deux joueurs (`?seat=<jeton>`). `seatFor()` (`seating.ts`, pur) le traduit en camp ;
+un jeton inconnu, vide ou absent reçoit un `403` et **aucune vue**.
+
+Ce n'est pas de l'authentification : ça n'identifie personne. Mais c'est ce qui rend le fog
+of war structurel — sans jeton, on n'obtient la vue d'aucun des deux camps. Auparavant un
+client annonçait `?player=A` et pouvait donc demander la vue de son adversaire.
+
+Le camp est ensuite porté par un **tag de socket**, posé à l'acceptation : c'est la seule
+donnée liée à la connexion que l'expéditeur ne contrôle pas, et la seule qui survive à
+l'hibernation.
+
+### L'autorité de tour
+
+`denyOutOfTurn()` (`seating.ts`, pur) refuse toute action venue d'un autre camp que celui
+au trait. C'est la moitié de la règle que `core` ne peut pas tenir : `applyAction()` vérifie
+que la pièce appartient au joueur **au trait**, pas que l'expéditeur est ce joueur-là.
+Sans ce refus, B jouerait les pièces de A ; et comme `core` désigne le vainqueur d'un
+abandon par `opponentOf(activePlayer)`, un abandon hors tour couronnerait le mauvais camp.
+
 ### Le cycle d'une action
 
 ```
-webSocketMessage  ──►  play(action, ws)
+webSocketMessage  ──►  play(action, player, ws)
                          │
-                         ├─ load()                    état courant (cache ou rejeu)
-                         ├─ applyAction(state, action) @occulis/core
-                         │     └─ échec ──► send({ kind: "rejected", error })   ← à l'émetteur seul
-                         ├─ observe() × 2              met à jour les deux mémoires
-                         ├─ appendToLog(action)        INSERT dans match_actions
-                         └─ broadcastViews()           un viewFor() par joueur
+                         ├─ load()                     état courant (cache ou rejeu)
+                         ├─ denyOutOfTurn(...)          seating.ts
+                         │     └─ refus ──► send({ kind: "rejected", error })  ← à l'émetteur seul
+                         ├─ advanceMemory(live, action) @occulis/core
+                         │     └─ échec ──► send({ kind: "rejected", error })  ← à l'émetteur seul
+                         ├─ appendToLog(action, seq)    INSERT dans match_actions
+                         ├─ recordOutcome()             si la partie s'achève : UPDATE matches
+                         └─ broadcastViews()            un viewFor() par joueur
 ```
 
 L'ordre compte : **le log est écrit avant la diffusion**. Un client ne voit donc jamais un
 état que la source de vérité ignore.
 
-`appendToLog()` utilise `state.turn` **après** application comme valeur de `seq` : la
-première action porte `seq = 1`. La séquence est monotone et unique par partie, ce que la
-clé primaire `(match_id, seq)` garantit.
+`seq` est l'index du coup dans `state.history` **avant** application : la première action
+porte `seq = 0`. Il ne dépend donc plus de `turn` — deux notions qui coïncident aujourd'hui
+mais qu'une règle à résolution différée (`docs/design.md` section 3.2) séparerait. La
+séquence est monotone et unique par partie, ce que la clé primaire `(match_id, seq)`
+garantit.
 
 ### `load()` — la reconstruction par rejeu
 
@@ -137,11 +170,16 @@ Si `this.live` est en cache, elle le renvoie. Sinon :
 1. `config()` relit la `MatchConfig` du stockage du DO.
 2. `scenarioFor()` et `rulesetFor()` reconstruisent le plateau, les pièces et les règles
    **de la version figée à la création**.
-3. `createGame()` reconstruit l'état initial, `observe()` les deux connaissances.
-4. Toutes les lignes de `match_actions` sont relues `ORDER BY seq ASC` et rejouées par
-   `applyAction()`.
+3. `createGame()` reconstruit l'état initial.
+4. Toutes les lignes de `match_actions` sont relues `ORDER BY seq ASC` et passées à
+   `replayMemory()` (`@occulis/core`), qui rejoue la position **et** fait avancer la
+   mémoire fantôme des deux joueurs à chaque coup.
 
-Un rejeu qui échoue lève `Log corrompu pour <matchId>` — c'est volontairement fatal :
+`replayMemory()` vit dans `core` et non ici : la mémoire fantôme dépend de toutes les
+positions traversées, pas seulement de la dernière, et le client tient exactement la même
+chose en hot-seat. Écrire la boucle des deux côtés, c'était deux occasions de diverger.
+
+Un rejeu qui échoue lève `Log corrompu pour <matchId> au coup <seq>` — volontairement fatal :
 poursuivre sur un état divergent serait pire.
 
 **Cette méthode n'est correcte que parce que `packages/core` est strictement
@@ -154,26 +192,39 @@ joueurs ont réellement eue.
 ## `protocol.ts`
 
 ```ts
-const PROTOCOL_VERSION = 1
+const PROTOCOL_VERSION = 2
 
 type ClientMessage =
   | { kind: "hello";  protocol: number }
   | { kind: "action"; action: Action }
 
+type Rejection = ActionError | SeatDenial
+
 type ServerMessage =
+  | { kind: "welcome";           player: PlayerId }
   | { kind: "view";              view: WireView }
-  | { kind: "rejected";          error: ActionError }
+  | { kind: "rejected";          error: Rejection }
+  | { kind: "protocol-mismatch"; expected: number }
+
+type QueueServerMessage =
+  | { kind: "waiting" }
+  | { kind: "matched";           matchId: string; player: PlayerId; seat: string }
   | { kind: "protocol-mismatch"; expected: number }
 ```
 
 | Fonction | Emplacement | Rôle |
 |---|---|---|
 | `encodeView()` | `apps/server/src/protocol.ts` | `PlayerView` → `WireView` sérialisable |
+| `decodeView()` | `apps/server/src/protocol.ts` | `WireView` → `PlayerView`, côté client |
 
 **Pourquoi `WireView` existe** : `PlayerView.visible` est un `ReadonlySet`, et
-`JSON.stringify` sérialise un `Set` en `{}`. `encodeView()` le convertit en tableau. Tout
-futur client devra faire la conversion inverse avant de passer la vue au rendu — `Scene`
-(`apps/web/src/scene/scene.ts`) attend bien un `Set`.
+`JSON.stringify` sérialise un `Set` en `{}`. `encodeView()` le convertit en tableau,
+`decodeView()` le reconstruit — `Scene` (`apps/web/src/scene/scene.ts`) attend bien un
+`Set`, et un client qui oublierait la conversion inverse afficherait un fog vide, donc
+tout le plateau.
+
+**`welcome`** dit au client de quel camp il tient le siège. Il ne le sait pas autrement :
+c'est le jeton qui le détermine, et le serveur seul le résout.
 
 **Pourquoi la version est négociée** : un client téléchargé (cible Electron) embarque un
 vieux `core` et calcule donc les coups légaux avec de vieilles règles. Le serveur doit
@@ -282,18 +333,20 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 ## Non implémenté
 
 - **Aucune authentification.** `createMatch()` lit `playerA` et `playerB` dans le corps de
-  la requête sans la moindre vérification. Aucune route ne crée de ligne dans `players` ni
-  dans `users`.
-- **Aucun matchmaking.** Le second Durable Object global décrit dans
-  `docs/architecture.md` n'existe pas.
-- **Aucun ELO, aucun historique, aucun classement, aucune liste d'amis** — les colonnes
-  existent, rien ne les lit ni ne les écrit.
-- **`matches.finished_at` et `matches.outcome` ne sont jamais renseignés** : rien ne clôt
-  une partie en base quand `GameState.outcome` devient non nul.
-- **Aucun test** dans `apps/server`, seul paquet du dépôt dans ce cas. Le workflow CI est
-  prêt à les exécuter : `pnpm -r test` ne lance que les paquets déclarant un script `test`,
-  en ajouter un suffira.
-- **Aucun test d'hibernation**, alors que `CLAUDE.md` en demande un explicitement.
+  la requête, et `/api/queue` lit `?player=<id>`, sans la moindre vérification. Aucune
+  route ne crée de ligne dans `players` ni dans `users`. Le jeton de siège **n'y supplée
+  pas** : il lie une connexion à un camp, il n'identifie personne. N'importe qui peut
+  entrer dans la file sous n'importe quel nom.
+- **Aucun ELO, aucun classement, aucune liste d'amis** — les colonnes existent, rien ne
+  les lit.
+- **Aucun test d'intégration du runtime.** Les tests couvrent les modules purs
+  (`seating.ts`, `pairing.ts`, `protocol.ts`) ; le comportement réel des DO — hibernation,
+  reprise après réveil, concurrence — demanderait `@cloudflare/vitest-pool-workers` et un
+  runtime workerd. `hibernation.test.ts` s'en tient à vérifier dans la source que
+  `acceptWebSocket()` est employé et `accept()` jamais : l'écart ne se voit pas au
+  comportement, seulement sur la facture.
+- **Aucune reprise de file après hibernation du `QueueDO`.** Les attentes dont le socket a
+  disparu sont purgées à l'appariement suivant, pas activement.
 - **`VITE_SERVER_URL` n'existe nulle part dans le code**, contrairement à ce que
   `CLAUDE.md` laisse entendre. Sur le web, le client étant servi par le même Worker, une
   URL relative suffit. La contrainte « URL gravée dans le binaire » ne vaudra que pour la

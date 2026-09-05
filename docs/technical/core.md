@@ -528,6 +528,24 @@ interface PlayerView {
 | `visibleTilesFor()` | Union des champs de vision des pièces d'un joueur |
 | `observe()` | Fait avancer la mémoire après un changement d'état |
 | `viewFor()` | Produit l'état transmissible à un joueur |
+| `startMemory()` | `MatchMemory` initiale : une position et les deux connaissances |
+| `advanceMemory()` | Joue une action et fait avancer les deux mémoires |
+| `replayMemory()` | Rejoue un log entier, mémoires comprises |
+
+### `MatchMemory` — une partie et ce que chacun en sait
+
+```ts
+interface MatchMemory {
+  state: GameState;
+  knowledge: Record<PlayerId, PlayerKnowledge>;
+}
+```
+
+C'est l'unité que tient le Durable Object, et celle que le client tient en hot-seat. Elle
+vit ici plutôt que des deux côtés parce que **la mémoire fantôme dépend de toutes les
+positions traversées, pas seulement de la dernière** : reconstruire une partie depuis son
+log suppose de faire avancer la connaissance à chaque coup, et non de l'appliquer une fois
+à l'arrivée. Écrire cette boucle deux fois, c'était deux occasions de diverger.
 
 `visibleTilesFor()` **demande son champ de vision à chaque type de pièce**
 (`ruleset.typeOf(piece).fieldOfView(...)`) au lieu de le calculer à partir d'une portée

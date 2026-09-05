@@ -13,9 +13,19 @@ binding = "ASSETS"
 name = "MATCH"
 class_name = "MatchDO"
 
+# File d'attente globale : une seule instance pour tout le service, son mono-threading
+# écarte le double appariement (docs/architecture.md section 2).
+[[durable_objects.bindings]]
+name = "QUEUE"
+class_name = "QueueDO"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["MatchDO"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["QueueDO"]
 
 [[d1_databases]]
 binding = "DB"
@@ -37,6 +47,10 @@ binding = "ASSETS"
 [[env.staging.durable_objects.bindings]]
 name = "MATCH"
 class_name = "MatchDO"
+
+[[env.staging.durable_objects.bindings]]
+name = "QUEUE"
+class_name = "QueueDO"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -65,6 +79,10 @@ binding = "ASSETS"
 [[env.production.durable_objects.bindings]]
 name = "MATCH"
 class_name = "MatchDO"
+
+[[env.production.durable_objects.bindings]]
+name = "QUEUE"
+class_name = "QueueDO"
 
 [[env.production.d1_databases]]
 binding = "DB"
