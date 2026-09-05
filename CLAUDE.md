@@ -74,7 +74,7 @@ comme pour la section 10 du design doc.
 
 ## État du projet
 
-Logique de jeu posée et testée (77 tests dans `core`) : plateau à hauteur, LOS, verticalité, déplacement, capture de mêlée, tours alternés, fog of war avec mémoire, historique et rejeu, abandon, pat, échec et mat.
+Logique de jeu posée et testée (77 tests dans `core`) : plateau à hauteur, LOS, verticalité, déplacement, capture de mêlée, tours alternés, fog of war avec mémoire, historique et rejeu, abandon, pat, échec et mat, nulles anti-blocage.
 
 Multijoueur en ligne fonctionnel de bout en bout (15 tests dans `apps/server`, 2 dans `packages/protocol`) : file d'attente, appariement, jetons de siège, autorité de tour, diffusion des vues par joueur, log d'actions en D1 et clôture de partie. Vérifié en conditions réelles avec deux clients sur `wrangler dev`. **Toujours pas d'authentification** : le nom annoncé à la file n'est vérifié par personne, et `ensurePlayers` est un bouchon qui devra disparaître.
 
@@ -82,9 +82,9 @@ Moteur de rendu isométrique filaire fonctionnel (77 tests dans `apps/web`) : tr
 
 Une partie de démonstration est jouable en hot-seat, de deux façons : **au clic** (sélectionner une pièce affiche ses destinations légales, cliquer une destination l'y déplace avec une animation, cliquer un adversaire adjacent le capture sur place) et **par saisie de coordonnées** (`1,6 2,5` déplace, `1,6 2,5 x 3,5` capture, `abandon` abandonne). Le clavier reste seul capable d'enchaîner déplacement et capture dans le même tour. La sélection **filtre `legalActions`, elle ne redéduit jamais la légalité** (`game/selection.ts`). La vue suit le joueur au trait, le passage de main attendant la fin de l'animation, et chaque camp garde sa propre mémoire du fog (`game/match.ts`).
 
-Échec et mat implémentés sous la règle « échecs strict » actée en section 7.1 du design doc.
+Échec et mat implémentés sous la règle « échecs strict » (design.md 7.1), nulles par triple répétition et par coups sans capture (design.md 7.2, les deux automatiques).
 
-Non implémenté volontairement, car listé comme ouvert en section 10 du design doc : attaque à distance différée, pièges, déploiement, règle anti-répétition, roster de pièces. Pas de design system (explicitement prévu pour plus tard par l'utilisateur).
+Non implémenté volontairement, car listé comme ouvert en section 10 du design doc : attaque à distance différée, pièges, déploiement, roster de pièces. Pas de design system (explicitement prévu pour plus tard par l'utilisateur).
 
 **Les interprétations qu'il a fallu encoder faute de décision explicite sont consignées dans [docs/implementation-notes.md](docs/implementation-notes.md)** — les relire avant de bâtir dessus, et faire valider celles qui sont concernées avant d'ajouter une règle qui en dépend.
 

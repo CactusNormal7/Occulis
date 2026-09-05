@@ -1,7 +1,25 @@
 import { type Coord, type CoordKey, coordEquals, coordKey } from "./coord.js";
 import { type Piece, type PieceId, type PlayerId, opponentOf } from "./pieces/index.js";
 import { type Result, err, ok } from "./result.js";
-import { type GameState, commanderOf, occupancy, piecesOf } from "./state.js";
+import {
+  type DrawClock,
+  type GameState,
+  commanderOf,
+  occupancy,
+  piecesOf,
+  positionKey,
+} from "./state.js";
+
+/**
+ * Seuils des nulles anti-blocage (docs/design.md section 7.2).
+ *
+ * `REPETITION_LIMIT` reprend la triple répétition des échecs.
+ * `ACTIONS_WITHOUT_CAPTURE_LIMIT` compte des **actions**, pas des rondes : 60 actions
+ * valent 30 tours par camp. La valeur est un point de départ raisonné, pas un
+ * équilibrage — aucun roster n'est acté (docs/implementation-notes #17).
+ */
+export const REPETITION_LIMIT = 3;
+export const ACTIONS_WITHOUT_CAPTURE_LIMIT = 60;
 
 /**
  * Une action = le tour complet d'une seule pièce (docs/design.md section 6).
@@ -164,6 +182,14 @@ function leavesCommanderExposed(state: GameState, action: Action): boolean {
   return isCommanderThreatened(project(state, action), state.activePlayer);
 }
 
+/** Fait avancer l'horloge de nulle. La position comptée est celle *après* le coup. */
+function tickDrawClock(previous: DrawClock, next: GameState, captured: boolean): DrawClock {
+  const key = positionKey(next);
+  const seen = new Map(previous.seen);
+  seen.set(key, (seen.get(key) ?? 0) + 1);
+  return { seen, sinceCapture: captured ? 0 : previous.sinceCapture + 1 };
+}
+
 function withOutcome(state: GameState): GameState {
   if (state.outcome !== null) return state;
 
@@ -186,6 +212,15 @@ function withOutcome(state: GameState): GameState {
       : ({ kind: "draw", reason: "stalemate" } as const);
     return { ...state, outcome };
   }
+
+  // Testées après le mat : un mat reste un mat, même atteint au coup qui déclenche
+  // une nulle anti-blocage.
+  if ((state.draw.seen.get(positionKey(state)) ?? 0) >= REPETITION_LIMIT) {
+    return { ...state, outcome: { kind: "draw", reason: "repetition" } };
+  }
+  if (state.draw.sinceCapture >= ACTIONS_WITHOUT_CAPTURE_LIMIT) {
+    return { ...state, outcome: { kind: "draw", reason: "no-capture" } };
+  }
   return state;
 }
 
@@ -203,13 +238,16 @@ export function applyAction(state: GameState, action: Action): Result<GameState,
     });
   }
 
-  const moved = project(state, action);
+  const played: GameState = {
+    ...project(state, action),
+    activePlayer: opponentOf(state.activePlayer),
+    turn: state.turn + 1,
+    history: [...state.history, record],
+  };
   return ok(
     withOutcome({
-      ...moved,
-      activePlayer: opponentOf(state.activePlayer),
-      turn: state.turn + 1,
-      history: [...state.history, record],
+      ...played,
+      draw: tickDrawClock(state.draw, played, action.capture !== undefined),
     }),
   );
 }

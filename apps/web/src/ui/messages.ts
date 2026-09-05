@@ -83,8 +83,17 @@ const VICTORY_REASONS: Record<
   "commander-captured": "pièce maîtresse capturée",
 };
 
+const DRAW_REASONS: Record<
+  Extract<NonNullable<GameState["outcome"]>, { kind: "draw" }>["reason"],
+  string
+> = {
+  stalemate: "pat, plus aucun coup légal",
+  repetition: "même position atteinte trois fois",
+  "no-capture": "trop de coups sans la moindre capture",
+};
+
 export function describeOutcome(outcome: NonNullable<GameState["outcome"]>): string {
-  if (outcome.kind === "draw") return "Partie nulle : pat, plus aucun coup légal.";
+  if (outcome.kind === "draw") return `Partie nulle : ${DRAW_REASONS[outcome.reason]}.`;
   return `Victoire de ${outcome.winner} (${VICTORY_REASONS[outcome.reason]}).`;
 }
 

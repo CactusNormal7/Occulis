@@ -386,8 +386,22 @@ interface ActionRecord { player: PlayerId; action: Action }
 type Outcome =
   | { kind: "victory"; winner: PlayerId;
       reason: "commander-captured" | "resignation" | "checkmate" }
-  | { kind: "draw";    reason: "stalemate" }
+  | { kind: "draw";    reason: "stalemate" | "repetition" | "no-capture" }
+
+interface DrawClock {
+  seen: ReadonlyMap<PositionKey, number>;   // occurrences de chaque position
+  sinceCapture: number;                     // actions depuis la dernière capture
+}
 ```
+
+`DrawClock` est tenu **de façon incrémentale** et non recalculé depuis `history` : la
+partie est sans limite de temps de réflexion, donc potentiellement longue, et rejouer tout
+le log à chaque coup serait quadratique pour une information de deux entiers.
+
+`positionKey()` signe une position par le camp et le **type** de chaque pièce — pas par son
+identifiant — plus le camp au trait. Deux éclaireurs d'un même camp qui échangent leurs
+cases rendent donc bien la même position, comme aux échecs. La position de départ compte
+pour une occurrence : sans elle, la troisième répétition tomberait un coup trop tard.
 
 `history` est le log d'actions, tenu **dans** l'état plutôt qu'à côté pour qu'il ne puisse
 pas diverger de la position qu'il décrit. C'est ce que le serveur persiste en D1 et rejoue
@@ -478,8 +492,11 @@ construites sans maîtresse), **ensuite** l'absence de coup légal. C'est là qu
 se séparent, et rien d'autre ne les distingue : maîtresse menacée → `checkmate`, maîtresse
 hors de danger → `stalemate`. La reddition court-circuite tout dans `applyAction()`.
 
-**Aucune règle anti-blocage/anti-répétition n'existe** — point explicitement reporté
-(`docs/design.md` point ouvert 4). `history` en fournit désormais le support.
+Viennent ensuite, et **après le mat** — un mat reste un mat, même atteint au coup qui
+déclenche une nulle — les deux règles anti-blocage (`docs/design.md` section 7.2) :
+`REPETITION_LIMIT` occurrences de la même position, ou `ACTIONS_WITHOUT_CAPTURE_LIMIT`
+actions sans capture. Toutes deux automatiques. Le second seuil n'est pas un équilibrage
+(`implementation-notes.md` point 17).
 
 ### `ActionError`
 

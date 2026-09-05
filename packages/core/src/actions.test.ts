@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACTIONS_WITHOUT_CAPTURE_LIMIT,
   type Action,
   applyAction,
   isCommanderThreatened,
@@ -9,7 +10,7 @@ import {
 } from "./actions.js";
 import { Board } from "./board.js";
 import type { Result } from "./result.js";
-import { type GameState, createGame, pieceAt } from "./state.js";
+import { type GameState, createGame, pieceAt, positionKey } from "./state.js";
 import { definePiece, placePiece, testRuleset } from "./testing.js";
 
 const ruleset = testRuleset(
@@ -333,5 +334,102 @@ describe("historique et rejeu", () => {
       ok: false,
       error: { code: "unreachable", to: { x: 0, y: 0 }, seq: 1 },
     });
+  });
+});
+
+describe("nulles anti-blocage", () => {
+  /** Deux éclaireurs qui font l'aller-retour sur une bande, loin des maîtresses. */
+  function shuffling(): GameState {
+    return createGame(Board.flat(12, 2), ruleset, [
+      placePiece("a-scout", "scout", "A", 0, 0),
+      placePiece("a-cmd", "commander", "A", 0, 1),
+      placePiece("b-scout", "scout", "B", 11, 0),
+      placePiece("b-cmd", "commander", "B", 11, 1),
+    ]);
+  }
+
+  const shuffle: readonly Action[] = [
+    { kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } },
+    { kind: "move", pieceId: "b-scout", to: { x: 10, y: 0 } },
+    { kind: "move", pieceId: "a-scout", to: { x: 0, y: 0 } },
+    { kind: "move", pieceId: "b-scout", to: { x: 11, y: 0 } },
+  ];
+
+  function repeat(times: number): GameState {
+    let state = shuffling();
+    for (let round = 0; round < times; round++) {
+      for (const action of shuffle) state = unwrap(applyAction(state, action));
+    }
+    return state;
+  }
+
+  it("compte la position de départ comme une occurrence", () => {
+    // Sans elle, y revenir deux fois n'en ferait que deux et la troisième
+    // répétition n'arriverait jamais au bon coup.
+    const start = shuffling();
+    expect(start.draw.seen.get(positionKey(start))).toBe(1);
+  });
+
+  it("ne déclare rien après une seule boucle", () => {
+    expect(repeat(1).outcome).toBeNull();
+  });
+
+  it("déclare la nulle à la troisième occurrence de la même position", () => {
+    const after = repeat(2);
+    expect(after.outcome).toEqual({ kind: "draw", reason: "repetition" });
+  });
+
+  it("remet le compteur de captures à zéro quand une pièce tombe", () => {
+    const state = createGame(Board.flat(12, 2), ruleset, [
+      placePiece("a-scout", "scout", "A", 0, 0),
+      placePiece("a-cmd", "commander", "A", 0, 1),
+      placePiece("b-scout", "scout", "B", 5, 0),
+      placePiece("b-cmd", "commander", "B", 11, 1),
+    ]);
+
+    const approach = [
+      { kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } },
+      { kind: "move", pieceId: "b-scout", to: { x: 3, y: 0 } },
+    ] as const;
+    const walked = approach.reduce<GameState>(
+      (current, action) => unwrap(applyAction(current, action)),
+      state,
+    );
+    expect(walked.draw.sinceCapture).toBe(2);
+
+    const captured = unwrap(
+      applyAction(walked, {
+        kind: "move",
+        pieceId: "a-scout",
+        to: { x: 2, y: 0 },
+        capture: "b-scout",
+      }),
+    );
+    expect(captured.draw.sinceCapture).toBe(0);
+  });
+
+  it("déclare la nulle après trop d'actions sans capture", () => {
+    // Une carte assez large pour éviter la triple répétition : c'est bien le
+    // compteur de captures qu'on éprouve, pas la règle de répétition.
+    let state = createGame(Board.flat(40, 2), ruleset, [
+      placePiece("a-scout", "scout", "A", 0, 0),
+      placePiece("a-cmd", "commander", "A", 0, 1),
+      placePiece("b-scout", "scout", "B", 39, 0),
+      placePiece("b-cmd", "commander", "B", 39, 1),
+    ]);
+
+    for (let step = 0; step < ACTIONS_WITHOUT_CAPTURE_LIMIT; step++) {
+      const player = state.activePlayer;
+      const forward = legalActions(state).find(
+        (action) => action.kind === "move" && action.capture === undefined,
+      );
+      expect(forward).toBeDefined();
+      state = unwrap(applyAction(state, forward as Action));
+      if (state.outcome !== null) break;
+      expect(player).toBeDefined();
+    }
+
+    expect(state.draw.sinceCapture).toBeGreaterThanOrEqual(1);
+    expect(state.outcome).toEqual({ kind: "draw", reason: "no-capture" });
   });
 });

@@ -108,6 +108,19 @@ Conséquence assumée : le moteur peut refuser un coup à cause d'une menace que
 
 Le mat en découle sans règle supplémentaire : plus aucun coup légal **et** pièce maîtresse menacée = mat ; plus aucun coup légal et maîtresse hors de danger = pat.
 
+### 7.2 Nulles anti-blocage — tranché : les deux règles
+
+Le point était explicitement reporté (« éviter des parties qui tournent en rond sans jamais qu'aucune pièce maîtresse ne soit menacée »). Décision actée : **les deux règles des échecs modernes, et toutes deux automatiques.**
+
+- **Triple répétition** : la même position atteinte trois fois met fin à la partie. Une position, c'est la disposition des pièces *et* le camp au trait ; les pièces y sont identifiées par leur camp et leur type, pas par leur identifiant — deux éclaireurs d'un même camp qui échangent leurs cases rendent bien la même position.
+- **Coups sans capture** : au-delà d'un certain nombre d'actions sans qu'aucune pièce ne tombe, la partie est nulle. C'est cette règle qui couvre le vrai risque décrit plus haut, celui d'une partie qui tourne en rond en variant légèrement.
+
+Automatiques et non proposées : deux joueurs obstinés pourraient sinon bloquer indéfiniment, ce qui est précisément ce qu'on cherche à empêcher.
+
+Conséquence sous fog of war, assumée : la répétition porte sur la position **réelle**, tenue par le serveur. Un joueur peut donc voir tomber une nulle qu'il ne voyait pas venir, faute de connaître les positions adverses. L'alternative — une répétition mesurée sur ce que chaque joueur connaît — donnerait deux comptes différents et une règle non symétrique.
+
+Le seuil de la seconde règle n'est **pas** un équilibrage : aucun roster n'est acté, donc aucune valeur ne peut l'être. La valeur encodée est un point de départ, isolé dans une constante.
+
 ## 8. Choix technique
 
 - Stack retenue : rendu 2D isométrique via WebGL (probable PixiJS ou équivalent), en JavaScript/TypeScript. Pas Unity, pas de moteur 3D.
@@ -183,7 +196,7 @@ Historique de la recherche de nom : plusieurs pistes explorées et écartées co
 1. Résolution de plusieurs attaques-zones qui se chevauchent sur la même pièce au même moment de résolution.
 2. Une attaque à distance déclarée consomme-t-elle tout le tour de la pièce, ou est-elle combinable avec un déplacement le même tour ?
 3. LOS au moment de la déclaration vs au moment de la résolution d'une attaque à distance différée.
-4. Règle anti-blocage/anti-répétition en plus du pat classique (reporté). Le support technique existe désormais (`GameState.history`), mais aucun critère n'est choisi.
+4. ~~Règle anti-blocage/anti-répétition~~ — tranché en section 7.2 : triple répétition **et** compteur de coups sans capture, les deux automatiques. Seul le seuil du compteur reste à calibrer, ce qui suppose un roster.
 5. Cases de déploiement : setup unique et fixe, ou choix parmi plusieurs emplacements ?
 
 ### Verticalité / hauteur
