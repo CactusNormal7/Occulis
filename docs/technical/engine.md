@@ -90,6 +90,8 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/net/channel.ts` | Transport WebSocket et reconnexion | non |
 | `apps/web/src/net/backoff.ts` | Délai avant la n-ième tentative de reconnexion | oui |
 | `apps/web/src/ui/lobby.ts` | Bouton de mise en file d'attente | non |
+| `apps/web/src/ui/account.ts` | Formulaire de compte | non |
+| `apps/web/src/net/auth.ts` | Appels d'authentification | non |
 | `apps/web/src/scene/scene.ts` | Couches PixiJS et détection de changement | non |
 | `apps/web/src/scene/terrain.ts` | Géométrie d'une case | non |
 | `apps/web/src/scene/pieces.ts` | Silhouette d'une pièce | non |
@@ -343,6 +345,16 @@ qu'une côté client, celle du siège. Regarder le plateau avec les yeux d'en fa
 sens en ligne, et la bascule de point de vue est désactivée dans ce mode.
 
 ---
+
+## Le compte
+
+`net/auth.ts` appelle `/api/auth/*`, `ui/account.ts` branche le formulaire. **Le jeton de
+session n'apparaît nulle part dans ce code** : il vit dans un cookie `HttpOnly`, que le
+navigateur joint seul et qu'aucun script de la page ne peut lire — un jeton lisible en
+JavaScript est un jeton exfiltrable.
+
+Le bouton « Jouer en ligne » reste désactivé tant que personne n'est connecté : la file
+d'attente répondrait 401.
 
 ## `net/` — la session en ligne
 
@@ -734,8 +746,7 @@ sélection et l'historique du champ.
 
 ## Non implémenté
 
-- **Aucune identité.** Le nom envoyé à la file est tiré au hasard à chaque chargement, et
-  le serveur ne le vérifie pas (`server.md`, « Non implémenté »).
+- **Aucune réinitialisation de mot de passe**, ni vérification d'adresse.
 - **Aucun signal de déconnexion de l'adversaire** : rien ne distingue à l'écran un
   adversaire qui réfléchit d'un adversaire parti.
 - **Aucune animation des coups adverses** : ils apparaissent à la vue suivante.

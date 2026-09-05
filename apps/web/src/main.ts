@@ -29,6 +29,7 @@ import { boardForScenario, demoGame } from "./game/scenario.js";
 import { type MatchChannel, connectToMatch } from "./net/match-channel.js";
 import { describeRejection } from "./ui/messages.js";
 import { attachLobby } from "./ui/lobby.js";
+import { attachAccount } from "./ui/account.js";
 import { type Selection, resolveClick } from "./game/selection.js";
 import { Scene } from "./scene/scene.js";
 import { BACKGROUND } from "./theme.js";
@@ -113,15 +114,32 @@ async function main(): Promise<void> {
     gameConsole.refresh();
   };
 
+  const onlineButton = element<HTMLButtonElement>("play-online");
+
+  // L'identité vient du serveur, via un cookie de session : le client ne l'annonce
+  // plus lui-même. Sans compte, la file d'attente répondrait 401.
+  attachAccount({
+    elements: {
+      form: element<HTMLFormElement>("account-form"),
+      email: element<HTMLInputElement>("account-email"),
+      password: element<HTMLInputElement>("account-password"),
+      handle: element<HTMLInputElement>("account-handle"),
+      signIn: element<HTMLButtonElement>("account-signin"),
+      register: element<HTMLButtonElement>("account-register"),
+      signOut: element<HTMLButtonElement>("account-signout"),
+      status: element<HTMLElement>("account-status"),
+    },
+    onIdentity: (identity) => {
+      onlineButton.disabled = !identity.signedIn;
+    },
+  });
+
   attachLobby({
     elements: {
-      button: element<HTMLButtonElement>("play-online"),
+      button: onlineButton,
       leave: element<HTMLButtonElement>("leave-online"),
       status: element<HTMLElement>("lobby-status"),
     },
-    // Aucune authentification n'existe côté serveur : ce nom n'est adossé à rien
-    // (docs/technical/server.md, « Non implémenté »).
-    playerId: `invite-${Math.floor(Math.random() * 1e9)}`,
     onLeave: () => {
       channel?.close();
       channel = undefined;

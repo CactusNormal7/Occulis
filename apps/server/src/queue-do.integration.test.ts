@@ -2,15 +2,16 @@ import { SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type { QueueServerMessage } from "@occulis/protocol";
 import { PROTOCOL_VERSION } from "@occulis/protocol";
+import { signUp, unique } from "./auth/auth.integration.test.js";
 
 /**
  * L'appariement dans workerd. Le mono-threading du Durable Object global est ce qui
  * écarte le double appariement (docs/architecture.md section 2) : ça ne se vérifie que
  * dans le vrai runtime, un test unitaire ne pouvant qu'éprouver la file en mémoire.
  */
-async function enqueue(playerId: string) {
-  const response = await SELF.fetch(`https://occulis.test/api/queue?player=${playerId}`, {
-    headers: { Upgrade: "websocket" },
+async function enqueue(cookie: string) {
+  const response = await SELF.fetch("https://occulis.test/api/queue", {
+    headers: { Upgrade: "websocket", Cookie: cookie },
   });
   expect(response.status).toBe(101);
 
@@ -34,8 +35,8 @@ async function enqueue(playerId: string) {
 
 describe("QueueDO dans workerd", () => {
   it("apparie deux joueurs sur une même partie, chacun sur son siège", async () => {
-    const anne = await enqueue(`anne-${crypto.randomUUID()}`);
-    const boris = await enqueue(`boris-${crypto.randomUUID()}`);
+    const anne = await enqueue(await signUp(unique("anne")));
+    const boris = await enqueue(await signUp(unique("boris")));
 
     const [forAnne, forBoris] = await Promise.all([anne.matched, boris.matched]);
     if (forAnne.kind !== "matched" || forBoris.kind !== "matched") throw new Error("non apparié");
@@ -57,10 +58,17 @@ describe("QueueDO dans workerd", () => {
     boris.socket.close();
   });
 
-  it("refuse une inscription sans joueur annoncé", async () => {
-    const response = await SELF.fetch("https://occulis.test/api/queue", {
+  it("refuse une mise en file sans session", async () => {
+    // L'identité passée au Durable Object vient du cookie, jamais de la requête :
+    // sans session, il n'y a personne à inscrire.
+    const anonymous = await SELF.fetch("https://occulis.test/api/queue", {
       headers: { Upgrade: "websocket" },
     });
-    expect(response.status).toBe(400);
+    expect(anonymous.status).toBe(401);
+
+    const forged = await SELF.fetch("https://occulis.test/api/queue?player=quelquun-dautre", {
+      headers: { Upgrade: "websocket" },
+    });
+    expect(forged.status).toBe(401);
   });
 });

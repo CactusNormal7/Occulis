@@ -24,9 +24,23 @@
         Mise en file d'attente. Le hot-seat reste le mode par défaut : tant qu'aucun
         adversaire n'est trouvé, la démonstration locale continue de tourner.
       -->
+      <!--
+        Compte. Provisoire comme le reste de la console : aucun design system n'est
+        acté (docs/design.md 8.1). Le jeton de session vit dans un cookie HttpOnly,
+        donc aucun script de cette page ne peut le lire.
+      -->
+      <form id="account-form" autocomplete="on">
+        <input id="account-email" type="email" name="email" placeholder="adresse" autocomplete="email" />
+        <input id="account-password" type="password" name="password" placeholder="mot de passe" autocomplete="current-password" />
+        <input id="account-handle" type="text" name="handle" placeholder="pseudo (inscription)" autocomplete="nickname" />
+        <button id="account-signin" type="submit">Se connecter</button>
+        <button id="account-register" type="button">Créer un compte</button>
+      </form>
       <p id="lobby">
-        <button id="play-online" type="button">Jouer en ligne</button>
+        <button id="account-signout" type="button" hidden>Se déconnecter</button>
+        <button id="play-online" type="button" disabled>Jouer en ligne</button>
         <button id="leave-online" type="button" hidden>Quitter</button>
+        <span id="account-status"></span>
         <span id="lobby-status"></span>
       </p>
       <p id="status"></p>

@@ -44,11 +44,13 @@ export async function startMatch(env: Env, playerA: string, playerB: string): Pr
 /**
  * Garantit l'existence des deux lignes `players` que `matches` référence.
  *
- * BOUCHON, en attendant l'authentification (docs/technical/server.md, « Non
- * implémenté ») : aucune route ne crée de compte, donc rien ne peuplerait `players`
- * et la contrainte de clé étrangère ferait échouer toute création de partie. Le jour
- * où un compte existera, la création d'un profil lui reviendra et cette fonction
- * disparaîtra — elle ne doit surtout pas devenir le chemin normal d'inscription.
+ * Le matchmaking n'en a plus besoin : l'inscription crée le profil de jeu en même
+ * temps que le compte, et `/api/queue` n'accepte qu'un joueur authentifié. Reste la
+ * création directe d'une partie (`POST /api/matches`), qui n'exige aucun compte pour
+ * qu'une partie privée ou un test puisse démarrer sans en créer.
+ *
+ * Ce n'est donc pas un chemin d'inscription : les lignes créées ici n'ont ni compte,
+ * ni mot de passe, ni moyen de se connecter.
  */
 async function ensurePlayers(env: Env, ...ids: readonly string[]): Promise<void> {
   const statement = env.DB.prepare(

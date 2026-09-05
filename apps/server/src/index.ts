@@ -1,30 +1,34 @@
 import { QUEUE_SINGLETON } from "./queue-do.js";
+import { currentAccount, handleAuth } from "./auth/routes.js";
 import { startMatch } from "./match-setup.js";
 
 export { MatchDO } from "./match-do.js";
 export { QueueDO } from "./queue-do.js";
 
 /**
- * Le Worker ne détient aucun état de partie : il route vers le Durable Object qui la
- * porte. Deux joueurs de la même partie atteignent forcément la même instance
- * (docs/architecture.md section 2).
+ * Le Worker ne détient aucun état de partie : il authentifie, puis route vers le
+ * Durable Object qui porte la partie. Deux joueurs de la même partie atteignent
+ * forcément la même instance (docs/architecture.md section 2).
  *
- * ATTENTION : il n'y a toujours aucune authentification (docs/setup.md section 7).
- * L'identité annoncée à la file d'attente n'est vérifiée par personne. Ce qui est
- * garanti, c'est qu'une connexion à une partie est liée à un **siège** : sans le
- * jeton tiré à la création, on n'obtient la vue d'aucun des deux camps.
+ * Deux garanties distinctes, à ne pas confondre :
+ * - **qui vous êtes** vient du cookie de session, résolu ici et nulle part ailleurs ;
+ * - **quel camp vous jouez** vient du jeton de siège, tiré à la création de la partie.
+ *
+ * La seconde ne dépend pas de la première : une partie reste jouable par qui détient
+ * le jeton, ce qui permet d'ouvrir une partie privée sans compte.
  */
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
+    const authenticated = await handleAuth(request, env, url.pathname);
+    if (authenticated !== undefined) return authenticated;
+
     if (url.pathname === "/api/matches" && request.method === "POST") {
       return createMatch(request, env);
     }
 
-    if (url.pathname === "/api/queue") {
-      return env.QUEUE.get(env.QUEUE.idFromName(QUEUE_SINGLETON)).fetch(request);
-    }
+    if (url.pathname === "/api/queue") return joinQueue(request, env, url);
 
     const matchId = url.pathname.match(/^\/match\/([\w-]+)$/)?.[1];
     if (matchId !== undefined) {
@@ -36,6 +40,22 @@ export default {
     return env.ASSETS.fetch(request);
   },
 } satisfies ExportedHandler<Env>;
+
+/**
+ * L'identité passée à la file vient du cookie, **jamais de la requête**. Le Durable
+ * Object n'est pas routable de l'extérieur : ce que le Worker écrit dans l'URL est
+ * donc hors de portée du client.
+ */
+async function joinQueue(request: Request, env: Env, url: URL): Promise<Response> {
+  const account = await currentAccount(env, request);
+  if (account === undefined) return new Response("authentification requise", { status: 401 });
+
+  const forwarded = new URL(url);
+  forwarded.searchParams.set("player", account.playerId);
+  return env.QUEUE.get(env.QUEUE.idFromName(QUEUE_SINGLETON)).fetch(
+    new Request(forwarded, request),
+  );
+}
 
 /** Création directe d'une partie, hors file d'attente — parties privées et tests. */
 async function createMatch(request: Request, env: Env): Promise<Response> {

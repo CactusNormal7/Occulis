@@ -7,9 +7,8 @@ import { OFFLINE, type Session, fromQueue } from "../net/session.js";
  * Le bouton qui met en file d'attente, et le compte rendu de ce qui s'y passe.
  *
  * Provisoire, comme la saisie de coups : il n'existe aucun design system
- * (docs/design.md 8.1) et aucune identité de joueur (le serveur ne vérifie pas le
- * nom annoncé). C'est un moyen de jouer en ligne la logique déjà implémentée, pas
- * une décision d'interface.
+ * (docs/design.md 8.1). C'est un moyen de jouer en ligne la logique déjà
+ * implémentée, pas une décision d'interface.
  */
 export interface LobbyElements {
   readonly button: HTMLButtonElement;
@@ -19,8 +18,6 @@ export interface LobbyElements {
 
 export interface LobbyOptions {
   readonly elements: LobbyElements;
-  /** Nom annoncé à la file. Aucune authentification ne l'adosse à quoi que ce soit. */
-  readonly playerId: string;
   readonly onSeated: (matchId: string, seat: string) => void;
   /** Retour à la démonstration hot-seat, la partie en ligne étant abandonnée. */
   readonly onLeave: () => void;
@@ -65,7 +62,8 @@ export function attachLobby(options: LobbyOptions): void {
     button.disabled = true;
     status.textContent = "Connexion…";
     channel = openChannel<QueueServerMessage, { kind: "hello"; protocol: number }>({
-      path: `/api/queue?player=${encodeURIComponent(options.playerId)}`,
+      // L'identité vient du cookie de session, résolue par le Worker : rien à annoncer.
+      path: "/api/queue",
       hello: { kind: "hello", protocol: PROTOCOL_VERSION },
       onMessage: receive,
       onStatus: (state) => {

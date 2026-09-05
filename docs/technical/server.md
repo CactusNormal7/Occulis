@@ -35,6 +35,10 @@ Trois principes, actés dans `docs/architecture.md` :
 | `apps/server/src/queue-do.ts` | `QueueDO` : la file d'attente globale de matchmaking |
 | `apps/server/src/match-setup.ts` | Création d'une partie : ligne D1, jetons de siège, init du DO |
 | `apps/server/src/seating.ts` | **Pur** — jeton de siège → camp, et autorité de tour |
+| `apps/server/src/auth/routes.ts` | Les routes `/api/auth/*` |
+| `apps/server/src/auth/accounts.ts` | Comptes, profils et sessions en D1 |
+| `apps/server/src/auth/password.ts` | PBKDF2, jetons de session, comparaison à temps constant |
+| `apps/server/src/auth/cookie.ts` | **Pur** — lecture et fabrication du cookie de session |
 | `apps/server/src/pairing.ts` | **Pur** — la file d'attente comme structure de données |
 | `packages/protocol/src/index.ts` | Messages client/serveur et version de protocole — **paquet partagé** |
 | `apps/server/src/rulesets.ts` | Registre des rulesets par version |
@@ -51,8 +55,12 @@ en D1, puis route vers le Durable Object.
 
 | Route | Méthode | Traitement |
 |---|---|---|
+| `/api/auth/register` | `POST` | Crée un compte **et** son profil de jeu, ouvre une session |
+| `/api/auth/login` | `POST` | Ouvre une session |
+| `/api/auth/logout` | `POST` | Ferme la session et efface le cookie |
+| `/api/auth/me` | toute | Le pseudo du joueur connecté, ou `{ signedIn: false }` |
 | `/api/matches` | `POST` | `createMatch()` — partie directe, hors file d'attente |
-| `/api/queue?player=<id>` | WebSocket | `env.QUEUE.get(idFromName("global")).fetch(request)` |
+| `/api/queue` | WebSocket | `joinQueue()` — **401 sans session** |
 | `/match/:id?seat=<jeton>` | WebSocket | `env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(request)` |
 | tout le reste | toute | `env.ASSETS.fetch(request)` — le client statique |
 
@@ -191,6 +199,49 @@ joueurs ont réellement eue.
 
 ---
 
+## `auth/` — comptes et sessions
+
+**Deux garanties distinctes, à ne pas confondre :**
+
+| Question | Répondue par | Où |
+|---|---|---|
+| Qui êtes-vous ? | Le cookie de session | `auth/`, résolu dans le Worker |
+| Quel camp jouez-vous ? | Le jeton de siège | `seating.ts`, résolu dans le `MatchDO` |
+
+La seconde ne dépend pas de la première : une partie reste jouable par qui détient le
+jeton, ce qui laisse ouverte la possibilité d'une partie privée sans compte.
+
+**L'identité passée à la file d'attente vient du cookie, jamais de la requête.** Le
+Worker résout le compte, puis réécrit `?player=<id>` dans l'URL transmise au `QueueDO`.
+Un Durable Object n'est pas routable de l'extérieur : ce que le Worker y écrit est donc
+hors de portée du client — un `?player=` envoyé par le navigateur est simplement écrasé.
+
+### Le mot de passe
+
+PBKDF2-HMAC-SHA256, 210 000 itérations, via WebCrypto. **Compromis assumé** : ni bcrypt
+ni argon2 ne sont disponibles dans un Worker sans embarquer du WASM, et PBKDF2 résiste
+moins bien qu'argon2 à une attaque par GPU à coût CPU égal. Le nombre d'itérations est
+stocké **dans l'empreinte** (`pbkdf2-sha256$<iterations>$<sel>$<empreinte>`), ce qui
+permet de l'augmenter plus tard sans invalider les mots de passe existants.
+
+La comparaison est à temps constant : comparer octet par octet avec sortie anticipée
+laisse fuiter, par la durée, le nombre d'octets corrects.
+
+Compter : un hachage coûte environ 150 ms de CPU. Sans conséquence sur le plan payant
+(limite de 30 s), mais c'est le coût de chaque connexion et de chaque inscription.
+
+### La session
+
+Le cookie porte 256 bits d'aléa. **Seul son SHA-256 est stocké en base** : une fuite de
+D1 ne permet donc pas de se faire passer pour un utilisateur connecté. `HttpOnly`,
+`Secure` et `SameSite=Lax` ne sont optionnels ni l'un ni l'autre — le jeton vaut un mot
+de passe tant qu'il vit.
+
+### Ce que le serveur ne dit pas
+
+`/api/auth/login` répond exactement la même chose à une adresse inconnue qu'à un mot de
+passe faux. Distinguer les deux dirait à un inconnu quelles adresses sont inscrites.
+
 ## `@occulis/protocol` — le protocole partagé
 
 Il vit dans `packages/protocol` et non dans `apps/server` : `apps/web` doit parler
@@ -293,6 +344,12 @@ le support ; **l'authentification n'est pas branchée**.
 
 ---
 
+### `migrations/0003_sessions.sql`
+
+`sessions (token_hash, user_id, created_at, expires_at)`. **Seule l'empreinte du jeton**
+y figure. Deux index : par utilisateur, et par expiration pour la purge qui reste à
+écrire.
+
 ## `wrangler.toml` — bindings et environnements
 
 Bindings (type dans `apps/server/src/env.d.ts`) :
@@ -326,7 +383,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 
 ## Les tests
 
-19 tests, dont 8 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
+28 tests, dont 17 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
 @occulis/server test`.
 
 | Fichier | Où | Ce qui est verrouillé |
@@ -334,7 +391,8 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `seating.test.ts` | Node | Jeton → camp, refus d'un jeton inconnu ou vide, autorité de tour |
 | `pairing.test.ts` | Node | File d'attente, remplacement d'une attente en double, appariement du plus ancien |
 | `match-do.integration.test.ts` | workerd | 403 sans jeton, une vue par camp sans fuite, refus hors tour, coup appliqué + écrit au log + diffusé, clôture en base, refus de protocole |
-| `queue-do.integration.test.ts` | workerd | Deux joueurs appariés sur une même partie avec des sièges distincts et une partie réellement joignable |
+| `queue-do.integration.test.ts` | workerd | Deux joueurs appariés sur une même partie avec des sièges distincts, partie réellement joignable, **401 sans session et sur identité forgée dans l'URL** |
+| `auth/auth.integration.test.ts` | workerd | Inscription, session reconnue, jeton inventé refusé, attributs du cookie, mot de passe faux, **réponses indiscernables entre adresse inconnue et mot de passe faux**, unicité, mot de passe trop court, déconnexion |
 
 **Les tests d'intégration sont aussi le test d'hibernation** que `CLAUDE.md` réclame :
 `webSocketMessage()` et `webSocketClose()` ne sont appelés que sur un socket accepté par
@@ -372,11 +430,18 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
 
 ## Non implémenté
 
-- **Aucune authentification.** `createMatch()` lit `playerA` et `playerB` dans le corps de
-  la requête, et `/api/queue` lit `?player=<id>`, sans la moindre vérification. Aucune
-  route ne crée de ligne dans `players` ni dans `users`. Le jeton de siège **n'y supplée
-  pas** : il lie une connexion à un camp, il n'identifie personne. N'importe qui peut
-  entrer dans la file sous n'importe quel nom.
+- **Aucune limitation de débit sur `/api/auth/login`.** Rien n'empêche une attaque par
+  force brute autrement que par le coût du PBKDF2. À traiter **avant toute mise en ligne
+  publique**.
+- **Aucune vérification d'adresse électronique et aucune réinitialisation de mot de
+  passe.** Un compte dont le mot de passe est perdu l'est aussi.
+- **Aucune purge des sessions expirées.** Elles sont refusées à la lecture (`expires_at`),
+  mais rien ne les supprime : la table croît indéfiniment. L'index `sessions_by_expiry`
+  est là pour le balayage qui viendra.
+- **`POST /api/matches` n'exige aucun compte** et crée au besoin des lignes `players`
+  sans compte associé (`ensurePlayers`), pour qu'une partie privée ou un test démarre
+  sans inscription. Ce n'est pas un chemin d'inscription — ces lignes n'ont ni mot de
+  passe ni moyen de se connecter — mais c'est une porte ouverte à surveiller.
 - **Aucun ELO, aucun classement, aucune liste d'amis** — les colonnes existent, rien ne
   les lit.
 - **Aucune reprise de file après hibernation du `QueueDO`.** Les attentes dont le socket a

@@ -95,6 +95,28 @@
   gap: 0.6em;
 }
 
+#account-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  margin: 0 0 0.5em;
+}
+
+#account-form input {
+  font: inherit;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--ink-faint);
+  padding: 0.2em 0.4em;
+  min-width: 8em;
+}
+
+#account-status {
+  color: var(--ink-soft);
+}
+
+#account-form button,
+#account-signout,
 #play-online,
 #leave-online {
   font: inherit;
@@ -105,12 +127,15 @@
   cursor: pointer;
 }
 
+#account-form button:hover:not(:disabled),
+#account-signout:hover:not(:disabled),
 #play-online:hover:not(:disabled),
 #leave-online:hover:not(:disabled) {
   border-color: var(--ink);
 }
 
-#play-online:disabled {
+#play-online:disabled,
+#account-form button:disabled {
   color: var(--ink-faint);
   border-color: var(--ink-faint);
   cursor: default;
