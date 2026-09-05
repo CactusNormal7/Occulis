@@ -8,17 +8,18 @@ Jeu de plateau tactique compétitif 1v1 en ligne, vue isométrique 2D, DA minima
 
 - Monorepo pnpm workspaces, TypeScript strict partout.
 - `packages/core` — logique de jeu pure (règles, plateau, hauteur, calcul de LOS, résolution des tours). **Aucune dépendance de rendu.** Testée avec Vitest.
+- `packages/protocol` — les messages échangés entre le client et le serveur, et rien d'autre : aucune règle de jeu (elle vit dans `core`), aucun transport (il vit dans chaque app). Paquet partagé et non module de `apps/server`, précisément pour que les deux côtés ne puissent pas diverger.
 - `apps/server` — Worker Cloudflare + Durable Objects, consomme `@occulis/core`. Transport, cycle de vie des DO, schéma D1, file d'attente de matchmaking, jetons de siège. Toujours **ni authentification ni ELO**. Les modules purs (`seating.ts`, `pairing.ts`) portent les tests ; `match-do.ts` et `queue-do.ts` touchent le runtime.
-- `apps/web` — rendu (Vite + PixiJS/WebGL), consomme `@occulis/core`. La rotation isométrique et les recalculs de projection vivent ici (`src/iso.ts`), jamais dans `core`. Le code couleur est centralisé dans `src/theme.ts`, **seul fichier du client autorisé à contenir une valeur de couleur** — une règle ESLint le vérifie. **Le dossier dit la dépendance** : `view/` (projection, caméra, désignation, animation) et `game/` (partie, sélection, scénario) sont purs — ni Pixi ni DOM — et portent tous les tests ; `scene/` dessine (Pixi), `input/` écoute le canevas et `ui/` touche le DOM.
+- `apps/web` — rendu (Vite + PixiJS/WebGL), consomme `@occulis/core` et `@occulis/protocol`. La rotation isométrique et les recalculs de projection vivent ici (`src/iso.ts`), jamais dans `core`. Le code couleur est centralisé dans `src/theme.ts`, **seul fichier du client autorisé à contenir une valeur de couleur** — une règle ESLint le vérifie. **Le dossier dit la dépendance** : `view/` (projection, caméra, désignation, animation), `game/` (partie, sélection, scénario, hypothèse) et `net/session.ts` sont purs — ni Pixi ni DOM — et portent tous les tests ; `scene/` dessine (Pixi), `input/` écoute le canevas, `ui/` touche le DOM et `net/channel.ts` ouvre le WebSocket.
 - Séparation logique/rendu actée dès le départ (docs/design.md section 8) pour permettre un futur portage moteur (C++ envisagé mais explicitement reporté, hors scope pour l'instant).
-- Pas de backend écrit à ce jour, mais l'infrastructure cible est **décidée** — voir la section « Infrastructure et CI/CD » plus bas et [docs/architecture.md](docs/architecture.md). Quand le multijoueur en ligne sera implémenté : le serveur doit être **autoritaire** et ne jamais transmettre au client des données hors LOS de ce joueur (le fog of war doit être appliqué serveur-side, pas seulement caché visuellement côté client — sans quoi il est contournable via devtools).
+- Pas de backend écrit à ce jour, mais l'infrastructure cible est **décidée** — voir la section « Infrastructure et CI/CD » plus bas et [docs/architecture.md](docs/architecture.md). Le multijoueur en ligne fonctionne (file d'attente, sièges, parties arbitrées) ; le serveur est **autoritaire** et ne transmet jamais au client des données hors LOS de ce joueur. Ne pas casser ça : le fog est appliqué à la source, pas masqué à l'affichage — sinon il est contournable via devtools. Le client ne reconstruit qu'une **hypothèse** de la position depuis sa vue (`game/hypothesis.ts`), volontairement optimiste : elle peut proposer des coups que le serveur refuse, jamais en escamoter.
 
 ## Commandes
 
 ```bash
 pnpm install
 pnpm dev          # lance apps/web (Vite)
-pnpm test         # tests de packages/core et apps/web (Vitest)
+pnpm test         # tests de tous les paquets qui en déclarent (Vitest)
 pnpm --filter @occulis/web build && cd apps/server && pnpm exec wrangler dev   # serveur en local
 pnpm typecheck
 pnpm lint
@@ -73,9 +74,11 @@ comme pour la section 10 du design doc.
 
 ## État du projet
 
-Logique de jeu posée et testée (70 tests dans `core`) : plateau à hauteur, LOS, verticalité, déplacement, capture de mêlée, tours alternés, fog of war avec mémoire, abandon et pat.
+Logique de jeu posée et testée (77 tests dans `core`) : plateau à hauteur, LOS, verticalité, déplacement, capture de mêlée, tours alternés, fog of war avec mémoire, historique et rejeu, abandon, pat, échec et mat.
 
-Moteur de rendu isométrique filaire fonctionnel (67 tests dans `apps/web`) : traits blancs, zoom vers le curseur, déplacement, rotation libre aimantée sur le quart de tour, surbrillance de la case survolée, occlusion des pièces par le relief, fog of war à l'écran. La DA et la caméra sont actées provisoirement en section 8.1 du design doc.
+Multijoueur en ligne fonctionnel de bout en bout (15 tests dans `apps/server`, 2 dans `packages/protocol`) : file d'attente, appariement, jetons de siège, autorité de tour, diffusion des vues par joueur, log d'actions en D1 et clôture de partie. Vérifié en conditions réelles avec deux clients sur `wrangler dev`. **Toujours pas d'authentification** : le nom annoncé à la file n'est vérifié par personne, et `ensurePlayers` est un bouchon qui devra disparaître.
+
+Moteur de rendu isométrique filaire fonctionnel (77 tests dans `apps/web`) : traits blancs, zoom vers le curseur, déplacement, rotation libre aimantée sur le quart de tour, surbrillance de la case survolée, occlusion des pièces par le relief, fog of war à l'écran. La DA et la caméra sont actées provisoirement en section 8.1 du design doc.
 
 Une partie de démonstration est jouable en hot-seat, de deux façons : **au clic** (sélectionner une pièce affiche ses destinations légales, cliquer une destination l'y déplace avec une animation, cliquer un adversaire adjacent le capture sur place) et **par saisie de coordonnées** (`1,6 2,5` déplace, `1,6 2,5 x 3,5` capture, `abandon` abandonne). Le clavier reste seul capable d'enchaîner déplacement et capture dans le même tour. La sélection **filtre `legalActions`, elle ne redéduit jamais la légalité** (`game/selection.ts`). La vue suit le joueur au trait, le passage de main attendant la fin de l'animation, et chaque camp garde sa propre mémoire du fog (`game/match.ts`).
 

@@ -86,3 +86,34 @@
   margin-top: 8px;
   opacity: 0.45;
 }
+
+/* File d'attente. Provisoire comme le reste de la console : aucun design system
+   n'est acté (docs/design.md 8.1). */
+#lobby {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+}
+
+#play-online {
+  font: inherit;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--ink-soft);
+  padding: 0.2em 0.7em;
+  cursor: pointer;
+}
+
+#play-online:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+#play-online:disabled {
+  color: var(--ink-faint);
+  border-color: var(--ink-faint);
+  cursor: default;
+}
+
+#lobby-status {
+  color: var(--ink-soft);
+}

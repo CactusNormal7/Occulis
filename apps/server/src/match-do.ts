@@ -9,7 +9,7 @@ import {
   replayMemory,
   viewFor,
 } from "@occulis/core";
-import { PROTOCOL_VERSION, type ClientMessage, type ServerMessage, encodeView } from "./protocol.js";
+import { PROTOCOL_VERSION, type ClientMessage, type ServerMessage, encodeView } from "@occulis/protocol";
 import { rulesetFor } from "./rulesets.js";
 import { scenarioFor } from "./scenarios.js";
 import { type Seats, denyOutOfTurn, seatFor } from "./seating.js";
@@ -66,7 +66,13 @@ export class MatchDO extends DurableObject<Env> {
         ws.close(4001, "protocol-mismatch");
         return;
       }
-      this.send(ws, { kind: "welcome", player });
+      const config = await this.config();
+      this.send(ws, {
+        kind: "welcome",
+        player,
+        scenario: config.scenario,
+        rulesetVersion: config.rulesetVersion,
+      });
       await this.broadcastViews();
       return;
     }

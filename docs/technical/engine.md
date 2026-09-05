@@ -23,12 +23,15 @@ qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 |---|---|---|
 | `view/` | Projection, caméra, désignation, animation | **Aucune** — ni PixiJS, ni DOM |
 | `game/` | La partie côté client, la sélection, le scénario | **Aucune** — ni PixiJS, ni DOM |
+| `net/` | La lecture des messages du serveur | **Aucune** sauf `channel.ts` (WebSocket) |
 | `scene/` | Le dessin | PixiJS |
 | `input/` | Les gestes sur le canevas | DOM |
 | `ui/` | Le panneau HTML | DOM |
 | racine | `main.ts` (composition) et `theme.ts` (tokens de DA) | — |
 
-Les dix modules de `view/` et `game/` sont purs : c'est là que vivent tous les tests.
+Les modules de `view/`, `game/` et `net/session.ts` sont purs : c'est là que vivent tous
+les tests. `net/channel.ts` est l'unique exception du dossier — il ouvre le socket, et
+rien d'autre.
 
 ## Le pipeline, de bout en bout
 
@@ -77,9 +80,15 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/view/camera.ts` | État de caméra et ses transitions | oui |
 | `apps/web/src/view/picking.ts` | Point à l'écran → case du plateau | oui |
 | `apps/web/src/view/animation.ts` | Interpolation d'un déplacement de pièce | oui |
-| `apps/web/src/game/match.ts` | La partie locale et la mémoire de chaque joueur | oui |
+| `apps/web/src/game/match.ts` | `MatchSurface` et la partie locale (hot-seat) | oui |
+| `apps/web/src/game/online-match.ts` | La partie arbitrée par le serveur, vue du client | oui |
+| `apps/web/src/game/hypothesis.ts` | `PlayerView` → position telle que le joueur peut la croire | oui |
 | `apps/web/src/game/selection.ts` | Sélection d'une pièce et résolution d'un clic | oui |
 | `apps/web/src/game/scenario.ts` | Partie de démonstration — **pas du contenu de jeu** | oui |
+| `apps/web/src/net/session.ts` | Réduction des messages serveur en état de session | oui |
+| `apps/web/src/net/match-channel.ts` | Le canal d'une partie : transport + interprétation | non |
+| `apps/web/src/net/channel.ts` | Transport WebSocket, réduit au strict nécessaire | non |
+| `apps/web/src/ui/lobby.ts` | Bouton de mise en file d'attente | non |
 | `apps/web/src/scene/scene.ts` | Couches PixiJS et détection de changement | non |
 | `apps/web/src/scene/terrain.ts` | Géométrie d'une case | non |
 | `apps/web/src/scene/pieces.ts` | Silhouette d'une pièce | non |
@@ -268,12 +277,21 @@ pendant qu'elle avance, au lieu de sauter à l'arrivée.
 
 ---
 
-## `game/match.ts` — la partie locale
+## `game/match.ts` — `MatchSurface` et la partie locale
 
-Module pur. **Il tient exactement ce que le futur Durable Object tiendra** — l'état réel
-et les deux `PlayerKnowledge` — et n'expose vers le rendu que des `PlayerView`
-(`docs/architecture.md` section 2). Câbler le serveur reviendra à remplacer cette classe
-par un transport, **sans toucher au reste du client**.
+`MatchSurface` est ce dont le rendu et l'interface ont besoin d'une partie, **qu'elle soit
+jouée en local ou arbitrée par le serveur** : `board`, `state`, `activePlayer`, `isOver`,
+`pieceAt()`, `viewFor()`, `play()`. Deux implémentations la satisfont — `Match` (hot-seat)
+et `OnlineMatch` — et `main.ts` passe de l'une à l'autre sans que `scene/`, `input/` ni
+`ui/` s'en aperçoivent.
+
+L'écart entre les deux est réel et assumé : en hot-seat `state` est la position exacte, en
+ligne c'est une hypothèse (voir `game/hypothesis.ts`). Le rendu n'a pas à connaître la
+différence — `play()` peut échouer dans les deux cas.
+
+`Match` est pur et tient exactement ce que le Durable Object tient : une `MatchMemory` de
+`@occulis/core`, c'est-à-dire l'état réel et les deux `PlayerKnowledge`
+(`docs/architecture.md` section 2).
 
 | Membre | Rôle |
 |---|---|
@@ -286,6 +304,65 @@ par un transport, **sans toucher au reste du client**.
 **Le cache de vues n'est pas une optimisation, c'est une nécessité.** `Scene.render()` ne
 redessine que si la vue a changé **d'identité de référence** : les vues doivent donc être
 stables entre deux actions. `play()` vide le cache, rien d'autre ne le fait.
+
+---
+
+## `game/hypothesis.ts` — la position telle que le joueur peut la croire
+
+En ligne, le client **n'a pas** la position : le serveur ne lui envoie que son
+`PlayerView`, et c'est tout l'intérêt du fog of war. Or `selectionFor()` passe par
+`legalActions()`, qui demande un `GameState`. `hypothesisFrom()` en fabrique un depuis la
+seule vue : ses propres pièces, les adverses réellement visibles, rien d'autre.
+
+**L'hypothèse est optimiste, et doit le rester.** Ignorant les pièces hors LOS, elle croit
+libres des cases occupées et ne voit pas les menaces cachées — or sous « échecs strict »
+une menace invisible rend un coup illégal. Le client propose donc un **sur-ensemble** des
+coups légaux, et le serveur en refuse certains (`ServerMessage.rejected`). C'est le bon
+sens de l'erreur : mieux vaut un refus expliqué qu'un coup légal escamoté par l'interface.
+Un test vérifie ce sens-là — tout coup que le serveur accepte figure dans l'hypothèse.
+
+Les fantômes en sont exclus : un souvenir peut être périmé, et l'ériger en obstacle
+masquerait des coups réellement jouables (`implementation-notes.md` point 16).
+
+---
+
+## `game/online-match.ts` — la partie arbitrée par le serveur
+
+Jouer consiste à **envoyer** l'action et à appliquer localement un résultat provisoire,
+le temps que la vue suivante arrive : sans cette anticipation le plateau resterait figé
+pendant l'aller-retour réseau.
+
+L'anticipation peut se tromper — le serveur voit des pièces que le client ignore.
+`receive()` est le **seul** chemin par lequel l'état officiel entre, et il écrase
+l'anticipation. `main.ts` en profite pour effacer sélection et animation en cours : elles
+décrivaient une position que le serveur vient peut-être de contredire.
+
+`viewFor()` rend toujours la même vue, quel que soit le joueur demandé : il n'en existe
+qu'une côté client, celle du siège. Regarder le plateau avec les yeux d'en face n'a pas de
+sens en ligne, et la bascule de point de vue est désactivée dans ce mode.
+
+---
+
+## `net/` — la session en ligne
+
+| Fichier | Rôle |
+|---|---|
+| `session.ts` | **Pur.** Réduit `QueueServerMessage` et `ServerMessage` en un état affichable |
+| `match-channel.ts` | Ouvre le canal d'une partie et traduit l'état de session en appels |
+| `channel.ts` | Le WebSocket lui-même, et rien d'autre |
+
+Le découpage a une raison : la lecture des messages est la partie qui mérite des tests, et
+elle n'a besoin d'aucun socket. `session.ts` ne décide de rien non plus — le client ne
+connaît son camp qu'à réception de `welcome`, et la position que par les vues reçues.
+
+**`welcome` et la première `view` ne sont pas ordonnés.** Le serveur rediffuse les vues aux
+deux joueurs à chaque `hello` : un client peut donc recevoir une vue avant son propre
+`welcome`. `match-channel.ts` attend d'avoir camp, carte **et** vue avant de construire la
+partie, plutôt que de supposer un ordre (vérifié en conditions réelles).
+
+Les URL sont **relatives** : le client est servi par le Worker lui-même, donc de même
+origine (`docs/architecture.md` section 4). Seule la future distribution Electron demandera
+une URL absolue.
 
 ---
 
@@ -621,12 +698,16 @@ sélection et l'historique du champ.
 10. **La sélection filtre `legalActions()`, elle ne redéduit rien.** Recalculer la légalité
     dans l'interface la ferait diverger de `applyAction()`.
 11. **Rien de ce qui est hors LOS ne doit apparaître dans l'interface.**
-12. **`view/` et `game/` restent purs.** Y importer PixiJS ou le DOM rendrait leurs tests
-    impossibles sans navigateur.
+12. **`view/` et `game/` restent purs**, ainsi que `net/session.ts`. Y importer PixiJS ou
+    le DOM rendrait leurs tests impossibles sans navigateur.
+13. **L'hypothèse locale ne doit jamais escamoter un coup légal.** Elle peut en proposer
+    trop — le serveur refuse — jamais trop peu.
+14. **`OnlineMatch.receive()` fait autorité.** Toute autre écriture de l'état en ligne
+    serait une seconde source de vérité, en contradiction avec le serveur autoritaire.
 
 ## Tests
 
-67 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+77 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
@@ -638,10 +719,19 @@ sélection et l'historique du champ.
 | `apps/web/src/game/selection.test.ts` | **Toute destination affichée est applicable par `core`**, exclusion des cases occupées, frappe sur place, machine à états complète de `resolveClick` |
 | `apps/web/src/ui/command.test.ts` | Grammaire complète et résolution coordonnée → pièce |
 | `apps/web/src/ui/messages.test.ts` | `describeTile()`, dont l'absence de fuite d'information sur les pièces |
+| `apps/web/src/game/hypothesis.test.ts` | L'hypothèse ne contient que le visible, et **propose un sur-ensemble** des coups que le serveur accepte |
+| `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré |
 
 ## Non implémenté
 
-- **Aucun appel réseau** — voir « L'état réel du câblage » dans [README.md](README.md).
+- **Aucune reconnexion.** Un socket coupé n'est pas rouvert : il faut recharger la page.
+- **Aucune identité.** Le nom envoyé à la file est tiré au hasard à chaque chargement, et
+  le serveur ne le vérifie pas (`server.md`, « Non implémenté »).
+- **Aucune sortie de partie** : une fois en ligne, on ne revient pas au hot-seat sans
+  recharger.
+- **La carte de démonstration est dupliquée** entre `game/scenario.ts` et
+  `apps/server/src/scenarios.ts`. `welcome` annonce le nom du scénario et le client refuse
+  ce qu'il ne connaît pas, ce qui limite les dégâts sans supprimer le risque.
 - **Aucune capture enchaînée à un déplacement au clic** : se déplacer puis capturer dans
   le même tour demande la saisie clavier (`1,6 2,5 x 3,5`).
 - **Aucun marquage des montées.** `MoveOption.kind` distingue `walk` de `climb` — grimper

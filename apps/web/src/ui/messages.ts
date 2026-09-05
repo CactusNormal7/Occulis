@@ -1,4 +1,5 @@
 import type { ActionError, Coord, GameState, Piece, PlayerId, Tile } from "@occulis/core";
+import type { Rejection } from "@occulis/protocol";
 import type { CommandFault } from "./command.js";
 
 /**
@@ -50,6 +51,21 @@ export function describeActionError(error: ActionError): string {
       return "Cible hors de portée de mêlée depuis cette case.";
     case "leaves-commander-exposed":
       return "Coup interdit : il laisserait votre pièce maîtresse en prise.";
+  }
+}
+
+/**
+ * Un refus venu du serveur : soit les règles (`ActionError`), soit le siège. Le
+ * second cas n'existe qu'en ligne — en hot-seat, personne ne joue hors de son tour.
+ */
+export function describeRejection(rejection: Rejection): string {
+  switch (rejection.code) {
+    case "unknown-seat":
+      return "Siège inconnu : cette connexion n'appartient à aucun des deux camps.";
+    case "not-your-turn":
+      return `Ce n'est pas votre tour : ${rejection.activePlayer} est au trait.`;
+    default:
+      return describeActionError(rejection);
   }
 }
 

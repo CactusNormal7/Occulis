@@ -20,6 +20,14 @@
       native donne gratuitement le focus, la sélection et l'historique du champ.
     -->
     <section id="console" aria-label="Saisie de coups">
+      <!--
+        Mise en file d'attente. Le hot-seat reste le mode par défaut : tant qu'aucun
+        adversaire n'est trouvé, la démonstration locale continue de tourner.
+      -->
+      <p id="lobby">
+        <button id="play-online" type="button">Jouer en ligne</button>
+        <span id="lobby-status"></span>
+      </p>
       <p id="status"></p>
       <p id="tile-readout"></p>
       <form id="command-form" autocomplete="off">

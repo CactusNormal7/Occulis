@@ -36,7 +36,7 @@ Trois principes, actés dans `docs/architecture.md` :
 | `apps/server/src/match-setup.ts` | Création d'une partie : ligne D1, jetons de siège, init du DO |
 | `apps/server/src/seating.ts` | **Pur** — jeton de siège → camp, et autorité de tour |
 | `apps/server/src/pairing.ts` | **Pur** — la file d'attente comme structure de données |
-| `apps/server/src/protocol.ts` | Messages client/serveur et version de protocole |
+| `packages/protocol/src/index.ts` | Messages client/serveur et version de protocole — **paquet partagé** |
 | `apps/server/src/rulesets.ts` | Registre des rulesets par version |
 | `apps/server/src/scenarios.ts` | Registre des scénarios de départ |
 | `apps/server/src/env.d.ts` | Type des bindings : `DB`, `MATCH`, `QUEUE`, `ASSETS` |
@@ -67,7 +67,10 @@ en D1, puis route vers le Durable Object.
 forcément la même instance de DO, sans annuaire ni coordination.
 
 `startMatch()` enchaîne : `crypto.randomUUID()` pour l'identifiant **et pour chacun des
-deux jetons de siège**, un `INSERT` dans `matches` (avec `CURRENT_RULESET_VERSION` et
+deux jetons de siège**, `ensurePlayers()` — un `INSERT OR IGNORE` dans `players`, **bouchon
+en attendant l'authentification** : sans lui la contrainte de clé étrangère de `matches`
+fait échouer toute création de partie, ce qu'aucun test unitaire ne voyait — un `INSERT`
+dans `matches` (avec `CURRENT_RULESET_VERSION` et
 `DEFAULT_SCENARIO`), puis un `POST /init` vers le DO pour y déposer la configuration.
 Il répond `{ matchId, seats }`.
 
@@ -189,7 +192,12 @@ joueurs ont réellement eue.
 
 ---
 
-## `protocol.ts`
+## `@occulis/protocol` — le protocole partagé
+
+Il vit dans `packages/protocol` et non dans `apps/server` : `apps/web` doit parler
+exactement le même protocole, et deux définitions séparées auraient dérivé au premier
+ajout. Le paquet ne contient que des types et la conversion de sérialisation — aucune
+règle de jeu (elle vit dans `@occulis/core`), aucun transport (il vit dans chaque app).
 
 ```ts
 const PROTOCOL_VERSION = 2

@@ -22,8 +22,8 @@ justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ic
 | Fichier | Couvre | Paquet |
 |---|---|---|
 | [core.md](core.md) | Les règles du jeu : plateau, hauteur, ligne de vue, déplacement, capture, fog of war, types de pièces | `packages/core` |
-| [engine.md](engine.md) | Le moteur de rendu et le client : projection isométrique, caméra, sélection et déplacement animé, couches, code couleur, saisie de coups | `apps/web` |
-| [server.md](server.md) | Le serveur : Worker, Durable Object de partie, base D1, protocole réseau | `apps/server` |
+| [engine.md](engine.md) | Le moteur de rendu et le client : projection isométrique, caméra, sélection et déplacement animé, couches, code couleur, saisie de coups, partie en ligne | `apps/web` |
+| [server.md](server.md) | Le serveur : Worker, Durable Objects de partie et de file d'attente, base D1, protocole réseau | `apps/server`, `packages/protocol` |
 | [infra.md](infra.md) | L'outillage et la CI/CD : environnements, migrations, déploiement | `tooling/infra`, `.github` |
 
 ## Carte du système
@@ -31,13 +31,14 @@ justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ic
 ```
                     packages/core  ── logique de jeu pure, aucune dépendance de rendu
                     │                 y compris les types de pièces (pieces/)
+                    packages/protocol ── messages du fil, aucune règle, aucun transport
                     ┌──────┴──────┐
                     │             │
               apps/web       apps/server
-        rendu + partie locale  Worker + Durable Object
-                                  │
-                                  ├── D1 (log d'actions = source de vérité)
-                                  └── sert apps/web/dist via le binding ASSETS
+        rendu + parties       Worker + DO de partie + DO de file d'attente
+        locale et en ligne       │
+                                 ├── D1 (log d'actions = source de vérité)
+                                 └── sert apps/web/dist via le binding ASSETS
 
    tooling/infra ── TUI qui pilote wrangler, wrangler.toml et le manifeste de déploiement
    .github/workflows/ci.yml ── vérifications sur toute branche, déploiement sur les branches listées

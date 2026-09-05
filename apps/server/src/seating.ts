@@ -1,4 +1,5 @@
 import type { PlayerId } from "@occulis/core";
+import type { SeatDenial } from "@occulis/protocol";
 
 /**
  * Jetons de siège : un par camp, tirés à la création de la partie.
@@ -16,10 +17,6 @@ export interface Seats {
   readonly A: string;
   readonly B: string;
 }
-
-export type SeatDenial =
-  | { readonly code: "unknown-seat" }
-  | { readonly code: "not-your-turn"; readonly activePlayer: PlayerId };
 
 export function seatFor(seats: Seats, token: string | null): PlayerId | undefined {
   if (token === null || token.length === 0) return undefined;

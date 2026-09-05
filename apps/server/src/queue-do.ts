@@ -3,7 +3,7 @@ import {
   PROTOCOL_VERSION,
   type QueueClientMessage,
   type QueueServerMessage,
-} from "./protocol.js";
+} from "@occulis/protocol";
 import { startMatch } from "./match-setup.js";
 import { type Waiting, dequeue, enqueue, takePairing } from "./pairing.js";
 

@@ -25,8 +25,25 @@ const DEMO_PIECES: readonly Piece[] = [
   { id: "b-cmd", kind: "commander", owner: "B", coord: { x: 9, y: 0 } },
 ];
 
+export const DEMO_SCENARIO = "demo-0";
+
 export function demoBoard(): Board {
   return Board.fromAscii(DEMO_MAP);
+}
+
+/**
+ * Résout le scénario annoncé par le serveur (`ServerMessage.welcome`).
+ *
+ * DETTE CONNUE : cette carte est dupliquée dans `apps/server/src/scenarios.ts`. Tant
+ * qu'elles sont identiques tout va bien, mais rien ne le garantit — et une divergence
+ * ferait dessiner au client une carte différente de celle sur laquelle le serveur
+ * calcule. Refuser un nom inconnu limite les dégâts sans supprimer le risque. Le
+ * registre devra devenir partagé quand les cartes seront du contenu réel : aucune
+ * n'est actée à ce jour (docs/design.md point ouvert 5).
+ */
+export function boardForScenario(name: string): Board {
+  if (name !== DEMO_SCENARIO) throw new Error(`Scénario inconnu de ce client : "${name}"`);
+  return demoBoard();
 }
 
 export function demoGame(): GameState {

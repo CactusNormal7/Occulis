@@ -10,7 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@occulis/core": "workspace:*"
+    "@occulis/core": "workspace:*",
+    "@occulis/protocol": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260827.1",

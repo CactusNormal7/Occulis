@@ -26,6 +26,7 @@ export async function startMatch(env: Env, playerA: string, playerB: string): Pr
     seats,
   };
 
+  await ensurePlayers(env, playerA, playerB);
   await env.DB.prepare(
     `INSERT INTO matches (id, player_a, player_b, ruleset_version, scenario, started_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
@@ -38,4 +39,20 @@ export async function startMatch(env: Env, playerA: string, playerB: string): Pr
   );
 
   return { matchId, seats };
+}
+
+/**
+ * Garantit l'existence des deux lignes `players` que `matches` référence.
+ *
+ * BOUCHON, en attendant l'authentification (docs/technical/server.md, « Non
+ * implémenté ») : aucune route ne crée de compte, donc rien ne peuplerait `players`
+ * et la contrainte de clé étrangère ferait échouer toute création de partie. Le jour
+ * où un compte existera, la création d'un profil lui reviendra et cette fonction
+ * disparaîtra — elle ne doit surtout pas devenir le chemin normal d'inscription.
+ */
+async function ensurePlayers(env: Env, ...ids: readonly string[]): Promise<void> {
+  const statement = env.DB.prepare(
+    "INSERT OR IGNORE INTO players (id, handle, created_at) VALUES (?, ?, ?)",
+  );
+  await env.DB.batch(ids.map((id) => statement.bind(id, id, Date.now())));
 }

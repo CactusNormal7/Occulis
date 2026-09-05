@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Board, createGame, provisionalRuleset, startMemory, viewFor } from "@occulis/core";
-import { decodeView, encodeView } from "./protocol.js";
+import { decodeView, encodeView } from "./index.js";
 
 /** Un mur de hauteur 3 sur toute la colonne 7 : aucun camp ne voit l'autre. */
 const WALLED = Array.from({ length: 14 }, () => "0000000" + "3" + "000000");

@@ -1,5 +1,5 @@
 import type { Action, ActionError, Coord, GameState, PlayerId, Result } from "@occulis/core";
-import type { Match } from "../game/match.js";
+import type { MatchSurface } from "../game/match.js";
 import { parseCommand, toAction } from "./command.js";
 import {
   describeActionError,
@@ -33,7 +33,11 @@ export interface ConsoleElements {
 
 export interface ConsoleOptions {
   readonly elements: ConsoleElements;
-  readonly match: Match;
+  /**
+   * Fournie par accès et non par valeur : la partie change d'objet quand on passe
+   * du hot-seat à une partie en ligne, sans que la console soit rebranchée.
+   */
+  readonly match: () => MatchSurface;
   /** Point de vue affiché, que la console rappelle dans la ligne d'état. */
   readonly viewer: () => PlayerId;
   readonly play: (action: Action) => Result<GameState, ActionError>;
@@ -42,6 +46,8 @@ export interface ConsoleOptions {
 export interface GameConsole {
   /** Réaffiche la ligne d'état, par exemple après un changement de point de vue. */
   refresh(): void;
+  /** Écrit un compte rendu, pour ce qui arrive hors saisie — un refus du serveur. */
+  report(message: string, accepted: boolean): void;
   /** Affiche la case désignée au clic, ou signale un clic hors plateau. */
   showTile(coord: Coord | undefined): void;
   /** Joue une action venue d'ailleurs — un clic sur le plateau — et la rapporte. */
@@ -54,16 +60,16 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
 
   const refresh = (): void => {
     status.textContent = describeTurn(
-      match.state.turn,
-      match.activePlayer,
+      match().state.turn,
+      match().activePlayer,
       viewer(),
-      match.viewFor(viewer()).check,
+      match().viewFor(viewer()).check,
     );
   };
 
   const showTile = (coord: Coord | undefined): void => {
     readout.textContent = describeTile(
-      coord === undefined ? undefined : match.board.getTile(coord),
+      coord === undefined ? undefined : match().board.getTile(coord),
     );
   };
 
@@ -75,10 +81,10 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
   const playAction = (action: Action): boolean => {
     // Le résumé est composé avant de jouer : dans l'état suivant, la pièce
     // déplacée n'est plus à sa place et la capturée n'existe plus.
-    const moved = action.kind === "move" ? match.state.pieces.get(action.pieceId) : undefined;
+    const moved = action.kind === "move" ? match().state.pieces.get(action.pieceId) : undefined;
     const captured =
       action.kind === "move" && action.capture !== undefined
-        ? match.state.pieces.get(action.capture)
+        ? match().state.pieces.get(action.capture)
         : undefined;
 
     const played = play(action);
@@ -104,7 +110,7 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
       return;
     }
 
-    const action = toAction(command.value, (coord) => match.pieceAt(coord));
+    const action = toAction(command.value, (coord) => match().pieceAt(coord));
     if (!action.ok) {
       report(describeFault(action.error), false);
       return;
@@ -119,5 +125,5 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
   });
 
   refresh();
-  return { refresh, showTile, playAction };
+  return { refresh, report, showTile, playAction };
 }
