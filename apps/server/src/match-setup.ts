@@ -1,6 +1,6 @@
 import type { MatchConfig } from "./match-do.js";
 import { CURRENT_RULESET_VERSION } from "./rulesets.js";
-import { DEFAULT_SCENARIO } from "./scenarios.js";
+import { DEFAULT_SCENARIO } from "@occulis/core";
 import type { Seats } from "./seating.js";
 
 export interface StartedMatch {

@@ -38,7 +38,6 @@ Trois principes, actés dans `docs/architecture.md` :
 | `apps/server/src/pairing.ts` | **Pur** — la file d'attente comme structure de données |
 | `packages/protocol/src/index.ts` | Messages client/serveur et version de protocole — **paquet partagé** |
 | `apps/server/src/rulesets.ts` | Registre des rulesets par version |
-| `apps/server/src/scenarios.ts` | Registre des scénarios de départ |
 | `apps/server/src/env.d.ts` | Type des bindings : `DB`, `MATCH`, `QUEUE`, `ASSETS` |
 | `apps/server/wrangler.toml` | Configuration et environnements |
 | `apps/server/migrations/*.sql` | Schéma D1 |
@@ -241,7 +240,7 @@ plutôt que le laisser diverger en silence.
 
 ---
 
-## `rulesets.ts` et `scenarios.ts` — les registres versionnés
+## `rulesets.ts` — le registre versionné
 
 | Fonction / constante | Emplacement | Rôle |
 |---|---|---|
@@ -325,6 +324,37 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 
 ---
 
+## Les tests
+
+19 tests, dont 8 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
+@occulis/server test`.
+
+| Fichier | Où | Ce qui est verrouillé |
+|---|---|---|
+| `seating.test.ts` | Node | Jeton → camp, refus d'un jeton inconnu ou vide, autorité de tour |
+| `pairing.test.ts` | Node | File d'attente, remplacement d'une attente en double, appariement du plus ancien |
+| `match-do.integration.test.ts` | workerd | 403 sans jeton, une vue par camp sans fuite, refus hors tour, coup appliqué + écrit au log + diffusé, clôture en base, refus de protocole |
+| `queue-do.integration.test.ts` | workerd | Deux joueurs appariés sur une même partie avec des sièges distincts et une partie réellement joignable |
+
+**Les tests d'intégration sont aussi le test d'hibernation** que `CLAUDE.md` réclame :
+`webSocketMessage()` et `webSocketClose()` ne sont appelés que sur un socket accepté par
+`ctx.acceptWebSocket()`. Passer à `server.accept()` — la variante qui empêche
+l'hibernation et multiplie le coût par ~20 000 — ferait taire ces gestionnaires et
+échouer tout le fichier.
+
+Deux choses ont été trouvées en exécutant le vrai runtime, qu'aucun test unitaire ne
+voyait : la contrainte de clé étrangère de `matches` qui faisait échouer toute création de
+partie, et l'absence de `webSocketClose()` sur `MatchDO`, qui levait une exception non
+rattrapée à **chaque** déconnexion.
+
+`vitest.config.ts` lit les vraies migrations (`readD1Migrations`) et les applique à la base
+de test : le schéma testé ne peut pas dériver de celui qui est déployé. `isolatedStorage`
+est désactivé — cette version du pool ne sait pas isoler un DO adossé à SQLite — sans
+conséquence, chaque test créant sa propre partie sous un identifiant tiré au hasard.
+
+`compatibility_flags = ["nodejs_compat"]` est exigé par le pool. Le drapeau ne fait
+qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
+
 ## Invariants à ne pas casser
 
 1. **`acceptWebSocket()`, jamais `accept()`.** Sinon le DO n'hiberne plus et le coût
@@ -337,6 +367,8 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 5. **Ne jamais envoyer autre chose qu'un `viewFor()` par joueur.** Envoyer le `GameState`
    complet et masquer côté client rendrait le fog contournable via les devtools.
 6. **Le déterminisme de `packages/core` est une dépendance dure de `load()`.**
+7. **Tout DO qui accepte des sockets hibernables définit `webSocketClose()`.** Sans lui,
+   le runtime lève une exception non rattrapée à chaque déconnexion.
 
 ## Non implémenté
 
@@ -347,14 +379,13 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
   entrer dans la file sous n'importe quel nom.
 - **Aucun ELO, aucun classement, aucune liste d'amis** — les colonnes existent, rien ne
   les lit.
-- **Aucun test d'intégration du runtime.** Les tests couvrent les modules purs
-  (`seating.ts`, `pairing.ts`, `protocol.ts`) ; le comportement réel des DO — hibernation,
-  reprise après réveil, concurrence — demanderait `@cloudflare/vitest-pool-workers` et un
-  runtime workerd. `hibernation.test.ts` s'en tient à vérifier dans la source que
-  `acceptWebSocket()` est employé et `accept()` jamais : l'écart ne se voit pas au
-  comportement, seulement sur la facture.
 - **Aucune reprise de file après hibernation du `QueueDO`.** Les attentes dont le socket a
   disparu sont purgées à l'appariement suivant, pas activement.
+- **Les tests tournent sur une compatibility date plus ancienne que la production.** Le
+  workerd embarqué par le pool plafonne à `2024-12-30` alors que `wrangler.toml` demande
+  `2026-08-27` ; miniflare le signale et retombe sur la sienne. Sans conséquence pour ce
+  qui est testé — WebSockets, DO, D1 sont stables de longue date — mais un comportement
+  introduit par une date récente ne serait pas couvert.
 - **`VITE_SERVER_URL` n'existe nulle part dans le code**, contrairement à ce que
   `CLAUDE.md` laisse entendre. Sur le web, le client étant servi par le même Worker, une
   URL relative suffit. La contrainte « URL gravée dans le binaire » ne vaudra que pour la

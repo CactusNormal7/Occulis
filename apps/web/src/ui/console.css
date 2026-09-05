@@ -95,7 +95,8 @@
   gap: 0.6em;
 }
 
-#play-online {
+#play-online,
+#leave-online {
   font: inherit;
   color: var(--ink);
   background: transparent;
@@ -104,7 +105,8 @@
   cursor: pointer;
 }
 
-#play-online:hover:not(:disabled) {
+#play-online:hover:not(:disabled),
+#leave-online:hover:not(:disabled) {
   border-color: var(--ink);
 }
 

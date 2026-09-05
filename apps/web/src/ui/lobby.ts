@@ -13,6 +13,7 @@ import { OFFLINE, type Session, fromQueue } from "../net/session.js";
  */
 export interface LobbyElements {
   readonly button: HTMLButtonElement;
+  readonly leave: HTMLButtonElement;
   readonly status: HTMLElement;
 }
 
@@ -21,10 +22,12 @@ export interface LobbyOptions {
   /** Nom annoncé à la file. Aucune authentification ne l'adosse à quoi que ce soit. */
   readonly playerId: string;
   readonly onSeated: (matchId: string, seat: string) => void;
+  /** Retour à la démonstration hot-seat, la partie en ligne étant abandonnée. */
+  readonly onLeave: () => void;
 }
 
 export function attachLobby(options: LobbyOptions): void {
-  const { button, status } = options.elements;
+  const { button, leave, status } = options.elements;
   let channel: Channel<unknown> | undefined;
   let session: Session = OFFLINE;
 
@@ -44,17 +47,30 @@ export function attachLobby(options: LobbyOptions): void {
     if (phase.kind === "seated") {
       status.textContent = `Partie trouvée · vous jouez ${phase.player ?? "?"}.`;
       channel?.close();
+      leave.hidden = false;
       options.onSeated(phase.matchId, phase.seat);
     }
   };
 
+  leave.hidden = true;
+  leave.addEventListener("click", () => {
+    session = OFFLINE;
+    leave.hidden = true;
+    button.disabled = false;
+    status.textContent = "";
+    options.onLeave();
+  });
+
   button.addEventListener("click", () => {
     button.disabled = true;
     status.textContent = "Connexion…";
-    channel = openChannel<QueueServerMessage, { kind: "hello"; protocol: number }>(
-      `/api/queue?player=${encodeURIComponent(options.playerId)}`,
-      { kind: "hello", protocol: PROTOCOL_VERSION },
-      receive,
-    );
+    channel = openChannel<QueueServerMessage, { kind: "hello"; protocol: number }>({
+      path: `/api/queue?player=${encodeURIComponent(options.playerId)}`,
+      hello: { kind: "hello", protocol: PROTOCOL_VERSION },
+      onMessage: receive,
+      onStatus: (state) => {
+        if (state === "reconnecting") status.textContent = "Connexion perdue, reprise…";
+      },
+    });
   });
 }

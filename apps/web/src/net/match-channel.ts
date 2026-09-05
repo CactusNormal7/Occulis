@@ -5,7 +5,7 @@ import {
   type Rejection,
   type ServerMessage,
 } from "@occulis/protocol";
-import { openChannel } from "./channel.js";
+import { type ChannelStatus, openChannel } from "./channel.js";
 import { type Session, fromMatch, seatedAt } from "./session.js";
 
 /**
@@ -25,6 +25,7 @@ export interface MatchHandlers {
   readonly onView: (view: PlayerView) => void;
   readonly onRejected: (rejection: Rejection) => void;
   readonly onOutdated: (expected: number) => void;
+  readonly onStatus: (status: ChannelStatus) => void;
 }
 
 export interface SeatedContext {
@@ -71,11 +72,15 @@ export function connectToMatch(
     handlers.onSeated({ player, scenario, rulesetVersion, view });
   };
 
-  const channel = openChannel<ServerMessage, ClientMessage>(
-    `/match/${encodeURIComponent(matchId)}?seat=${encodeURIComponent(seat)}`,
-    { kind: "hello", protocol: PROTOCOL_VERSION },
-    receive,
-  );
+  // Une reconnexion renvoie `hello`, ce qui fait rediffuser `welcome` puis la vue
+  // courante : `seated` reste vrai, et la vue reçue rétablit simplement la position.
+  // Aucun protocole de reprise n'est nécessaire — le serveur reconstruit depuis le log.
+  const channel = openChannel<ServerMessage, ClientMessage>({
+    path: `/match/${encodeURIComponent(matchId)}?seat=${encodeURIComponent(seat)}`,
+    hello: { kind: "hello", protocol: PROTOCOL_VERSION },
+    onMessage: receive,
+    onStatus: handlers.onStatus,
+  });
 
   return {
     submit: (action) => channel.send({ kind: "action", action }),

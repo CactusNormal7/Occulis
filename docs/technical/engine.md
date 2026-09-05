@@ -87,7 +87,8 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/game/scenario.ts` | Partie de démonstration — **pas du contenu de jeu** | oui |
 | `apps/web/src/net/session.ts` | Réduction des messages serveur en état de session | oui |
 | `apps/web/src/net/match-channel.ts` | Le canal d'une partie : transport + interprétation | non |
-| `apps/web/src/net/channel.ts` | Transport WebSocket, réduit au strict nécessaire | non |
+| `apps/web/src/net/channel.ts` | Transport WebSocket et reconnexion | non |
+| `apps/web/src/net/backoff.ts` | Délai avant la n-ième tentative de reconnexion | oui |
 | `apps/web/src/ui/lobby.ts` | Bouton de mise en file d'attente | non |
 | `apps/web/src/scene/scene.ts` | Couches PixiJS et détection de changement | non |
 | `apps/web/src/scene/terrain.ts` | Géométrie d'une case | non |
@@ -348,8 +349,16 @@ sens en ligne, et la bascule de point de vue est désactivée dans ce mode.
 | Fichier | Rôle |
 |---|---|
 | `session.ts` | **Pur.** Réduit `QueueServerMessage` et `ServerMessage` en un état affichable |
+| `backoff.ts` | **Pur.** Délai exponentiel borné avant la n-ième reconnexion |
 | `match-channel.ts` | Ouvre le canal d'une partie et traduit l'état de session en appels |
-| `channel.ts` | Le WebSocket lui-même, et rien d'autre |
+| `channel.ts` | Le WebSocket lui-même et sa reconnexion |
+
+**Une coupure n'est pas une fin de partie.** Le temps de réflexion est illimité
+(`docs/design.md` section 2), donc un socket peut tomber en cours de route. Aucun protocole
+de reprise n'est nécessaire : le Durable Object reconstruit l'état depuis le log et
+rediffuse les vues à chaque `hello`, donc **se reconnecter suffit**. Seul le code de
+fermeture 4001 (protocole incompatible) arrête les tentatives — les répéter ne ferait que
+répéter le refus.
 
 Le découpage a une raison : la lecture des messages est la partie qui mérite des tests, et
 elle n'a besoin d'aucun socket. `session.ts` ne décide de rien non plus — le client ne
@@ -707,7 +716,7 @@ sélection et l'historique du champ.
 
 ## Tests
 
-77 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+80 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
@@ -721,17 +730,15 @@ sélection et l'historique du champ.
 | `apps/web/src/ui/messages.test.ts` | `describeTile()`, dont l'absence de fuite d'information sur les pièces |
 | `apps/web/src/game/hypothesis.test.ts` | L'hypothèse ne contient que le visible, et **propose un sur-ensemble** des coups que le serveur accepte |
 | `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré |
+| `apps/web/src/net/backoff.test.ts` | Croissance exponentielle, plafond, robustesse à une tentative absurde |
 
 ## Non implémenté
 
-- **Aucune reconnexion.** Un socket coupé n'est pas rouvert : il faut recharger la page.
 - **Aucune identité.** Le nom envoyé à la file est tiré au hasard à chaque chargement, et
   le serveur ne le vérifie pas (`server.md`, « Non implémenté »).
-- **Aucune sortie de partie** : une fois en ligne, on ne revient pas au hot-seat sans
-  recharger.
-- **La carte de démonstration est dupliquée** entre `game/scenario.ts` et
-  `apps/server/src/scenarios.ts`. `welcome` annonce le nom du scénario et le client refuse
-  ce qu'il ne connaît pas, ce qui limite les dégâts sans supprimer le risque.
+- **Aucun signal de déconnexion de l'adversaire** : rien ne distingue à l'écran un
+  adversaire qui réfléchit d'un adversaire parti.
+- **Aucune animation des coups adverses** : ils apparaissent à la vue suivante.
 - **Aucune capture enchaînée à un déplacement au clic** : se déplacer puis capturer dans
   le même tour demande la saisie clavier (`1,6 2,5 x 3,5`).
 - **Aucun marquage des montées.** `MoveOption.kind` distingue `walk` de `climb` — grimper

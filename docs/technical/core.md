@@ -638,3 +638,22 @@ vision particulière se code en redéfinissant `canSee()`, une portée de frappe
 en redéfinissant `canStrike()`. Mais **avant d'implémenter l'un d'eux**, relire la section 6
 de `docs/design.md` (pistes déjà écartées) et `docs/implementation-notes.md`
 (interprétations non validées).
+
+## `scenarios/` — les positions de départ
+
+| Fichier | Rôle |
+|---|---|
+| `scenarios/scenario.ts` | Le type `Scenario` : un nom, une fabrique de `Board`, des pièces |
+| `scenarios/demo.ts` | La carte de démonstration, **provisoire** |
+| `scenarios/index.ts` | Le registre : `scenarioFor()` et `DEFAULT_SCENARIO` |
+
+Un scénario vit dans `core` pour la même raison que le roster
+(`implementation-notes.md` point 12) : **le client dessine la carte sur laquelle le serveur
+calcule**, et deux définitions séparées finiraient par diverger — le client afficherait
+alors un plateau qui n'est pas celui de la partie. Ce n'est pas du contenu acté pour
+autant : aucune carte ne l'est (`docs/design.md` point ouvert 5).
+
+`board` est une fabrique et non une valeur, pour que deux parties ne dépendent jamais d'une
+même instance partagée. Comme le registre de rulesets, **ne jamais en retirer une entrée**
+tant qu'une partie peut la référencer : elle est figée à la création et rejouée à
+l'identique lors de la reconstruction depuis le log.

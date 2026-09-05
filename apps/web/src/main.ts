@@ -116,11 +116,24 @@ async function main(): Promise<void> {
   attachLobby({
     elements: {
       button: element<HTMLButtonElement>("play-online"),
+      leave: element<HTMLButtonElement>("leave-online"),
       status: element<HTMLElement>("lobby-status"),
     },
     // Aucune authentification n'existe côté serveur : ce nom n'est adossé à rien
     // (docs/technical/server.md, « Non implémenté »).
     playerId: `invite-${Math.floor(Math.random() * 1e9)}`,
+    onLeave: () => {
+      channel?.close();
+      channel = undefined;
+      online = undefined;
+      match = new Match(demoGame());
+      camera = createCamera(pivotOf(match.board), {
+        x: app.screen.width,
+        y: app.screen.height,
+      });
+      viewer = match.activePlayer;
+      adopt();
+    },
     onSeated: (matchId, seat) => {
       channel = connectToMatch(matchId, seat, {
         onSeated: ({ player, scenario, view: first }) => {
@@ -149,6 +162,11 @@ async function main(): Promise<void> {
         },
         onOutdated: (expected) => {
           gameConsole.report(`Client trop ancien : le serveur attend le protocole ${expected}.`, false);
+        },
+        onStatus: (state) => {
+          if (state === "reconnecting") {
+            gameConsole.report("Connexion perdue, reprise en cours…", false);
+          }
         },
       });
     },

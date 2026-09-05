@@ -14,9 +14,10 @@
     "@occulis/protocol": "workspace:*"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.5.41",
     "@cloudflare/workers-types": "^5.20260827.1",
     "typescript": "^5.7.2",
-    "wrangler": "^4.127.0",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "wrangler": "^4.127.0"
   }
 }

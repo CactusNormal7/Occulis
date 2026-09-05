@@ -5,6 +5,11 @@ name = "occulis"
 main = "src/index.ts"
 compatibility_date = "2026-08-27"
 
+# Exigé par @cloudflare/vitest-pool-workers, qui exécute les tests dans workerd avec
+# cette configuration. Le drapeau ne fait qu'ajouter les API Node disponibles : le code
+# du Worker n'en utilise aucune, et son comportement est inchangé.
+compatibility_flags = ["nodejs_compat"]
+
 [assets]
 directory = "../web/dist"
 binding = "ASSETS"

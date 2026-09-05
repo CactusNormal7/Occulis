@@ -7,11 +7,11 @@ import {
   advanceMemory,
   createGame,
   replayMemory,
+  scenarioFor,
   viewFor,
 } from "@occulis/core";
 import { PROTOCOL_VERSION, type ClientMessage, type ServerMessage, encodeView } from "@occulis/protocol";
 import { rulesetFor } from "./rulesets.js";
-import { scenarioFor } from "./scenarios.js";
 import { type Seats, denyOutOfTurn, seatFor } from "./seating.js";
 
 export interface MatchConfig {
@@ -81,6 +81,17 @@ export class MatchDO extends DurableObject<Env> {
       await this.play(message.action, player, ws);
     }
   }
+
+  /**
+   * Rien à nettoyer : l'état de la partie ne dépend d'aucune connexion ouverte, et le
+   * tag du camp disparaît avec le socket. Le gestionnaire doit exister malgré tout —
+   * le runtime l'appelle sur tout socket accepté pour l'hibernation, et lève une
+   * exception non rattrapée s'il est absent (constaté par les tests dans workerd).
+   *
+   * Une déconnexion n'interrompt pas la partie : le temps de réflexion est illimité
+   * (docs/design.md section 2), et le joueur retrouve sa position en se reconnectant.
+   */
+  async webSocketClose(): Promise<void> {}
 
   /**
    * Le camp vient du tag posé à l'acceptation du socket, jamais du message : c'est
@@ -163,8 +174,10 @@ export class MatchDO extends DurableObject<Env> {
     if (this.live !== null) return this.live;
 
     const config = await this.config();
-    const { board, pieces } = scenarioFor(config.scenario);
-    const start = createGame(board, rulesetFor(config.rulesetVersion), [...pieces]);
+    const scenario = scenarioFor(config.scenario);
+    const start = createGame(scenario.board(), rulesetFor(config.rulesetVersion), [
+      ...scenario.pieces,
+    ]);
 
     const logged = await this.env.DB.prepare(
       "SELECT action FROM match_actions WHERE match_id = ? ORDER BY seq ASC",
