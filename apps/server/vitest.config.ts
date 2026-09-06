@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+
 import { defineWorkersProject, readD1Migrations } from "@cloudflare/vitest-pool-workers/config";
 
 /**
@@ -12,6 +14,12 @@ import { defineWorkersProject, readD1Migrations } from "@cloudflare/vitest-pool-
  * **les vraies**, donc le schéma testé ne peut pas dériver de celui qui est déployé.
  */
 const migrations = await readD1Migrations("./migrations");
+
+// Le pool fait lire `wrangler.toml` par wrangler, qui refuse de démarrer si le dossier
+// d'`[assets]` est absent — or il est produit par le build du client, qui ne précède pas
+// les tests (ni en CI, ni sur un dépôt fraîchement cloné). Aucun test ne sert d'asset :
+// le dossier n'a qu'à exister.
+mkdirSync("../web/dist", { recursive: true });
 
 export default defineWorkersProject({
   test: {

@@ -516,6 +516,11 @@ de test : le schéma testé ne peut pas dériver de celui qui est déployé. `is
 est désactivé — cette version du pool ne sait pas isoler un DO adossé à SQLite — sans
 conséquence, chaque test créant sa propre partie sous un identifiant tiré au hasard.
 
+Il crée aussi `apps/web/dist` s'il manque : le pool fait lire `wrangler.toml` par wrangler,
+qui refuse de démarrer quand le dossier d'`[assets]` est absent. Ce dossier vient du build
+du client, qui ne précède pas les tests — ni en CI (`typecheck → lint → test → build`), ni
+sur un dépôt fraîchement cloné. Aucun test ne sert d'asset : il n'a qu'à exister.
+
 `compatibility_flags = ["nodejs_compat"]` est exigé par le pool. Le drapeau ne fait
 qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
 

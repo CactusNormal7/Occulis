@@ -1,7 +1,7 @@
 # Graph Report - Occulis  (2026-09-06)
 
 ## Corpus Check
-- 139 files · ~78,381 words
+- 139 files · ~78,569 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `4d071a45`
+- Built from commit: `9724f732`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -144,8 +144,8 @@
 ## Communities (83 total, 27 thin omitted)
 
 ### Community 0 - "Rendu isométrique et entrées"
-Cohesion: 0.16
-Nodes (24): DA et caméra provisoires, Saisie des coups : clic + clavier, element(), main(), BACKGROUND, clamp(), createCamera(), originOf() (+16 more)
+Cohesion: 0.15
+Nodes (25): DA et caméra provisoires, Saisie des coups : clic + clavier, element(), main(), BACKGROUND, METRICS, clamp(), createCamera() (+17 more)
 
 ### Community 1 - "Types de pièces et vision"
 Cohesion: 0.06
@@ -292,8 +292,8 @@ Cohesion: 0.27
 Nodes (10): attachControls(), ControlsOptions, Drag, DragKind, dragKindOf(), isTyping(), sameCoord(), Camera (+2 more)
 
 ### Community 63 - "Community 63"
-Cohesion: 0.22
-Nodes (13): drawHover(), drawSelection(), Mark, markTile(), parseCoordKey(), GEOMETRY, HOVER, METRICS (+5 more)
+Cohesion: 0.24
+Nodes (12): drawHover(), drawSelection(), Mark, markTile(), parseCoordKey(), GEOMETRY, HOVER, PLAYERS (+4 more)
 
 ### Community 66 - "Community 66"
 Cohesion: 0.12

@@ -200,9 +200,9 @@
     "semantic_hash": "cc8e26be9318509443243a2c22a66d8b"
   },
   "eslint.config.js": {
-    "mtime": 1788455728.9578552,
-    "ast_hash": "ea351afd438bf2028a65ef1e472c5805",
-    "semantic_hash": "ea351afd438bf2028a65ef1e472c5805"
+    "mtime": 1788694142.940605,
+    "ast_hash": "ab59e7dc158d460828489407cca51d02",
+    "semantic_hash": ""
   },
   "package.json": {
     "mtime": 1788691387.5072446,
@@ -490,8 +490,8 @@
     "semantic_hash": ""
   },
   "docs/technical/server.md": {
-    "mtime": 1788693061.1729457,
-    "ast_hash": "8142d0bc3bff1eeeca6295d5fe825829",
+    "mtime": 1788694097.2864852,
+    "ast_hash": "01d4fe052ea1a6a7c807dec533d35925",
     "semantic_hash": ""
   },
   "pnpm-workspace.yaml": {
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "apps/server/vitest.config.ts": {
-    "mtime": 1788692532.2298892,
-    "ast_hash": "3ac52ae3d199d951b3c7f96c00296eef",
+    "mtime": 1788694060.513091,
+    "ast_hash": "241d6ed18033b7145e5cbc46921e5ae1",
     "semantic_hash": ""
   },
   "apps/web/src/game/hypothesis.test.ts": {
