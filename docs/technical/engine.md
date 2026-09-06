@@ -353,8 +353,29 @@ session n'apparaît nulle part dans ce code** : il vit dans un cookie `HttpOnly`
 navigateur joint seul et qu'aucun script de la page ne peut lire — un jeton lisible en
 JavaScript est un jeton exfiltrable.
 
-Le bouton « Jouer en ligne » reste désactivé tant que personne n'est connecté : la file
-d'attente répondrait 401.
+Quatre parcours cohabitent dans le même formulaire, un seul visible à la fois : connexion,
+inscription, demande de réinitialisation, et choix d'un nouveau mot de passe au retour du
+lien reçu par courrier. `resetTokenFrom()` reconnaît ce retour à `?reinitialiser=1&token=…`.
+
+**L'état affiché n'est jamais déduit de ce qu'on vient d'envoyer** : après chaque action,
+`whoAmI()` redemande l'identité au serveur. Lui seul sait si l'adresse est vérifiée, et
+c'est ce qui ouvre ou ferme le jeu en ligne.
+
+Le bouton « Jouer en ligne » reste désactivé tant que personne n'est connecté **ou tant que
+l'adresse n'est pas vérifiée** : la file répondrait 401 dans le premier cas, 403 dans le
+second. Le compte rendu dit laquelle des deux raisons s'applique — sans quoi un bouton
+désactivé n'aurait aucune explication à l'écran.
+
+### La traduction des refus
+
+`authMessage()` s'accroche au **code** renvoyé par le serveur, jamais à la phrase : le
+message d'une bibliothèque change sans prévenir, son code est un contrat. Deux refus
+restent volontairement indiscernables, parce que le serveur les rend indiscernables :
+adresse inconnue et mot de passe faux d'un côté, adresse inscrite ou non à la demande de
+réinitialisation de l'autre. Les distinguer à l'écran annulerait la précaution serveur.
+
+`authMessage()` et `resetTokenFrom()` sont les deux seules parties décidantes du module,
+et les deux seules pures — d'où leurs tests.
 
 ## `net/` — la session en ligne
 
@@ -728,7 +749,7 @@ sélection et l'historique du champ.
 
 ## Tests
 
-80 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+86 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
@@ -743,6 +764,7 @@ sélection et l'historique du champ.
 | `apps/web/src/game/hypothesis.test.ts` | L'hypothèse ne contient que le visible, et **propose un sur-ensemble** des coups que le serveur accepte |
 | `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré |
 | `apps/web/src/net/backoff.test.ts` | Croissance exponentielle, plafond, robustesse à une tentative absurde |
+| `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut, lecture du jeton de réinitialisation dans l'URL |
 
 ## Non implémenté
 

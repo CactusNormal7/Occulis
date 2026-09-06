@@ -26,7 +26,12 @@ export default defineWorkersProject({
         isolatedStorage: false,
         wrangler: { configPath: "./wrangler.toml" },
         miniflare: {
-          bindings: { TEST_MIGRATIONS: migrations },
+          bindings: {
+            TEST_MIGRATIONS: migrations,
+            // Better Auth refuse de démarrer sans secret. Sa valeur n'a pas
+            // d'importance ici : aucun cookie ne survit à la fin de la suite.
+            AUTH_SECRET: "PmVq7xK2sLd9RtYw4NbHj6ZcAe3Fg8Uk1QoXiMrTvBn5",
+          },
         },
       },
     },
