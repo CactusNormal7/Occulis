@@ -33,6 +33,18 @@ describe("fromQueue", () => {
     });
   });
 
+  it("retient le code du salon ouvert", () => {
+    expect(fromQueue(OFFLINE, { kind: "hosting", code: "ACDEF" }).phase).toEqual({
+      kind: "hosting",
+      code: "ACDEF",
+    });
+  });
+
+  it("rapporte un code refusé sans rien asseoir", () => {
+    const after = fromQueue(OFFLINE, { kind: "room-fault", fault: { code: "unknown" } });
+    expect(after.phase).toEqual({ kind: "room-fault", fault: { code: "unknown" } });
+  });
+
   it("signale un protocole incompatible", () => {
     expect(fromQueue(OFFLINE, { kind: "protocol-mismatch", expected: 7 }).phase).toEqual({
       kind: "outdated",

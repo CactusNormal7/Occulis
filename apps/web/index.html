@@ -4,62 +4,134 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Occulis</title>
-    <link rel="stylesheet" href="/src/ui/console.css" />
+    <link rel="stylesheet" href="/src/ui/ui.css" />
     <style>
       /* Doit rester synchronisé avec BACKGROUND dans src/theme.ts. */
       html, body { margin: 0; height: 100%; background: #0d0f12; overflow: hidden; }
-      #app { width: 100%; height: 100%; }
     </style>
   </head>
   <body>
-    <div id="app"></div>
+    <!-- Le canevas de jeu, montré seulement une fois la partie commencée : il n'y a
+         aucune partie locale à faire tourner derrière le menu. -->
+    <div id="app" hidden></div>
 
     <!--
-      Saisie de coups. Volontairement en HTML et non dessinée dans le canevas :
-      aucun design system n'est acté (docs/design.md 8.1), et une entrée texte
-      native donne gratuitement le focus, la sélection et l'historique du champ.
+      Les écrans hors partie. Volontairement en HTML et non dessinés dans le canevas :
+      aucun design system n'est acté (docs/design.md 8.1), et des champs natifs
+      donnent gratuitement le focus, la saisie, l'autocomplétion et l'accessibilité.
     -->
-    <section id="console" aria-label="Saisie de coups">
-      <!--
-        Mise en file d'attente. Le hot-seat reste le mode par défaut : tant qu'aucun
-        adversaire n'est trouvé, la démonstration locale continue de tourner.
-      -->
-      <!--
-        Compte. Provisoire comme le reste de la console : aucun design system n'est
-        acté (docs/design.md 8.1). Le jeton de session vit dans un cookie HttpOnly,
-        donc aucun script de cette page ne peut le lire.
-      -->
-      <form id="account-form" autocomplete="on">
-        <input id="account-email" type="email" name="email" placeholder="adresse" autocomplete="email" />
-        <input id="account-password" type="password" name="password" placeholder="mot de passe" autocomplete="current-password" />
-        <input id="account-handle" type="text" name="handle" placeholder="pseudo (inscription)" autocomplete="nickname" />
-        <button id="account-signin" type="submit">Se connecter</button>
-        <button id="account-register" type="button">Créer un compte</button>
-        <button id="account-forgot" type="button">Mot de passe oublié</button>
-      </form>
+    <main id="shell">
+      <!-- Compte : connexion, inscription, mot de passe oublié. -->
+      <section id="screen-auth" class="screen" hidden>
+        <div class="panel">
+          <h1>Occulis</h1>
+          <p class="tagline">Jeu de plateau tactique 1v1, à ligne de vue et information cachée.</p>
 
-      <!--
-        Choix d'un nouveau mot de passe. N'apparaît qu'au retour du lien reçu par
-        courrier, qui ramène ici avec le jeton en paramètre d'URL.
-      -->
-      <form id="reset-form" autocomplete="on" hidden>
-        <input
-          id="reset-password"
-          type="password"
-          name="new-password"
-          placeholder="nouveau mot de passe"
-          autocomplete="new-password"
-        />
-        <button id="reset-submit" type="submit">Choisir ce mot de passe</button>
-      </form>
-      <p id="lobby">
-        <button id="account-signout" type="button" hidden>Se déconnecter</button>
-        <button id="play-online" type="button" disabled>Jouer en ligne</button>
-        <button id="leave-online" type="button" hidden>Quitter</button>
-        <span id="account-status"></span>
-        <button id="account-resend" type="button" hidden>Renvoyer le message de vérification</button>
-        <span id="lobby-status"></span>
-      </p>
+          <nav id="account-tabs" role="tablist" aria-label="Parcours de compte">
+            <button type="button" role="tab" data-mode="signin" aria-selected="true">Connexion</button>
+            <button type="button" role="tab" data-mode="register" aria-selected="false">Inscription</button>
+            <button type="button" role="tab" data-mode="forgot" aria-selected="false">Mot de passe oublié</button>
+          </nav>
+
+          <form id="account-form" autocomplete="on">
+            <label class="field" id="field-email">
+              <span>Adresse électronique</span>
+              <input id="account-email" type="email" name="email" autocomplete="email" required />
+            </label>
+            <label class="field" id="field-password">
+              <span>Mot de passe</span>
+              <input
+                id="account-password"
+                type="password"
+                name="password"
+                autocomplete="current-password"
+              />
+            </label>
+            <label class="field" id="field-handle" hidden>
+              <span>Pseudo</span>
+              <input id="account-handle" type="text" name="handle" autocomplete="nickname" />
+            </label>
+            <button id="account-submit" type="submit" class="primary">Se connecter</button>
+          </form>
+
+          <!--
+            Choix d'un nouveau mot de passe. N'apparaît qu'au retour du lien reçu par
+            courrier, qui ramène ici avec le jeton en paramètre d'URL.
+          -->
+          <form id="reset-form" autocomplete="on" hidden>
+            <label class="field">
+              <span>Nouveau mot de passe</span>
+              <input
+                id="reset-password"
+                type="password"
+                name="new-password"
+                autocomplete="new-password"
+              />
+            </label>
+            <button id="reset-submit" type="submit" class="primary">Choisir ce mot de passe</button>
+          </form>
+
+          <p id="account-status" role="status"></p>
+        </div>
+      </section>
+
+      <!-- Menu : les trois façons d'entrer en partie. -->
+      <section id="screen-menu" class="screen" hidden>
+        <div class="panel">
+          <h1>Occulis</h1>
+          <p id="menu-identity" class="tagline"></p>
+          <button id="account-resend" type="button" hidden>
+            Renvoyer le message de vérification
+          </button>
+
+          <div class="choices">
+            <button id="play-quick" type="button" class="primary">
+              Partie rapide
+              <small>Le premier adversaire disponible</small>
+            </button>
+            <button id="play-host" type="button" class="primary">
+              Créer une partie
+              <small>Un code à transmettre à votre adversaire</small>
+            </button>
+          </div>
+
+          <form id="join-form" autocomplete="off">
+            <label class="field">
+              <span>Rejoindre une partie</span>
+              <input
+                id="join-code"
+                type="text"
+                name="code"
+                maxlength="5"
+                placeholder="CODE"
+                spellcheck="false"
+              />
+            </label>
+            <button id="play-join" type="submit">Rejoindre</button>
+          </form>
+
+          <p id="menu-notice" role="status"></p>
+          <button id="account-signout" type="button" class="quiet">Se déconnecter</button>
+        </div>
+      </section>
+
+      <!-- Attente d'un adversaire, appariement ou salon privé. -->
+      <section id="screen-waiting" class="screen" hidden>
+        <div class="panel">
+          <h1>Occulis</h1>
+          <p id="waiting-code" class="code" hidden></p>
+          <button id="waiting-copy" type="button" class="quiet" hidden>Copier</button>
+          <p id="waiting-note" role="status"></p>
+          <button id="waiting-cancel" type="button" class="quiet">Annuler</button>
+        </div>
+      </section>
+    </main>
+
+    <!--
+      Bandeau de partie : état du tour, lecture de case et saisie de coups. Le clavier
+      reste seul capable d'enchaîner déplacement et capture dans le même tour.
+    -->
+    <section id="console" aria-label="Partie en cours" hidden>
       <p id="status"></p>
       <p id="tile-readout"></p>
       <form id="command-form" autocomplete="off">
@@ -77,6 +149,7 @@
         <code>1,6 2,5</code> déplace · <code>1,6 2,5 x 3,5</code> capture ·
         <code>1,6 x 1,5</code> frappe sur place · <code>abandon</code>
       </p>
+      <button id="leave-match" type="button" class="quiet">Quitter la partie</button>
     </section>
 
     <script type="module" src="/src/main.ts"></script>

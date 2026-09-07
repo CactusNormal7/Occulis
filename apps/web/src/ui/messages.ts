@@ -1,6 +1,7 @@
 import type { ActionError, Coord, GameState, Piece, PlayerId, Tile } from "@occulis/core";
-import type { Rejection } from "@occulis/protocol";
+import type { Rejection, RoomFault } from "@occulis/protocol";
 import type { CommandFault } from "./command.js";
+import type { Seeking } from "./flow.js";
 
 /**
  * Textes de l'interface, regroupés hors du câblage DOM : le module qui écoute les
@@ -55,8 +56,8 @@ export function describeActionError(error: ActionError): string {
 }
 
 /**
- * Un refus venu du serveur : soit les règles (`ActionError`), soit le siège. Le
- * second cas n'existe qu'en ligne — en hot-seat, personne ne joue hors de son tour.
+ * Un refus venu du serveur : soit les règles (`ActionError`), soit le siège. Toute
+ * partie étant arbitrée, les deux cas sont possibles à tout moment.
  */
 export function describeRejection(rejection: Rejection): string {
   switch (rejection.code) {
@@ -67,6 +68,25 @@ export function describeRejection(rejection: Rejection): string {
     default:
       return describeActionError(rejection);
   }
+}
+
+/** Pourquoi un code de salon n'a mené à aucune partie. */
+export function describeRoomFault(fault: RoomFault): string {
+  switch (fault.code) {
+    case "unknown":
+      return "Aucune partie sous ce code : vérifiez la saisie, ou faites-le renvoyer.";
+    case "own":
+      return "C'est votre propre code : transmettez-le à votre adversaire.";
+  }
+}
+
+/** Ce que le joueur attend, et depuis quel menu. */
+export function describeWaiting(seeking: Seeking, code: string | undefined): string {
+  if (seeking === "quick") return "Recherche d'un adversaire…";
+  if (seeking === "join") return "Entrée dans la partie…";
+  return code === undefined
+    ? "Ouverture de la partie…"
+    : "Transmettez ce code à votre adversaire, puis attendez son arrivée.";
 }
 
 export function describeMove(piece: Piece, to: Coord, captured: Piece | undefined): string {
@@ -97,13 +117,18 @@ export function describeOutcome(outcome: NonNullable<GameState["outcome"]>): str
   return `Victoire de ${outcome.winner} (${VICTORY_REASONS[outcome.reason]}).`;
 }
 
+/**
+ * L'état du tour. Le camp du joueur y figure toujours, et non le point de vue
+ * affiché : il n'y en a qu'un — le serveur n'envoie jamais la vue d'en face.
+ */
 export function describeTurn(
   turn: number,
   activePlayer: PlayerId,
-  viewer: PlayerId,
+  seat: PlayerId,
   check = false,
 ): string {
-  const line = `Tour ${turn} · au trait : ${activePlayer} · vue du joueur ${viewer}`;
+  const whose = activePlayer === seat ? "à vous de jouer" : "au trait : l'adversaire";
+  const line = `Tour ${turn} · ${whose} · vous jouez ${seat}`;
   return check ? `${line} · ÉCHEC` : line;
 }
 

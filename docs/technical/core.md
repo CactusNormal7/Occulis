@@ -558,7 +558,7 @@ interface MatchMemory {
 }
 ```
 
-C'est l'unité que tient le Durable Object, et celle que le client tient en hot-seat. Elle
+C'est l'unité que tient le Durable Object, et celle que le rejeu du log reconstruit. Elle
 vit ici plutôt que des deux côtés parce que **la mémoire fantôme dépend de toutes les
 positions traversées, pas seulement de la dernière** : reconstruire une partie depuis son
 log suppose de faire avancer la connaissance à chaque coup, et non de l'appliquer une fois

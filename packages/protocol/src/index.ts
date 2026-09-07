@@ -23,7 +23,7 @@ export type SeatDenial =
  * doit pouvoir le refuser explicitement plutôt que le laisser diverger en silence
  * (docs/architecture.md section 1).
  */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 /** `PlayerView` contient des `Set`/`Map`, que `JSON.stringify` sérialise en `{}`. */
 export interface WireView {
@@ -71,10 +71,43 @@ export type ServerMessage =
   | { readonly kind: "protocol-mismatch"; readonly expected: number };
 
 /** File d'attente : protocole distinct, la partie n'existe pas encore. */
-export type QueueClientMessage = { readonly kind: "hello"; readonly protocol: number };
+
+/**
+ * Ce qu'un joueur demande en se connectant à la file. Les trois intentions passent
+ * par le **même** canal, et non par trois routes : le salon privé et l'appariement
+ * se disputent le même joueur — il ne doit pouvoir attendre qu'à un seul endroit à
+ * la fois, et un seul Durable Object mono-threadé le garantit sans verrou
+ * (docs/architecture.md section 2).
+ */
+export type QueueIntent =
+  /** Appariement automatique avec le premier adversaire disponible. */
+  | { readonly kind: "quick" }
+  /** Ouverture d'un salon privé : le serveur répond par le code à transmettre. */
+  | { readonly kind: "host" }
+  /** Entrée dans le salon privé désigné par ce code. */
+  | { readonly kind: "join"; readonly code: string };
+
+export type QueueClientMessage = {
+  readonly kind: "hello";
+  readonly protocol: number;
+  readonly intent: QueueIntent;
+};
+
+/** Pourquoi un code de salon n'a mené à aucune partie. */
+export type RoomFault =
+  /** Aucun salon ouvert sous ce code — faute de frappe, ou hôte reparti. */
+  | { readonly code: "unknown" }
+  /** Le code est celui de son propre salon : personne ne joue contre soi-même. */
+  | { readonly code: "own" };
 
 export type QueueServerMessage =
   | { readonly kind: "waiting" }
+  /**
+   * Salon privé ouvert. Le code est tiré par le serveur et non par le client :
+   * lui seul voit tous les salons, donc lui seul peut en garantir l'unicité.
+   */
+  | { readonly kind: "hosting"; readonly code: string }
+  | { readonly kind: "room-fault"; readonly fault: RoomFault }
   | {
       readonly kind: "matched";
       readonly matchId: string;

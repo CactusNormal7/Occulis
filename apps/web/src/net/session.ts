@@ -2,6 +2,7 @@ import type { PlayerId, PlayerView } from "@occulis/core";
 import {
   type QueueServerMessage,
   type Rejection,
+  type RoomFault,
   type ServerMessage,
   decodeView,
 } from "@occulis/protocol";
@@ -17,6 +18,10 @@ import {
 export type Phase =
   | { readonly kind: "offline" }
   | { readonly kind: "queued" }
+  /** Salon privé ouvert : le code est à transmettre à l'adversaire attendu. */
+  | { readonly kind: "hosting"; readonly code: string }
+  /** Le code saisi n'a mené à aucune partie ; rien n'a été rejoint. */
+  | { readonly kind: "room-fault"; readonly fault: RoomFault }
   | {
       readonly kind: "seated";
       readonly matchId: string;
@@ -62,6 +67,10 @@ export function fromQueue(session: Session, message: QueueServerMessage): Sessio
   switch (message.kind) {
     case "waiting":
       return { phase: { kind: "queued" }, rejection: undefined };
+    case "hosting":
+      return { phase: { kind: "hosting", code: message.code }, rejection: undefined };
+    case "room-fault":
+      return { phase: { kind: "room-fault", fault: message.fault }, rejection: undefined };
     case "matched":
       return {
         phase: {

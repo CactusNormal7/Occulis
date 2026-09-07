@@ -12,11 +12,12 @@ import {
   applyAction,
   pieceAt,
 } from "@occulis/core";
-import type { MatchSurface } from "./match.js";
 import { hypothesisFrom } from "./hypothesis.js";
 
 /**
- * Une partie arbitrée par le serveur, vue du client.
+ * Une partie arbitrée par le serveur, vue du client. C'est la **seule** forme de
+ * partie du client : il n'existe pas de partie locale, le serveur arbitre toujours
+ * (docs/design.md section 2, « pas de local multiplayer »).
  *
  * Le client ne détient pas la position : il ne connaît que les `PlayerView` reçues,
  * et n'en reconstruit qu'une hypothèse (`hypothesis.ts`). Jouer consiste donc à
@@ -29,7 +30,7 @@ import { hypothesisFrom } from "./hypothesis.js";
  * vue suivante fait alors autorité et efface l'anticipation, et `receive()` est le
  * seul chemin par lequel l'état officiel entre.
  */
-export class OnlineMatch implements MatchSurface {
+export class OnlineMatch {
   private view: PlayerView;
   private hypothesis: GameState;
 

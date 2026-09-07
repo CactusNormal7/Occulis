@@ -162,15 +162,20 @@ ne soit pas la seule trace d'une décision de DA.
   abandonne) dans un champ HTML posé par-dessus le canevas. Le clavier reste nécessaire
   pour enchaîner un déplacement *et* une capture dans le même tour, que le clic ne sait
   pas exprimer. Aucune des deux n'est une décision d'interface arrêtée : ce sont des
-  moyens d'exercer la logique déjà implémentée. La partie se joue en hot-seat, la vue
-  suivant le joueur au trait — chaque camp conservant sa propre mémoire du fog, comme le
-  fera le serveur.
+  moyens d'exercer la logique déjà implémentée. La partie est **toujours arbitrée par le
+  serveur** : il n'existe aucun mode local, et le client ne voit jamais que sa propre vue —
+  conformément au pilier « pas de local multiplayer » de la section 2.
 - **Le déplacement est animé, jamais instantané.** La pièce glisse d'une case à l'autre,
   hauteur comprise, avec départ et arrivée adoucis. L'action est appliquée à l'état
-  immédiatement : seule la position à l'écran est interpolée, et le passage de main attend
-  la fin du glissement pour que la pièce ne disparaisse pas en plein vol en devenant
-  adverse.
+  immédiatement : seule la position à l'écran est interpolée, et le compte rendu du tour
+  attend la fin du glissement.
 
+- **On arrive sur un menu, pas sur une partie.** Le canevas reste masqué tant que le
+  serveur n'a pas assis le joueur. Trois façons d'entrer en partie, toutes provisoires
+  comme le reste de l'habillage : appariement rapide, création d'une partie qui rend un
+  code de cinq caractères à transmettre, et entrée par ce code. Un code se lit à voix
+  haute et se recopie à la main : son alphabet exclut les caractères que l'œil confond
+  (`B I L O S Z 0 1 2 5 8`).
 - **Caméra : zoom et déplacement.** Molette pour zoomer vers le curseur, drag gauche pour
   déplacer la vue. Le facteur de zoom vit dans la projection et non dans la transformation
   du conteneur de rendu, afin que l'épaisseur des traits reste constante à l'écran quel que

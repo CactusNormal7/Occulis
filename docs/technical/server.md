@@ -32,7 +32,7 @@ Trois principes, actés dans `docs/architecture.md` :
 |---|---|
 | `apps/server/src/index.ts` | Worker : routage et service du client |
 | `apps/server/src/match-do.ts` | `MatchDO` : le Durable Object de partie |
-| `apps/server/src/queue-do.ts` | `QueueDO` : la file d'attente globale de matchmaking |
+| `apps/server/src/queue-do.ts` | `QueueDO` : la file d'attente globale et les salons privés |
 | `apps/server/src/match-setup.ts` | Création d'une partie : ligne D1, jetons de siège, init du DO |
 | `apps/server/src/seating.ts` | **Pur** — jeton de siège → camp, et autorité de tour |
 | `apps/server/src/auth/better-auth.ts` | La configuration Better Auth : hasher, schéma, débit, crochets |
@@ -41,6 +41,7 @@ Trois principes, actés dans `docs/architecture.md` :
 | `apps/server/src/auth/mail.ts` | Envoi des messages transactionnels par Resend |
 | `apps/server/scripts/generate-schema.mts` | Recrache le schéma SQL attendu — hors du Worker |
 | `apps/server/src/pairing.ts` | **Pur** — la file d'attente comme structure de données |
+| `apps/server/src/rooms.ts` | **Pur** — les salons privés : table des codes, tirage, consommation |
 | `packages/protocol/src/index.ts` | Messages client/serveur et version de protocole — **paquet partagé** |
 | `apps/server/src/rulesets.ts` | Registre des rulesets par version |
 | `apps/server/src/env.d.ts` | Type des bindings : `DB`, `MATCH`, `QUEUE`, `ASSETS`, `AUTH_SECRET`, `RESEND_API_KEY` |
@@ -201,8 +202,8 @@ Si `this.live` est en cache, elle le renvoie. Sinon :
    mémoire fantôme des deux joueurs à chaque coup.
 
 `replayMemory()` vit dans `core` et non ici : la mémoire fantôme dépend de toutes les
-positions traversées, pas seulement de la dernière, et le client tient exactement la même
-chose en hot-seat. Écrire la boucle des deux côtés, c'était deux occasions de diverger.
+positions traversées, pas seulement de la dernière. L'écrire ici, c'était une seconde
+occasion de diverger de la règle.
 
 Un rejeu qui échoue lève `Log corrompu pour <matchId> au coup <seq>` — volontairement fatal :
 poursuivre sur un état divergent serait pire.
@@ -211,6 +212,59 @@ poursuivre sur un état divergent serait pire.
 déterministe.** Un `Math.random` ou un `Date.now` glissé dans `core` la casserait
 silencieusement, et la mémoire fantôme reconstruite ne correspondrait plus à celle que les
 joueurs ont réellement eue.
+
+---
+
+## `queue-do.ts` — `QueueDO`
+
+**Une seule instance pour tout le service** (`QUEUE_SINGLETON = "global"`). Son
+mono-threading écarte le double appariement par construction : deux joueurs ne peuvent
+pas être servis en même temps, donc aucun ne peut être apparié deux fois. Aucun verrou.
+
+Elle porte **trois** façons d'entrer en partie, annoncées dans le `hello` :
+
+| Intention | Ce que le serveur répond | Ce qu'il fait |
+|---|---|---|
+| `{ kind: "quick" }` | `waiting`, puis `matched` | Met en file, puis apparie les deux plus anciennes attentes |
+| `{ kind: "host" }` | `hosting` avec un code | Ouvre un salon privé sous un code libre |
+| `{ kind: "join", code }` | `matched`, ou `room-fault` | Consomme le salon désigné et crée la partie |
+
+**Les trois passent par le même canal, et c'est délibéré.** Un joueur ne doit pouvoir
+attendre qu'à un seul endroit : séparer les salons dans un second Durable Object
+rouvrirait la course entre « être apparié » et « voir son salon rejoint », que le
+mono-threading écarte tant que tout se décide au même endroit. Une intention reçue
+efface donc la précédente (`forget()`), file d'attente **et** salons.
+
+L'appariement et l'entrée par code aboutissent au même `seat()` : une partie créée par
+`startMatch()`, un jeton par camp, et un `matched` envoyé à chacun. Dans un salon,
+**l'hôte tient le camp A et l'arrivant le camp B**.
+
+| Fonction | Emplacement | Rôle |
+|---|---|---|
+| `codeFrom()` | `apps/server/src/rooms.ts` | Octets tirés → code de 5 caractères |
+| `normalizeCode()` | `apps/server/src/rooms.ts` | Saisie manuelle → code comparable (capitales, sans espaces) |
+| `openRoom()` | `apps/server/src/rooms.ts` | Ouvre un salon, ou **rend son code à un hôte qui revient** |
+| `takeRoom()` | `apps/server/src/rooms.ts` | Retire le salon apparié : il ne peut plus l'être une seconde fois |
+| `closeRoom()` | `apps/server/src/rooms.ts` | Referme le salon d'une connexion partie |
+| `freeCode()` | `apps/server/src/rooms.ts` | Premier tirage dont le code n'est pas déjà pris |
+
+**L'alphabet des codes exclut les caractères confondables** (`B I L O S Z 0 1 2 5 8`) :
+un code se lit à voix haute ou se recopie à la main, et `O` lu `0` coûte une partie
+manquée. Cinq caractères sur 25 font ~9,7 millions de combinaisons.
+
+**Un code n'est pas un secret.** Il ne donne accès qu'à un salon que son hôte vient
+d'ouvrir et surveille, et il est consommé au premier arrivant. Le léger biais du modulo
+dans `codeFrom()` est donc sans portée.
+
+**Deux purges, pour deux raisons distinctes.** Les attentes dont le socket a disparu sont
+retirées avant tout appariement — `webSocketClose()` peut n'avoir jamais été appelé, et
+apparier un joueur absent perdrait la partie créée pour lui. Les salons subissent la même
+purge à l'entrée d'un joueur, **sauf celui de l'hôte qui parle** : une reconnexion arrive
+avec une nouvelle `connectionId`, et lui donner un nouveau code périmerait celui qu'il
+vient de transmettre.
+
+**Refuser son propre code ne ferme pas le salon.** Le cas se produit avec deux onglets du
+même compte ; le retrait n'a pas lieu, et l'hôte reste joignable.
 
 ---
 
@@ -332,7 +386,7 @@ ajout. Le paquet ne contient que des types et la conversion de sérialisation �
 règle de jeu (elle vit dans `@occulis/core`), aucun transport (il vit dans chaque app).
 
 ```ts
-const PROTOCOL_VERSION = 2
+const PROTOCOL_VERSION = 3
 
 type ClientMessage =
   | { kind: "hello";  protocol: number }
@@ -346,8 +400,19 @@ type ServerMessage =
   | { kind: "rejected";          error: Rejection }
   | { kind: "protocol-mismatch"; expected: number }
 
+type QueueIntent =
+  | { kind: "quick" }
+  | { kind: "host" }
+  | { kind: "join"; code: string }
+
+type QueueClientMessage = { kind: "hello"; protocol: number; intent: QueueIntent }
+
+type RoomFault = { code: "unknown" } | { code: "own" }
+
 type QueueServerMessage =
   | { kind: "waiting" }
+  | { kind: "hosting";           code: string }
+  | { kind: "room-fault";        fault: RoomFault }
   | { kind: "matched";           matchId: string; player: PlayerId; seat: string }
   | { kind: "protocol-mismatch"; expected: number }
 ```
@@ -484,15 +549,16 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 
 ## Les tests
 
-38 tests, dont 27 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
+50 tests, dont 29 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
 @occulis/server test`.
 
 | Fichier | Où | Ce qui est verrouillé |
 |---|---|---|
 | `seating.test.ts` | Node | Jeton → camp, refus d'un jeton inconnu ou vide, autorité de tour |
 | `pairing.test.ts` | Node | File d'attente, remplacement d'une attente en double, appariement du plus ancien |
+| `rooms.test.ts` | Node | Codes sans caractères confondables et déterministes, saisie normalisée, salon rendu à l'hôte qui revient, salon consommé une seule fois, code libre au tirage suivant |
 | `match-do.integration.test.ts` | workerd | 403 sans jeton, une vue par camp sans fuite, refus hors tour, coup appliqué + écrit au log + diffusé, clôture en base, refus de protocole |
-| `queue-do.integration.test.ts` | workerd | Deux joueurs appariés sur une même partie avec des sièges distincts, partie réellement joignable, **401 sans session et sur identité forgée dans l'URL** |
+| `queue-do.integration.test.ts` | workerd | Deux joueurs appariés sur une même partie avec des sièges distincts, partie réellement joignable, **401 sans session et sur identité forgée dans l'URL**, salon privé apparié par son code (casse et espaces pardonnés, hôte en A), salon consommé une seule fois, refus d'un code inconnu et de son propre code |
 | `auth/auth.integration.test.ts` | workerd | Inscription et profil créés ensemble, session reconnue, jeton inventé refusé, attributs du cookie, **jeton lu en base insuffisant pour ouvrir une session**, mot de passe faux, **réponses indiscernables entre adresse inconnue et mot de passe faux**, adresse et pseudo uniques **sans compte orphelin**, mot de passe trop court, déconnexion, **limitation de débit**, **réinitialisation de bout en bout**, **file fermée sans adresse vérifiée** |
 | `maintenance.integration.test.ts` | workerd | Purge des sessions périmées, des vérifications expirées et des compteurs retombés, et **format de conversion des horodatages de la migration** |
 
@@ -563,7 +629,10 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
 - **Aucun ELO, aucun classement, aucune liste d'amis** — les colonnes existent, rien ne
   les lit.
 - **Aucune reprise de file après hibernation du `QueueDO`.** Les attentes dont le socket a
-  disparu sont purgées à l'appariement suivant, pas activement.
+  disparu sont purgées à l'appariement suivant, pas activement. Les salons privés suivent
+  la même règle : un salon dont l'hôte est parti n'est retiré qu'à la prochaine entrée.
+- **Un salon privé n'expire pas de lui-même.** Tant que son hôte tient le socket ouvert,
+  le code reste valable sans limite de durée.
 - **Les tests tournent sur une compatibility date plus ancienne que la production.** Le
   workerd embarqué par le pool plafonne à `2024-12-30` alors que `wrangler.toml` demande
   `2026-08-27` ; miniflare le signale et retombe sur la sienne. Sans conséquence pour ce
