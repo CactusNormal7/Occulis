@@ -35,14 +35,15 @@ Trois principes, actés dans `docs/architecture.md` :
 | `apps/server/src/queue-do.ts` | `QueueDO` : la file d'attente globale de matchmaking |
 | `apps/server/src/match-setup.ts` | Création d'une partie : ligne D1, jetons de siège, init du DO |
 | `apps/server/src/seating.ts` | **Pur** — jeton de siège → camp, et autorité de tour |
-| `apps/server/src/auth/routes.ts` | Les routes `/api/auth/*` |
-| `apps/server/src/auth/accounts.ts` | Comptes, profils et sessions en D1 |
-| `apps/server/src/auth/password.ts` | PBKDF2, jetons de session, comparaison à temps constant |
-| `apps/server/src/auth/cookie.ts` | **Pur** — lecture et fabrication du cookie de session |
+| `apps/server/src/auth/better-auth.ts` | La configuration Better Auth : hasher, schéma, débit, crochets |
+| `apps/server/src/auth/routes.ts` | `/api/auth/me` et la délégation du reste à Better Auth |
+| `apps/server/src/auth/password.ts` | PBKDF2 et comparaison à temps constant, **branchés dans Better Auth** |
+| `apps/server/src/auth/mail.ts` | Envoi des messages transactionnels par Resend |
+| `apps/server/scripts/generate-schema.mts` | Recrache le schéma SQL attendu — hors du Worker |
 | `apps/server/src/pairing.ts` | **Pur** — la file d'attente comme structure de données |
 | `packages/protocol/src/index.ts` | Messages client/serveur et version de protocole — **paquet partagé** |
 | `apps/server/src/rulesets.ts` | Registre des rulesets par version |
-| `apps/server/src/env.d.ts` | Type des bindings : `DB`, `MATCH`, `QUEUE`, `ASSETS` |
+| `apps/server/src/env.d.ts` | Type des bindings : `DB`, `MATCH`, `QUEUE`, `ASSETS`, `AUTH_SECRET`, `RESEND_API_KEY` |
 | `apps/server/wrangler.toml` | Configuration et environnements |
 | `apps/server/migrations/*.sql` | Schéma D1 |
 
@@ -50,23 +51,37 @@ Trois principes, actés dans `docs/architecture.md` :
 
 ## `index.ts` — le Worker
 
-Le Worker **ne détient aucun état de partie**. Il authentifiera (pas encore fait), écrit
-en D1, puis route vers le Durable Object.
+Le Worker **ne détient aucun état de partie**. Il authentifie, écrit en D1, puis route
+vers le Durable Object.
+
+L'instance Better Auth est construite **à chaque requête** : les bindings n'existent que
+dans `fetch`, et son `baseURL` doit valoir l'origine par laquelle on est joint — sinon les
+liens envoyés par courrier depuis un preview de branche ramèneraient en production.
 
 | Route | Méthode | Traitement |
 |---|---|---|
-| `/api/auth/register` | `POST` | Crée un compte **et** son profil de jeu, ouvre une session |
-| `/api/auth/login` | `POST` | Ouvre une session |
-| `/api/auth/logout` | `POST` | Ferme la session et efface le cookie |
-| `/api/auth/me` | toute | Le pseudo du joueur connecté, ou `{ signedIn: false }` |
+| `/api/auth/me` | toute | **Au projet** — le pseudo et l'état de vérification, ou `{ signedIn: false }` |
+| `/api/auth/sign-up/email` | `POST` | Better Auth — crée un compte, et son profil via le crochet |
+| `/api/auth/sign-in/email` | `POST` | Better Auth — ouvre une session |
+| `/api/auth/sign-out` | `POST` | Better Auth — ferme la session |
+| `/api/auth/request-password-reset` | `POST` | Better Auth — envoie le message de réinitialisation |
+| `/api/auth/reset-password` | `POST` | Better Auth — consomme le jeton et change le mot de passe |
+| `/api/auth/send-verification-email` | `POST` | Better Auth — renvoie le message de vérification |
+| `/api/auth/verify-email` | `GET` | Better Auth — marque l'adresse vérifiée |
+| tout le reste de `/api/auth/*` | toute | `auth.handler(request)` |
 | `/api/matches` | `POST` | `createMatch()` — partie directe, hors file d'attente |
-| `/api/queue` | WebSocket | `joinQueue()` — **401 sans session** |
+| `/api/queue` | WebSocket | `joinQueue()` — **401 sans session, 403 sans adresse vérifiée** |
 | `/match/:id?seat=<jeton>` | WebSocket | `env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(request)` |
 | tout le reste | toute | `env.ASSETS.fetch(request)` — le client statique |
 
 | Fonction | Emplacement | Rôle |
 |---|---|---|
 | `fetch()` (handler par défaut) | `apps/server/src/index.ts` | Routage |
+| `scheduled()` (handler cron) | `apps/server/src/index.ts` | Ménage nocturne : sessions, vérifications, compteurs de débit |
+| `buildAuth()` | `apps/server/src/auth/better-auth.ts` | Construit l'instance Better Auth autour des bindings |
+| `currentAccount()` | `apps/server/src/auth/routes.ts` | Session → `{ userId, playerId, handle, emailVerified }` |
+| `handleAuth()` | `apps/server/src/auth/routes.ts` | `/api/auth/me`, puis délégation |
+| `sendLetter()` | `apps/server/src/auth/mail.ts` | Resend, ou journalisation sans clé |
 | `createMatch()` | `apps/server/src/index.ts` | Lit `playerA`/`playerB`, délègue à `startMatch()` |
 | `startMatch()` | `apps/server/src/match-setup.ts` | Identifiant, jetons de siège, ligne `matches`, `POST /init` |
 
@@ -216,31 +231,98 @@ Worker résout le compte, puis réécrit `?player=<id>` dans l'URL transmise au 
 Un Durable Object n'est pas routable de l'extérieur : ce que le Worker y écrit est donc
 hors de portée du client — un `?player=` envoyé par le navigateur est simplement écrasé.
 
-### Le mot de passe
+### Better Auth, et ce que le projet garde
+
+L'authentification est portée par **Better Auth**, configuré dans
+`auth/better-auth.ts`. Elle tourne dans le Worker, sur la base D1 du projet : aucun tiers
+ne détient l'identité et rien n'est facturé à l'utilisateur actif. Quatre écarts aux
+réglages par défaut méritent d'être connus.
+
+**Le hachage reste celui du projet.** `password.ts` est branché sur
+`emailAndPassword.password.{hash,verify}`. Better Auth utiliserait scrypt sinon, ce qui
+aurait imposé de réencoder chaque mot de passe existant.
 
 PBKDF2-HMAC-SHA256, 210 000 itérations, via WebCrypto. **Compromis assumé** : ni bcrypt
 ni argon2 ne sont disponibles dans un Worker sans embarquer du WASM, et PBKDF2 résiste
 moins bien qu'argon2 à une attaque par GPU à coût CPU égal. Le nombre d'itérations est
 stocké **dans l'empreinte** (`pbkdf2-sha256$<iterations>$<sel>$<empreinte>`), ce qui
-permet de l'augmenter plus tard sans invalider les mots de passe existants.
+permet de l'augmenter plus tard sans invalider les mots de passe existants. La comparaison
+est à temps constant. Compter environ 150 ms de CPU par connexion et par inscription.
 
-La comparaison est à temps constant : comparer octet par octet avec sortie anticipée
-laisse fuiter, par la durée, le nombre d'octets corrects.
+**Le compte et le profil de jeu restent deux choses.** Better Auth possède `users` ;
+`players` porte le pseudo affiché et l'ELO ; le lien est le champ `playerId`, déclaré en
+`additionalFields` avec `input: false` — il est posé par le serveur, jamais accepté depuis
+le corps d'une requête. Le crochet `databaseHooks.user.create.before` crée le profil
+**avant** le compte : un pseudo déjà pris doit faire échouer l'inscription entière plutôt
+que de laisser derrière lui un compte sans profil, que la file refuserait sans rien
+expliquer.
 
-Compter : un hachage coûte environ 150 ms de CPU. Sans conséquence sur le plan payant
-(limite de 30 s), mais c'est le coût de chaque connexion et de chaque inscription.
+**Les noms de colonnes sont ramenés au style du projet** (`email_verified`, `created_at`,
+`user_id`…) par les blocs `fields`. Une seule échappe à la règle : `rate_limits.lastRequest`,
+que la bibliothèque n'expose pas au renommage.
+
+**Le schéma n'est jamais écrit à la main.** `pnpm --filter @occulis/server auth:schema`
+recrache le DDL attendu ; il est recopié tel quel dans une migration. Le rejouer à chaque
+greffon ajouté (OAuth, 2FA) ou champ supplémentaire.
 
 ### La session
 
-Le cookie porte 256 bits d'aléa. **Seul son SHA-256 est stocké en base** : une fuite de
-D1 ne permet donc pas de se faire passer pour un utilisateur connecté. `HttpOnly`,
-`Secure` et `SameSite=Lax` ne sont optionnels ni l'un ni l'autre — le jeton vaut un mot
-de passe tant qu'il vit.
+Le cookie est `__Secure-occulis.session_token`, en `HttpOnly`, `Secure` et `SameSite=Lax`.
+Le préfixe `__Secure-` n'est pas décoratif : un navigateur refuse un cookie qui le porte et
+n'arrive pas par HTTPS. Better Auth l'ajoute dès que les cookies sécurisés sont actifs,
+donc partout sauf sur un `wrangler dev` en clair.
+
+**Le jeton est stocké en clair en base**, là où l'implémentation précédente n'en gardait
+que le SHA-256. C'est une régression sur cet axe, et elle est compensée : le cookie porte
+`<jeton>.<signature>`, la signature dépend d'`AUTH_SECRET` qui n'est pas en base, et une
+session ouverte avec le seul jeton lu en base est refusée — c'est vérifié par un test.
+Sept jours d'inactivité, `updateAge` repoussant l'échéance chaque jour d'usage.
+
+**`AUTH_SECRET` est donc ce qui tient toute la construction.** Sans lui Better Auth refuse
+de démarrer ; le changer déconnecte tout le monde ; le divulguer permet de forger n'importe
+quelle session.
+
+### La limitation de débit
+
+En base (`rate_limits`), et non en mémoire : une isolate Worker ne survit pas d'une requête
+à l'autre, un compteur mémoire ne limiterait donc rien. Cent requêtes par minute par
+défaut, et trois règles plus serrées : cinq connexions par minute, cinq inscriptions par
+heure, trois demandes de réinitialisation par heure.
+
+Le comptage se fait **par adresse IP, lue dans `CF-Connecting-IP`**, que la bordure
+Cloudflare écrase — contrairement à `X-Forwarded-For`, elle ne se falsifie donc pas pour
+se donner un seau neuf. Better Auth **valide** que l'en-tête contient une vraie adresse :
+une valeur qui n'en est pas une le fait retomber sur un seau unique partagé, en journalisant
+un avertissement. C'est le piège des tests, qui doivent fournir de vraies IPv4.
 
 ### Ce que le serveur ne dit pas
 
-`/api/auth/login` répond exactement la même chose à une adresse inconnue qu'à un mot de
-passe faux. Distinguer les deux dirait à un inconnu quelles adresses sont inscrites.
+`/api/auth/sign-in/email` répond exactement la même chose à une adresse inconnue qu'à un
+mot de passe faux, et `/api/auth/request-password-reset` répond `200` que l'adresse existe
+ou non. Distinguer les deux dirait à un inconnu quelles adresses sont inscrites.
+
+### L'origine est vérifiée
+
+Better Auth refuse `403 MISSING_OR_NULL_ORIGIN` sur les routes qui changent l'état quand
+l'en-tête `Origin` manque — une protection CSRF que l'implémentation précédente n'avait
+pas, elle ne comptait que sur `SameSite`. Un navigateur pose cet en-tête de lui-même.
+**C'est le point à traiter pour Electron** : un client qui n'est plus de même origine devra
+être déclaré en `trustedOrigins` (`docs/architecture.md` section 7).
+
+### La vérification d'adresse
+
+Exigée pour **entrer dans la file d'attente**, pas pour se connecter (`joinQueue()`, 403).
+Un compte reste utilisable tant que le message n'est pas arrivé, mais le jeu apparié —
+celui qui porte le classement et qu'un compte jetable viendrait polluer — ne s'ouvre
+qu'une fois l'adresse prouvée.
+
+### L'envoi des messages
+
+`mail.ts`, par Resend : un Worker n'a pas de socket sortant, seulement `fetch`, et
+MailChannels a fermé son offre gratuite aux Workers en 2024. **Sans `RESEND_API_KEY`, les
+messages sont journalisés au lieu d'être émis**, lien compris — c'est ce qui rend les
+parcours traversables en local et en test sans compte Resend. Un échec d'envoi est
+journalisé sans être propagé : le compte existe, un second message peut être demandé.
 
 ## `@occulis/protocol` — le protocole partagé
 
@@ -333,22 +415,38 @@ qui se cherche, se classe ou s'agrège va donc en D1.
 `match_actions` est **la source de vérité**. Rejouer ses lignes reconstruit l'état exact,
 mémoire fantôme comprise.
 
-### `migrations/0002_users.sql`
+### `migrations/0002_users.sql` et `0003_sessions.sql`
 
-| Table | Rôle |
-|---|---|
-| `users` | Identité et authentification : `email` unique, `password_hash`, `player_id` |
-
-`users` est distincte de `players` : un compte **possède** un profil de jeu. La table pose
-le support ; **l'authentification n'est pas branchée**.
+Le premier état des comptes et des sessions, **entièrement remplacé par `0004`**. Gardés
+tels quels : une migration jouée ne se réécrit pas.
 
 ---
 
-### `migrations/0003_sessions.sql`
+### `migrations/0004_better_auth.sql`
 
-`sessions (token_hash, user_id, created_at, expires_at)`. **Seule l'empreinte du jeton**
-y figure. Deux index : par utilisateur, et par expiration pour la purge qui reste à
-écrire.
+Le passage à Better Auth. Le DDL des cinq tables est **généré** (`auth:schema`), pas écrit
+à la main : la bibliothèque émet ses requêtes sur ces noms exacts.
+
+| Table | Rôle |
+|---|---|
+| `users` | Identité : `email` unique, `email_verified`, `name`, et `player_id` vers le profil |
+| `accounts` | Un moyen d'authentification par ligne. Le mot de passe vit ici, sous `provider_id = 'credential'` — c'est aussi là qu'atterriront les fournisseurs OAuth |
+| `sessions` | `token` (en clair), `expires_at`, `user_id` |
+| `verifications` | Jetons de vérification d'adresse et de réinitialisation |
+| `rate_limits` | Compteurs de débit. `lastRequest` garde sa casse, non configurable |
+
+Trois choses à savoir sur cette migration :
+
+- **Les comptes existants sont repris**, leur empreinte PBKDF2 déménageant vers `accounts`.
+  Elle reste vérifiable puisque le hasher du projet est branché dans la configuration.
+- **Les sessions existantes sont perdues** : elles ne stockaient que l'empreinte du jeton,
+  quand Better Auth a besoin du jeton. Chacun se reconnecte une fois.
+- **Les horodatages changent de représentation.** Le schéma précédent comptait en
+  millisecondes ; Better Auth écrit du **texte ISO 8601**. La migration convertit avec
+  `strftime('%Y-%m-%dT%H:%M:%fZ', ms / 1000.0, 'unixepoch')`, et un test verrouille le
+  format produit. C'est le piège de ce schéma : SQLite classe tout entier avant tout texte,
+  donc comparer une échéance à un nombre de millisecondes est **toujours faux**, sans rien
+  signaler. Le ménage nocturne compare des chaînes ISO pour cette raison.
 
 ## `wrangler.toml` — bindings et environnements
 
@@ -357,6 +455,9 @@ Bindings (type dans `apps/server/src/env.d.ts`) :
 | Binding | Type | Rôle |
 |---|---|---|
 | `DB` | `D1Database` | La base |
+| `AUTH_SECRET` | `string` (secret) | Signe les cookies de session. **À provisionner par environnement** |
+| `RESEND_API_KEY` | `string` (secret, optionnel) | Sans elle, les messages sont journalisés |
+| `MAIL_FROM` | `string` (optionnel) | Expéditeur affiché |
 | `MATCH` | `DurableObjectNamespace` | Les parties |
 | `ASSETS` | `Fetcher` | Le client statique, servi depuis `../web/dist` |
 
@@ -383,7 +484,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 
 ## Les tests
 
-28 tests, dont 17 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
+38 tests, dont 27 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
 @occulis/server test`.
 
 | Fichier | Où | Ce qui est verrouillé |
@@ -392,7 +493,8 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `pairing.test.ts` | Node | File d'attente, remplacement d'une attente en double, appariement du plus ancien |
 | `match-do.integration.test.ts` | workerd | 403 sans jeton, une vue par camp sans fuite, refus hors tour, coup appliqué + écrit au log + diffusé, clôture en base, refus de protocole |
 | `queue-do.integration.test.ts` | workerd | Deux joueurs appariés sur une même partie avec des sièges distincts, partie réellement joignable, **401 sans session et sur identité forgée dans l'URL** |
-| `auth/auth.integration.test.ts` | workerd | Inscription, session reconnue, jeton inventé refusé, attributs du cookie, mot de passe faux, **réponses indiscernables entre adresse inconnue et mot de passe faux**, unicité, mot de passe trop court, déconnexion |
+| `auth/auth.integration.test.ts` | workerd | Inscription et profil créés ensemble, session reconnue, jeton inventé refusé, attributs du cookie, **jeton lu en base insuffisant pour ouvrir une session**, mot de passe faux, **réponses indiscernables entre adresse inconnue et mot de passe faux**, adresse et pseudo uniques **sans compte orphelin**, mot de passe trop court, déconnexion, **limitation de débit**, **réinitialisation de bout en bout**, **file fermée sans adresse vérifiée** |
+| `maintenance.integration.test.ts` | workerd | Purge des sessions périmées, des vérifications expirées et des compteurs retombés, et **format de conversion des horodatages de la migration** |
 
 **Les tests d'intégration sont aussi le test d'hibernation** que `CLAUDE.md` réclame :
 `webSocketMessage()` et `webSocketClose()` ne sont appelés que sur un socket accepté par
@@ -400,15 +502,24 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 l'hibernation et multiplie le coût par ~20 000 — ferait taire ces gestionnaires et
 échouer tout le fichier.
 
-Deux choses ont été trouvées en exécutant le vrai runtime, qu'aucun test unitaire ne
+Quatre choses ont été trouvées en exécutant le vrai runtime, qu'aucun test unitaire ne
 voyait : la contrainte de clé étrangère de `matches` qui faisait échouer toute création de
-partie, et l'absence de `webSocketClose()` sur `MatchDO`, qui levait une exception non
-rattrapée à **chaque** déconnexion.
+partie ; l'absence de `webSocketClose()` sur `MatchDO`, qui levait une exception non
+rattrapée à **chaque** déconnexion ; le ménage nocturne qui ne supprimait rien, ses
+échéances étant comparées à un nombre quand la base contient du texte ISO ; et la route de
+réinitialisation, qui répondait `404` sous son ancien nom `/forget-password` — le test qui
+la couvrait comparait deux statuts égaux, et deux `404` le satisfaisaient. Il exige
+désormais `200`.
 
 `vitest.config.ts` lit les vraies migrations (`readD1Migrations`) et les applique à la base
 de test : le schéma testé ne peut pas dériver de celui qui est déployé. `isolatedStorage`
 est désactivé — cette version du pool ne sait pas isoler un DO adossé à SQLite — sans
 conséquence, chaque test créant sa propre partie sous un identifiant tiré au hasard.
+
+Il crée aussi `apps/web/dist` s'il manque : le pool fait lire `wrangler.toml` par wrangler,
+qui refuse de démarrer quand le dossier d'`[assets]` est absent. Ce dossier vient du build
+du client, qui ne précède pas les tests — ni en CI (`typecheck → lint → test → build`), ni
+sur un dépôt fraîchement cloné. Aucun test ne sert d'asset : il n'a qu'à exister.
 
 `compatibility_flags = ["nodejs_compat"]` est exigé par le pool. Le drapeau ne fait
 qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
@@ -427,17 +538,24 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
 6. **Le déterminisme de `packages/core` est une dépendance dure de `load()`.**
 7. **Tout DO qui accepte des sockets hibernables définit `webSocketClose()`.** Sans lui,
    le runtime lève une exception non rattrapée à chaque déconnexion.
+8. **Le schéma des tables Better Auth est généré, jamais édité.** `auth:schema` fait foi ;
+   une colonne renommée à la main casse silencieusement les requêtes de la bibliothèque.
+9. **Les échéances en base sont du texte ISO 8601.** Les comparer à un nombre de
+   millisecondes est toujours faux et ne signale rien.
 
 ## Non implémenté
 
-- **Aucune limitation de débit sur `/api/auth/login`.** Rien n'empêche une attaque par
-  force brute autrement que par le coût du PBKDF2. À traiter **avant toute mise en ligne
-  publique**.
-- **Aucune vérification d'adresse électronique et aucune réinitialisation de mot de
-  passe.** Un compte dont le mot de passe est perdu l'est aussi.
-- **Aucune purge des sessions expirées.** Elles sont refusées à la lecture (`expires_at`),
-  mais rien ne les supprime : la table croît indéfiniment. L'index `sessions_by_expiry`
-  est là pour le balayage qui viendra.
+- **Aucun fournisseur OAuth.** La table `accounts` est prête à en recevoir et Better Auth
+  les porte ; rien n'est configuré. C'est le prochain pas décidé (`docs/architecture.md`
+  section 7).
+- **Aucune authentification à deux facteurs**, bien que le greffon existe.
+- **`trustedOrigins` n'est pas configuré.** Sans lui, un client Electron — qui n'est plus
+  de même origine — se verra refuser les routes qui changent l'état.
+- **Le corps de réponse de Better Auth expose `id` et `playerId`** à l'inscription et à la
+  connexion, là où `/api/auth/me` s'en garde. Ce sont les identifiants du compte qui les
+  reçoit, mais c'est un écart à l'intention initiale des routes du projet.
+- **La signature de `sendLetter()` ignore les rebonds.** Un envoi refusé par Resend est
+  journalisé, sans que personne ne l'apprenne.
 - **`POST /api/matches` n'exige aucun compte** et crée au besoin des lignes `players`
   sans compte associé (`ensurePlayers`), pour qu'une partie privée ou un test démarre
   sans inscription. Ce n'est pas un chemin d'inscription — ces lignes n'ont ni mot de

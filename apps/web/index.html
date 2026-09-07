@@ -35,12 +35,29 @@
         <input id="account-handle" type="text" name="handle" placeholder="pseudo (inscription)" autocomplete="nickname" />
         <button id="account-signin" type="submit">Se connecter</button>
         <button id="account-register" type="button">Créer un compte</button>
+        <button id="account-forgot" type="button">Mot de passe oublié</button>
+      </form>
+
+      <!--
+        Choix d'un nouveau mot de passe. N'apparaît qu'au retour du lien reçu par
+        courrier, qui ramène ici avec le jeton en paramètre d'URL.
+      -->
+      <form id="reset-form" autocomplete="on" hidden>
+        <input
+          id="reset-password"
+          type="password"
+          name="new-password"
+          placeholder="nouveau mot de passe"
+          autocomplete="new-password"
+        />
+        <button id="reset-submit" type="submit">Choisir ce mot de passe</button>
       </form>
       <p id="lobby">
         <button id="account-signout" type="button" hidden>Se déconnecter</button>
         <button id="play-online" type="button" disabled>Jouer en ligne</button>
         <button id="leave-online" type="button" hidden>Quitter</button>
         <span id="account-status"></span>
+        <button id="account-resend" type="button" hidden>Renvoyer le message de vérification</button>
         <span id="lobby-status"></span>
       </p>
       <p id="status"></p>

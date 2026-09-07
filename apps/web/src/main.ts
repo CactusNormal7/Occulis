@@ -126,11 +126,17 @@ async function main(): Promise<void> {
       handle: element<HTMLInputElement>("account-handle"),
       signIn: element<HTMLButtonElement>("account-signin"),
       register: element<HTMLButtonElement>("account-register"),
+      forgot: element<HTMLButtonElement>("account-forgot"),
       signOut: element<HTMLButtonElement>("account-signout"),
+      resend: element<HTMLButtonElement>("account-resend"),
+      resetForm: element<HTMLFormElement>("reset-form"),
+      resetPassword: element<HTMLInputElement>("reset-password"),
       status: element<HTMLElement>("account-status"),
     },
     onIdentity: (identity) => {
-      onlineButton.disabled = !identity.signedIn;
+      // La file d'attente exige une adresse vérifiée : proposer le bouton avant
+      // ferait cliquer sur un refus.
+      onlineButton.disabled = !identity.signedIn || identity.emailVerified === false;
     },
   });
 

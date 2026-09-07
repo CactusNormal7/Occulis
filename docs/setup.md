@@ -55,12 +55,21 @@ Noter l'**Account ID** : il servira en secret GitHub à l'étape 5.
 Aucune ressource cloud n'est nécessaire. `wrangler dev` émule D1 et les Durable Objects
 sur un SQLite local, persistant dans `.wrangler/state` et propre à chaque développeur.
 
+Une seule variable est obligatoire : `AUTH_SECRET`, sans quoi Better Auth refuse de
+démarrer. Copier `apps/server/.dev.vars.example` en `.dev.vars` (non versionné) suffit.
+
 ```bash
+cp apps/server/.dev.vars.example apps/server/.dev.vars
 pnpm --filter @occulis/web build          # le Worker sert ../web/dist
 cd apps/server
 pnpm exec wrangler d1 migrations apply occulis-local --local
 pnpm exec wrangler dev
 ```
+
+**Sans `RESEND_API_KEY`, aucun message n'est envoyé : ils sont journalisés dans la console
+de `wrangler dev`, lien compris.** Les parcours de vérification d'adresse et de
+réinitialisation se traversent donc en local en copiant le lien depuis le terminal, sans
+compte Resend.
 
 ## 3. Créer les bases distantes
 
@@ -166,5 +175,23 @@ la fusion ou l'effacement de la branche concernée.
 - Le rattachement d'une URL aux previews de branche (`occulis-<branche>.0kl.fr`) : le bloc
   `routes` avec `custom_domain = true` est désormais généré par branche, mais l'attache
   n'a pas encore été vérifiée bout en bout sur un vrai preview (point ouvert 2).
-- L'authentification : `POST /api/matches` ne vérifie aujourd'hui aucune identité. La table
-  `users` existe (migration `0002_users.sql`) mais rien ne l'alimente ni ne la lit encore.
+- `POST /api/matches` ne vérifie aujourd'hui aucune identité — c'est le chemin des parties
+  privées et des tests. L'authentification, elle, est en place : voir la section
+  « `auth/` » de [technical/server.md](technical/server.md).
+- **Les secrets ne sont pas provisionnés par la CI** : ils se posent une fois par
+  environnement, à la main.
+
+  ```bash
+  cd apps/server
+  # Obligatoire. Générer avec : openssl rand -base64 32
+  pnpm exec wrangler secret put AUTH_SECRET --env staging
+  pnpm exec wrangler secret put AUTH_SECRET --env production
+
+  # Facultatif : sans clé, les messages sont journalisés au lieu d'être envoyés.
+  pnpm exec wrangler secret put RESEND_API_KEY --env production
+  ```
+
+  **Changer `AUTH_SECRET` déconnecte tout le monde** : il signe les cookies de session.
+- **Le domaine d'envoi Resend n'est pas déclaré.** Tant que `0kl.fr` n'est pas vérifié
+  chez Resend (enregistrements DNS SPF et DKIM), aucun message ne partira réellement en
+  production, même avec une clé posée.

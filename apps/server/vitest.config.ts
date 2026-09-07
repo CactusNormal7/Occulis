@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+
 import { defineWorkersProject, readD1Migrations } from "@cloudflare/vitest-pool-workers/config";
 
 /**
@@ -13,6 +15,12 @@ import { defineWorkersProject, readD1Migrations } from "@cloudflare/vitest-pool-
  */
 const migrations = await readD1Migrations("./migrations");
 
+// Le pool fait lire `wrangler.toml` par wrangler, qui refuse de démarrer si le dossier
+// d'`[assets]` est absent — or il est produit par le build du client, qui ne précède pas
+// les tests (ni en CI, ni sur un dépôt fraîchement cloné). Aucun test ne sert d'asset :
+// le dossier n'a qu'à exister.
+mkdirSync("../web/dist", { recursive: true });
+
 export default defineWorkersProject({
   test: {
     setupFiles: ["./src/test-setup.ts"],
@@ -26,7 +34,12 @@ export default defineWorkersProject({
         isolatedStorage: false,
         wrangler: { configPath: "./wrangler.toml" },
         miniflare: {
-          bindings: { TEST_MIGRATIONS: migrations },
+          bindings: {
+            TEST_MIGRATIONS: migrations,
+            // Better Auth refuse de démarrer sans secret. Sa valeur n'a pas
+            // d'importance ici : aucun cookie ne survit à la fin de la suite.
+            AUTH_SECRET: "PmVq7xK2sLd9RtYw4NbHj6ZcAe3Fg8Uk1QoXiMrTvBn5",
+          },
         },
       },
     },
