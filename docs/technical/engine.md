@@ -2,17 +2,23 @@
 
 Rendu isométrique filaire en dessin procédural : aucun sprite, aucune texture, aucun
 moteur 3D. Tout est tracé en traits par `Graphics` de PixiJS 8, à partir des coordonnées
-logiques de `packages/core`. Une partie de démonstration est jouable en hot-seat, à la
-souris ou au clavier.
+logiques de `packages/core`. Toute partie est arbitrée par le serveur : le client porte les
+écrans de compte et de menu, l'entrée en partie, puis le plateau — à la souris ou au
+clavier.
 
 ## Ce que le client fait, et ne fait pas
 
-**Fait** : projection isométrique avec hauteur, rotation libre du plateau, zoom et
-déplacement de la caméra, survol, **sélection d'une pièce au clic et déplacement animé**,
-saisie de coups au clavier, occlusion du relief et des pièces, fog of war et fantômes.
+**Fait** : les écrans de compte et de menu, l'entrée en partie (appariement rapide,
+salon privé, entrée par code), puis la partie elle-même — projection isométrique avec
+hauteur, rotation libre du plateau, zoom et déplacement de la caméra, survol, **sélection
+d'une pièce au clic et déplacement animé**, saisie de coups au clavier, occlusion du
+relief et des pièces, fog of war et fantômes.
 
-**Ne fait pas** : aucun appel réseau. Aucune capture enchaînée à un déplacement (se
-déplacer *puis* capturer dans le même tour se tape, ne se clique pas).
+**Ne fait pas** : **aucune partie locale**. Il n'existe pas de mode hot-seat ni de
+démonstration hors ligne : tant que le serveur n'a pas assis le joueur, il n'y a rien à
+jouer et le canevas reste masqué (`docs/design.md` section 2, « pas de local
+multiplayer »). Aucune capture enchaînée à un déplacement au clic non plus (se déplacer
+*puis* capturer dans le même tour se tape, ne se clique pas).
 
 ## L'organisation des dossiers
 
@@ -23,16 +29,33 @@ qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 |---|---|---|
 | `view/` | Projection, caméra, désignation, animation | **Aucune** — ni PixiJS, ni DOM |
 | `game/` | La partie côté client, la sélection, le scénario | **Aucune** — ni PixiJS, ni DOM |
+| `net/` | La lecture des messages du serveur | **Aucune** sauf `channel.ts` (WebSocket) |
 | `scene/` | Le dessin | PixiJS |
 | `input/` | Les gestes sur le canevas | DOM |
-| `ui/` | Le panneau HTML | DOM |
+| `ui/` | Les écrans et le bandeau de partie | DOM sauf `flow.ts`, `messages.ts`, `command.ts` |
 | racine | `main.ts` (composition) et `theme.ts` (tokens de DA) | — |
 
-Les dix modules de `view/` et `game/` sont purs : c'est là que vivent tous les tests.
+Les modules de `view/`, `game/` et `net/session.ts` sont purs : c'est là que vivent tous
+les tests, avec `ui/flow.ts`, `ui/command.ts` et `ui/messages.ts`. `net/channel.ts` est la
+seule exception de son dossier — il ouvre le socket, et rien d'autre.
 
 ## Le pipeline, de bout en bout
 
-Deux chemins d'entrée convergent sur la même application d'action, puis sur le rendu.
+Rien de tout cela n'existe avant qu'une partie ne commence : les écrans passent d'abord
+par `ui/flow.ts`.
+
+```
+  ── ENTRÉE EN PARTIE ────────────────────────────────────────────────
+  ui/account.ts  ── whoAmI() ─────────────► identity
+  ui/shell.ts    ── clic sur une entrée ──► seek
+        │  ui/flow.ts        ── advance() : auth → menu → waiting → game
+        └─► net/queue-channel.ts ── joinQueue(intent)
+                 └─ matched ─► net/match-channel.ts ── connectToMatch()
+                                    └─ welcome + view ─► game/online-match.ts
+```
+
+Une fois assis, deux chemins d'entrée convergent sur la même application d'action, puis
+sur le rendu.
 
 ```
   ── GESTES ──────────────────────────────────────────────────────────
@@ -50,9 +73,9 @@ Deux chemins d'entrée convergent sur la même application d'action, puis sur le
 
   ── APPLICATION (main.ts) ───────────────────────────────────────────
         play(action)
-        ├─► game/match.ts      ── Match.play() → applyAction() de core
-        ├─► view/animation.ts  ── startMove() si la pièce change de case
-        └─► handOver()         ── passage de main, DIFFÉRÉ à la fin de l'animation
+        ├─► game/online-match.ts ── envoie l'action, applique l'anticipation locale
+        ├─► view/animation.ts    ── startMove() si la pièce change de case
+        └─► console.refresh()    ── état du tour, DIFFÉRÉ à la fin de l'animation
 
   ── RENDU (chaque frame) ────────────────────────────────────────────
         ├─► settle()           ── avance l'aimantation de la rotation
@@ -77,9 +100,20 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/view/camera.ts` | État de caméra et ses transitions | oui |
 | `apps/web/src/view/picking.ts` | Point à l'écran → case du plateau | oui |
 | `apps/web/src/view/animation.ts` | Interpolation d'un déplacement de pièce | oui |
-| `apps/web/src/game/match.ts` | La partie locale et la mémoire de chaque joueur | oui |
+| `apps/web/src/game/online-match.ts` | La partie arbitrée par le serveur, vue du client | oui |
+| `apps/web/src/game/hypothesis.ts` | `PlayerView` → position telle que le joueur peut la croire | oui |
+| `apps/web/src/game/movement-diff.ts` | Ce que deux vues successives ont fait bouger | oui |
 | `apps/web/src/game/selection.ts` | Sélection d'une pièce et résolution d'un clic | oui |
-| `apps/web/src/game/scenario.ts` | Partie de démonstration — **pas du contenu de jeu** | oui |
+| `apps/web/src/game/scenario.ts` | Résout la carte annoncée par le serveur | oui |
+| `apps/web/src/net/session.ts` | Réduction des messages serveur en état de session | oui |
+| `apps/web/src/net/queue-channel.ts` | Le canal de la file : appariement, salon, entrée par code | non |
+| `apps/web/src/net/match-channel.ts` | Le canal d'une partie : transport + interprétation | non |
+| `apps/web/src/net/channel.ts` | Transport WebSocket et reconnexion | non |
+| `apps/web/src/net/backoff.ts` | Délai avant la n-ième tentative de reconnexion | oui |
+| `apps/web/src/ui/flow.ts` | Quel écran a lieu d'être : compte, menu, attente, partie | oui |
+| `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes | non |
+| `apps/web/src/ui/account.ts` | Écran de compte : connexion, inscription, réinitialisation | non |
+| `apps/web/src/net/auth.ts` | Appels d'authentification | non |
 | `apps/web/src/scene/scene.ts` | Couches PixiJS et détection de changement | non |
 | `apps/web/src/scene/terrain.ts` | Géométrie d'une case | non |
 | `apps/web/src/scene/pieces.ts` | Silhouette d'une pièce | non |
@@ -88,8 +122,8 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/ui/command.ts` | Grammaire de la saisie de coups | oui |
 | `apps/web/src/ui/messages.ts` | Tous les textes de l'interface | oui |
 | `apps/web/src/ui/palette.ts` | Passe le code couleur au CSS | non |
-| `apps/web/src/ui/console.ts` | Branchement DOM de la saisie et des comptes rendus | non |
-| `apps/web/src/ui/console.css` | Mise en page du panneau — **aucune couleur en dur** | — |
+| `apps/web/src/ui/console.ts` | Bandeau de partie : saisie de coups et comptes rendus | non |
+| `apps/web/src/ui/ui.css` | Mise en page des écrans — **aucune couleur en dur** | — |
 
 ---
 
@@ -268,33 +302,190 @@ pendant qu'elle avance, au lieu de sauter à l'arrivée.
 
 ---
 
-## `game/match.ts` — la partie locale
+## `ui/flow.ts` et `ui/shell.ts` — les écrans
 
-Module pur. **Il tient exactement ce que le futur Durable Object tiendra** — l'état réel
-et les deux `PlayerKnowledge` — et n'expose vers le rendu que des `PlayerView`
-(`docs/architecture.md` section 2). Câbler le serveur reviendra à remplacer cette classe
-par un transport, **sans toucher au reste du client**.
+Il n'existe **aucune partie locale**. À l'arrivée sur la page, le canevas est masqué et
+c'est le formulaire de compte qui occupe l'écran ; le jeu commence quand le serveur assied
+le joueur, jamais avant (`docs/design.md` section 2).
 
-| Membre | Rôle |
+`flow.ts` est **pur** : il dit lequel des quatre écrans a lieu d'être, pas à quoi il
+ressemble.
+
+| Étape | Quand | Ce qu'on y voit |
+|---|---|---|
+| `auth` | Personne n'est connecté | Connexion, inscription, mot de passe oublié |
+| `menu` | Connecté | Partie rapide, créer une partie, rejoindre avec un code |
+| `waiting` | Une demande est partie | Le code du salon, ou l'attente d'un adversaire |
+| `game` | Le serveur a répondu `welcome` + `view` | Le plateau et le bandeau de partie |
+
+`advance(stage, event)` encode trois précautions qui ne se voient pas sur le schéma :
+
+- **Une déconnexion ramène au formulaire d'où que l'on soit**, partie comprise : sans
+  session, ni la file ni le Durable Object n'accepteraient plus rien de ce client.
+- **Une identité reconfirmée n'arrache personne à sa partie.** `whoAmI()` est rappelé après
+  chaque action de compte, donc aussi en pleine partie ; seul un passage depuis `auth`
+  ouvre le menu.
+- **Un `hosting` arrivé après l'appariement est ignoré.** C'est un message en retard, et
+  l'afficher ferait revenir un joueur déjà assis à l'écran d'attente.
+
+`shell.ts` est le pendant DOM : il montre ce que `flow.ts` a décidé, désactive les entrées
+du menu tant que l'adresse n'est pas vérifiée, met la saisie du code en capitales, et rend
+les gestes du joueur à `main.ts`. Il ne décide rien et n'appelle jamais le réseau.
+
+**Le conteneur des écrans couvre la page mais ne l'intercepte pas** (`pointer-events:
+none`, rendu aux écrans eux-mêmes) : pendant une partie il est vide, et un clic doit
+atteindre le canevas qui est dessous.
+
+---
+
+## `game/hypothesis.ts` — la position telle que le joueur peut la croire
+
+En ligne, le client **n'a pas** la position : le serveur ne lui envoie que son
+`PlayerView`, et c'est tout l'intérêt du fog of war. Or désigner une case au clic demande
+un `GameState`. `hypothesisFrom()` en fabrique un depuis la seule vue : ses propres
+pièces, les adverses réellement visibles, rien d'autre.
+
+**Elle ne sert qu'à la géométrie** — quelle pièce occupe telle case, à qui appartient-elle.
+Aucune décision n'en est tirée, parce qu'elle est fausse dans les deux sens : ignorant les
+pièces hors LOS, elle croit libres des cases occupées et ne voit pas les menaces cachées,
+mais elle croit aussi libre de passer un attaquant qu'une pièce invisible bloque. La
+légalité arrive du serveur, dans `PlayerView.legalActions`.
+
+Les fantômes en sont exclus : un souvenir peut être périmé, et l'ériger en obstacle
+masquerait des coups réellement jouables (`implementation-notes.md` point 16).
+
+---
+
+## `game/movement-diff.ts` — ce que la vue a fait bouger
+
+`movementBetween(before, after)` rend le déplacement décrit par deux vues successives.
+C'est ce qui remplace l'anticipation locale : le client n'applique plus les coups, donc il
+lit ce qui a bougé dans ce que le serveur lui envoie — et **les coups de l'adversaire
+s'animent enfin**, alors qu'ils apparaissaient d'un coup.
+
+Seules les pièces **présentes dans les deux vues** sont comparées. Sous fog, une pièce qui
+entre ou sort de la ligne de vue n'a pas bougé pour autant : l'animer dessinerait un trajet
+qui n'a pas eu lieu, et trahirait une position que le joueur n'est pas censé connaître.
+
+---
+
+## `game/online-match.ts` — la partie arbitrée par le serveur
+
+**Jouer n'écrit rien.** `play()` valide localement — de quoi répondre tout de suite sur ce
+que le client peut juger seul, pièce hors de portée ou pas au trait — puis envoie, et
+s'arrête là. Seule la vue suivante déplace une pièce. `receive()` est donc le **seul**
+chemin par lequel l'état entre, ce qui rend toute divergence impossible par construction ;
+il rend au passage le déplacement à animer (`movement-diff.ts`).
+
+Le client anticipait autrefois le coup, pour ne pas figer le plateau pendant l'aller-retour
+réseau. Il en résultait un blocage complet à chaque refus : le coup était appliqué et le
+trait passé à l'adversaire, le serveur refusait **sans rediffuser de vue** (les deux
+branches de refus de `MatchDO.play` sortent avant `broadcastViews`), et plus rien n'était
+sélectionnable — le client se croyait hors trait alors que le serveur attendait toujours
+son coup, donc l'adversaire ne jouait pas et aucune vue ne venait. Seule une reconnexion
+du WebSocket débloquait la partie. Un aller-retour est sans conséquence dans un jeu au tour
+par tour sans limite de temps de réflexion (`docs/design.md` section 2) ; une
+désynchronisation, elle, casse la partie.
+
+`main.ts` tient un **coup en attente** entre l'envoi et la réponse : tant qu'il est en vol,
+clic et clavier sont inertes, sans quoi deux clics enverraient deux coups pour le même
+tour. L'attente se lève sur une vue **comme** sur un refus — un refus ne consomme rien, le
+joueur enchaîne aussitôt sur un autre coup.
+
+`viewFor()` rend toujours la même vue, quel que soit le joueur demandé : il n'en existe
+qu'une côté client, celle du siège. Regarder le plateau avec les yeux d'en face n'a pas de
+sens en ligne, et la bascule de point de vue est désactivée dans ce mode.
+
+---
+
+## Le compte
+
+`net/auth.ts` appelle `/api/auth/*`, `ui/account.ts` branche le formulaire. **Le jeton de
+session n'apparaît nulle part dans ce code** : il vit dans un cookie `HttpOnly`, que le
+navigateur joint seul et qu'aucun script de la page ne peut lire — un jeton lisible en
+JavaScript est un jeton exfiltrable.
+
+Quatre parcours cohabitent dans le même formulaire, un seul visible à la fois : connexion,
+inscription, demande de réinitialisation, et choix d'un nouveau mot de passe au retour du
+lien reçu par courrier. Les trois premiers sont choisis par le joueur (les onglets, `Mode`),
+le quatrième s'impose quand l'URL porte un jeton — `resetTokenFrom()` reconnaît ce retour à
+`?reinitialiser=1&token=…`. Les champs inutiles au parcours affiché **disparaissent** au
+lieu d'être ignorés en silence : pas de mot de passe dans une demande de réinitialisation,
+pas de pseudo hors inscription. Un seul bouton d'envoi, dont l'action suit l'onglet, pour
+que la touche Entrée fasse exactement ce que le formulaire affiche.
+
+**L'état affiché n'est jamais déduit de ce qu'on vient d'envoyer** : après chaque action,
+`whoAmI()` redemande l'identité au serveur. Lui seul sait si l'adresse est vérifiée, et
+c'est ce qui ouvre ou ferme le jeu en ligne.
+
+Les trois entrées du menu restent désactivées tant que personne n'est connecté **ou tant
+que l'adresse n'est pas vérifiée** : la file répondrait 401 dans le premier cas, 403 dans
+le second. `describeIdentity()` dit laquelle des deux raisons s'applique — sans quoi des
+boutons désactivés n'auraient aucune explication à l'écran.
+
+### La traduction des refus
+
+`authMessage()` s'accroche au **code** renvoyé par le serveur, jamais à la phrase : le
+message d'une bibliothèque change sans prévenir, son code est un contrat. Deux refus
+restent volontairement indiscernables, parce que le serveur les rend indiscernables :
+adresse inconnue et mot de passe faux d'un côté, adresse inscrite ou non à la demande de
+réinitialisation de l'autre. Les distinguer à l'écran annulerait la précaution serveur.
+
+`authMessage()` et `resetTokenFrom()` sont les deux seules parties décidantes du module,
+et les deux seules pures — d'où leurs tests.
+
+## `net/` — la session en ligne
+
+| Fichier | Rôle |
 |---|---|
-| `Match` (constructeur) | Prend un `GameState` et initialise les deux mémoires |
-| `state` / `board` / `activePlayer` / `isOver` | Accès en lecture |
-| `pieceAt()` | La pièce sur une case — résolution coordonnée → pièce |
-| `viewFor()` | La `PlayerView` d'un joueur, **mise en cache** |
-| `play()` | Applique une action ; l'état ne bouge pas si elle est refusée |
+| `session.ts` | **Pur.** Réduit `QueueServerMessage` et `ServerMessage` en un état affichable |
+| `backoff.ts` | **Pur.** Délai exponentiel borné avant la n-ième reconnexion |
+| `queue-channel.ts` | Ouvre le canal de la file — appariement, salon privé, entrée par code |
+| `match-channel.ts` | Ouvre le canal d'une partie et traduit l'état de session en appels |
+| `channel.ts` | Le WebSocket lui-même et sa reconnexion |
 
-**Le cache de vues n'est pas une optimisation, c'est une nécessité.** `Scene.render()` ne
-redessine que si la vue a changé **d'identité de référence** : les vues doivent donc être
-stables entre deux actions. `play()` vide le cache, rien d'autre ne le fait.
+**Une coupure n'est pas une fin de partie.** Le temps de réflexion est illimité
+(`docs/design.md` section 2), donc un socket peut tomber en cours de route. Aucun protocole
+de reprise n'est nécessaire : le Durable Object reconstruit l'état depuis le log et
+rediffuse les vues à chaque `hello`, donc **se reconnecter suffit**. Seul le code de
+fermeture 4001 (protocole incompatible) arrête les tentatives — les répéter ne ferait que
+répéter le refus.
+
+Le découpage a une raison : la lecture des messages est la partie qui mérite des tests, et
+elle n'a besoin d'aucun socket. `session.ts` ne décide de rien non plus — le client ne
+connaît son camp qu'à réception de `welcome`, et la position que par les vues reçues.
+
+**`welcome` et la première `view` ne sont pas ordonnés.** Le serveur rediffuse les vues aux
+deux joueurs à chaque `hello` : un client peut donc recevoir une vue avant son propre
+`welcome`. `match-channel.ts` attend d'avoir camp, carte **et** vue avant de construire la
+partie, plutôt que de supposer un ordre (vérifié en conditions réelles).
+
+**Les trois façons d'entrer en partie passent par un seul canal.** L'intention voyage dans
+le `hello` (`quick`, `host`, `join`) et non dans l'URL : le serveur ne doit pouvoir faire
+attendre un joueur qu'à un seul endroit (voir [server.md](server.md), `QueueDO`). Changer
+d'intention, c'est donc refermer ce canal et en rouvrir un — ce que fait `main.ts` à chaque
+entrée de menu. Le canal se referme aussi de lui-même sur `matched` (la suite se joue sur
+celui de la partie) et sur `room-fault` (ce code n'amènera jamais d'adversaire).
+
+Le `hello` étant renvoyé à chaque reconnexion, un hôte qui perd son socket **retrouve le
+code de son salon** plutôt qu'un nouveau : c'est le serveur qui le garantit, mais c'est le
+renvoi de l'intention qui le déclenche.
+
+Les URL sont **relatives** : le client est servi par le Worker lui-même, donc de même
+origine (`docs/architecture.md` section 4). Seule la future distribution Electron demandera
+une URL absolue.
 
 ---
 
 ## `game/selection.ts` — sélection et clic
 
-Module pur. **Rien n'y est recalculé de ce que `core` sait déjà** : les possibilités sont
-filtrées depuis `legalActions()`, jamais redéduites. L'interface ne peut donc pas proposer
-un coup que `applyAction()` refuserait, ni en oublier un. Un test vérifie explicitement
-que toute destination affichée est applicable.
+Module pur. **Rien n'y est recalculé** : les possibilités sont filtrées depuis la liste de
+coups légaux que le serveur a jointe à la vue, jamais redéduites. Un coup affiché est donc
+un coup que le serveur acceptera, et aucun coup jouable n'est escamoté.
+
+La liste est passée en paramètre (`selectionFor(legal, state, piece)`, `resolveClick(legal,
+state, …)`) plutôt que recalculée sur place : le client ne saurait pas la produire juste,
+il ne voit qu'un camp.
 
 ```ts
 interface Selection {
@@ -311,7 +502,7 @@ type ClickOutcome =
 
 | Fonction | Rôle |
 |---|---|
-| `selectionFor()` | Ce qu'une pièce peut faire ce tour-ci, filtré depuis `legalActions()` |
+| `selectionFor()` | Ce qu'une pièce peut faire ce tour-ci, filtré depuis la liste du serveur |
 | `resolveClick()` | Ce qu'un clic doit produire. **Fonction totale et sans effet** |
 
 ### La machine à états, telle que `resolveClick()` l'encode
@@ -383,10 +574,12 @@ une position hors LOS. Un test le verrouille.
 ## `ui/palette.ts` et `ui/console.ts`
 
 `applyPalette()` convertit les tokens entiers de `theme.ts` en propriétés personnalisées
-CSS (`--ink`, `--ink-soft`, `--ink-faint`, `--panel`, `--accepted`, `--refused`). **Aucune
-couleur n'est réécrite en dur dans `console.css`.**
+CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--panel`, `--accepted`,
+`--refused`), posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
+`ui.css`.**
 
-`ui/console.ts` est le seul module de l'interface à toucher le DOM.
+`ui/console.ts` porte le bandeau affiché **pendant une partie**, et rien d'autre : le
+compte et le menu ont leurs écrans (`shell.ts`).
 
 | Fonction | Rôle |
 |---|---|
@@ -397,12 +590,15 @@ couleur n'est réécrite en dur dans `console.css`.**
 | `playAction()` (interne) | Joue une action **et la rapporte** ; rend `true` si acceptée |
 | `submit()` (interne) | Analyse la saisie, puis délègue à `playAction()` |
 
-**L'application d'une action lui est fournie (`play`), pas prise sur `Match`.** C'est
+**L'application d'une action lui est fournie (`play`), pas prise sur la partie.** C'est
 l'appelant qui décide ce qu'un coup déclenche — animation, passage de main — et ce module
 n'en sait rien. C'est aussi ce qui fait qu'un coup cliqué et un coup tapé sont rapportés
 exactement de la même façon : `main.ts` appelle `gameConsole.playAction()` pour le clic.
 
-`GameConsole` expose `refresh()`, `showTile()` et `playAction()`.
+`GameConsole` expose `refresh()`, `report()`, `showTile()` et `playAction()`. La partie lui
+est fournie **par accès** (`match: () => OnlineMatch | undefined`) : elle change d'objet à
+chaque appariement, et n'existe pas du tout tant que le joueur est au menu — auquel cas la
+console s'efface au lieu de lever.
 
 Un détail qui compte : `playAction()` compose son résumé **avant** de jouer, car dans
 l'état suivant la pièce déplacée n'est plus à sa place et la capturée n'existe plus.
@@ -443,8 +639,8 @@ un clic.
 ### Les raccourcis clavier et la saisie
 
 Les raccourcis sont posés sur `window` pour rester actifs hors du canevas. `isTyping()`
-les efface devant une saisie en cours — sans quoi une espace tapée dans le champ de
-commande changerait de point de vue.
+les efface devant une saisie en cours — sans quoi une flèche tapée dans le champ de
+commande ferait pivoter le plateau.
 
 ---
 
@@ -561,10 +757,13 @@ exception unique pour `theme.ts`. Deux sélecteurs `no-restricted-syntax` couvre
 
 | Fonction | Rôle |
 |---|---|
-| `main()` | Initialise PixiJS, construit `Match` et `Scene`, câble tout, lance le ticker |
+| `main()` | Initialise PixiJS et `Scene`, câble tout, lance le ticker |
 | `element()` | Résout un `id` du DOM ou lève |
-| `look()` (interne) | Change de point de vue et recalcule la vue rendue |
-| `handOver()` (interne) | Passage de main : bascule la vue et rafraîchit la ligne d'état |
+| `intentOf()` | L'entrée de menu choisie → l'intention que la file attend |
+| `go()` (interne) | Fait avancer `flow.ts` et réaffiche les écrans |
+| `sit()` (interne) | Ouvre le canal de la partie et construit `OnlineMatch` à `welcome` |
+| `leave()` (interne) | Referme file, canal et partie, vide la scène et rend la main au menu |
+| `adopt()` (interne) | Une vue reçue fait autorité : efface sélection et animation |
 | `play()` (interne) | **Le seul point d'application d'une action**, clic comme clavier |
 
 ### `play()` et le passage de main différé
@@ -572,33 +771,45 @@ exception unique pour `theme.ts`. Deux sélecteurs `no-restricted-syntax` couvre
 `play()` lit la pièce et la destination **avant** d'appliquer — ensuite la pièce n'est plus
 à sa place de départ — puis :
 
-- si la pièce change de case, démarre l'animation et **ne passe pas la main** ;
-- sinon (frappe sur place, abandon), appelle `handOver()` immédiatement.
+- si la pièce change de case, démarre l'animation et diffère le compte rendu ;
+- sinon (frappe sur place, abandon), rafraîchit la ligne d'état immédiatement.
 
-Le passage de main est différé jusqu'à la fin de l'animation, dans le ticker. **Basculer la
-vue tout de suite ferait disparaître en plein vol la pièce qui se déplace** : elle
-deviendrait adverse, et se trouverait peut-être hors de la ligne de vue du joueur suivant.
+Le rafraîchissement est différé jusqu'à la fin de l'animation, dans le ticker : l'état du
+tour ne doit pas annoncer un coup encore en cours de dessin.
 
-La partie se joue en **hot-seat** : la vue suit le joueur au trait, et la barre d'espace
-permet de regarder le plateau avec les yeux de l'autre camp (`docs/design.md` 5.4).
+**Il n'y a qu'un point de vue, celui du siège.** Le serveur n'envoie jamais la vue d'en
+face — c'est tout l'objet du fog of war — donc aucun basculement de vue n'existe côté
+client, et `input/controls.ts` n'a plus de raccourci pour cela.
+
+`play()` est aussi le seul endroit à interroger `match`, qui peut être absent : au menu, il
+n'y a rien à jouer.
 
 ---
 
-## `index.html` et `ui/console.css`
+## `index.html` et `ui/ui.css`
 
-La saisie est **en HTML et non dessinée dans le canevas** : aucun design system n'est acté
-(`docs/design.md` 8.1), et une entrée texte native donne gratuitement le focus, la
-sélection et l'historique du champ.
+Les écrans et la saisie sont **en HTML et non dessinés dans le canevas** : aucun design
+system n'est acté (`docs/design.md` 8.1), et des champs natifs donnent gratuitement le
+focus, la saisie, l'autocomplétion et l'accessibilité.
 
 | Élément | Rôle |
 |---|---|
-| `#app` | Hôte du canevas PixiJS |
-| `#console` | Le panneau, dont `applyPalette()` porte les variables de couleur |
-| `#status` | Ligne d'état : tour, joueur au trait, point de vue |
+| `#app` | Hôte du canevas PixiJS — **masqué hors partie** |
+| `#shell` | Conteneur des écrans, transparent aux clics |
+| `#screen-auth` | Compte : onglets, champs, formulaire de réinitialisation, statut |
+| `#screen-menu` | Identité, partie rapide, création, entrée par code, déconnexion |
+| `#screen-waiting` | Le code du salon, sa copie, l'attente et son annulation |
+| `#console` | Le bandeau de partie |
+| `#status` | Ligne d'état : tour, camp au trait, camp du joueur |
 | `#tile-readout` | Lecture de la case désignée au clic |
 | `#command-form` / `#command-input` | La saisie |
 | `#command-log` | Compte rendu, coloré par `data-state="ok"` ou `"ko"` |
 | `#command-help` | Rappel de la grammaire |
+| `#leave-match` | Quitte la partie et revient au menu |
+
+`applyPalette()` porte les variables de couleur, posées sur la racine du document. La règle
+`[hidden] { display: none !important }` est nécessaire : les `display: flex` de la feuille
+l'emporteraient sinon sur l'attribut, et un écran masqué resterait visible.
 
 ---
 
@@ -614,19 +825,28 @@ sélection et l'historique du champ.
    impossible à ordonner correctement.
 5. **`scale` reste dans la projection**, jamais dans `root.scale`.
 6. **`theme.ts` reste le seul détenteur des couleurs**, CSS compris — via `palette.ts`.
-7. **`Match.viewFor()` doit rendre des vues stables** entre deux actions.
+7. **La vue rendue doit rester stable** entre deux actions : `Scene.render()` ne redessine
+   que si elle a changé d'identité de référence.
 8. **L'animation n'est jamais une source de vérité.** L'état est appliqué immédiatement ;
    l'interrompre ou la sauter doit rester sans conséquence sur la partie.
-9. **Le passage de main attend la fin de l'animation.**
-10. **La sélection filtre `legalActions()`, elle ne redéduit rien.** Recalculer la légalité
+9. **Le compte rendu du tour attend la fin de l'animation.**
+10. **La sélection filtre la liste du serveur, elle ne redéduit rien.** Recalculer la légalité
     dans l'interface la ferait diverger de `applyAction()`.
 11. **Rien de ce qui est hors LOS ne doit apparaître dans l'interface.**
-12. **`view/` et `game/` restent purs.** Y importer PixiJS ou le DOM rendrait leurs tests
+12. **`view/` et `game/` restent purs**, ainsi que `net/session.ts`, `ui/flow.ts`,
+    `ui/command.ts` et `ui/messages.ts`. Y importer PixiJS ou le DOM rendrait leurs tests
     impossibles sans navigateur.
+13. **L'hypothèse locale ne doit jamais escamoter un coup légal.** Elle peut en proposer
+    trop — le serveur refuse — jamais trop peu.
+14. **`OnlineMatch.receive()` fait autorité.** Toute autre écriture de l'état en ligne
+    serait une seconde source de vérité, en contradiction avec le serveur autoritaire.
+15. **Aucune partie ne se joue sans le serveur.** Réintroduire une partie locale rendrait
+    le fog contournable — le client aurait la position entière — et contredirait le pilier
+    « pas de local multiplayer » (`docs/design.md` section 2).
 
 ## Tests
 
-67 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+90 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
@@ -634,14 +854,22 @@ sélection et l'historique du champ.
 | `apps/web/src/view/camera.test.ts` | Le point sous le curseur reste immobile au zoom, bornes d'échelle, convergence exacte de l'aimantation |
 | `apps/web/src/view/picking.test.ts` | Chaque case retrouvée depuis son centre à plusieurs angles et échelles, priorité au relief au premier plan, désignation par la falaise |
 | `apps/web/src/view/animation.test.ts` | Hauteurs relevées au départ, durée croissante mais bornée, interpolation conjointe position/hauteur, progression monotone, terminaison |
-| `apps/web/src/game/match.test.ts` | Vue initiale par camp, **stabilité de la vue** entre deux coups, renouvellement après un coup accepté, état intact après un refus, mémoire fantôme |
+| `apps/web/src/ui/flow.test.ts` | Départ sur le formulaire, menu ouvert à la connexion, retour au formulaire à la déconnexion **même en partie**, identité reconfirmée sans effet, code affiché dans l'attente, `hosting` en retard ignoré |
 | `apps/web/src/game/selection.test.ts` | **Toute destination affichée est applicable par `core`**, exclusion des cases occupées, frappe sur place, machine à états complète de `resolveClick` |
 | `apps/web/src/ui/command.test.ts` | Grammaire complète et résolution coordonnée → pièce |
 | `apps/web/src/ui/messages.test.ts` | `describeTile()`, dont l'absence de fuite d'information sur les pièces |
+| `apps/web/src/game/hypothesis.test.ts` | L'hypothèse ne contient que le visible et reporte la fin de partie annoncée par la vue |
+| `apps/web/src/game/online-match.test.ts` | **`play()` n'écrit rien** — ni position, ni trait —, n'envoie pas un coup refusé localement, laisse rejouer après un refus, et n'avance qu'à réception de la vue |
+| `apps/web/src/game/movement-diff.test.ts` | Le déplacement lu entre deux vues, y compris celui de l'adversaire ; une pièce qui entre ou sort de la LOS n'est pas animée |
+| `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, code de salon retenu, code refusé sans siège, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré |
+| `apps/web/src/net/backoff.test.ts` | Croissance exponentielle, plafond, robustesse à une tentative absurde |
+| `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut, lecture du jeton de réinitialisation dans l'URL |
 
 ## Non implémenté
 
-- **Aucun appel réseau** — voir « L'état réel du câblage » dans [README.md](README.md).
+- **Aucun signal de déconnexion de l'adversaire** : rien ne distingue à l'écran un
+  adversaire qui réfléchit d'un adversaire parti.
+- **Aucune animation des coups adverses** : ils apparaissent à la vue suivante.
 - **Aucune capture enchaînée à un déplacement au clic** : se déplacer puis capturer dans
   le même tour demande la saisie clavier (`1,6 2,5 x 3,5`).
 - **Aucun marquage des montées.** `MoveOption.kind` distingue `walk` de `climb` — grimper
@@ -650,3 +878,6 @@ sélection et l'historique du champ.
 - **Aucune animation de capture** : la pièce prise disparaît d'un coup.
 - **Aucune différenciation visuelle** entre types de pièces.
 - **Aucun historique de saisie** dans le champ de commande.
+- **Aucune reprise de partie depuis le menu.** Quitter une partie referme le canal ; rien
+  ne propose d'y revenir, alors que le Durable Object la tient toujours.
+- **Aucun partage du code autrement qu'à la main** : ni lien joignable, ni invitation.

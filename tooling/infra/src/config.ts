@@ -23,6 +23,12 @@ export function dbName(env: EnvName): string {
   return FIXED_DB_NAMES[env] ?? `occulis-${env}`;
 }
 
+// Les trois environnements fixes ne se créent ni ne se suppriment : tout le reste est un
+// environnement de branche, donc jetable. C'est ce qui distingue les deux populations.
+export function isBranchEnv(env: EnvName): boolean {
+  return !(env in FIXED_DB_NAMES);
+}
+
 // "local" n'est jamais un bloc nommé dans le toml ; les autres sont découverts
 // dynamiquement, pour que tout environnement de branche déjà créé apparaisse
 // sans devoir étendre une liste figée à la main.

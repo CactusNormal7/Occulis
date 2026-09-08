@@ -233,8 +233,11 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
    versionné `.github/deploy-environments.json`, que la CI lit. `pnpm infra` l'édite dans les
    deux sens (« Créer / Supprimer un environnement de branche ») : création ou destruction du
    même geste du bloc `[env.<nom>]` du toml, de la base D1 et de l'entrée du manifeste, puis
-   commit et push de `wrangler.toml` et du manifeste. Reste à traiter séparément : le seed des
-   bases (point 4) et la vérification bout en bout de l'attache d'URL (point 2).
+   commit et push de `wrangler.toml` et du manifeste. La création part de la branche courante ;
+   la suppression prend une cible explicite et fonctionne depuis n'importe quelle branche, pour
+   qu'un environnement reste défaisable après la fusion de sa branche. Reste à traiter
+   séparément : le seed des bases (point 4) et la vérification bout en bout de l'attache d'URL
+   (point 2).
 4. **Seed des previews.** Une base neuve est vide : sans script de seed, un preview de branche
    est inutilisable pour tester. C'est le vrai travail caché de l'automatisation.
 5. **Base par branche ou base partagée préfixée.** La seconde évite tout script de création et
@@ -251,3 +254,22 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
    d'`occulis.fr`. Mais le risque de marque sur le **nom** « Occulis » lui-même (proximité avec
    Oculus, design doc section 9) reste entier et n'a jamais été vérifié — il porte sur le nom du
    jeu, pas sur le domaine, et se paierait au renommage.
+9. **Fournisseur d'authentification — arrêté : Better Auth, auto-hébergé.** Il tourne dans le
+   Worker, sur la D1 du projet : aucun tiers ne détient l'identité, et rien n'est facturé à
+   l'utilisateur actif. Les fournisseurs hébergés (Clerk, Auth0, Stytch, Supabase Auth) ont été
+   écartés pour trois raisons cumulées : 25 $/mois passé leur palier gratuit, soit cinq fois le
+   budget d'infrastructure entier (docs/costs.md) ; des composants d'interface préfabriqués
+   inutilisables avec la DA filaire et la règle « `theme.ts` seul porte une couleur » ; et, pour
+   Supabase, un Postgres hors Cloudflare qui contredirait « tout ce qui s'agrège va en D1 ».
+   Le hachage PBKDF2 du projet est conservé en le branchant sur la bibliothèque, donc aucun mot
+   de passe n'a eu à être réencodé.
+10. **Connexion sociale — décidée, pas encore faite.** Google, Discord et Apple sont portés par
+    Better Auth et atterriront dans la table `accounts`, prête à les recevoir. Rien n'est
+    configuré. Reste à trancher **quels** fournisseurs, et le cas Steam, qui n'est pas de l'OAuth
+    mais un ticket Steamworks qu'aucune bibliothèque d'authentification ne couvre.
+11. **Le client Electron n'est plus de même origine, et l'authentification s'en aperçoit.**
+    Deux blocages connus, aucun encore traité : le cookie `SameSite=Lax` ne partira pas sur une
+    requête inter-origine — il faudra soit `SameSite=None`, soit un jeton porteur rangé dans
+    `safeStorage` — et Better Auth refuse `403` les routes qui changent l'état quand l'en-tête
+    `Origin` manque, ce qui impose de déclarer `trustedOrigins`. À traiter avant le premier build
+    Electron, pas après.

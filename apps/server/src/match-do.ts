@@ -2,27 +2,23 @@ import { DurableObject } from "cloudflare:workers";
 import {
   type Action,
   type GameState,
+  type MatchMemory,
   type PlayerId,
-  type PlayerKnowledge,
-  applyAction,
+  advanceMemory,
   createGame,
-  emptyKnowledge,
-  observe,
+  replayMemory,
+  scenarioFor,
   viewFor,
 } from "@occulis/core";
-import { PROTOCOL_VERSION, type ClientMessage, type ServerMessage, encodeView } from "./protocol.js";
+import { PROTOCOL_VERSION, type ClientMessage, type ServerMessage, encodeView } from "@occulis/protocol";
 import { rulesetFor } from "./rulesets.js";
-import { scenarioFor } from "./scenarios.js";
+import { type Seats, denyOutOfTurn, seatFor } from "./seating.js";
 
 export interface MatchConfig {
   readonly matchId: string;
   readonly rulesetVersion: string;
   readonly scenario: string;
-}
-
-interface Live {
-  state: GameState;
-  knowledge: Record<PlayerId, PlayerKnowledge>;
+  readonly seats: Seats;
 }
 
 /**
@@ -31,7 +27,7 @@ interface Live {
  * appliqué à l'affichage (docs/architecture.md section 2).
  */
 export class MatchDO extends DurableObject<Env> {
-  private live: Live | null = null;
+  private live: MatchMemory | null = null;
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -42,10 +38,9 @@ export class MatchDO extends DurableObject<Env> {
       return new Response(null, { status: 204 });
     }
 
-    const player = url.searchParams.get("player");
-    if (player !== "A" && player !== "B") {
-      return new Response("player must be A or B", { status: 400 });
-    }
+    const config = await this.config();
+    const player = seatFor(config.seats, url.searchParams.get("seat"));
+    if (player === undefined) return new Response("unknown seat", { status: 403 });
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("expected websocket", { status: 426 });
     }
@@ -53,7 +48,8 @@ export class MatchDO extends DurableObject<Env> {
     const pair = new WebSocketPair();
     // acceptWebSocket (et non server.accept) est ce qui autorise l'hibernation : sans
     // lui le DO reste en mémoire tant que le socket est ouvert, pour un coût ~20 000
-    // fois supérieur et aucune différence fonctionnelle (docs/costs.md).
+    // fois supérieur et aucune différence fonctionnelle (docs/costs.md). Le camp est
+    // porté par un tag, seule information qui survit à l'hibernation du socket.
     this.ctx.acceptWebSocket(pair[1], [player]);
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
@@ -61,6 +57,8 @@ export class MatchDO extends DurableObject<Env> {
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
     if (typeof raw !== "string") return;
     const message = JSON.parse(raw) as ClientMessage;
+    const player = this.playerOf(ws);
+    if (player === undefined) return;
 
     if (message.kind === "hello") {
       if (message.protocol !== PROTOCOL_VERSION) {
@@ -68,40 +66,83 @@ export class MatchDO extends DurableObject<Env> {
         ws.close(4001, "protocol-mismatch");
         return;
       }
+      const config = await this.config();
+      this.send(ws, {
+        kind: "welcome",
+        player,
+        scenario: config.scenario,
+        rulesetVersion: config.rulesetVersion,
+      });
       await this.broadcastViews();
       return;
     }
 
     if (message.kind === "action") {
-      await this.play(message.action, ws);
+      await this.play(message.action, player, ws);
     }
   }
 
-  private async play(action: Action, from: WebSocket): Promise<void> {
+  /**
+   * Rien à nettoyer : l'état de la partie ne dépend d'aucune connexion ouverte, et le
+   * tag du camp disparaît avec le socket. Le gestionnaire doit exister malgré tout —
+   * le runtime l'appelle sur tout socket accepté pour l'hibernation, et lève une
+   * exception non rattrapée s'il est absent (constaté par les tests dans workerd).
+   *
+   * Une déconnexion n'interrompt pas la partie : le temps de réflexion est illimité
+   * (docs/design.md section 2), et le joueur retrouve sa position en se reconnectant.
+   */
+  async webSocketClose(): Promise<void> {}
+
+  /**
+   * Le camp vient du tag posé à l'acceptation du socket, jamais du message : c'est
+   * la seule donnée que l'expéditeur ne contrôle pas.
+   */
+  private playerOf(ws: WebSocket): PlayerId | undefined {
+    const tag = this.ctx.getTags(ws)[0];
+    return tag === "A" || tag === "B" ? tag : undefined;
+  }
+
+  private async play(action: Action, player: PlayerId, from: WebSocket): Promise<void> {
     const live = await this.load();
-    const result = applyAction(live.state, action);
-    if (!result.ok) {
-      this.send(from, { kind: "rejected", error: result.error });
+
+    const denial = denyOutOfTurn(live.state.activePlayer, player);
+    if (denial !== undefined) {
+      this.send(from, { kind: "rejected", error: denial });
       return;
     }
 
-    live.state = result.value;
-    live.knowledge = {
-      A: observe(live.knowledge.A, live.state),
-      B: observe(live.knowledge.B, live.state),
-    };
+    const advanced = advanceMemory(live, action);
+    if (!advanced.ok) {
+      this.send(from, { kind: "rejected", error: advanced.error });
+      return;
+    }
 
-    await this.appendToLog(action);
+    const seq = live.state.history.length;
+    this.live = advanced.value;
+
+    await this.appendToLog(action, seq);
+    if (advanced.value.state.outcome !== null) await this.recordOutcome(advanced.value.state);
     await this.broadcastViews();
   }
 
-  /** Le log en D1 est la source de vérité ; l'état du DO n'en est qu'un cache. */
-  private async appendToLog(action: Action): Promise<void> {
+  /**
+   * Le log en D1 est la source de vérité ; l'état du DO n'en est qu'un cache.
+   *
+   * `seq` est l'index du coup dans l'historique **avant** application, ce qui le rend
+   * indépendant de `turn` : deux notions qui coïncident aujourd'hui mais qu'une règle
+   * à résolution différée (docs/design.md section 3.2) séparerait.
+   */
+  private async appendToLog(action: Action, seq: number): Promise<void> {
     const config = await this.config();
-    await this.env.DB.prepare(
-      "INSERT INTO match_actions (match_id, seq, action) VALUES (?, ?, ?)",
-    )
-      .bind(config.matchId, (await this.load()).state.turn, JSON.stringify(action))
+    await this.env.DB.prepare("INSERT INTO match_actions (match_id, seq, action) VALUES (?, ?, ?)")
+      .bind(config.matchId, seq, JSON.stringify(action))
+      .run();
+  }
+
+  private async recordOutcome(state: GameState): Promise<void> {
+    const config = await this.config();
+    await this.env.DB.prepare("UPDATE matches SET finished_at = ?, outcome = ? WHERE id = ?")
+      .bind(Date.now(), JSON.stringify(state.outcome), config.matchId)
       .run();
   }
 
@@ -129,16 +170,14 @@ export class MatchDO extends DurableObject<Env> {
    * Reconstruit l'état en rejouant le log. Possible uniquement parce que `core` est
    * strictement déterministe : aucun `Math.random`, aucun `Date.now` (voir CLAUDE.md).
    */
-  private async load(): Promise<Live> {
+  private async load(): Promise<MatchMemory> {
     if (this.live !== null) return this.live;
 
     const config = await this.config();
-    const { board, pieces } = scenarioFor(config.scenario);
-    let state = createGame(board, rulesetFor(config.rulesetVersion), [...pieces]);
-    let knowledge: Record<PlayerId, PlayerKnowledge> = {
-      A: observe(emptyKnowledge("A"), state),
-      B: observe(emptyKnowledge("B"), state),
-    };
+    const scenario = scenarioFor(config.scenario);
+    const start = createGame(scenario.board(), rulesetFor(config.rulesetVersion), [
+      ...scenario.pieces,
+    ]);
 
     const logged = await this.env.DB.prepare(
       "SELECT action FROM match_actions WHERE match_id = ? ORDER BY seq ASC",
@@ -146,14 +185,17 @@ export class MatchDO extends DurableObject<Env> {
       .bind(config.matchId)
       .all<{ action: string }>();
 
-    for (const row of logged.results) {
-      const replayed = applyAction(state, JSON.parse(row.action) as Action);
-      if (!replayed.ok) throw new Error(`Log corrompu pour ${config.matchId}: ${replayed.error.code}`);
-      state = replayed.value;
-      knowledge = { A: observe(knowledge.A, state), B: observe(knowledge.B, state) };
+    const rebuilt = replayMemory(
+      start,
+      logged.results.map((row) => JSON.parse(row.action) as Action),
+    );
+    if (!rebuilt.ok) {
+      throw new Error(
+        `Log corrompu pour ${config.matchId} au coup ${rebuilt.error.seq}: ${rebuilt.error.code}`,
+      );
     }
 
-    this.live = { state, knowledge };
+    this.live = rebuilt.value;
     return this.live;
   }
 }

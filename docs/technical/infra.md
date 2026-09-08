@@ -55,8 +55,9 @@ Déclenché sur `push` de **toute** branche et sur toute `pull_request`.
 Node 22, pnpm, `pnpm install --frozen-lockfile`, puis dans l'ordre :
 `pnpm typecheck` → `pnpm lint` → `pnpm test` → `pnpm build`.
 
-`pnpm -r test` n'exécute que les paquets déclarant un script `test`. Ajouter des tests à
-`apps/server` suffira donc à les voir passer ici, **sans toucher au workflow**.
+`pnpm -r test` n'exécute que les paquets déclarant un script `test` : `packages/core`,
+`apps/web` et `tooling/infra` en déclarent un. Ajouter des tests à `apps/server` suffira
+donc à les voir passer ici, **sans toucher au workflow**.
 
 ### `target` — résoudre la branche
 
@@ -106,6 +107,7 @@ Lancée par `pnpm infra`. Interface Ink (React dans le terminal) qui pilote wran
 | `tooling/infra/src/deploy-manifest.ts` | Lecture/écriture du manifeste de déploiement |
 | `tooling/infra/src/git.ts` | Branche courante, commit ciblé, push |
 | `tooling/infra/src/wrangler.ts` | Exécution de processus et parsing de la sortie wrangler |
+| `tooling/infra/src/*.test.ts` | Tests de `config.ts`, `toml.ts` et `deploy-manifest.ts` (Vitest) |
 
 ### `config.ts` — chemins et conventions
 
@@ -114,6 +116,7 @@ Lancée par `pnpm infra`. Interface Ink (React dans le terminal) qui pilote wran
 | `ROOT`, `SERVER_DIR`, `TOML`, `DEPLOY_MANIFEST` | Chemins absolus, dérivés de `import.meta.url` |
 | `PLACEHOLDER` | `"REMPLACER_PAR_L_ID"` — marque un `database_id` non renseigné |
 | `dbName()` | Environnement → nom de base. Table fixe pour `local`/`staging`/`production`, sinon `occulis-<env>` |
+| `isBranchEnv()` | Faux pour les trois environnements fixes, vrai pour tous les autres — donc pour tout ce qui est jetable |
 | `listEnvNames()` | **Découvre** les environnements en lisant les en-têtes `[env.X]` du toml |
 | `slugifyBranch()` | Nom de branche → nom d'environnement (`/` → `-`) |
 | `envFlag()` | `[]` pour `local`, `["--env", env]` sinon |
@@ -145,8 +148,14 @@ Contrairement au toml, c'est du JSON réel : pas de manipulation ligne à ligne.
 | Fonction | Rôle |
 |---|---|
 | `upsertDeployEnvironment()` | Ajoute ou met à jour une entrée ; renvoie `"created"` ou `"updated"` |
-| `deployEnvironmentExists()` | L'entrée existe-t-elle |
+| `listDeployEnvironments()` | Le manifeste sous forme de liste `{ branch, wranglerEnv, d1Database }` |
+| `findDeployEnvironment()` | Résout une cible donnée **par nom de branche ou par slug wrangler** — les deux ne diffèrent que sur les branches contenant un `/` |
+| `listBranchEnvNames()` | Les environnements supprimables : union du toml et du manifeste, moins les fixes |
 | `removeDeployEnvironment()` | Retire l'entrée ; renvoie `false` si absente |
+
+`listBranchEnvNames()` fait l'**union** des deux sources plutôt que de croire le seul
+manifeste : un environnement à moitié défait (bloc toml sans entrée, ou l'inverse) reste
+ainsi visible et réparable depuis la TUI.
 
 ### `git.ts`
 
@@ -184,16 +193,17 @@ quoi la sortie serait illisible et le terminal resterait en suivi souris.
 ## Les actions de la TUI
 
 Catalogue dans `ACTIONS` (`tooling/infra/src/actions.ts`). Chaque `ActionDef` déclare
-`needsEnv` (demande un environnement), `remoteOnly` (exclut `local`), `prompt` (saisie
-libre) et `interactive` (prend le contrôle du terminal).
+`needsEnv` (demande un environnement), `remoteOnly` (exclut `local`), `branchEnvsOnly`
+(restreint le sélecteur aux environnements de branche), `prompt` (saisie libre) et
+`interactive` (prend le contrôle du terminal).
 
 | Action | Ce qu'elle fait |
 |---|---|
 | Statut | Rapport de configuration, via `checkConfig()` |
 | Lister les bases D1 | `wrangler d1 list` |
 | Créer une base distante | Crée la base et écrit son identifiant dans le toml |
-| **Créer un environnement de branche** | Voir ci-dessous |
-| **Supprimer un environnement de branche** | Voir ci-dessous |
+| **Créer un environnement de branche** | Voir ci-dessous — branche courante |
+| **Supprimer un environnement de branche** | Voir ci-dessous — **n'importe quelle cible, depuis n'importe quelle branche** |
 | Appliquer les migrations | `wrangler d1 migrations apply` |
 | Lancer le serveur en local | `wrangler dev` (interactive) |
 | Déployer | `wrangler deploy --env …` |
@@ -223,33 +233,78 @@ Le push déclenche la CI, qui applique les migrations puis déploie.
 
 ### « Supprimer un environnement de branche »
 
-Demande de **retaper le nom de la branche** en confirmation. Refuse `main` et `staging`.
+**La cible est explicite, jamais la branche courante** : l'action prend un environnement en
+paramètre (`needsEnv` + `branchEnvsOnly`), désigné par son slug wrangler *ou* par le nom de
+sa branche. Un environnement reste donc supprimable après la fusion ou l'effacement de sa
+branche — sans quoi il ne resterait plus qu'à le défaire à la main dans le dashboard.
+
+`findDeployEnvironment()` résout la cible, puis `isBranchEnv()` refuse les trois
+environnements fixes : viser `main` résout `production` et se fait rejeter. La confirmation
+accepte indifféremment le slug ou le nom de branche.
 
 **L'ordre est important** : le Worker se supprime via `--env`, qui lit encore son bloc dans
 `wrangler.toml` — donc **avant** de retirer ce bloc. Ensuite seulement viennent la
 suppression de la base, `removeEnvBlock()`, `removeDeployEnvironment()`, puis commit et
 push.
 
+Une fois les ressources Cloudflare détruites, **plus rien n'interrompt le compte rendu** :
+un HEAD détaché ou un push en échec est signalé, pas levé — l'utilisateur doit savoir ce
+qu'il reste à committer à la main.
+
+Le commit part sur la **branche courante**, qui n'est pas forcément celle de
+l'environnement supprimé. Le manifeste étant versionné, chaque branche porte sa propre
+copie et c'est celle de la branche poussée que la CI lit : quand les deux diffèrent,
+l'action prévient que la branche cible garde son entrée et redéploierait contre une base
+désormais absente.
+
 L'environnement GitHub Actions homonyme, s'il existe, survit et reste inoffensif ; son
 retrait se fait depuis Settings → Environments.
 
 ---
 
+## Les tests
+
+`tooling/infra/src/*.test.ts`, exécutés par `pnpm test` à la racine — donc par la CI, qui
+n'a rien eu à déclarer pour cela.
+
+| Fichier | Ce qu'il verrouille |
+|---|---|
+| `config.test.ts` | `dbName()`, `slugifyBranch()`, `envFlag()` et surtout **`isBranchEnv()`**, le prédicat qui empêche la suppression d'atteindre la production ou la recette |
+| `toml.test.ts` | Le bloc généré est complet (route, assets, DO, D1) ; `appendEnvBlock()` est idempotent ; **`removeEnvBlock()` annule exactement `appendEnvBlock()`** et ne mange pas le bloc suivant ; `patchDatabaseId()` n'écrit que sous le bloc visé |
+| `deploy-manifest.test.ts` | La résolution d'une cible par nom de branche **ou** par slug ; viser `main` renvoie l'entrée `production` ; `listBranchEnvNames()` fait bien l'union toml ∪ manifeste |
+
+Ces trois modules écrivent dans des fichiers dont le chemin vient de `config.ts` : les tests
+détournent `TOML` et `DEPLOY_MANIFEST` vers des fichiers temporaires (`vi.mock` sur
+`./config.js`) plutôt que de découper le code en couche pure et couche IO. Ils exercent
+ainsi le vrai code d'écriture, sans que le dépôt ne serve de bac à sable.
+
+Un détail qui coûte cher à retrouver : `vi.hoisted` remonte **au-dessus des imports
+statiques**, donc le chemin temporaire doit être calculé avec des imports dynamiques —
+sinon il référence des liaisons pas encore initialisées.
+
+---
+
 ## Points d'attention
 
-- **Node 22 est requis par wrangler.** La CI l'utilise ; `package.json` déclare seulement
-  `>=20`. Sur une machine en Node 20, les commandes wrangler (donc une grande partie de la
-  TUI) échouent.
+- **Node 22 est requis par wrangler**, malgré son message d'erreur qui annonce v20. La CI
+  l'utilise, `.nvmrc` épingle Node 24 en local et `package.json` déclare
+  `engines.node: ">=22"` — les trois sont cohérents, mais **CI et poste de travail ne
+  tournent pas sur la même version majeure**. Sur une machine en Node 20,
+  les commandes wrangler (donc une grande partie de la TUI) échouent — la TUI elle-même,
+  Ink et tsx, tourne pourtant sans problème, ce qui rend le diagnostic trompeur.
 - **`.wrangler/` doit rester dans `.gitignore`** : c'est de l'état local. `checkConfig()`
   le vérifie.
 - **Les placeholders `REMPLACER_PAR_L_ID`** dans `wrangler.toml` signalent un
   environnement déclaré mais sans base rattachée. `guardPlaceholder()` bloque les actions
   qui en dépendent.
+- **`delete-branch-env` prend sa cible dans l'entrée `env` du workflow manuel**, pas dans
+  `branch` : `branch` n'y désigne plus que la branche sur laquelle committer le retrait.
 - **Le manifeste et le toml doivent rester cohérents.** Les deux actions d'environnement de
   branche les modifient ensemble et les committent ensemble ; les éditer à la main
   séparément est le moyen le plus simple de casser un déploiement.
-- **`tooling/infra` n'a aucun test.** Les fonctions de `toml.ts` et `deploy-manifest.ts`
-  sont pourtant pures et faciles à couvrir.
+- **Les runners wrangler et les actions ne sont pas testés** : les tests couvrent la
+  manipulation de fichiers (`toml.ts`, `deploy-manifest.ts`) et les conventions
+  (`config.ts`), pas l'enchaînement d'une action, qui appellerait le vrai wrangler.
 
 ## Voir aussi
 

@@ -7,3 +7,4 @@ export * from "./state.js";
 export * from "./actions.js";
 export * from "./fog.js";
 export * from "./result.js";
+export * from "./scenarios/index.js";

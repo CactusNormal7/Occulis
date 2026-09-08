@@ -9,7 +9,8 @@
   "scripts": {
     "start": "tsx src/cli.tsx",
     "ci": "tsx src/ci.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "ink": "^5.1.0",
@@ -20,6 +21,7 @@
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.12",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.9"
   }
 }
