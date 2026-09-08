@@ -26,6 +26,10 @@ describe("encodeView / decodeView", () => {
     expect(roundTrip.visible.size).toBeGreaterThan(0);
     expect(roundTrip.ownPieces).toEqual(original.ownPieces);
     expect(roundTrip.check).toBe(original.check);
+    // La liste que l'interface utilise pour la surbrillance : si elle ne survit pas
+    // au JSON, le client ne propose plus aucun coup.
+    expect(roundTrip.legalActions).toEqual(original.legalActions);
+    expect(roundTrip.legalActions.length).toBeGreaterThan(0);
     expect(roundTrip.player).toBe("A");
   });
 

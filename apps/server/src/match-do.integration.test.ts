@@ -138,6 +138,32 @@ describe("MatchDO dans workerd", () => {
     b.socket.close();
   });
 
+  it("laisse rejouer après un coup refusé, et la vue porte les coups légaux", async () => {
+    // Le bug qui bloquait les parties : un refus ne rediffuse aucune vue, donc un
+    // client qui aurait appliqué son coup en anticipation resterait persuadé que ce
+    // n'est plus son tour. Côté serveur, un refus ne consomme rien du tout.
+    const match = await createMatch();
+    const a = await seat(match.matchId, match.seats.A);
+    const view = (await a.awaitKind("view")).view;
+    expect(view.legalActions.length).toBeGreaterThan(0);
+    a.drain();
+
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-scout", to: { x: 9, y: 9 } } });
+    expect((await a.awaitKind("rejected")).error).toEqual({
+      code: "unreachable",
+      to: { x: 9, y: 9 },
+    });
+
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-scout", to: { x: 2, y: 6 } } });
+    const after = (await a.awaitKind("view")).view;
+    expect(after.turn).toBe(1);
+    // Le trait est passé : plus aucun coup légal pour A tant que B n'a pas joué.
+    expect(after.activePlayer).toBe("B");
+    expect(after.legalActions).toEqual([]);
+
+    a.socket.close();
+  });
+
   it("clôt la partie en base à l'abandon", async () => {
     const match = await createMatch();
     const a = await seat(match.matchId, match.seats.A);

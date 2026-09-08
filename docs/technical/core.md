@@ -532,6 +532,7 @@ interface PlayerKnowledge {
 interface PlayerView {
   player; activePlayer; turn; outcome;
   check: boolean;                       // maîtresse du destinataire menacée
+  legalActions: readonly Action[];      // ses coups, vide s'il n'est pas au trait
   visible: ReadonlySet<CoordKey>;
   ownPieces: readonly Piece[];
   visibleEnemies: readonly Piece[];
@@ -583,6 +584,12 @@ modification ici.
 qui laissent la maîtresse en prise : son porteur doit donc savoir pourquoi, et l'information
 lui est de fait publique. Celui de l'adversaire n'est **pas** transmis — il révélerait où se
 trouve sa pièce maîtresse.
+
+`legalActions` est calculé sur la position **réelle**, et seulement pour le camp au trait —
+la liste de l'adversaire trahirait la position de ses pièces. Il est transmis parce que le
+client ne saurait pas le recalculer : ne voyant qu'un camp, il ignore les menaces cachées
+qui lui interdisent un coup comme les pièces cachées qui barrent la route d'un attaquant
+qu'il voit. Ce que cela révèle est assumé et documenté en section 7.1 du design doc.
 
 `viewFor()` retire des fantômes les pièces actuellement vues, pour qu'une même pièce
 n'apparaisse jamais deux fois.

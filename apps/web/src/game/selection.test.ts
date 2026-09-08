@@ -6,6 +6,7 @@ import {
   applyAction,
   coordKey,
   createGame,
+  legalActions,
   provisionalRuleset,
 } from "@occulis/core";
 import { resolveClick, selectionFor } from "./selection.js";
@@ -42,7 +43,7 @@ describe("selectionFor", () => {
     // La garantie centrale : la sélection filtre `legalActions`, elle ne redéduit
     // rien. Tout ce qu'elle affiche doit donc être applicable.
     const state = game();
-    const selection = selectionFor(state, pieceOf(state, "a-scout"));
+    const selection = selectionFor(legalActions(state), state, pieceOf(state, "a-scout"));
 
     expect(selection.moves.size).toBeGreaterThan(0);
     for (const to of selection.moves.values()) {
@@ -52,7 +53,7 @@ describe("selectionFor", () => {
 
   it("exclut les cases occupées", () => {
     const state = game();
-    const selection = selectionFor(state, pieceOf(state, "a-scout"));
+    const selection = selectionFor(legalActions(state), state, pieceOf(state, "a-scout"));
 
     for (const occupied of PIECES) {
       expect(selection.moves.has(coordKey(occupied.coord))).toBe(false);
@@ -61,7 +62,7 @@ describe("selectionFor", () => {
 
   it("liste l'adversaire adjacent comme frappable sur place", () => {
     const state = game();
-    const selection = selectionFor(state, pieceOf(state, "a-scout"));
+    const selection = selectionFor(legalActions(state), state, pieceOf(state, "a-scout"));
 
     expect(selection.strikes.get(coordKey({ x: 1, y: 0 }))).toBe("b-scout");
     expect(selection.strikes.get(coordKey({ x: 4, y: 4 }))).toBeUndefined();
@@ -70,28 +71,28 @@ describe("selectionFor", () => {
 
 describe("resolveClick", () => {
   it("sélectionne une pièce du joueur au trait", () => {
-    const outcome = resolveClick(game(), undefined, { x: 0, y: 0 });
+    const outcome = resolveClick(legalActions(game()), game(), undefined, { x: 0, y: 0 });
 
     expect(outcome.kind).toBe("select");
     if (outcome.kind === "select") expect(outcome.selection.piece.id).toBe("a-scout");
   });
 
   it("ignore une pièce adverse et une case vide", () => {
-    expect(resolveClick(game(), undefined, { x: 1, y: 0 }).kind).toBe("clear");
-    expect(resolveClick(game(), undefined, { x: 3, y: 2 }).kind).toBe("clear");
+    expect(resolveClick(legalActions(game()), game(), undefined, { x: 1, y: 0 }).kind).toBe("clear");
+    expect(resolveClick(legalActions(game()), game(), undefined, { x: 3, y: 2 }).kind).toBe("clear");
   });
 
   it("ignore un clic hors plateau", () => {
-    expect(resolveClick(game(), undefined, undefined).kind).toBe("clear");
+    expect(resolveClick(legalActions(game()), game(), undefined, undefined).kind).toBe("clear");
   });
 
   it("joue le déplacement quand la case cliquée est une destination", () => {
     const state = game();
-    const selection = selectionFor(state, pieceOf(state, "a-scout"));
+    const selection = selectionFor(legalActions(state), state, pieceOf(state, "a-scout"));
     const to = { x: 2, y: 2 };
     expect(selection.moves.has(coordKey(to))).toBe(true);
 
-    const outcome = resolveClick(state, selection, to);
+    const outcome = resolveClick(legalActions(state), state, selection, to);
 
     expect(outcome).toEqual({
       kind: "play",
@@ -101,9 +102,9 @@ describe("resolveClick", () => {
 
   it("frappe sur place quand la case cliquée porte un adversaire à portée", () => {
     const state = game();
-    const selection = selectionFor(state, pieceOf(state, "a-scout"));
+    const selection = selectionFor(legalActions(state), state, pieceOf(state, "a-scout"));
 
-    const outcome = resolveClick(state, selection, { x: 1, y: 0 });
+    const outcome = resolveClick(legalActions(state), state, selection, { x: 1, y: 0 });
 
     // La pièce ne bouge pas : `to` vaut sa propre case (docs/implementation-notes #2).
     expect(outcome).toEqual({
@@ -115,16 +116,16 @@ describe("resolveClick", () => {
 
   it("désélectionne quand on reclique la pièce sélectionnée", () => {
     const state = game();
-    const selection = selectionFor(state, pieceOf(state, "a-scout"));
+    const selection = selectionFor(legalActions(state), state, pieceOf(state, "a-scout"));
 
-    expect(resolveClick(state, selection, { x: 0, y: 0 }).kind).toBe("clear");
+    expect(resolveClick(legalActions(state), state, selection, { x: 0, y: 0 }).kind).toBe("clear");
   });
 
   it("change de pièce quand on clique une autre des siennes", () => {
     const state = game();
-    const selection = selectionFor(state, pieceOf(state, "a-scout"));
+    const selection = selectionFor(legalActions(state), state, pieceOf(state, "a-scout"));
 
-    const outcome = resolveClick(state, selection, { x: 0, y: 13 });
+    const outcome = resolveClick(legalActions(state), state, selection, { x: 0, y: 13 });
 
     expect(outcome.kind).toBe("select");
     if (outcome.kind === "select") expect(outcome.selection.piece.id).toBe("a-cmd");
@@ -138,6 +139,6 @@ describe("resolveClick", () => {
     // (0,0) porte une pièce du joueur encore au trait : sans le garde-fou sur
     // l'issue, le clic la sélectionnerait.
     expect(resigned.value.activePlayer).toBe("A");
-    expect(resolveClick(resigned.value, undefined, { x: 0, y: 0 }).kind).toBe("clear");
+    expect(resolveClick(legalActions(resigned.value), resigned.value, undefined, { x: 0, y: 0 }).kind).toBe("clear");
   });
 });

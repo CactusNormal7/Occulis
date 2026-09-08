@@ -102,6 +102,7 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/view/animation.ts` | Interpolation d'un déplacement de pièce | oui |
 | `apps/web/src/game/online-match.ts` | La partie arbitrée par le serveur, vue du client | oui |
 | `apps/web/src/game/hypothesis.ts` | `PlayerView` → position telle que le joueur peut la croire | oui |
+| `apps/web/src/game/movement-diff.ts` | Ce que deux vues successives ont fait bouger | oui |
 | `apps/web/src/game/selection.ts` | Sélection d'une pièce et résolution d'un clic | oui |
 | `apps/web/src/game/scenario.ts` | Résout la carte annoncée par le serveur | oui |
 | `apps/web/src/net/session.ts` | Réduction des messages serveur en état de session | oui |
@@ -340,48 +341,56 @@ atteindre le canevas qui est dessous.
 ## `game/hypothesis.ts` — la position telle que le joueur peut la croire
 
 En ligne, le client **n'a pas** la position : le serveur ne lui envoie que son
-`PlayerView`, et c'est tout l'intérêt du fog of war. Or `selectionFor()` passe par
-`legalActions()`, qui demande un `GameState`. `hypothesisFrom()` en fabrique un depuis la
-seule vue : ses propres pièces, les adverses réellement visibles, rien d'autre.
+`PlayerView`, et c'est tout l'intérêt du fog of war. Or désigner une case au clic demande
+un `GameState`. `hypothesisFrom()` en fabrique un depuis la seule vue : ses propres
+pièces, les adverses réellement visibles, rien d'autre.
 
-**L'hypothèse est fausse, et dans les deux sens.** Ignorant les pièces hors LOS, elle
-croit libres des cases occupées et ne voit pas les menaces cachées — sous « échecs strict »
-une menace invisible rend un coup illégal, donc le client propose des coups que le serveur
-refuse. Symétriquement, une pièce cachée qui *bloquait* la route d'un attaquant visible n'y
-figure pas : le client peut donc voir une menace qui n'existe pas et refuser un coup
-licite. Dans les deux cas le serveur arbitre (`ServerMessage.rejected`).
+**Elle ne sert qu'à la géométrie** — quelle pièce occupe telle case, à qui appartient-elle.
+Aucune décision n'en est tirée, parce qu'elle est fausse dans les deux sens : ignorant les
+pièces hors LOS, elle croit libres des cases occupées et ne voit pas les menaces cachées,
+mais elle croit aussi libre de passer un attaquant qu'une pièce invisible bloque. La
+légalité arrive du serveur, dans `PlayerView.legalActions`.
 
 Les fantômes en sont exclus : un souvenir peut être périmé, et l'ériger en obstacle
 masquerait des coups réellement jouables (`implementation-notes.md` point 16).
 
-### `anticipate()` — le client n'adjuge jamais
+---
 
-`applyAction()` **adjuge** : il constate qu'un camp n'a plus de pièce maîtresse et
-proclame la victoire de l'autre. Sur une hypothèse, c'est faux par construction — la
-maîtresse adverse est presque toujours cachée par le fog, donc le camp d'en face y paraît
-**toujours** décapité.
+## `game/movement-diff.ts` — ce que la vue a fait bouger
 
-C'est ce qui gelait les parties : au premier coup joué, le client se déclarait vainqueur
-« pièce maîtresse capturée », et comme `legalActions()` d'une partie terminée est vide,
-plus rien n'était sélectionnable ni déplaçable. `anticipate()` applique donc le coup —
-déplacement, capture, passage du trait — et **reprend l'issue telle qu'elle était**, c'est
-à dire celle que le serveur a envoyée. La fin de partie appartient au serveur, seul à voir
-les deux camps.
+`movementBetween(before, after)` rend le déplacement décrit par deux vues successives.
+C'est ce qui remplace l'anticipation locale : le client n'applique plus les coups, donc il
+lit ce qui a bougé dans ce que le serveur lui envoie — et **les coups de l'adversaire
+s'animent enfin**, alors qu'ils apparaissaient d'un coup.
+
+Seules les pièces **présentes dans les deux vues** sont comparées. Sous fog, une pièce qui
+entre ou sort de la ligne de vue n'a pas bougé pour autant : l'animer dessinerait un trajet
+qui n'a pas eu lieu, et trahirait une position que le joueur n'est pas censé connaître.
 
 ---
 
 ## `game/online-match.ts` — la partie arbitrée par le serveur
 
-Jouer consiste à **envoyer** l'action et à appliquer localement un résultat provisoire,
-le temps que la vue suivante arrive : sans cette anticipation le plateau resterait figé
-pendant l'aller-retour réseau.
+**Jouer n'écrit rien.** `play()` valide localement — de quoi répondre tout de suite sur ce
+que le client peut juger seul, pièce hors de portée ou pas au trait — puis envoie, et
+s'arrête là. Seule la vue suivante déplace une pièce. `receive()` est donc le **seul**
+chemin par lequel l'état entre, ce qui rend toute divergence impossible par construction ;
+il rend au passage le déplacement à animer (`movement-diff.ts`).
 
-L'anticipation passe par `anticipate()` et **ne conclut jamais de fin de partie** : tout
-verdict prononcé par le client le serait sur un plateau amputé (voir ci-dessus). Elle peut
-aussi se tromper sur la légalité — le serveur voit des pièces que le client ignore.
-`receive()` est le **seul** chemin par lequel l'état officiel entre, et il écrase
-l'anticipation. `main.ts` en profite pour effacer sélection et animation en cours : elles
-décrivaient une position que le serveur vient peut-être de contredire.
+Le client anticipait autrefois le coup, pour ne pas figer le plateau pendant l'aller-retour
+réseau. Il en résultait un blocage complet à chaque refus : le coup était appliqué et le
+trait passé à l'adversaire, le serveur refusait **sans rediffuser de vue** (les deux
+branches de refus de `MatchDO.play` sortent avant `broadcastViews`), et plus rien n'était
+sélectionnable — le client se croyait hors trait alors que le serveur attendait toujours
+son coup, donc l'adversaire ne jouait pas et aucune vue ne venait. Seule une reconnexion
+du WebSocket débloquait la partie. Un aller-retour est sans conséquence dans un jeu au tour
+par tour sans limite de temps de réflexion (`docs/design.md` section 2) ; une
+désynchronisation, elle, casse la partie.
+
+`main.ts` tient un **coup en attente** entre l'envoi et la réponse : tant qu'il est en vol,
+clic et clavier sont inertes, sans quoi deux clics enverraient deux coups pour le même
+tour. L'attente se lève sur une vue **comme** sur un refus — un refus ne consomme rien, le
+joueur enchaîne aussitôt sur un autre coup.
 
 `viewFor()` rend toujours la même vue, quel que soit le joueur demandé : il n'en existe
 qu'une côté client, celle du siège. Regarder le plateau avec les yeux d'en face n'a pas de
@@ -470,10 +479,13 @@ une URL absolue.
 
 ## `game/selection.ts` — sélection et clic
 
-Module pur. **Rien n'y est recalculé de ce que `core` sait déjà** : les possibilités sont
-filtrées depuis `legalActions()`, jamais redéduites. L'interface ne peut donc pas proposer
-un coup que `applyAction()` refuserait, ni en oublier un. Un test vérifie explicitement
-que toute destination affichée est applicable.
+Module pur. **Rien n'y est recalculé** : les possibilités sont filtrées depuis la liste de
+coups légaux que le serveur a jointe à la vue, jamais redéduites. Un coup affiché est donc
+un coup que le serveur acceptera, et aucun coup jouable n'est escamoté.
+
+La liste est passée en paramètre (`selectionFor(legal, state, piece)`, `resolveClick(legal,
+state, …)`) plutôt que recalculée sur place : le client ne saurait pas la produire juste,
+il ne voit qu'un camp.
 
 ```ts
 interface Selection {
@@ -490,7 +502,7 @@ type ClickOutcome =
 
 | Fonction | Rôle |
 |---|---|
-| `selectionFor()` | Ce qu'une pièce peut faire ce tour-ci, filtré depuis `legalActions()` |
+| `selectionFor()` | Ce qu'une pièce peut faire ce tour-ci, filtré depuis la liste du serveur |
 | `resolveClick()` | Ce qu'un clic doit produire. **Fonction totale et sans effet** |
 
 ### La machine à états, telle que `resolveClick()` l'encode
@@ -818,7 +830,7 @@ l'emporteraient sinon sur l'attribut, et un écran masqué resterait visible.
 8. **L'animation n'est jamais une source de vérité.** L'état est appliqué immédiatement ;
    l'interrompre ou la sauter doit rester sans conséquence sur la partie.
 9. **Le compte rendu du tour attend la fin de l'animation.**
-10. **La sélection filtre `legalActions()`, elle ne redéduit rien.** Recalculer la légalité
+10. **La sélection filtre la liste du serveur, elle ne redéduit rien.** Recalculer la légalité
     dans l'interface la ferait diverger de `applyAction()`.
 11. **Rien de ce qui est hors LOS ne doit apparaître dans l'interface.**
 12. **`view/` et `game/` restent purs**, ainsi que `net/session.ts`, `ui/flow.ts`,
@@ -846,7 +858,9 @@ l'emporteraient sinon sur l'attribut, et un écran masqué resterait visible.
 | `apps/web/src/game/selection.test.ts` | **Toute destination affichée est applicable par `core`**, exclusion des cases occupées, frappe sur place, machine à états complète de `resolveClick` |
 | `apps/web/src/ui/command.test.ts` | Grammaire complète et résolution coordonnée → pièce |
 | `apps/web/src/ui/messages.test.ts` | `describeTile()`, dont l'absence de fuite d'information sur les pièces |
-| `apps/web/src/game/hypothesis.test.ts` | L'hypothèse ne contient que le visible ; **`anticipate()` ne fabrique aucune fin de partie** sur un plateau amputé par le fog, avance bien la position, et laisse rejouer dès que le trait revient |
+| `apps/web/src/game/hypothesis.test.ts` | L'hypothèse ne contient que le visible et reporte la fin de partie annoncée par la vue |
+| `apps/web/src/game/online-match.test.ts` | **`play()` n'écrit rien** — ni position, ni trait —, n'envoie pas un coup refusé localement, laisse rejouer après un refus, et n'avance qu'à réception de la vue |
+| `apps/web/src/game/movement-diff.test.ts` | Le déplacement lu entre deux vues, y compris celui de l'adversaire ; une pièce qui entre ou sort de la LOS n'est pas animée |
 | `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, code de salon retenu, code refusé sans siège, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré |
 | `apps/web/src/net/backoff.test.ts` | Croissance exponentielle, plafond, robustesse à une tentative absurde |
 | `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut, lecture du jeton de réinitialisation dans l'URL |

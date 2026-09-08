@@ -428,6 +428,13 @@ type QueueServerMessage =
 `Set`, et un client qui oublierait la conversion inverse afficherait un fog vide, donc
 tout le plateau.
 
+**`legalActions`** accompagne chaque vue : le client ne peut pas les recalculer, ne voyant
+qu'un camp, et sans eux son interface propose des coups que le serveur refuse. Un refus
+**ne rediffuse aucune vue** — les deux branches de refus de `MatchDO.play` sortent avant
+`broadcastViews` — donc un client qui appliquerait le coup de son côté resterait
+désynchronisé jusqu'à sa reconnexion. C'est pourquoi le client n'applique plus rien
+(`docs/technical/engine.md`, `game/online-match.ts`).
+
 **`welcome`** dit au client de quel camp il tient le siège. Il ne le sait pas autrement :
 c'est le jeton qui le détermine, et le serveur seul le résout.
 

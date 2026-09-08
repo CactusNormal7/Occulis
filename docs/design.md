@@ -108,6 +108,8 @@ Conséquence assumée : le moteur peut refuser un coup à cause d'une menace que
 
 Le mat en découle sans règle supplémentaire : plus aucun coup légal **et** pièce maîtresse menacée = mat ; plus aucun coup légal et maîtresse hors de danger = pat.
 
+Conséquence d'information, actée : **le serveur transmet à chaque joueur la liste de ses coups légaux.** Elle est calculée sur la position réelle, donc elle révèle d'un coup que des menaces invisibles le contraignent. C'est assumé pour deux raisons. D'abord, la même information s'obtient déjà en tâtonnant, puisqu'un coup refusé ne consomme pas de tour : la liste abaisse l'effort, pas le secret. Ensuite, sans elle l'interface est condamnée à mentir — un client qui ne voit qu'un camp ne peut ni deviner les menaces cachées, ni savoir qu'une pièce invisible barre la route d'un attaquant qu'il voit ; il proposerait donc des coups refusés et en cacherait d'acceptables.
+
 ### 7.2 Nulles anti-blocage — tranché : les deux règles
 
 Le point était explicitement reporté (« éviter des parties qui tournent en rond sans jamais qu'aucune pièce maîtresse ne soit menacée »). Décision actée : **les deux règles des échecs modernes, et toutes deux automatiques.**

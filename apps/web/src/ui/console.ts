@@ -1,4 +1,4 @@
-import type { Action, ActionError, Coord, GameState, Result } from "@occulis/core";
+import type { Action, ActionError, Coord, Outcome, Result } from "@occulis/core";
 import type { OnlineMatch } from "../game/online-match.js";
 import { parseCommand, toAction } from "./command.js";
 import {
@@ -40,7 +40,13 @@ export interface ConsoleOptions {
    * pas du tout tant que le joueur est au menu.
    */
   readonly match: () => OnlineMatch | undefined;
-  readonly play: (action: Action) => Result<GameState, ActionError>;
+  /**
+   * Envoie le coup au serveur. Elle **ne déplace rien** : le plateau ne bouge qu'à
+   * l'arrivée de la vue suivante, et cette console ne fait qu'en rendre compte.
+   */
+  readonly play: (action: Action) => Result<Action, ActionError>;
+  /** Vrai tant qu'un coup envoyé attend la réponse du serveur. */
+  readonly pending: () => boolean;
 }
 
 export interface GameConsole {
@@ -50,12 +56,17 @@ export interface GameConsole {
   report(message: string, accepted: boolean): void;
   /** Affiche la case désignée au clic, ou signale un clic hors plateau. */
   showTile(coord: Coord | undefined): void;
-  /** Joue une action venue d'ailleurs — un clic sur le plateau — et la rapporte. */
+  /** Envoie une action venue d'ailleurs — un clic sur le plateau — et la rapporte. */
   playAction(action: Action): boolean;
+  /**
+   * Annonce la fin de partie. Elle vient de la vue du serveur, plus d'un coup joué :
+   * le client n'applique rien, il ne saurait donc plus la constater lui-même.
+   */
+  announce(outcome: Outcome): void;
 }
 
 export function attachConsole(options: ConsoleOptions): GameConsole {
-  const { elements, match, play } = options;
+  const { elements, match, play, pending } = options;
   const { form, input, log, status, readout } = elements;
 
   const refresh = (): void => {
@@ -96,6 +107,13 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
         ? current.state.pieces.get(action.capture)
         : undefined;
 
+    // Un seul coup en vol à la fois : deux clics rapides enverraient deux coups
+    // pour le même tour, dont le second serait refusé sans que rien ne l'explique.
+    if (pending()) {
+      report("Coup déjà envoyé : réponse du serveur en attente.", false);
+      return false;
+    }
+
     const played = play(action);
     if (!played.ok) {
       report(describeActionError(played.error), false);
@@ -106,8 +124,7 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
       action.kind === "move" && moved !== undefined
         ? describeMove(moved, action.to, captured)
         : "Abandon.";
-    const outcome = played.value.outcome;
-    report(outcome === null ? summary : `${summary} ${describeOutcome(outcome)}`, true);
+    report(`${summary} — envoyé.`, true);
     refresh();
     return true;
   };
@@ -133,6 +150,10 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
     submit(input.value);
   });
 
+  const announce = (outcome: Outcome): void => {
+    report(describeOutcome(outcome), true);
+  };
+
   refresh();
-  return { refresh, report, showTile, playAction };
+  return { refresh, report, announce, showTile, playAction };
 }

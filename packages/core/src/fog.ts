@@ -4,6 +4,7 @@ import {
   type ReplayError,
   applyAction,
   isCommanderThreatened,
+  legalActions,
 } from "./actions.js";
 import type { Board } from "./board.js";
 import { type Coord, type CoordKey, coordKey } from "./coord.js";
@@ -96,6 +97,22 @@ export interface PlayerView {
    * pas transmis — il révélerait où se trouve sa pièce maîtresse.
    */
   readonly check: boolean;
+  /**
+   * Les coups que ce joueur peut jouer, calculés sur la position **réelle**. Vide
+   * quand il n'est pas au trait.
+   *
+   * Transmis parce que le client ne peut pas les recalculer : il ignore les pièces
+   * hors de sa ligne de vue, donc ni les menaces cachées qui lui interdisent un coup,
+   * ni les pièces cachées qui barrent la route d'un attaquant qu'il voit. Sans cette
+   * liste, l'interface propose des coups que le serveur refuse et en cache qu'il
+   * accepterait.
+   *
+   * Ce que cela révèle, et qui est assumé (docs/design.md section 7.1) : la liste dit
+   * d'un coup que des menaces invisibles contraignent le joueur. La même information
+   * s'obtient déjà en tâtonnant — un coup refusé ne consomme pas de tour — donc elle
+   * abaisse l'effort, pas le secret.
+   */
+  readonly legalActions: readonly Action[];
   readonly visible: ReadonlySet<CoordKey>;
   readonly ownPieces: readonly Piece[];
   readonly visibleEnemies: readonly Piece[];
@@ -125,6 +142,9 @@ export function viewFor(state: GameState, knowledge: PlayerKnowledge): PlayerVie
     turn: state.turn,
     outcome: state.outcome,
     check: isCommanderThreatened(state, player),
+    // Seulement pour le camp au trait : `legalActions` ne génère que pour lui, et la
+    // liste de l'adversaire trahirait la position de ses pièces.
+    legalActions: state.activePlayer === player ? legalActions(state) : [],
     visible: knowledge.visible,
     ownPieces,
     visibleEnemies,

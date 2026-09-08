@@ -32,6 +32,8 @@ export interface WireView {
   readonly turn: number;
   readonly outcome: PlayerView["outcome"];
   readonly check: boolean;
+  /** Coups légaux du destinataire, calculés par le serveur (`PlayerView`). */
+  readonly legalActions: PlayerView["legalActions"];
   readonly visible: readonly string[];
   readonly ownPieces: PlayerView["ownPieces"];
   readonly visibleEnemies: PlayerView["visibleEnemies"];

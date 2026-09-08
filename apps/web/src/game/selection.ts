@@ -7,16 +7,15 @@ import {
   type PieceId,
   coordEquals,
   coordKey,
-  legalActions,
   pieceAt,
 } from "@occulis/core";
 
 /**
  * Sélection d'une pièce et résolution d'un clic. Module pur : ni PixiJS, ni DOM.
  *
- * Rien n'est recalculé ici de ce que `core` sait déjà : les possibilités sont
- * **filtrées depuis `legalActions`**, jamais redéduites. L'interface ne peut donc
- * pas proposer un coup que `applyAction` refuserait, ni en oublier un.
+ * Rien n'est recalculé ici : les possibilités sont **filtrées depuis la liste de
+ * coups légaux fournie par le serveur**, jamais redéduites. Un coup affiché est donc
+ * un coup que le serveur acceptera, et aucun coup jouable n'est escamoté.
  */
 
 export interface Selection {
@@ -32,11 +31,21 @@ export type ClickOutcome =
   | { readonly kind: "play"; readonly action: Action }
   | { readonly kind: "clear" };
 
-export function selectionFor(state: GameState, piece: Piece): Selection {
+/**
+ * `legal` est la liste que le serveur a calculée sur la position réelle
+ * (`PlayerView.legalActions`), et non ce que le client déduirait de sa vue : sous fog
+ * il ignore les menaces cachées et les pièces qui barrent une route, donc il
+ * proposerait des coups refusés et en cacherait d'acceptables.
+ */
+export function selectionFor(
+  legal: readonly Action[],
+  state: GameState,
+  piece: Piece,
+): Selection {
   const moves = new Map<CoordKey, Coord>();
   const strikes = new Map<CoordKey, PieceId>();
 
-  for (const action of legalActions(state)) {
+  for (const action of legal) {
     if (action.kind !== "move" || action.pieceId !== piece.id) continue;
 
     if (action.capture === undefined) {
@@ -58,6 +67,7 @@ export function selectionFor(state: GameState, piece: Piece): Selection {
  * Fonction totale et sans effet : l'appelant applique le résultat.
  */
 export function resolveClick(
+  legal: readonly Action[],
   state: GameState,
   selection: Selection | undefined,
   coord: Coord | undefined,
@@ -94,5 +104,5 @@ export function resolveClick(
   const piece = pieceAt(state, coord);
   // On ne sélectionne que ses propres pièces, et seulement à son tour.
   if (piece === undefined || piece.owner !== state.activePlayer) return { kind: "clear" };
-  return { kind: "select", selection: selectionFor(state, piece) };
+  return { kind: "select", selection: selectionFor(legal, state, piece) };
 }

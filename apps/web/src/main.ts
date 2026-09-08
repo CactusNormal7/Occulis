@@ -4,12 +4,11 @@ import {
   type Action,
   type ActionError,
   type Coord,
-  type GameState,
   type Result,
-  coordEquals,
   provisionalRuleset,
 } from "@occulis/core";
 import { type MoveAnimation, advance as step, startMove } from "./view/animation.js";
+import type { Movement } from "./game/movement-diff.js";
 import {
   type Camera,
   createCamera,
@@ -61,43 +60,48 @@ async function main(): Promise<void> {
   let selection: Selection | undefined;
   let animation: MoveAnimation | undefined;
   let gameConsole: GameConsole;
+  /**
+   * Un coup envoyé dont le serveur n'a pas encore répondu. Le client n'applique plus
+   * rien lui-même : entre l'envoi et la vue, le plateau est celui d'avant, et il ne
+   * doit accepter aucun second coup pour le même tour.
+   */
+  let pending = false;
 
   const go = (event: Parameters<typeof advance>[1]): void => {
     stage = advance(stage, event);
     shell.render(stage);
   };
 
-  const play = (action: Action): Result<GameState, ActionError> => {
+  /**
+   * Envoie le coup, et **ne déplace rien** : c'est la vue suivante qui fera bouger la
+   * pièce et lancera l'animation. Anticiper localement laissait le plateau désynchronisé
+   * dès qu'un coup était refusé — le serveur ne rediffuse pas de vue dans ce cas.
+   */
+  const play = (action: Action): Result<Action, ActionError> => {
     if (match === undefined) return { ok: false, error: { code: "game-over" } };
 
-    // Lus avant d'appliquer : ensuite la pièce n'est plus à sa place de départ.
-    const moving = action.kind === "move" ? match.state.pieces.get(action.pieceId) : undefined;
-    const destination = action.kind === "move" ? action.to : undefined;
+    const sent = match.play(action);
+    if (!sent.ok) return sent;
 
-    const result = match.play(action);
-    if (!result.ok) return result;
-
+    pending = true;
     selection = undefined;
-    if (
-      moving !== undefined &&
-      destination !== undefined &&
-      !coordEquals(moving.coord, destination)
-    ) {
-      animation = startMove(moving.id, moving.coord, destination, match.board);
-    } else {
-      gameConsole.refresh();
-    }
-    return result;
+    return sent;
   };
 
   /**
-   * Une vue reçue du serveur fait autorité : elle remplace l'anticipation locale, et
-   * avec elle toute sélection ou animation en cours, qui décrivaient une position
-   * que le serveur vient peut-être de contredire.
+   * Une vue reçue du serveur fait autorité. Elle referme le coup en attente et efface
+   * la sélection, qui décrivait une position que le serveur vient de remplacer.
+   *
+   * `movement` est ce que la vue a fait bouger — son propre coup comme celui de
+   * l'adversaire, qui s'anime donc désormais lui aussi.
    */
-  const adopt = (): void => {
+  const adopt = (movement?: Movement): void => {
+    pending = false;
     selection = undefined;
-    animation = undefined;
+    animation =
+      movement === undefined || match === undefined
+        ? undefined
+        : startMove(movement.pieceId, movement.from, movement.to, match.board);
     gameConsole.refresh();
   };
 
@@ -108,6 +112,7 @@ async function main(): Promise<void> {
     channel?.close();
     channel = undefined;
     match = undefined;
+    pending = false;
     selection = undefined;
     animation = undefined;
     hovered = undefined;
@@ -130,11 +135,13 @@ async function main(): Promise<void> {
         adopt();
       },
       onView: (incoming) => {
-        match?.receive(incoming);
-        adopt();
+        adopt(match?.receive(incoming));
+        if (incoming.outcome !== null) gameConsole.announce(incoming.outcome);
       },
       onRejected: (rejection) => {
-        // L'anticipation locale a divergé : la vue qui suit rétablit la position.
+        // Rien à annuler : le coup n'avait pas été appliqué. Il reste au joueur d'en
+        // jouer un autre, et c'est toujours son tour.
+        pending = false;
         gameConsole.report(describeRejection(rejection), false);
       },
       onOutdated: (expected) => {
@@ -231,6 +238,7 @@ async function main(): Promise<void> {
     },
     match: () => match,
     play,
+    pending: () => pending,
   });
 
   shell.render(stage);
@@ -256,7 +264,7 @@ async function main(): Promise<void> {
       if (match === undefined) return;
       gameConsole.showTile(coord);
 
-      const outcome = resolveClick(match.state, selection, coord);
+      const outcome = resolveClick(match.legalActions, match.state, selection, coord);
       if (outcome.kind === "select") selection = outcome.selection;
       else if (outcome.kind === "clear") selection = undefined;
       else gameConsole.playAction(outcome.action);
