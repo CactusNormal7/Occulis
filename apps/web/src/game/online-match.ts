@@ -9,10 +9,9 @@ import {
   type PlayerView,
   type Result,
   type Ruleset,
-  applyAction,
   pieceAt,
 } from "@occulis/core";
-import { hypothesisFrom } from "./hypothesis.js";
+import { anticipate, hypothesisFrom } from "./hypothesis.js";
 
 /**
  * Une partie arbitrée par le serveur, vue du client. C'est la **seule** forme de
@@ -29,6 +28,10 @@ import { hypothesisFrom } from "./hypothesis.js";
  * ignore, et sous « échecs strict » une menace invisible rend un coup illégal. La
  * vue suivante fait alors autorité et efface l'anticipation, et `receive()` est le
  * seul chemin par lequel l'état officiel entre.
+ *
+ * Elle ne conclut **jamais** de fin de partie : voir `anticipate()`. Le client ne
+ * voit qu'un camp, donc tout verdict qu'il prononcerait serait rendu sur un plateau
+ * amputé.
  */
 export class OnlineMatch {
   private view: PlayerView;
@@ -76,7 +79,7 @@ export class OnlineMatch {
   }
 
   play(action: Action): Result<GameState, ActionError> {
-    const anticipated = applyAction(this.hypothesis, action);
+    const anticipated = anticipate(this.hypothesis, action);
     if (!anticipated.ok) return anticipated;
 
     this.submit(action);

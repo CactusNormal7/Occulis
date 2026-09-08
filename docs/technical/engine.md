@@ -344,15 +344,29 @@ En ligne, le client **n'a pas** la position : le serveur ne lui envoie que son
 `legalActions()`, qui demande un `GameState`. `hypothesisFrom()` en fabrique un depuis la
 seule vue : ses propres pièces, les adverses réellement visibles, rien d'autre.
 
-**L'hypothèse est optimiste, et doit le rester.** Ignorant les pièces hors LOS, elle croit
-libres des cases occupées et ne voit pas les menaces cachées — or sous « échecs strict »
-une menace invisible rend un coup illégal. Le client propose donc un **sur-ensemble** des
-coups légaux, et le serveur en refuse certains (`ServerMessage.rejected`). C'est le bon
-sens de l'erreur : mieux vaut un refus expliqué qu'un coup légal escamoté par l'interface.
-Un test vérifie ce sens-là — tout coup que le serveur accepte figure dans l'hypothèse.
+**L'hypothèse est fausse, et dans les deux sens.** Ignorant les pièces hors LOS, elle
+croit libres des cases occupées et ne voit pas les menaces cachées — sous « échecs strict »
+une menace invisible rend un coup illégal, donc le client propose des coups que le serveur
+refuse. Symétriquement, une pièce cachée qui *bloquait* la route d'un attaquant visible n'y
+figure pas : le client peut donc voir une menace qui n'existe pas et refuser un coup
+licite. Dans les deux cas le serveur arbitre (`ServerMessage.rejected`).
 
 Les fantômes en sont exclus : un souvenir peut être périmé, et l'ériger en obstacle
 masquerait des coups réellement jouables (`implementation-notes.md` point 16).
+
+### `anticipate()` — le client n'adjuge jamais
+
+`applyAction()` **adjuge** : il constate qu'un camp n'a plus de pièce maîtresse et
+proclame la victoire de l'autre. Sur une hypothèse, c'est faux par construction — la
+maîtresse adverse est presque toujours cachée par le fog, donc le camp d'en face y paraît
+**toujours** décapité.
+
+C'est ce qui gelait les parties : au premier coup joué, le client se déclarait vainqueur
+« pièce maîtresse capturée », et comme `legalActions()` d'une partie terminée est vide,
+plus rien n'était sélectionnable ni déplaçable. `anticipate()` applique donc le coup —
+déplacement, capture, passage du trait — et **reprend l'issue telle qu'elle était**, c'est
+à dire celle que le serveur a envoyée. La fin de partie appartient au serveur, seul à voir
+les deux camps.
 
 ---
 
@@ -362,7 +376,9 @@ Jouer consiste à **envoyer** l'action et à appliquer localement un résultat p
 le temps que la vue suivante arrive : sans cette anticipation le plateau resterait figé
 pendant l'aller-retour réseau.
 
-L'anticipation peut se tromper — le serveur voit des pièces que le client ignore.
+L'anticipation passe par `anticipate()` et **ne conclut jamais de fin de partie** : tout
+verdict prononcé par le client le serait sur un plateau amputé (voir ci-dessus). Elle peut
+aussi se tromper sur la légalité — le serveur voit des pièces que le client ignore.
 `receive()` est le **seul** chemin par lequel l'état officiel entre, et il écrase
 l'anticipation. `main.ts` en profite pour effacer sélection et animation en cours : elles
 décrivaient une position que le serveur vient peut-être de contredire.
@@ -830,7 +846,7 @@ l'emporteraient sinon sur l'attribut, et un écran masqué resterait visible.
 | `apps/web/src/game/selection.test.ts` | **Toute destination affichée est applicable par `core`**, exclusion des cases occupées, frappe sur place, machine à états complète de `resolveClick` |
 | `apps/web/src/ui/command.test.ts` | Grammaire complète et résolution coordonnée → pièce |
 | `apps/web/src/ui/messages.test.ts` | `describeTile()`, dont l'absence de fuite d'information sur les pièces |
-| `apps/web/src/game/hypothesis.test.ts` | L'hypothèse ne contient que le visible, et **propose un sur-ensemble** des coups que le serveur accepte |
+| `apps/web/src/game/hypothesis.test.ts` | L'hypothèse ne contient que le visible ; **`anticipate()` ne fabrique aucune fin de partie** sur un plateau amputé par le fog, avance bien la position, et laisse rejouer dès que le trait revient |
 | `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, code de salon retenu, code refusé sans siège, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré |
 | `apps/web/src/net/backoff.test.ts` | Croissance exponentielle, plafond, robustesse à une tentative absurde |
 | `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut, lecture du jeton de réinitialisation dans l'URL |
