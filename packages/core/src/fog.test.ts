@@ -47,6 +47,23 @@ describe("visibleTilesFor", () => {
     expect(visible.has(coordKey({ x: 6, y: 0 }))).toBe(false);
   });
 
+  it("une pièce cache ce qui est derrière elle", () => {
+    // b-blocker est à portée du scout de A et sur sa ligne : la pièce d'après ne
+    // l'est plus, alors que rien dans le relief ne la couvre.
+    const state = createGame(Board.flat(9, 1), ruleset, [
+      placePiece("a-scout", "scout", "A", 0, 0),
+      placePiece("a-cmd", "commander", "A", 8, 0),
+      placePiece("b-blocker", "scout", "B", 2, 0),
+      placePiece("b-cmd", "commander", "B", 3, 0),
+    ]);
+    const visible = visibleTilesFor(state.board, state, "A");
+    expect(visible.has(coordKey({ x: 2, y: 0 }))).toBe(true);
+    expect(visible.has(coordKey({ x: 3, y: 0 }))).toBe(false);
+
+    const view = viewFor(state, observe(emptyKnowledge("A"), state));
+    expect(view.visibleEnemies.map((piece) => piece.id)).toEqual(["b-blocker"]);
+  });
+
   it("borne la vision à la portée de chaque pièce", () => {
     const state = createGame(Board.flat(9, 1), ruleset, [
       placePiece("a-scout", "scout", "A", 0, 0),
@@ -83,10 +100,11 @@ describe("observe — mémoire du fog of war", () => {
   });
 
   it("efface le fantôme quand la case mémorisée est revue vide", () => {
-    // A garde (3,0) en vue ; b-cmd s'en va sous ses yeux.
-    const state = createGame(Board.flat(8, 1), ruleset, [
+    // A garde (3,0) en vue ; b-cmd s'en va sous ses yeux. La maîtresse de A est
+    // rangée sur l'autre rangée : sur la même, elle couperait la ligne du scout.
+    const state = createGame(Board.flat(8, 2), ruleset, [
       placePiece("a-scout", "scout", "A", 0, 0),
-      placePiece("a-cmd", "commander", "A", 1, 0),
+      placePiece("a-cmd", "commander", "A", 0, 1),
       placePiece("b-cmd", "commander", "B", 3, 0),
     ], "B");
     const seen = observe(emptyKnowledge("A"), state);

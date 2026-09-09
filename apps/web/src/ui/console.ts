@@ -75,12 +75,7 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
       status.textContent = "";
       return;
     }
-    status.textContent = describeTurn(
-      current.state.turn,
-      current.activePlayer,
-      current.player,
-      current.viewFor(current.player).check,
-    );
+    status.textContent = describeTurn(current.state.turn, current.activePlayer, current.player);
   };
 
   const showTile = (coord: Coord | undefined): void => {
@@ -100,12 +95,8 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
     if (current === undefined) return false;
 
     // Le résumé est composé avant de jouer : dans l'état suivant, la pièce
-    // déplacée n'est plus à sa place et la capturée n'existe plus.
+    // déplacée n'est plus à sa place de départ.
     const moved = action.kind === "move" ? current.state.pieces.get(action.pieceId) : undefined;
-    const captured =
-      action.kind === "move" && action.capture !== undefined
-        ? current.state.pieces.get(action.capture)
-        : undefined;
 
     // Un seul coup en vol à la fois : deux clics rapides enverraient deux coups
     // pour le même tour, dont le second serait refusé sans que rien ne l'explique.
@@ -122,7 +113,7 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
 
     const summary =
       action.kind === "move" && moved !== undefined
-        ? describeMove(moved, action.to, captured)
+        ? describeMove(moved, action.to)
         : "Abandon.";
     report(`${summary} — envoyé.`, true);
     refresh();

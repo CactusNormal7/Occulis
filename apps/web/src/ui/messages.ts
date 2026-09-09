@@ -21,14 +21,10 @@ export function describeFault(fault: CommandFault): string {
       return `Coordonnée illisible : « ${fault.token} ». Format attendu : x,y`;
     case "missing-destination":
       return "Destination manquante. Exemple : 1,6 2,5";
-    case "missing-target":
-      return "Cible de capture manquante après « x ».";
     case "trailing":
       return `Fin de commande inattendue : « ${fault.token} »`;
     case "no-piece-here":
       return `Aucune pièce en ${formatCoord(fault.coord)}.`;
-    case "no-target-here":
-      return `Aucune pièce à capturer en ${formatCoord(fault.coord)}.`;
   }
 }
 
@@ -42,16 +38,6 @@ export function describeActionError(error: ActionError): string {
       return "Cette pièce n'est pas au trait.";
     case "unreachable":
       return `${formatCoord(error.to)} est hors de portée de cette pièce ce tour-ci.`;
-    case "must-do-something":
-      return "Un tour doit déplacer la pièce ou capturer : rester sur place sans frapper n'est pas un coup.";
-    case "unknown-target":
-      return "Cible inconnue.";
-    case "target-is-friendly":
-      return "On ne capture pas une pièce de son propre camp.";
-    case "target-out-of-melee":
-      return "Cible hors de portée de mêlée depuis cette case.";
-    case "leaves-commander-exposed":
-      return "Coup interdit : il laisserait votre pièce maîtresse en prise.";
   }
 }
 
@@ -89,31 +75,15 @@ export function describeWaiting(seeking: Seeking, code: string | undefined): str
     : "Transmettez ce code à votre adversaire, puis attendez son arrivée.";
 }
 
-export function describeMove(piece: Piece, to: Coord, captured: Piece | undefined): string {
-  const move = `${piece.owner} · ${piece.id} ${formatCoord(piece.coord)} → ${formatCoord(to)}`;
-  return captured === undefined ? move : `${move}, capture de ${captured.id}`;
+export function describeMove(piece: Piece, to: Coord): string {
+  return `${piece.owner} · ${piece.id} ${formatCoord(piece.coord)} → ${formatCoord(to)}`;
 }
 
-const VICTORY_REASONS: Record<
-  Extract<NonNullable<GameState["outcome"]>, { kind: "victory" }>["reason"],
-  string
-> = {
+const VICTORY_REASONS: Record<NonNullable<GameState["outcome"]>["reason"], string> = {
   resignation: "abandon",
-  checkmate: "mat",
-  "commander-captured": "pièce maîtresse capturée",
-};
-
-const DRAW_REASONS: Record<
-  Extract<NonNullable<GameState["outcome"]>, { kind: "draw" }>["reason"],
-  string
-> = {
-  stalemate: "pat, plus aucun coup légal",
-  repetition: "même position atteinte trois fois",
-  "no-capture": "trop de coups sans la moindre capture",
 };
 
 export function describeOutcome(outcome: NonNullable<GameState["outcome"]>): string {
-  if (outcome.kind === "draw") return `Partie nulle : ${DRAW_REASONS[outcome.reason]}.`;
   return `Victoire de ${outcome.winner} (${VICTORY_REASONS[outcome.reason]}).`;
 }
 
@@ -121,15 +91,9 @@ export function describeOutcome(outcome: NonNullable<GameState["outcome"]>): str
  * L'état du tour. Le camp du joueur y figure toujours, et non le point de vue
  * affiché : il n'y en a qu'un — le serveur n'envoie jamais la vue d'en face.
  */
-export function describeTurn(
-  turn: number,
-  activePlayer: PlayerId,
-  seat: PlayerId,
-  check = false,
-): string {
+export function describeTurn(turn: number, activePlayer: PlayerId, seat: PlayerId): string {
   const whose = activePlayer === seat ? "à vous de jouer" : "au trait : l'adversaire";
-  const line = `Tour ${turn} · ${whose} · vous jouez ${seat}`;
-  return check ? `${line} · ÉCHEC` : line;
+  return `Tour ${turn} · ${whose} · vous jouez ${seat}`;
 }
 
 /**

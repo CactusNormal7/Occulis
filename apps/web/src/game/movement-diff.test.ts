@@ -13,7 +13,6 @@ function view(pieces: {
     activePlayer: "A",
     turn: 0,
     outcome: null,
-    check: false,
     legalActions: [],
     visible: new Set(),
     ownPieces: make(pieces.own ?? [], "A"),

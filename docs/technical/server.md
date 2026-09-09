@@ -386,7 +386,7 @@ ajout. Le paquet ne contient que des types et la conversion de sérialisation �
 règle de jeu (elle vit dans `@occulis/core`), aucun transport (il vit dans chaque app).
 
 ```ts
-const PROTOCOL_VERSION = 3
+const PROTOCOL_VERSION = 4
 
 type ClientMessage =
   | { kind: "hello";  protocol: number }
@@ -427,6 +427,11 @@ type QueueServerMessage =
 `decodeView()` le reconstruit — `Scene` (`apps/web/src/scene/scene.ts`) attend bien un
 `Set`, et un client qui oublierait la conversion inverse afficherait un fog vide, donc
 tout le plateau.
+
+La version est passée de 3 à 4 avec le retrait de la capture et de la règle d'échec
+(`docs/design.md` sections 3.1 et 7.1) : `Action` a perdu son champ `capture` et `WireView`
+son drapeau `check`. Un client resté en 3 enverrait des coups d'une forme que le serveur ne
+comprend plus — la négociation le refuse explicitement plutôt que de le laisser diverger.
 
 **`legalActions`** accompagne chaque vue : le client ne peut pas les recalculer, ne voyant
 qu'un camp, et sans eux son interface propose des coups que le serveur refuse. Un refus

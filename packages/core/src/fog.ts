@@ -3,14 +3,13 @@ import {
   type ActionError,
   type ReplayError,
   applyAction,
-  isCommanderThreatened,
   legalActions,
 } from "./actions.js";
 import type { Board } from "./board.js";
 import { type Coord, type CoordKey, coordKey } from "./coord.js";
 import type { Piece, PieceId, PieceKind, PlayerId } from "./pieces/index.js";
 import { type Result, err, ok } from "./result.js";
-import { type GameState, piecesOf } from "./state.js";
+import { type GameState, occupancy, piecesOf } from "./state.js";
 
 /** Dernière position connue d'une pièce adverse, à afficher en fantôme estompé. */
 export interface RememberedPiece {
@@ -36,11 +35,16 @@ export function emptyKnowledge(player: PlayerId): PlayerKnowledge {
  *
  * Le champ est demandé à chaque type de pièce plutôt que calculé ici à partir
  * d'une portée : c'est la pièce qui définit ce qu'elle voit (`PieceType.canSee`).
+ *
+ * L'occupation du plateau lui est transmise parce qu'une pièce coupe la vue au même
+ * titre que le relief (docs/design.md section 5.2) : elle est calculée une fois pour
+ * toutes les pièces du joueur, chaque champ de vision balayant déjà tout le plateau.
  */
 export function visibleTilesFor(board: Board, state: GameState, player: PlayerId): Set<CoordKey> {
+  const occupied = occupancy(state);
   const visible = new Set<CoordKey>();
   for (const piece of piecesOf(state, player)) {
-    for (const key of state.ruleset.typeOf(piece).fieldOfView(board, piece.coord)) {
+    for (const key of state.ruleset.typeOf(piece).fieldOfView(board, piece.coord, occupied)) {
       visible.add(key);
     }
   }
@@ -91,26 +95,13 @@ export interface PlayerView {
   readonly turn: number;
   readonly outcome: GameState["outcome"];
   /**
-   * Pièce maîtresse du destinataire menacée. Transmis, et seulement pour lui : sous
-   * la règle « échecs strict » le moteur refuse les coups qui laissent la maîtresse
-   * en prise, donc son porteur doit savoir pourquoi. L'état de l'adversaire n'est
-   * pas transmis — il révélerait où se trouve sa pièce maîtresse.
-   */
-  readonly check: boolean;
-  /**
    * Les coups que ce joueur peut jouer, calculés sur la position **réelle**. Vide
    * quand il n'est pas au trait.
    *
    * Transmis parce que le client ne peut pas les recalculer : il ignore les pièces
-   * hors de sa ligne de vue, donc ni les menaces cachées qui lui interdisent un coup,
-   * ni les pièces cachées qui barrent la route d'un attaquant qu'il voit. Sans cette
-   * liste, l'interface propose des coups que le serveur refuse et en cache qu'il
-   * accepterait.
-   *
-   * Ce que cela révèle, et qui est assumé (docs/design.md section 7.1) : la liste dit
-   * d'un coup que des menaces invisibles contraignent le joueur. La même information
-   * s'obtient déjà en tâtonnant — un coup refusé ne consomme pas de tour — donc elle
-   * abaisse l'effort, pas le secret.
+   * hors de sa ligne de vue, donc il ne sait pas lesquelles barrent la route d'une de
+   * ses pièces. Sans cette liste, l'interface propose des coups que le serveur refuse
+   * et en cache qu'il accepterait.
    */
   readonly legalActions: readonly Action[];
   readonly visible: ReadonlySet<CoordKey>;
@@ -141,7 +132,6 @@ export function viewFor(state: GameState, knowledge: PlayerKnowledge): PlayerVie
     activePlayer: state.activePlayer,
     turn: state.turn,
     outcome: state.outcome,
-    check: isCommanderThreatened(state, player),
     // Seulement pour le camp au trait : `legalActions` ne génère que pour lui, et la
     // liste de l'adversaire trahirait la position de ses pièces.
     legalActions: state.activePlayer === player ? legalActions(state) : [],
@@ -158,8 +148,8 @@ export function viewFor(state: GameState, knowledge: PlayerKnowledge): PlayerVie
  * La mémoire fantôme dépend de **toutes** les positions traversées, pas seulement de
  * la dernière : reconstruire une partie depuis son log suppose donc de faire avancer
  * la connaissance à chaque coup. Comme le serveur reconstruit à chaque réveil
- * (docs/architecture.md section 3) et que le client tient la même chose en hot-seat,
- * l'opération vit ici plutôt que d'être réécrite des deux côtés.
+ * (docs/architecture.md section 3), l'opération vit ici plutôt que d'être réécrite
+ * à côté.
  */
 export interface MatchMemory {
   readonly state: GameState;

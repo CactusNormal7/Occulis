@@ -91,7 +91,7 @@ describe("fromMatch", () => {
   it("efface le refus dès la vue suivante", () => {
     const refused = fromMatch(seated(), {
       kind: "rejected",
-      error: { code: "must-do-something" },
+      error: { code: "unreachable", to: { x: 0, y: 0 } },
     });
     expect(fromMatch(refused, { kind: "view", view: wireView() }).rejection).toBeUndefined();
   });

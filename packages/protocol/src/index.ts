@@ -23,7 +23,7 @@ export type SeatDenial =
  * doit pouvoir le refuser explicitement plutôt que le laisser diverger en silence
  * (docs/architecture.md section 1).
  */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 /** `PlayerView` contient des `Set`/`Map`, que `JSON.stringify` sérialise en `{}`. */
 export interface WireView {
@@ -31,7 +31,6 @@ export interface WireView {
   readonly activePlayer: PlayerId;
   readonly turn: number;
   readonly outcome: PlayerView["outcome"];
-  readonly check: boolean;
   /** Coups légaux du destinataire, calculés par le serveur (`PlayerView`). */
   readonly legalActions: PlayerView["legalActions"];
   readonly visible: readonly string[];

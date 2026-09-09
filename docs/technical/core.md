@@ -287,7 +287,7 @@ son type.
 |---|---|
 | `rasterizeLine()` | Cases traversées par le segment, extrémités incluses |
 | `inCanonicalOrder()` (privée) | Fixe le sens de parcours du tracé |
-| `hasLineOfSight()` | Y a-t-il vue entre deux cases |
+| `hasLineOfSight()` | Y a-t-il vue entre deux cases, relief **et pièces** pris en compte |
 | `collectVisible()` | Cases visibles depuis un point, **filtrées par un test fourni par l'appelant** |
 | `visibleFrom()` | Champ de vision purement géométrique : portée de Chebyshev et occultation |
 
@@ -309,6 +309,22 @@ du tracé, et compare chaque obstacle traversé à cette hauteur. Deux exception
 délibérées : les cases d'extrémité n'occultent jamais leur propre ligne de vue, et une
 case hors-carte traversée n'occulte pas.
 
+### L'occultation par les pièces
+
+`hasLineOfSight(board, from, to, occupied?)` prend un ensemble de cases tenues par une
+pièce. `PIECE_HEIGHT = 1` (constante privée) : une case occupée occulte comme si son relief
+était plus haut d'un niveau. Même valeur que `EYE_HEIGHT`, et pour la même raison — une
+pièce occupe exactement la hauteur d'où elle regarde. Conséquences directes, toutes
+voulues (`docs/design.md` section 5.2) :
+
+- deux pièces au même niveau se masquent mutuellement ce qui est derrière elles ;
+- une pièce perchée voit **par-dessus** une pièce restée en contrebas ;
+- la pièce qui bloque reste visible : elle est une extrémité de la ligne qui la vise, et
+  les extrémités n'occultent jamais.
+
+Le paramètre est optionnel et vaut l'ensemble vide : appelé sans lui, le module rend la
+géométrie du seul relief, ce dont les tests se servent.
+
 ### La symétrie, garantie par construction
 
 Le tracé de Bresenham départage les diagonales selon le sens de parcours : tracer A→B et
@@ -317,9 +333,15 @@ LOS donnerait des situations où A voit B sans que B ne voie A — inacceptable 
 information cachée. `inCanonicalOrder()` fixe donc un ordre déterministe des extrémités
 **avant** le tracé.
 
+L'occultation par les pièces la préserve : `occupied` est un ensemble de clés, indifférent
+au sens de parcours, et les extrémités en sont exclues par la boucle elle-même. Un test
+dédié rejoue la symétrie sur un plateau **avec des pièces posées**.
+
 **Ne pas casser cette propriété.** Le test « occulte tout type de pièce de la même façon :
 le relief ne se négocie pas » (`pieces/piece-type.test.ts`) la verrouille au niveau des
 types de pièces : redéfinir `canSee()` ne doit jamais permettre de traverser le relief.
+C'est aussi la raison pour laquelle les pièces **alliées** occultent comme les adverses :
+ne bloquer que les adverses rendrait la vue asymétrique entre les deux camps.
 
 ### Portée et hauteur
 
@@ -328,8 +350,9 @@ portée de vision — elle ne joue que sur l'occultation (`docs/design.md` secti
 pièce sur une tour voit *plus loin* uniquement parce que moins d'obstacles la gênent,
 jamais parce que sa portée augmente.
 
-Une pièce **n'occulte pas** la vue : seul le relief le fait (`implementation-notes.md`
-point 5). Le module ne consulte donc aucun état de pièces.
+Le module ne consulte toujours **aucun état de partie** : l'occupation lui est passée en
+paramètre, comme à `reachableTiles()`. C'est `fog.ts` qui la calcule une fois par vue
+(`occupancy(state)`) et la transmet à chaque champ de vision.
 
 ---
 
@@ -345,9 +368,16 @@ interface MoveOption { coord: Coord; cost: number; kind: MoveKind }
 | `reachableTiles()` | Cases atteignables depuis une case, avec coût et nature du déplacement |
 | `canMeleeReach()` | La règle de dénivelé en mêlée. **Ne teste pas l'adjacence** |
 
-Les deux sont appelées à travers `PieceType.destinationsFrom()` et `PieceType.canStrike()`,
-qui y ajoutent respectivement le profil et l'adjacence du type. Le reste du paquet ne les
-appelle plus directement.
+`reachableTiles()` est appelée à travers `PieceType.destinationsFrom()`, qui y ajoute le
+profil du type. `canMeleeReach()` l'est à travers `PieceType.canStrike()` — **plus aucun
+appelant en jeu** depuis le retrait de la capture (`docs/design.md` section 3.1) : les deux
+sont conservées, avec leurs tests, parce qu'elles encodent une règle actée de la section
+5.3 qui reviendra avec la prise.
+
+`occupied` interdit à la fois la **traversée** d'une case tenue et l'**arrivée** dessus,
+sans distinction de camp. C'est ce seul mécanisme qui empêche d'aller sur la case d'une
+pièce adverse ; `actions.ts` en retire au préalable la case de la pièce qui bouge, qu'elle
+libère en partant.
 
 ### Les règles de verticalité (`docs/design.md` section 5.3)
 
@@ -383,25 +413,15 @@ interface GameState {
 
 interface ActionRecord { player: PlayerId; action: Action }
 
-type Outcome =
-  | { kind: "victory"; winner: PlayerId;
-      reason: "commander-captured" | "resignation" | "checkmate" }
-  | { kind: "draw";    reason: "stalemate" | "repetition" | "no-capture" }
-
-interface DrawClock {
-  seen: ReadonlyMap<PositionKey, number>;   // occurrences de chaque position
-  sinceCapture: number;                     // actions depuis la dernière capture
-}
+type Outcome = { kind: "victory"; winner: PlayerId; reason: "resignation" }
 ```
 
-`DrawClock` est tenu **de façon incrémentale** et non recalculé depuis `history` : la
-partie est sans limite de temps de réflexion, donc potentiellement longue, et rejouer tout
-le log à chaque coup serait quadratique pour une information de deux entiers.
-
-`positionKey()` signe une position par le camp et le **type** de chaque pièce — pas par son
-identifiant — plus le camp au trait. Deux éclaireurs d'un même camp qui échangent leurs
-cases rendent donc bien la même position, comme aux échecs. La position de départ compte
-pour une occurrence : sans elle, la troisième répétition tomberait un coup trop tard.
+**L'abandon est la seule fin de partie.** L'échec et mat, le pat et les deux nulles
+anti-blocage sont retirés du moteur avec la capture (`docs/design.md` sections 7.1 et 7.2,
+suspendues) : plus rien ne termine une partie automatiquement. Il n'y a donc plus ni
+`DrawClock`, ni `positionKey()`, ni champ `draw` dans `GameState`. Conséquence à connaître :
+un joueur dont toutes les pièces seraient murées n'a plus aucun coup légal et **reste au
+trait** — l'abandon est sa seule issue.
 
 `history` est le log d'actions, tenu **dans** l'état plutôt qu'à côté pour qu'il ne puisse
 pas diverger de la position qu'il décrit. C'est ce que le serveur persiste en D1 et rejoue
@@ -415,6 +435,10 @@ position seule ne dit plus.
 | `occupancy()` | Ensemble des cases occupées |
 | `piecesOf()` | Les pièces d'un joueur |
 | `commanderOf()` | La pièce maîtresse d'un joueur, via `ruleset.typeOf(piece).isCommander` |
+
+`commanderOf()` n'a plus d'appelant dans le moteur depuis le retrait de l'échec : la pièce
+maîtresse reste un concept de design acté (`docs/design.md` section 7), seule la règle qui
+la protégeait s'en va.
 
 `createGame()` lève sur identifiant dupliqué, sur deux pièces à la même case, ou sur une
 pièce posée sur une case infranchissable. Ce sont des erreurs de programmation, pas des
@@ -430,73 +454,48 @@ de `lastSeenTurn` pour les fantômes.
 
 ```ts
 type Action =
-  | { kind: "move"; pieceId: PieceId; to: Coord; capture?: PieceId }
+  | { kind: "move"; pieceId: PieceId; to: Coord }
   | { kind: "resign" }
 ```
 
 | Fonction | Rôle |
 |---|---|
 | `occupancyWithout()` (privée) | Occupation vue par une pièce donnée : sa propre case exclue |
-| `destinationsFor()` (privée) | Destinations légales d'une pièce, **sa case de départ incluse** |
-| `capturablesFrom()` (privée) | Adversaires capturables depuis une case, via `PieceType.canStrike()` |
+| `destinationsFor()` (privée) | Destinations légales d'une pièce, **sa case de départ exclue** |
 | `legalActions()` | Toutes les actions légales du joueur au trait |
 | `validateAction()` | Valide une action ; `Result<Action, ActionError>` |
-| `validateShape()` (privée) | Validation hors mise en échec : appartenance, portée, cible |
-| `validateCapture()` (privée) | La partie capture de la validation |
-| `project()` (privée) | Effets matériels d'un coup, **sans** validation ni fin de partie |
-| `leavesCommanderExposed()` (privée) | Le coup laisse-t-il sa propre maîtresse en prise |
-| `withOutcome()` (privée) | Détermine la fin de partie après une action |
 | `applyAction()` | Valide puis applique ; `Result<GameState, ActionError>` |
 | `replay()` | Rejoue un log depuis un état de départ ; `Result<GameState, ReplayError>` |
-| `isCommanderThreatened()` | La pièce maîtresse est-elle capturable au coup suivant |
 
 `destinationsFor()` reçoit l'occupation **en paramètre** plutôt que de la recalculer :
-`legalActions()` et `isCommanderThreatened()` la calculent une fois par lot et non par
-pièce. `occupancyWithout()` en retire la case de la pièce examinée, qu'elle libère en
-partant.
+`legalActions()` la calcule une fois par lot et non par pièce. `occupancyWithout()` en
+retire la case de la pièce examinée, qu'elle libère en partant.
 
-### Une action = le tour complet d'une pièce
+### Une action = le déplacement d'une pièce
 
-La capture de mêlée est **instantanée et résolue dans la même action** que le déplacement
-qui l'a permise, comme aux échecs (`docs/design.md` section 3.1).
+Une action ne fait plus que déplacer : **la capture de mêlée est retirée** le temps de
+reconstruire la géométrie du jeu (`docs/design.md` section 3.1, suspendue). Ce qui en
+découle, et qui est la seule règle d'interaction entre pièces aujourd'hui :
 
-Elle est **déclarée explicitement** (`capture`) plutôt que déduite du seul contact. Cela a
-une conséquence à connaître pour toute interface : `to` peut valoir la case de départ de
-la pièce, ce qui exprime « frapper un adverse adjacent sans bouger »
-(`implementation-notes.md` point 2). Le cas est refusé sans capture — l'erreur
-`must-do-something` existe pour empêcher de passer son tour.
+- une case tenue par une pièce, **alliée ou adverse**, ne peut être ni traversée ni
+  atteinte — c'est `reachableTiles()` qui l'applique, pas `actions.ts` ;
+- la case de départ ne figure pas parmi les destinations, donc rester sur place n'est pas
+  un coup : la tentative retombe sur `unreachable` ;
+- `ActionError` se réduit à `game-over`, `unknown-piece`, `not-your-piece` et
+  `unreachable`.
 
-### Mise en échec : la règle « échecs strict »
+### Plus aucune règle d'échec
 
-**Un coup qui laisse sa propre pièce maîtresse capturable est illégal**, y compris quand
-la menace est hors de la ligne de vue de son auteur (`docs/design.md` section 7). C'est ce
-que teste `leavesCommanderExposed()`, et c'est la règle qui donne son sens au mat : sans
-elle un joueur mat pourrait toujours jouer et se faire simplement capturer.
+**Un coup qui expose sa propre pièce maîtresse est légal.** La règle « échecs strict »
+(`docs/design.md` section 7.1) est retirée : elle n'était pas jouable avec les portées
+démesurées du roster provisoire, qui mettaient la maîtresse en échec quasi permanent et
+supprimaient tous ses coups légaux. Ont disparu avec elle `isCommanderThreatened()`,
+`leavesCommanderExposed()`, `project()` — qui n'existait que pour tester la légalité sur la
+position produite — et `withOutcome()`.
 
-`project()` existe pour ça. Tester la légalité d'un coup exige de regarder la position
-qu'il produit ; passer par `applyAction()` rappellerait `legalActions()` et bouclerait sans
-fin. `project()` n'applique que les effets matériels, ne valide rien, et **ne change pas le
-trait** — la position produite est une hypothèse, pas un tour joué.
-
-`isCommanderThreatened()` reste volontairement *pseudo-légal* : il ne filtre pas les coups
-adverses par leur propre légalité. Une pièce elle-même clouée met donc en échec, comme aux
-échecs.
-
-L'abandon échappe à la règle : `resign` reste valide même sans aucun coup jouable.
-
-### Ordre de détection de la fin de partie
-
-`withOutcome()` teste **d'abord** la disparition d'une pièce maîtresse (victoire par
-capture — inatteignable en jeu normal depuis la règle ci-dessus, gardée pour les positions
-construites sans maîtresse), **ensuite** l'absence de coup légal. C'est là que mat et pat
-se séparent, et rien d'autre ne les distingue : maîtresse menacée → `checkmate`, maîtresse
-hors de danger → `stalemate`. La reddition court-circuite tout dans `applyAction()`.
-
-Viennent ensuite, et **après le mat** — un mat reste un mat, même atteint au coup qui
-déclenche une nulle — les deux règles anti-blocage (`docs/design.md` section 7.2) :
-`REPETITION_LIMIT` occurrences de la même position, ou `ACTIONS_WITHOUT_CAPTURE_LIMIT`
-actions sans capture. Toutes deux automatiques. Le second seuil n'est pas un équilibrage
-(`implementation-notes.md` point 17).
+`applyAction()` ne fait donc plus rien après le coup : il déplace la pièce, passe le trait,
+incrémente `turn` et consigne l'action. Seul `resign` pose une issue, et il reste valide
+même quand aucun coup n'est jouable — c'est la seule sortie d'une position bloquée.
 
 ### `ActionError`
 
@@ -510,13 +509,13 @@ Ces codes traversent le réseau tels quels (`ServerMessage` de type `rejected`,
 
 ### Un piège de performance
 
-`legalActions()` appelle `destinationsFor()` pour chaque pièce, puis **`project()` et
-`isCommanderThreatened()` pour chacun des coups candidats** — c'est le coût de la règle
-« échecs strict », et il multiplie le travail par le nombre de coups. `withOutcome()`
-appelle `legalActions()` à chaque application d'action pour séparer mat et pat. Le calcul
-d'occupation est mutualisé, mais rien d'autre n'est mémoïsé. C'est sans conséquence à l'échelle actuelle
-(quelques dizaines de cases, jeu au tour par tour), mais à garder en tête avant d'ajouter
-une recherche en profondeur.
+`legalActions()` n'appelle plus que `destinationsFor()` pour chaque pièce du camp au
+trait : le retrait de la règle « échecs strict » a supprimé le coût dominant, qui rejouait
+une projection et un test de menace **par coup candidat**. Ce qui reste coûteux est ailleurs :
+`visibleTilesFor()` (`fog.ts`) balaie tout le plateau pour chaque pièce d'un joueur, et
+chaque case testée déclenche un raycast. Le calcul d'occupation est mutualisé, mais rien
+n'est mémoïsé. C'est sans conséquence à l'échelle actuelle (quelques dizaines de cases, jeu
+au tour par tour), mais à garder en tête avant d'ajouter une recherche en profondeur.
 
 ---
 
@@ -531,7 +530,6 @@ interface PlayerKnowledge {
 
 interface PlayerView {
   player; activePlayer; turn; outcome;
-  check: boolean;                       // maîtresse du destinataire menacée
   legalActions: readonly Action[];      // ses coups, vide s'il n'est pas au trait
   visible: ReadonlySet<CoordKey>;
   ownPieces: readonly Piece[];
@@ -580,16 +578,14 @@ modification ici.
 2. Toute pièce adverse actuellement visible est (re)mémorisée à sa position, avec le
    `turn` courant en `lastSeenTurn`.
 
-`check` ne vaut que pour le destinataire. Sous « échecs strict » le moteur refuse les coups
-qui laissent la maîtresse en prise : son porteur doit donc savoir pourquoi, et l'information
-lui est de fait publique. Celui de l'adversaire n'est **pas** transmis — il révélerait où se
-trouve sa pièce maîtresse.
+**Il n'y a plus de drapeau `check`** : la règle qui le justifiait est retirée
+(`docs/design.md` section 7.1, suspendue).
 
 `legalActions` est calculé sur la position **réelle**, et seulement pour le camp au trait —
-la liste de l'adversaire trahirait la position de ses pièces. Il est transmis parce que le
-client ne saurait pas le recalculer : ne voyant qu'un camp, il ignore les menaces cachées
-qui lui interdisent un coup comme les pièces cachées qui barrent la route d'un attaquant
-qu'il voit. Ce que cela révèle est assumé et documenté en section 7.1 du design doc.
+la liste de l'adversaire trahirait la position de ses pièces. Il reste transmis parce que le
+client ne saurait pas le recalculer : ne voyant qu'un camp, il ignore les pièces cachées qui
+barrent la route des siennes, et depuis que les pièces occultent la vue, il en ignore
+davantage encore. Ce que cela révèle est assumé et documenté en section 7.1 du design doc.
 
 `viewFor()` retire des fantômes les pièces actuellement vues, pour qu'une même pièce
 n'apparaisse jamais deux fois.
@@ -617,13 +613,13 @@ serait contournable via les devtools.
 
 ## Tests
 
-70 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
+80 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
 
 | Fichier | Couvre |
 |---|---|
-| `packages/core/src/los.test.ts` | Tracé, occultation par la hauteur, symétrie, portée |
+| `packages/core/src/los.test.ts` | Tracé, occultation par la hauteur **et par les pièces**, symétrie, portée |
 | `packages/core/src/movement.test.ts` | Parcours, verticalité, grimpe, blocage par occupation |
-| `packages/core/src/actions.test.ts` | Coups légaux, validation, capture, fin de partie |
+| `packages/core/src/actions.test.ts` | Coups légaux, validation, blocage par les pièces, abandon |
 | `packages/core/src/fog.test.ts` | Visibilité, mémoire fantôme, contenu de `PlayerView` |
 | `packages/core/src/pieces/piece-type.test.ts` | Vision, mêlée et déplacement définis par le type ; dérivation de `fieldOfView` depuis `canSee` y compris redéfini ; extension par héritage. **Indépendant du roster** |
 | `packages/core/src/pieces/roster/roster.test.ts` | Propriétés du roster provisoire : différenciation par capacité, héritage du comportement commun, portée couvrant la carte de démonstration, indexation par `kind` |
@@ -637,8 +633,13 @@ client et le serveur vit dans `pieces/roster/`, pas ici.
 
 Tout ce qui suit est listé comme ouvert en section 10 de `docs/design.md` et **n'a
 volontairement pas été codé** : attaque à distance différée, pièges, cases de déploiement,
-règle anti-répétition, détection du mat, roster de pièces définitif, téléporteurs, poussée,
-objets bloquant la LOS.
+roster de pièces définitif, téléporteurs, poussée, objets bloquant la LOS.
+
+S'y ajoutent trois règles **actées mais retirées du moteur**, sur décision explicite du
+porteur du projet (point ouvert 13) : la **capture de mêlée** (section 3.1), la règle
+d'**échec et mat** (7.1) et les deux **nulles anti-blocage** (7.2). Elles reviendront ;
+d'ici là, seul l'abandon termine une partie. La géométrie qu'elles utilisaient est
+conservée — `canMeleeReach()` et `PieceType.canStrike()` restent codées et testées.
 
 La hiérarchie `PieceType` est le point d'entrée prévu pour plusieurs d'entre eux : une
 vision particulière se code en redéfinissant `canSee()`, une portée de frappe particulière

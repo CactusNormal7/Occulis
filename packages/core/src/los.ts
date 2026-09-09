@@ -10,6 +10,19 @@ import { type Coord, type CoordKey, chebyshevDistance, coordKey } from "./coord.
  */
 const EYE_HEIGHT = 1;
 
+/**
+ * Volume qu'une pièce ajoute à sa case pour l'occultation (docs/design.md section 5.2).
+ *
+ * Une pièce bloque la vue comme le ferait un mur d'un niveau posé sur sa case : deux
+ * pièces au même niveau se masquent donc mutuellement ce qui est derrière elles, mais
+ * un observateur perché voit par-dessus une pièce restée en contrebas. Même valeur que
+ * `EYE_HEIGHT` et pour la même raison — une pièce occupe exactement la hauteur d'où
+ * elle regarde.
+ */
+const PIECE_HEIGHT = 1;
+
+const NO_PIECES: ReadonlySet<CoordKey> = new Set();
+
 /** Cases traversées par le segment [from, to], extrémités incluses (Bresenham). */
 export function rasterizeLine(from: Coord, to: Coord): Coord[] {
   const points: Coord[] = [];
@@ -53,11 +66,21 @@ function inCanonicalOrder(a: Coord, b: Coord): readonly [Coord, Coord] {
  * chaque obstacle traversé à la hauteur interpolée de la ligne de visée.
  * Cf. docs/design.md section 5.1 — pas de moteur 3D.
  *
+ * `occupied` porte les cases tenues par une pièce : elles occultent comme un relief
+ * plus haut de `PIECE_HEIGHT`, sans distinction de camp — la LOS resterait sinon
+ * asymétrique entre les deux joueurs.
+ *
  * Symétrique par construction. Les deux cases d'extrémité n'occultent jamais leur
- * propre ligne de vue, et une case hors-carte traversée n'occulte pas non plus :
- * c'est un vide, pas un obstacle.
+ * propre ligne de vue — une pièce ne s'aveugle pas elle-même et n'empêche pas qu'on
+ * la voie — et une case hors-carte traversée n'occulte pas non plus : c'est un vide,
+ * pas un obstacle.
  */
-export function hasLineOfSight(board: Board, from: Coord, to: Coord): boolean {
+export function hasLineOfSight(
+  board: Board,
+  from: Coord,
+  to: Coord,
+  occupied: ReadonlySet<CoordKey> = NO_PIECES,
+): boolean {
   const [start, end] = inCanonicalOrder(from, to);
   const fromTile = board.getTile(start);
   const toTile = board.getTile(end);
@@ -73,9 +96,11 @@ export function hasLineOfSight(board: Board, from: Coord, to: Coord): boolean {
   for (let i = 1; i < lastStep; i++) {
     const coord = path[i];
     if (coord === undefined) continue;
-    const obstacleHeight = board.heightAt(coord);
-    if (obstacleHeight === undefined) continue;
+    const tileHeight = board.heightAt(coord);
+    if (tileHeight === undefined) continue;
 
+    const obstacleHeight =
+      tileHeight + (occupied.has(coordKey(coord)) ? PIECE_HEIGHT : 0);
     const sightlineHeight = eyeFrom + ((eyeTo - eyeFrom) * i) / lastStep;
     if (obstacleHeight >= sightlineHeight) return false;
   }
@@ -106,17 +131,19 @@ export function collectVisible(
 
 /**
  * Champ de vision purement géométrique : portée de Chebyshev horizontale et
- * occultation. La hauteur n'étend ni ne réduit la portée, elle ne joue que sur
- * l'occultation (docs/design.md section 5.3).
+ * occultation par le relief comme par les pièces. La hauteur n'étend ni ne réduit
+ * la portée, elle ne joue que sur l'occultation (docs/design.md section 5.3).
  */
 export function visibleFrom(
   board: Board,
   origin: Coord,
   range = Number.POSITIVE_INFINITY,
+  occupied: ReadonlySet<CoordKey> = NO_PIECES,
 ): Set<CoordKey> {
   return collectVisible(
     board,
     origin,
-    (target) => chebyshevDistance(origin, target) <= range && hasLineOfSight(board, origin, target),
+    (target) =>
+      chebyshevDistance(origin, target) <= range && hasLineOfSight(board, origin, target, occupied),
   );
 }

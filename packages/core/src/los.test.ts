@@ -72,6 +72,45 @@ describe("hasLineOfSight", () => {
   });
 });
 
+describe("hasLineOfSight — occultation par les pièces", () => {
+  const FLAT = Board.flat(6, 1);
+  const at = (x: number, y = 0): string => coordKey({ x, y });
+
+  it("une pièce intercalée coupe la ligne", () => {
+    const occupied = new Set([at(2)]);
+    expect(hasLineOfSight(FLAT, { x: 0, y: 0 }, { x: 4, y: 0 })).toBe(true);
+    expect(hasLineOfSight(FLAT, { x: 0, y: 0 }, { x: 4, y: 0 }, occupied)).toBe(false);
+  });
+
+  it("n'occulte ni par l'observateur ni par la cible", () => {
+    const occupied = new Set([at(0), at(3)]);
+    expect(hasLineOfSight(FLAT, { x: 0, y: 0 }, { x: 3, y: 0 }, occupied)).toBe(true);
+  });
+
+  it("reste symétrique une fois les pièces posées", () => {
+    const board = Board.fromAscii(["010200", "000000", "002000"]);
+    const occupied = new Set([at(2, 1), at(4, 0), at(1, 2)]);
+    for (const tile of board.allTiles()) {
+      for (const other of board.allTiles()) {
+        expect(hasLineOfSight(board, tile.coord, other.coord, occupied)).toBe(
+          hasLineOfSight(board, other.coord, tile.coord, occupied),
+        );
+      }
+    }
+  });
+
+  it("se voit par-dessus depuis une hauteur, pas depuis le même niveau", () => {
+    // Une pièce vaut un mur d'un niveau posé sur sa case : l'observateur perché en
+    // (0,0) voit par-dessus celle du sol, l'observateur au sol non.
+    const board = Board.fromAscii(["300003"]);
+    const occupied = new Set([at(2)]);
+    expect(hasLineOfSight(board, { x: 0, y: 0 }, { x: 5, y: 0 }, occupied)).toBe(true);
+
+    const ground = Board.flat(6, 1);
+    expect(hasLineOfSight(ground, { x: 0, y: 0 }, { x: 5, y: 0 }, occupied)).toBe(false);
+  });
+});
+
 describe("visibleFrom", () => {
   it("voit tout un plateau plat sans limite de portée", () => {
     const board = Board.flat(4, 4);
@@ -91,6 +130,18 @@ describe("visibleFrom", () => {
     const visible = visibleFrom(board, { x: 0, y: 0 });
     expect(visible.has(coordKey({ x: 1, y: 0 }))).toBe(true);
     expect(visible.has(coordKey({ x: 2, y: 0 }))).toBe(false);
+    expect(visible.has(coordKey({ x: 3, y: 0 }))).toBe(false);
+  });
+});
+
+
+describe("visibleFrom — avec des pièces", () => {
+  it("s'arrête sur la pièce qui bloque, sans la masquer elle-même", () => {
+    const board = Board.flat(5, 1);
+    const occupied = new Set([coordKey({ x: 2, y: 0 })]);
+    const visible = visibleFrom(board, { x: 0, y: 0 }, Number.POSITIVE_INFINITY, occupied);
+
+    expect(visible.has(coordKey({ x: 2, y: 0 }))).toBe(true);
     expect(visible.has(coordKey({ x: 3, y: 0 }))).toBe(false);
   });
 });

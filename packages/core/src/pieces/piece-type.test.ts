@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Board } from "../board.js";
-import { type Coord, coordKey } from "../coord.js";
+import { type Coord, type CoordKey, coordKey } from "../coord.js";
 import { definePiece } from "../testing.js";
 import { PieceType } from "./piece-type.js";
 import { Ruleset } from "./ruleset.js";
@@ -35,6 +35,15 @@ describe("vision définie par la pièce", () => {
     }
   });
 
+  it("transmet l'occupation : une pièce coupe la vue comme le relief", () => {
+    const type = definePiece("x", { vision: 6 });
+    const occupied = new Set([coordKey({ x: 3, y: 0 })]);
+
+    expect(type.canSee(FLAT, ORIGIN, { x: 6, y: 0 })).toBe(true);
+    expect(type.canSee(FLAT, ORIGIN, { x: 6, y: 0 }, occupied)).toBe(false);
+    expect(type.fieldOfView(FLAT, ORIGIN, occupied).has(coordKey({ x: 6, y: 0 }))).toBe(false);
+  });
+
   it("dérive le champ de vision de canSee, redéfinition comprise", () => {
     /** Pièce de test : voit à travers le relief, mais garde la portée de sa classe. */
     class Clairvoyant extends PieceType {
@@ -42,7 +51,12 @@ describe("vision définie par la pièce", () => {
       readonly movement = { steps: 1, adjacency: "octile", canClimb: true } as const;
       readonly vision = { range: 20 } as const;
 
-      override canSee(_board: Board, from: Coord, to: Coord): boolean {
+      override canSee(
+        _board: Board,
+        from: Coord,
+        to: Coord,
+        _occupied?: ReadonlySet<CoordKey>,
+      ): boolean {
         return this.visionRangeCovers(from, to);
       }
     }

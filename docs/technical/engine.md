@@ -17,8 +17,9 @@ relief et des pièces, fog of war et fantômes.
 **Ne fait pas** : **aucune partie locale**. Il n'existe pas de mode hot-seat ni de
 démonstration hors ligne : tant que le serveur n'a pas assis le joueur, il n'y a rien à
 jouer et le canevas reste masqué (`docs/design.md` section 2, « pas de local
-multiplayer »). Aucune capture enchaînée à un déplacement au clic non plus (se déplacer
-*puis* capturer dans le même tour se tape, ne se clique pas).
+multiplayer »). **Aucune capture non plus** : la règle est retirée du moteur
+(`docs/design.md` section 3.1, suspendue), donc un tour se réduit à un déplacement et une
+pièce adverse n'est ni une cible ni une destination — juste un obstacle.
 
 ## L'organisation des dossiers
 
@@ -483,15 +484,14 @@ Module pur. **Rien n'y est recalculé** : les possibilités sont filtrées depui
 coups légaux que le serveur a jointe à la vue, jamais redéduites. Un coup affiché est donc
 un coup que le serveur acceptera, et aucun coup jouable n'est escamoté.
 
-La liste est passée en paramètre (`selectionFor(legal, state, piece)`, `resolveClick(legal,
+La liste est passée en paramètre (`selectionFor(legal, piece)`, `resolveClick(legal,
 state, …)`) plutôt que recalculée sur place : le client ne saurait pas la produire juste,
-il ne voit qu'un camp.
+il ne voit qu'un camp — et depuis que les pièces occultent la vue, il en voit moins encore.
 
 ```ts
 interface Selection {
   piece: Piece;
-  moves:   ReadonlyMap<CoordKey, Coord>;    // cases où se rendre
-  strikes: ReadonlyMap<CoordKey, PieceId>;  // adversaires frappables sans bouger
+  moves: ReadonlyMap<CoordKey, Coord>;   // cases où se rendre
 }
 
 type ClickOutcome =
@@ -512,16 +512,12 @@ type ClickOutcome =
 | Clic hors plateau, ou partie terminée | `clear` |
 | Sélection active, clic sur la pièce elle-même | `clear` — recliquer désélectionne |
 | Sélection active, clic sur une destination | `play` d'un déplacement |
-| Sélection active, clic sur un adversaire frappable | `play` d'une frappe **sur place** |
 | Clic sur une de ses pièces, à son tour | `select` |
 | Tout le reste | `clear` |
 
-Deux limites assumées : on ne sélectionne que ses propres pièces **et seulement à son
-tour** ; et seule la frappe *sur place* est cliquable — se déplacer puis capturer
-demanderait de désigner deux cases, ce qui n'est pas câblé (la saisie clavier le permet).
-
-Pour une frappe, l'action produite porte `to` = la case de la pièce elle-même : c'est la
-forme qu'attend `core` (`docs/implementation-notes.md` point 2).
+Une limite assumée : on ne sélectionne que ses propres pièces **et seulement à son tour**.
+Une pièce adverse, adjacente ou non, retombe donc sur `clear` — il n'y a plus rien à lui
+faire depuis le retrait de la capture, et `Selection` ne porte plus de `strikes`.
 
 ---
 
@@ -532,14 +528,14 @@ Module pur : la résolution d'une coordonnée en pièce lui est **fournie**.
 ```
   1,6 2,5        déplace la pièce en (1,6) vers (2,5)
   1,6 > 2,5      identique : la flèche est facultative
-  1,6 2,5 x 3,5  se déplace en (2,5) puis capture la pièce en (3,5)
-  1,6 x 1,5      frappe un adjacent sans bouger
   abandon        abandonne la partie
 ```
 
+La syntaxe `x` de capture a disparu avec la règle (`docs/design.md` section 3.1).
+
 | Fonction | Rôle |
 |---|---|
-| `tokenize()` (privée) | Normalise séparateurs et espaces ; isole le `x` de capture |
+| `tokenize()` (privée) | Normalise séparateurs et espaces |
 | `parseCoord()` (privée) | `"1,6"` → `Coord` |
 | `parseCommand()` | Texte → `Result<Command, CommandFault>` — syntaxe seule |
 | `toAction()` | `Command` → `Action`, en résolvant les coordonnées |
@@ -700,7 +696,7 @@ du peintre.
 | `drawPiece()` | `scene/pieces.ts` | Tige verticale + tête en losange |
 | `markTile()` (privée) | `scene/overlay.ts` | Aplat + contour d'une case, falaises en option |
 | `drawHover()` | `scene/overlay.ts` | Surbrillance de la case survolée |
-| `drawSelection()` | `scene/overlay.ts` | Destinations, cibles frappables, puis la pièce |
+| `drawSelection()` | `scene/overlay.ts` | Destinations, puis la pièce |
 
 L'opacité d'une case est le produit de trois facteurs, dans `drawTile()` :
 
@@ -710,8 +706,8 @@ alpha = (visible ? alphaVisible : alphaFogged)
       × depthAlpha(proximité)
 ```
 
-`drawSelection()` dessine dans l'ordre : destinations, cibles frappables, **puis** la case
-d'origine — pour que celle-ci reste lisible quand des destinations la jouxtent.
+`drawSelection()` dessine les destinations, **puis** la case d'origine — pour que celle-ci
+reste lisible quand des destinations la jouxtent.
 
 `drawPiece()` dérive ses proportions de la projection, ce qui la fait suivre le zoom sans
 réglage séparé. Aucun type de `packages/core/src/pieces/` ne porte de champ visuel : la
@@ -870,12 +866,15 @@ l'emporteraient sinon sur l'attribut, et un écran masqué resterait visible.
 - **Aucun signal de déconnexion de l'adversaire** : rien ne distingue à l'écran un
   adversaire qui réfléchit d'un adversaire parti.
 - **Aucune animation des coups adverses** : ils apparaissent à la vue suivante.
-- **Aucune capture enchaînée à un déplacement au clic** : se déplacer puis capturer dans
-  le même tour demande la saisie clavier (`1,6 2,5 x 3,5`).
 - **Aucun marquage des montées.** `MoveOption.kind` distingue `walk` de `climb` — grimper
   consomme le tour entier — et `STATE.climb` est déjà un token, mais `selectionFor()`
   filtre `legalActions()`, qui ne porte pas cette distinction.
-- **Aucune animation de capture** : la pièce prise disparaît d'un coup.
+- **Aucune capture, ni au clic ni au clavier** : la règle est retirée du moteur
+  (`docs/design.md` section 3.1). Il n'y a donc ni cible à désigner, ni animation de prise,
+  ni marquage de case frappable — le token `STATE.threat` du thème n'a plus d'emploi.
+- **Aucun affichage d'échec ni de fin de partie automatique** : la règle « échecs strict »
+  et les nulles sont retirées (`docs/design.md` 7.1 et 7.2). L'état du tour n'annonce plus
+  `ÉCHEC`, et `describeOutcome()` ne connaît que l'abandon.
 - **Aucune différenciation visuelle** entre types de pièces.
 - **Aucun historique de saisie** dans le champ de commande.
 - **Aucune reprise de partie depuis le menu.** Quitter une partie referme le canal ; rien

@@ -1,5 +1,5 @@
 import type { Graphics } from "pixi.js";
-import { type Board, type Coord, parseCoordKey } from "@occulis/core";
+import type { Board, Coord } from "@occulis/core";
 import { type IsoProjection, cliffQuads, flattenQuad, tileQuad } from "../view/iso.js";
 import type { Selection } from "../game/selection.js";
 import { HOVER, SELECTION } from "../theme.js";
@@ -72,20 +72,6 @@ export function drawSelection(
         color: SELECTION.destination,
         width: SELECTION.destinationWidth,
         fillAlpha: SELECTION.destinationFillAlpha,
-      },
-      proj,
-    );
-  }
-
-  for (const key of selection.strikes.keys()) {
-    markTile(
-      g,
-      board,
-      parseCoordKey(key),
-      {
-        color: SELECTION.strike,
-        width: SELECTION.strikeWidth,
-        fillAlpha: SELECTION.strikeFillAlpha,
       },
       proj,
     );
