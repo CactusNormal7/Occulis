@@ -51,6 +51,19 @@ un joueur dont toutes les pièces seraient murées n'a plus que cette issue.
 
 ## Correctifs notables
 
+- **Plafond PBKDF2 du runtime Workers.** Le hachage tournait à 210 000 itérations, au-delà
+  des 100 000 que la bordure Cloudflare accepte : `deriveBits` y lève
+  `NotSupportedError: Pbkdf2 failed…` (cloudflare/workerd#1346), donc **toute inscription
+  et toute connexion rendaient 500 en recette**, alors que la suite de tests était verte.
+  Le piège tient à ce que **le workerd local n'applique aucun plafond** — il accepte deux
+  millions d'itérations — si bien que ni les tests d'intégration, qui inscrivent pourtant
+  de vrais comptes, ni `wrangler dev` ne pouvaient reproduire l'échec. Les 600 000
+  itérations recommandées par l'OWASP sont désormais atteintes en enchaînant six passes de
+  100 000, chacune sous la limite, et un test de garde verrouille la valeur faute de
+  pouvoir éprouver le comportement. **Conséquence générale, à retenir avant d'ajouter quoi
+  que ce soit de coûteux dans le Worker : une suite verte dans workerd ne dit rien des
+  limites de ressources de la bordure.**
+
 - **Symétrie de la LOS.** Le tracé de Bresenham départage les diagonales selon le sens
   de parcours : `A→B` et `B→A` ne traversaient pas les mêmes cases, et `A` pouvait donc
   voir `B` sans être vu. Les extrémités sont désormais ordonnées de façon canonique

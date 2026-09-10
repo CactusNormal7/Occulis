@@ -28,7 +28,12 @@ recréer les ressources.
   Oculus, design doc section 9, point ouvert 8) reste entier. Il porte sur le nom du jeu, pas
   sur le domaine, et se paierait au renommage — y compris de l'URL gravée dans les binaires.
 - **Le plan Cloudflare** (point ouvert 6) : vérifier dans **Compute** si les Durable
-  Objects exigent le plan Workers Paid. C'est l'hypothèse du chiffrage.
+  Objects exigent le plan Workers Paid. C'est l'hypothèse du chiffrage. **Le hachage des
+  mots de passe l'exige de toute façon** : il consomme environ 150 ms de CPU par
+  inscription et par connexion, quand le plan gratuit en accorde 10 ms par requête. Sur
+  le plan gratuit, l'authentification échoue avec « Exceeded CPU limit » — un symptôme
+  distinct du plafond PBKDF2 décrit dans
+  [technical/server.md](technical/server.md), mais qui se manifeste au même endroit.
 
 ## 1. Outillage local
 

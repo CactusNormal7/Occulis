@@ -37,7 +37,7 @@ Trois principes, actés dans `docs/architecture.md` :
 | `apps/server/src/seating.ts` | **Pur** — jeton de siège → camp, et autorité de tour |
 | `apps/server/src/auth/better-auth.ts` | La configuration Better Auth : hasher, schéma, débit, crochets |
 | `apps/server/src/auth/routes.ts` | `/api/auth/me` et la délégation du reste à Better Auth |
-| `apps/server/src/auth/password.ts` | PBKDF2 et comparaison à temps constant, **branchés dans Better Auth** |
+| `apps/server/src/auth/password.ts` | PBKDF2 enchaîné et comparaison à temps constant, **branchés dans Better Auth** |
 | `apps/server/src/auth/mail.ts` | Envoi des messages transactionnels par Resend |
 | `apps/server/scripts/generate-schema.mts` | Recrache le schéma SQL attendu — hors du Worker |
 | `apps/server/src/pairing.ts` | **Pur** — la file d'attente comme structure de données |
@@ -296,12 +296,31 @@ réglages par défaut méritent d'être connus.
 `emailAndPassword.password.{hash,verify}`. Better Auth utiliserait scrypt sinon, ce qui
 aurait imposé de réencoder chaque mot de passe existant.
 
-PBKDF2-HMAC-SHA256, 210 000 itérations, via WebCrypto. **Compromis assumé** : ni bcrypt
-ni argon2 ne sont disponibles dans un Worker sans embarquer du WASM, et PBKDF2 résiste
-moins bien qu'argon2 à une attaque par GPU à coût CPU égal. Le nombre d'itérations est
-stocké **dans l'empreinte** (`pbkdf2-sha256$<iterations>$<sel>$<empreinte>`), ce qui
-permet de l'augmenter plus tard sans invalider les mots de passe existants. La comparaison
-est à temps constant. Compter environ 150 ms de CPU par connexion et par inscription.
+PBKDF2-HMAC-SHA256 via WebCrypto. **Compromis assumé** : ni bcrypt ni argon2 ne sont
+disponibles dans un Worker sans embarquer du WASM, et PBKDF2 résiste moins bien qu'argon2
+à une attaque par GPU à coût CPU égal. La comparaison est à temps constant.
+
+**Le runtime Workers plafonne PBKDF2 à 100 000 itérations par appel.** Au-delà,
+`deriveBits` lève `NotSupportedError: Pbkdf2 failed: iteration counts above 100000 are
+not supported` — une limite codée en dur pour qu'un Worker ne se serve pas de PBKDF2
+comme d'un déni de service (cloudflare/workerd#1346). Le coût recommandé par l'OWASP
+(600 000 pour SHA-256) est donc atteint en **enchaînant six passes de 100 000** : la
+sortie d'une passe est l'entrée de la suivante, avec le même sel, si bien qu'aucune ne
+peut être calculée avant la précédente. Compter environ 150 ms de CPU par connexion et
+par inscription, ce qui **exige le plan Workers Paid** : les 10 ms de CPU du plan gratuit
+ne suffisent à aucun hachage sérieux.
+
+Le paramétrage est stocké **dans l'empreinte**
+(`pbkdf2-sha256$<passes>x<itérations>$<sel>$<empreinte>`), ce qui permet de le durcir
+plus tard sans invalider les mots de passe existants. `verifyPassword()` lit aussi la
+forme d'avant le chaînage (`pbkdf2-sha256$<itérations>$…`), interprétée comme une passe
+unique.
+
+**Le workerd local n'applique pas ce plafond** — il accepte deux millions d'itérations
+sans broncher. Ni les tests ni `wrangler dev` ne peuvent donc reproduire l'échec, et le
+projet a été déployé une fois avec 210 000 itérations, suite verte, pour un 500 sur
+chaque inscription et chaque connexion en recette. D'où le test de garde de
+`password.test.ts`, qui verrouille la valeur au lieu d'éprouver le comportement.
 
 **Le compte et le profil de jeu restent deux choses.** Better Auth possède `users` ;
 `players` porte le pseudo affiché et l'ELO ; le lien est le champ `playerId`, déclaré en
@@ -571,6 +590,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `rooms.test.ts` | Node | Codes sans caractères confondables et déterministes, saisie normalisée, salon rendu à l'hôte qui revient, salon consommé une seule fois, code libre au tirage suivant |
 | `match-do.integration.test.ts` | workerd | 403 sans jeton, une vue par camp sans fuite, refus hors tour, coup appliqué + écrit au log + diffusé, clôture en base, refus de protocole |
 | `queue-do.integration.test.ts` | workerd | Deux joueurs appariés sur une même partie avec des sièges distincts, partie réellement joignable, **401 sans session et sur identité forgée dans l'URL**, salon privé apparié par son code (casse et espaces pardonnés, hôte en A), salon consommé une seule fois, refus d'un code inconnu et de son propre code |
+| `auth/password.test.ts` | workerd | **Plafond de 100 000 itérations par passe jamais dépassé**, coût effectif conforme à l'OWASP, aller-retour hachage/vérification, salage, paramétrage inscrit dans l'empreinte, lecture de la forme d'avant le chaînage, empreinte illisible rejetée sans lever |
 | `auth/auth.integration.test.ts` | workerd | Inscription et profil créés ensemble, session reconnue, jeton inventé refusé, attributs du cookie, **jeton lu en base insuffisant pour ouvrir une session**, mot de passe faux, **réponses indiscernables entre adresse inconnue et mot de passe faux**, adresse et pseudo uniques **sans compte orphelin**, mot de passe trop court, déconnexion, **limitation de débit**, **réinitialisation de bout en bout**, **file fermée sans adresse vérifiée** |
 | `maintenance.integration.test.ts` | workerd | Purge des sessions périmées, des vérifications expirées et des compteurs retombés, et **format de conversion des horodatages de la migration** |
 
