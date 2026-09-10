@@ -1,0 +1,295 @@
+/*
+ * Habillage de l'interface : écrans hors partie et bandeau de partie.
+ *
+ * Mise en page seulement. Aucune couleur en dur ici : les propriétés personnalisées
+ * `--ink`, `--panel`, `--accepted` et `--refused` sont posées par `palette.ts` à
+ * partir des tokens de `src/theme.ts`, seul détenteur du code couleur du client
+ * (docs/design.md 8.1).
+ *
+ * Provisoire, comme tout le reste de l'habillage : aucun design system n'est acté.
+ * La ligne directrice suit celle du plateau — traits fins, à-plats sombres, rien de
+ * plein.
+ */
+
+:root {
+  --line: 1px solid var(--ink-faint);
+  font:
+    13px/1.6 ui-monospace,
+    "SF Mono",
+    Menlo,
+    Consolas,
+    monospace;
+}
+
+/* `hidden` doit l'emporter sur les `display` posés plus bas, sinon un écran masqué
+   resterait visible. */
+[hidden] {
+  display: none !important;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- Écrans hors partie ---------------------------------------------------- */
+
+/* Le conteneur couvre la page, mais ne l'intercepte pas : pendant une partie il
+   est vide, et un clic doit atteindre le canevas qui est dessous. */
+#shell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.screen {
+  width: 100%;
+  max-width: 420px;
+  pointer-events: auto;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px;
+  border: var(--line);
+  background: var(--panel);
+}
+
+.panel h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+}
+
+.tagline {
+  margin: -6px 0 0;
+  color: var(--ink-soft);
+}
+
+/* Onglets du formulaire de compte : le parcours choisi est simplement souligné. */
+#account-tabs {
+  display: flex;
+  gap: 18px;
+  border-bottom: var(--line);
+}
+
+#account-tabs button {
+  padding: 0 0 8px;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  cursor: pointer;
+}
+
+#account-tabs button[aria-selected="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field > span {
+  color: var(--ink-soft);
+  text-transform: lowercase;
+}
+
+.field input {
+  padding: 8px 10px;
+  border: var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--ink-soft);
+}
+
+button {
+  padding: 9px 14px;
+  border: 1px solid var(--ink-soft);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+button:disabled {
+  color: var(--ink-faint);
+  border-color: var(--ink-faint);
+  cursor: default;
+}
+
+/* Les entrées du menu sont les seuls boutons pleine largeur : ce sont les gestes
+   principaux de l'écran. */
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.primary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+}
+
+.primary small {
+  color: var(--ink-soft);
+}
+
+.quiet {
+  align-self: flex-start;
+  padding: 6px 10px;
+  border-color: var(--ink-faint);
+  color: var(--ink-soft);
+}
+
+#join-form {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+#join-form .field {
+  flex: 1;
+}
+
+#join-code {
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+/* Le code du salon est fait pour être lu à voix haute ou recopié : il occupe
+   l'écran d'attente à lui seul. */
+.code {
+  margin: 0;
+  font-size: 34px;
+  letter-spacing: 0.36em;
+  text-align: center;
+}
+
+#waiting-copy {
+  align-self: center;
+  margin-top: -8px;
+}
+
+#account-status,
+#menu-notice,
+#waiting-note {
+  margin: 0;
+  color: var(--ink-soft);
+  min-height: 1.6em;
+}
+
+#menu-identity:empty,
+#account-status:empty {
+  display: none;
+}
+
+/* ---- Bandeau de partie ------------------------------------------------------ */
+
+#console {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  min-width: 320px;
+  padding: 12px 14px;
+  border: var(--line);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+#console p {
+  margin: 0;
+}
+
+#command-form {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+#console label {
+  color: var(--ink-soft);
+  text-transform: lowercase;
+}
+
+#command-input {
+  flex: 1;
+  padding: 4px 6px;
+  border: var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+#command-input:focus {
+  outline: none;
+  border-color: var(--ink-soft);
+}
+
+#status {
+  color: var(--ink-soft);
+}
+
+/*
+ * Lecture d'une case au clic. Du terrain, donc de la géométrie : elle reste en
+ * blanc atténué et n'emprunte aucune couleur d'état (docs/design.md 8.1).
+ */
+#tile-readout {
+  margin-top: 4px;
+  color: var(--ink-soft);
+}
+
+#tile-readout:empty,
+#command-log:empty {
+  display: none;
+}
+
+#command-log[data-state="ok"] {
+  color: var(--accepted);
+}
+
+#command-log[data-state="ko"] {
+  color: var(--refused);
+}
+
+#command-help {
+  margin-top: 8px;
+  color: var(--ink-dim);
+}
+
+#leave-match {
+  margin-top: 10px;
+}

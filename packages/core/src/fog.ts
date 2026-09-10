@@ -1,7 +1,15 @@
+import {
+  type Action,
+  type ActionError,
+  type ReplayError,
+  applyAction,
+  legalActions,
+} from "./actions.js";
 import type { Board } from "./board.js";
 import { type Coord, type CoordKey, coordKey } from "./coord.js";
 import type { Piece, PieceId, PieceKind, PlayerId } from "./pieces/index.js";
-import { type GameState, piecesOf } from "./state.js";
+import { type Result, err, ok } from "./result.js";
+import { type GameState, occupancy, piecesOf } from "./state.js";
 
 /** Dernière position connue d'une pièce adverse, à afficher en fantôme estompé. */
 export interface RememberedPiece {
@@ -27,11 +35,16 @@ export function emptyKnowledge(player: PlayerId): PlayerKnowledge {
  *
  * Le champ est demandé à chaque type de pièce plutôt que calculé ici à partir
  * d'une portée : c'est la pièce qui définit ce qu'elle voit (`PieceType.canSee`).
+ *
+ * L'occupation du plateau lui est transmise parce qu'une pièce coupe la vue au même
+ * titre que le relief (docs/design.md section 5.2) : elle est calculée une fois pour
+ * toutes les pièces du joueur, chaque champ de vision balayant déjà tout le plateau.
  */
 export function visibleTilesFor(board: Board, state: GameState, player: PlayerId): Set<CoordKey> {
+  const occupied = occupancy(state);
   const visible = new Set<CoordKey>();
   for (const piece of piecesOf(state, player)) {
-    for (const key of state.ruleset.typeOf(piece).fieldOfView(board, piece.coord)) {
+    for (const key of state.ruleset.typeOf(piece).fieldOfView(board, piece.coord, occupied)) {
       visible.add(key);
     }
   }
@@ -81,6 +94,16 @@ export interface PlayerView {
   readonly activePlayer: PlayerId;
   readonly turn: number;
   readonly outcome: GameState["outcome"];
+  /**
+   * Les coups que ce joueur peut jouer, calculés sur la position **réelle**. Vide
+   * quand il n'est pas au trait.
+   *
+   * Transmis parce que le client ne peut pas les recalculer : il ignore les pièces
+   * hors de sa ligne de vue, donc il ne sait pas lesquelles barrent la route d'une de
+   * ses pièces. Sans cette liste, l'interface propose des coups que le serveur refuse
+   * et en cache qu'il accepterait.
+   */
+  readonly legalActions: readonly Action[];
   readonly visible: ReadonlySet<CoordKey>;
   readonly ownPieces: readonly Piece[];
   readonly visibleEnemies: readonly Piece[];
@@ -109,9 +132,67 @@ export function viewFor(state: GameState, knowledge: PlayerKnowledge): PlayerVie
     activePlayer: state.activePlayer,
     turn: state.turn,
     outcome: state.outcome,
+    // Seulement pour le camp au trait : `legalActions` ne génère que pour lui, et la
+    // liste de l'adversaire trahirait la position de ses pièces.
+    legalActions: state.activePlayer === player ? legalActions(state) : [],
     visible: knowledge.visible,
     ownPieces,
     visibleEnemies,
     ghosts,
   };
+}
+
+/**
+ * Une partie et ce que chaque joueur en sait — l'unité que tient le Durable Object.
+ *
+ * La mémoire fantôme dépend de **toutes** les positions traversées, pas seulement de
+ * la dernière : reconstruire une partie depuis son log suppose donc de faire avancer
+ * la connaissance à chaque coup. Comme le serveur reconstruit à chaque réveil
+ * (docs/architecture.md section 3), l'opération vit ici plutôt que d'être réécrite
+ * à côté.
+ */
+export interface MatchMemory {
+  readonly state: GameState;
+  readonly knowledge: Record<PlayerId, PlayerKnowledge>;
+}
+
+export function startMemory(state: GameState): MatchMemory {
+  return {
+    state,
+    knowledge: {
+      A: observe(emptyKnowledge("A"), state),
+      B: observe(emptyKnowledge("B"), state),
+    },
+  };
+}
+
+export function advanceMemory(
+  memory: MatchMemory,
+  action: Action,
+): Result<MatchMemory, ActionError> {
+  const played = applyAction(memory.state, action);
+  if (!played.ok) return played;
+
+  const state = played.value;
+  return ok({
+    state,
+    knowledge: {
+      A: observe(memory.knowledge.A, state),
+      B: observe(memory.knowledge.B, state),
+    },
+  });
+}
+
+/** Rejoue un log en faisant avancer la mémoire des deux joueurs à chaque position. */
+export function replayMemory(
+  initial: GameState,
+  log: readonly Action[],
+): Result<MatchMemory, ReplayError> {
+  let memory = startMemory(initial);
+  for (const [seq, action] of log.entries()) {
+    const advanced = advanceMemory(memory, action);
+    if (!advanced.ok) return err({ ...advanced.error, seq });
+    memory = advanced.value;
+  }
+  return ok(memory);
 }

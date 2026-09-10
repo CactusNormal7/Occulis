@@ -1,12 +1,12 @@
 import { BACKGROUND, GEOMETRY, STATE } from "../theme.js";
 
 /**
- * Passe le code couleur de `theme.ts` à la feuille de style de la console.
+ * Passe le code couleur de `theme.ts` à la feuille de style de l'interface.
  *
  * Les tokens sont des entiers 0xRRGGBB, seul format utile à Pixi ; le CSS les
  * reçoit via des propriétés personnalisées calculées ici. Aucune couleur n'est
- * donc réécrite en dur dans `console.css`, et `theme.ts` reste l'unique détenteur
- * du code couleur du client (docs/design.md 8.1).
+ * donc réécrite en dur dans `ui.css`, et `theme.ts` reste l'unique détenteur du
+ * code couleur du client (docs/design.md 8.1).
  */
 
 function cssColor(color: number, alpha = 1): string {
@@ -20,6 +20,7 @@ export function applyPalette(root: HTMLElement): void {
   const variables: Record<string, string> = {
     "--ink": cssColor(GEOMETRY.stroke),
     "--ink-soft": cssColor(GEOMETRY.stroke, 0.55),
+    "--ink-dim": cssColor(GEOMETRY.stroke, 0.35),
     "--ink-faint": cssColor(GEOMETRY.stroke, 0.2),
     "--panel": cssColor(BACKGROUND, 0.82),
     // Un coup accepté et un coup refusé sont de l'information de partie : ils

@@ -24,6 +24,7 @@ Nom du projet : Occulis (voir section 8 — nom retenu avec réserve documentée
 
 - Capture instantanée, façon échecs classiques : si une pièce se déplace dans la portée/adjacence d'une pièce adverse (ou l'inverse), c'est immédiat, pas de délai.
 - Choisi après avoir écarté un modèle 100% différé, jugé trop complexe (calcul de mat généralisé à chaque capture) et trop lent en rythme de jeu.
+- **Suspendue à l'implémentation (décision de développement, la règle reste actée).** Aucune capture n'existe dans le moteur pour l'instant : une pièce ne peut simplement pas entrer sur la case d'une autre, alliée ou adverse. La décision est de reconstruire d'abord la géométrie du jeu — déplacement, blocage, ligne de vue — avant d'y reposer une règle de prise. La règle de dénivelé de la mêlée (section 5.3) reste codée et testée dans `packages/core` en attendant.
 
 ### 3.2 Attaque à distance (capacité spéciale, certaines pièces seulement)
 
@@ -56,6 +57,10 @@ Le plateau n'est pas un simple array de valeurs (1 = mur, 2 = pièce...), mais u
 - Visibilité (LOS) : détermine ce qui est affiché à l'écran du joueur. Une pièce hors LOS n'est même pas rendue (fog of war confirmé — voir 5.4).
 - Portée : détermine ce qui peut être effectivement atteint/attaqué. Une pièce peut être vue sans être atteignable.
 - Une tour ne peut pas voir un élément derrière un mur, ni un élément positionné sur un mur (si elle-même n'est pas en hauteur). Si elle grimpe sur le mur, elle peut voir plus loin, mais toujours pas à travers un autre mur.
+- **Une pièce occulte, comme aux échecs — tranché.** Une pièce coupe la ligne de vue *et* la ligne de déplacement, sans distinction de camp : on ne voit pas derrière elle, on ne la traverse pas, on ne va pas sur sa case. Trois précisions actées avec la règle :
+  - **Alliées comprises.** Si seules les pièces adverses occultaient, la ligne de vue cesserait d'être symétrique entre les deux camps — un joueur verrait l'autre sans être vu. C'est un invariant du moteur, il prime.
+  - **Une pièce vaut un mur d'un niveau posé sur sa case.** L'occultation reste donc cohérente avec la hauteur : deux pièces au même niveau se masquent mutuellement ce qui est derrière elles, mais une pièce perchée voit par-dessus une pièce restée en contrebas. Une pièce occupe exactement la hauteur d'où elle regarde.
+  - La pièce qui bloque reste, elle, parfaitement visible : elle n'occulte que ce qui est *derrière* elle.
 
 ### 5.3 Règles de hauteur (mêlée / adjacence)
 
@@ -94,6 +99,45 @@ Un seul déplacement/action par pièce par tour reste la règle de base actée, 
 - Point ouvert, à noter pour le level design futur : chaque carte doit décider consciemment si les zones de déploiement des deux joueurs ont LOS mutuelle ou non — c'est un paramètre de conception de carte, pas une règle générale.
 - Roi (pièce maîtresse) : gardé simple pour l'instant (mouvement/règles standards, pas de spécificité), avec possibilité d'évolution plus tard.
 - Fin de partie : abandon possible, et égalité/nulle prévue "de la même manière qu'aux échecs, plus aucun coup possible sans attaque à part entière" — interprété comme un pat classique (aucun coup légal du tout, ni déplacement ni attaque). Point explicitement reporté par le porteur du projet : aucune décision prise sur une éventuelle règle anti-blocage/anti-répétition (équivalent de la règle des 50 coups aux échecs), pour éviter des parties qui tournent en rond sans jamais qu'aucune pièce maîtresse ne soit menacée.
+
+### 7.1 Mise en échec et mat — « échecs strict », **suspendue**
+
+> **État actuel : la règle est retirée du moteur.** À l'usage elle n'était pas jouable : combinée aux portées volontairement démesurées du roster provisoire (implementation-notes #14), elle mettait la pièce maîtresse en échec quasi permanent, supprimait tous ses coups légaux et déclenchait un mat immédiat. Décision du porteur du projet : **la retirer entièrement plutôt que la rafistoler**, et la reconstruire une fois la géométrie du jeu (portées, blocage, vision) stabilisée. Conséquences immédiates :
+>
+> - aucun coup n'est illégal au motif qu'il expose sa propre pièce maîtresse ;
+> - il n'y a plus ni échec, ni mat, ni pat, et la vue transmise ne porte plus de drapeau `check` ;
+> - **plus aucune fin de partie automatique** : seul l'abandon termine une partie. Un joueur dont toutes les pièces seraient murées n'a plus que cette issue — cas très rare, accepté à ce stade ;
+> - `PlayerView.legalActions` reste transmis, pour la raison énoncée en fin de section : le client ne peut toujours pas savoir quelles pièces invisibles barrent la route des siennes.
+>
+> Le raisonnement ci-dessous est conservé tel quel : c'est la décision de design, et le point de reprise quand la règle reviendra. Ce qui est écrit au présent décrit la règle visée, pas le moteur d'aujourd'hui.
+
+Décision actée : **un coup qui laisse sa propre pièce maîtresse capturable au tour suivant est illégal, exactement comme aux échecs — y compris quand la menace est hors de la ligne de vue de son auteur.**
+
+Deux autres lectures avaient été posées et sont écartées :
+
+- *Illégal seulement si la menace est visible.* Aucune fuite d'information, mais la légalité d'un coup dépendrait alors de la connaissance du joueur : `packages/core` aurait dû prendre un `PlayerKnowledge` en paramètre, et le mat serait devenu « aucune parade parmi les menaces connues » — une notion différente pour chaque camp.
+- *Jamais illégal (capture du roi).* La partie se termine à la capture effective de la maîtresse. Le plus simple, mais le pilier « victoire par mat » de la section 1 disparaît : il n'y aurait plus de mat, seulement des captures.
+
+Conséquence assumée : le moteur peut refuser un coup à cause d'une menace que le joueur ne voit pas, ce qui lui apprend indirectement qu'elle existe. C'est le prix payé pour garder une notion de mat unique et symétrique. La vue transmise à un joueur porte donc un drapeau `check` pour sa propre pièce maîtresse — jamais pour celle de l'adversaire, qui trahirait sa position.
+
+Le mat en découle sans règle supplémentaire : plus aucun coup légal **et** pièce maîtresse menacée = mat ; plus aucun coup légal et maîtresse hors de danger = pat.
+
+Conséquence d'information, actée : **le serveur transmet à chaque joueur la liste de ses coups légaux.** Elle est calculée sur la position réelle, donc elle révèle d'un coup que des menaces invisibles le contraignent. C'est assumé pour deux raisons. D'abord, la même information s'obtient déjà en tâtonnant, puisqu'un coup refusé ne consomme pas de tour : la liste abaisse l'effort, pas le secret. Ensuite, sans elle l'interface est condamnée à mentir — un client qui ne voit qu'un camp ne peut ni deviner les menaces cachées, ni savoir qu'une pièce invisible barre la route d'un attaquant qu'il voit ; il proposerait donc des coups refusés et en cacherait d'acceptables.
+
+### 7.2 Nulles anti-blocage — les deux règles, **suspendues**
+
+> **État actuel : les deux règles sont retirées du moteur**, conséquence directe de 7.1. La nulle « coups sans capture » n'a plus de sens tant qu'aucune capture n'est possible — elle serait devenue une limite de tours déguisée, déclenchée dans toutes les parties. La triple répétition part avec elle, faute de fin de partie à laquelle se raccrocher. Elles reviendront avec la capture. Le raisonnement ci-dessous reste la décision de design.
+
+Le point était explicitement reporté (« éviter des parties qui tournent en rond sans jamais qu'aucune pièce maîtresse ne soit menacée »). Décision actée : **les deux règles des échecs modernes, et toutes deux automatiques.**
+
+- **Triple répétition** : la même position atteinte trois fois met fin à la partie. Une position, c'est la disposition des pièces *et* le camp au trait ; les pièces y sont identifiées par leur camp et leur type, pas par leur identifiant — deux éclaireurs d'un même camp qui échangent leurs cases rendent bien la même position.
+- **Coups sans capture** : au-delà d'un certain nombre d'actions sans qu'aucune pièce ne tombe, la partie est nulle. C'est cette règle qui couvre le vrai risque décrit plus haut, celui d'une partie qui tourne en rond en variant légèrement.
+
+Automatiques et non proposées : deux joueurs obstinés pourraient sinon bloquer indéfiniment, ce qui est précisément ce qu'on cherche à empêcher.
+
+Conséquence sous fog of war, assumée : la répétition porte sur la position **réelle**, tenue par le serveur. Un joueur peut donc voir tomber une nulle qu'il ne voyait pas venir, faute de connaître les positions adverses. L'alternative — une répétition mesurée sur ce que chaque joueur connaît — donnerait deux comptes différents et une règle non symétrique.
+
+Le seuil de la seconde règle n'est **pas** un équilibrage : aucun roster n'est acté, donc aucune valeur ne peut l'être. La valeur encodée est un point de départ, isolé dans une constante.
 
 ## 8. Choix technique
 
@@ -136,15 +180,20 @@ ne soit pas la seule trace d'une décision de DA.
   abandonne) dans un champ HTML posé par-dessus le canevas. Le clavier reste nécessaire
   pour enchaîner un déplacement *et* une capture dans le même tour, que le clic ne sait
   pas exprimer. Aucune des deux n'est une décision d'interface arrêtée : ce sont des
-  moyens d'exercer la logique déjà implémentée. La partie se joue en hot-seat, la vue
-  suivant le joueur au trait — chaque camp conservant sa propre mémoire du fog, comme le
-  fera le serveur.
+  moyens d'exercer la logique déjà implémentée. La partie est **toujours arbitrée par le
+  serveur** : il n'existe aucun mode local, et le client ne voit jamais que sa propre vue —
+  conformément au pilier « pas de local multiplayer » de la section 2.
 - **Le déplacement est animé, jamais instantané.** La pièce glisse d'une case à l'autre,
   hauteur comprise, avec départ et arrivée adoucis. L'action est appliquée à l'état
-  immédiatement : seule la position à l'écran est interpolée, et le passage de main attend
-  la fin du glissement pour que la pièce ne disparaisse pas en plein vol en devenant
-  adverse.
+  immédiatement : seule la position à l'écran est interpolée, et le compte rendu du tour
+  attend la fin du glissement.
 
+- **On arrive sur un menu, pas sur une partie.** Le canevas reste masqué tant que le
+  serveur n'a pas assis le joueur. Trois façons d'entrer en partie, toutes provisoires
+  comme le reste de l'habillage : appariement rapide, création d'une partie qui rend un
+  code de cinq caractères à transmettre, et entrée par ce code. Un code se lit à voix
+  haute et se recopie à la main : son alphabet exclut les caractères que l'œil confond
+  (`B I L O S Z 0 1 2 5 8`).
 - **Caméra : zoom et déplacement.** Molette pour zoomer vers le curseur, drag gauche pour
   déplacer la vue. Le facteur de zoom vit dans la projection et non dans la transformation
   du conteneur de rendu, afin que l'épaisseur des traits reste constante à l'écran quel que
@@ -170,7 +219,7 @@ Historique de la recherche de nom : plusieurs pistes explorées et écartées co
 1. Résolution de plusieurs attaques-zones qui se chevauchent sur la même pièce au même moment de résolution.
 2. Une attaque à distance déclarée consomme-t-elle tout le tour de la pièce, ou est-elle combinable avec un déplacement le même tour ?
 3. LOS au moment de la déclaration vs au moment de la résolution d'une attaque à distance différée.
-4. Règle anti-blocage/anti-répétition en plus du pat classique (reporté).
+4. ~~Règle anti-blocage/anti-répétition~~ — tranché en section 7.2 : triple répétition **et** compteur de coups sans capture, les deux automatiques. Seul le seuil du compteur reste à calibrer, ce qui suppose un roster. **Suspendu à l'implémentation** avec 7.1.
 5. Cases de déploiement : setup unique et fixe, ou choix parmi plusieurs emplacements ?
 
 ### Verticalité / hauteur
@@ -188,5 +237,6 @@ Historique de la recherche de nom : plusieurs pistes explorées et écartées co
 ### Cadre général
 
 12. Aucun roster concret de pièces n'a encore été esquissé — seul le principe directeur (différenciation par capacité/mouvement, pas par robustesse) a été acté.
+13. **Rouvert — fin de partie.** L'échec et mat (7.1) et les nulles (7.2) sont retirés du moteur, et la capture (3.1) avec eux : seul l'abandon termine une partie aujourd'hui. Reste à décider dans quel ordre les remettre, et sous quelle forme la règle de mat doit revenir pour rester jouable avec de vraies portées de pièces — c'est-à-dire, très probablement, une fois un roster esquissé (point 12).
 
 Document généré à partir d'une session de brainstorming critique. Objectif : servir de point de reprise fidèle pour la suite du développement (design detaillé, puis implémentation) sans perdre le fil des décisions déjà prises ni revalider des pistes déjà explorées et écartées.

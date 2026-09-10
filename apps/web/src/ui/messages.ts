@@ -1,5 +1,7 @@
 import type { ActionError, Coord, GameState, Piece, PlayerId, Tile } from "@occulis/core";
+import type { Rejection, RoomFault } from "@occulis/protocol";
 import type { CommandFault } from "./command.js";
+import type { Seeking } from "./flow.js";
 
 /**
  * Textes de l'interface, regroupés hors du câblage DOM : le module qui écoute les
@@ -19,14 +21,10 @@ export function describeFault(fault: CommandFault): string {
       return `Coordonnée illisible : « ${fault.token} ». Format attendu : x,y`;
     case "missing-destination":
       return "Destination manquante. Exemple : 1,6 2,5";
-    case "missing-target":
-      return "Cible de capture manquante après « x ».";
     case "trailing":
       return `Fin de commande inattendue : « ${fault.token} »`;
     case "no-piece-here":
       return `Aucune pièce en ${formatCoord(fault.coord)}.`;
-    case "no-target-here":
-      return `Aucune pièce à capturer en ${formatCoord(fault.coord)}.`;
   }
 }
 
@@ -40,30 +38,62 @@ export function describeActionError(error: ActionError): string {
       return "Cette pièce n'est pas au trait.";
     case "unreachable":
       return `${formatCoord(error.to)} est hors de portée de cette pièce ce tour-ci.`;
-    case "must-do-something":
-      return "Un tour doit déplacer la pièce ou capturer : rester sur place sans frapper n'est pas un coup.";
-    case "unknown-target":
-      return "Cible inconnue.";
-    case "target-is-friendly":
-      return "On ne capture pas une pièce de son propre camp.";
-    case "target-out-of-melee":
-      return "Cible hors de portée de mêlée depuis cette case.";
   }
 }
 
-export function describeMove(piece: Piece, to: Coord, captured: Piece | undefined): string {
-  const move = `${piece.owner} · ${piece.id} ${formatCoord(piece.coord)} → ${formatCoord(to)}`;
-  return captured === undefined ? move : `${move}, capture de ${captured.id}`;
+/**
+ * Un refus venu du serveur : soit les règles (`ActionError`), soit le siège. Toute
+ * partie étant arbitrée, les deux cas sont possibles à tout moment.
+ */
+export function describeRejection(rejection: Rejection): string {
+  switch (rejection.code) {
+    case "unknown-seat":
+      return "Siège inconnu : cette connexion n'appartient à aucun des deux camps.";
+    case "not-your-turn":
+      return `Ce n'est pas votre tour : ${rejection.activePlayer} est au trait.`;
+    default:
+      return describeActionError(rejection);
+  }
 }
+
+/** Pourquoi un code de salon n'a mené à aucune partie. */
+export function describeRoomFault(fault: RoomFault): string {
+  switch (fault.code) {
+    case "unknown":
+      return "Aucune partie sous ce code : vérifiez la saisie, ou faites-le renvoyer.";
+    case "own":
+      return "C'est votre propre code : transmettez-le à votre adversaire.";
+  }
+}
+
+/** Ce que le joueur attend, et depuis quel menu. */
+export function describeWaiting(seeking: Seeking, code: string | undefined): string {
+  if (seeking === "quick") return "Recherche d'un adversaire…";
+  if (seeking === "join") return "Entrée dans la partie…";
+  return code === undefined
+    ? "Ouverture de la partie…"
+    : "Transmettez ce code à votre adversaire, puis attendez son arrivée.";
+}
+
+export function describeMove(piece: Piece, to: Coord): string {
+  return `${piece.owner} · ${piece.id} ${formatCoord(piece.coord)} → ${formatCoord(to)}`;
+}
+
+const VICTORY_REASONS: Record<NonNullable<GameState["outcome"]>["reason"], string> = {
+  resignation: "abandon",
+};
 
 export function describeOutcome(outcome: NonNullable<GameState["outcome"]>): string {
-  if (outcome.kind === "draw") return "Partie nulle : pat, plus aucun coup légal.";
-  const reason = outcome.reason === "resignation" ? "abandon" : "pièce maîtresse capturée";
-  return `Victoire de ${outcome.winner} (${reason}).`;
+  return `Victoire de ${outcome.winner} (${VICTORY_REASONS[outcome.reason]}).`;
 }
 
-export function describeTurn(turn: number, activePlayer: PlayerId, viewer: PlayerId): string {
-  return `Tour ${turn} · au trait : ${activePlayer} · vue du joueur ${viewer}`;
+/**
+ * L'état du tour. Le camp du joueur y figure toujours, et non le point de vue
+ * affiché : il n'y en a qu'un — le serveur n'envoie jamais la vue d'en face.
+ */
+export function describeTurn(turn: number, activePlayer: PlayerId, seat: PlayerId): string {
+  const whose = activePlayer === seat ? "à vous de jouer" : "au trait : l'adversaire";
+  return `Tour ${turn} · ${whose} · vous jouez ${seat}`;
 }
 
 /**
