@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Occulis — Maquettes des écrans</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="./mockup.css" />
+    <style>
+      body {
+        align-items: flex-start;
+        padding: 64px 32px;
+      }
+      .index {
+        width: 100%;
+        max-width: 720px;
+        margin: 0 auto;
+      }
+      .screens {
+        list-style: none;
+        margin: 40px 0 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .screens a {
+        display: flex;
+        align-items: baseline;
+        gap: 20px;
+        padding: 18px 20px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: inherit;
+        text-decoration: none;
+        transition: border-color 0.15s ease;
+      }
+      .screens a:hover {
+        border-color: rgba(255, 255, 255, 0.4);
+      }
+      .screens .num {
+        font-family: var(--occ-mono);
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.3);
+      }
+      .screens .name {
+        flex: 1 1 auto;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="index">
+      <div class="wordmark">OCCULIS</div>
+      <h1 style="margin: 16px 0 0; font-size: 34px; font-weight: 600; letter-spacing: 2px">
+        Maquettes des écrans
+      </h1>
+      <p class="mono-sm muted" style="margin: 14px 0 0; line-height: 1.7">
+        Références de direction artistique, pas des spécifications d'interface. Les décisions de DA actées vivent
+        dans <span style="color: rgba(255, 255, 255, 0.6)">docs/design.md</span> section 8.1 ; le code couleur fait
+        foi dans <span style="color: rgba(255, 255, 255, 0.6)">apps/web/src/theme.ts</span>.
+      </p>
+
+      <ul class="screens">
+        <li>
+          <a href="./menu.html">
+            <span class="num">01</span>
+            <span class="name">Menu principal</span>
+            <span class="mono-sm muted">avant partie</span>
+          </a>
+        </li>
+        <li>
+          <a href="./matchmaking.html">
+            <span class="num">02</span>
+            <span class="name">Recherche d'adversaire</span>
+            <span class="mono-sm muted">avant partie</span>
+          </a>
+        </li>
+        <li>
+          <a href="./deploiement.html">
+            <span class="num">03</span>
+            <span class="name">Déploiement</span>
+            <span class="mono-sm muted">avant partie</span>
+          </a>
+        </li>
+        <li>
+          <a href="./partie.html">
+            <span class="num">04</span>
+            <span class="name">Partie en cours</span>
+            <span class="mono-sm muted">en partie</span>
+          </a>
+        </li>
+        <li>
+          <a href="./fin-de-partie.html">
+            <span class="num">05</span>
+            <span class="name">Fin de partie</span>
+            <span class="mono-sm muted">en partie</span>
+          </a>
+        </li>
+      </ul>
+
+      <p class="mono-sm muted" style="margin: 32px 0 0; line-height: 1.7">
+        Ouvrir les fichiers directement depuis le disque suffit — aucun serveur, aucune dépendance, aucune étape de
+        build.
+      </p>
+    </div>
+  </body>
+</html>

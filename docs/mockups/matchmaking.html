@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Occulis — Recherche d'adversaire</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="./mockup.css" />
+  </head>
+  <body>
+    <main class="screen">
+      <div
+        style="
+          position: relative;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 36px;
+        "
+      >
+        <div
+          class="mono"
+          style="letter-spacing: 3px; color: rgba(255, 255, 255, 0.4); text-transform: uppercase"
+        >
+          Recherche d'un adversaire
+        </div>
+
+        <svg width="220" height="220" viewBox="-110 -110 220 220" aria-hidden="true">
+          <polygon points="0,-70 70,0 0,70 -70,0" fill="none" stroke="#FFFFFF" stroke-width="1"
+            stroke-opacity="0.12"></polygon>
+          <polygon class="occ-pulse" points="0,-46 46,0 0,46 -46,0" fill="none" stroke="#FFFFFF"
+            stroke-width="1"></polygon>
+          <g stroke="#6AA9FF" stroke-width="2" stroke-linecap="round">
+            <line class="occ-breathe" x1="-30" y1="-55" x2="-14" y2="-60"></line>
+            <line class="occ-breathe" x1="55" y1="-30" x2="60" y2="-14" style="animation-delay: -0.7s"></line>
+            <line class="occ-breathe" x1="30" y1="55" x2="14" y2="60" style="animation-delay: -1.4s"></line>
+            <line class="occ-breathe" x1="-55" y1="30" x2="-60" y2="14" style="animation-delay: -2.1s"></line>
+          </g>
+          <circle cx="0" cy="0" r="3" fill="#6AA9FF"></circle>
+        </svg>
+
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+          <div class="mono" style="font-size: 34px; letter-spacing: 4px">00:24</div>
+          <div class="mono-sm muted">File d'attente — 1 joueur en recherche</div>
+        </div>
+
+        <div
+          class="camp"
+          style="gap: 10px; padding: 10px 20px; border: 1px solid rgba(255, 255, 255, 0.15)"
+        >
+          <span class="dot dot-a"></span>
+          <span class="mono muted-strong">Vous — Camp A</span>
+        </div>
+
+        <button class="btn btn-quiet" type="button">ANNULER</button>
+      </div>
+
+      <div class="wordmark" style="position: absolute; left: 32px; top: 28px; color: rgba(255, 255, 255, 0.3)">
+        OCCULIS
+      </div>
+    </main>
+  </body>
+</html>
