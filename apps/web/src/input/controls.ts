@@ -26,7 +26,6 @@ export interface ControlsOptions {
   readonly setHovered: (coord: Coord | undefined) => void;
   /** Case désignée par un clic ; `undefined` si le clic tombe hors du plateau. */
   readonly onPick: (coord: Coord | undefined) => void;
-  readonly toggleViewer: () => void;
 }
 
 type DragKind = "pan" | "rotate";
@@ -57,7 +56,7 @@ function dragKindOf(button: number): DragKind | undefined {
 /**
  * Les raccourcis clavier sont posés sur `window` pour rester actifs hors du
  * canevas ; ils doivent donc s'effacer devant une saisie en cours, sans quoi une
- * espace tapée dans le champ de commande changerait de point de vue.
+ * flèche tapée dans le champ de commande ferait pivoter le plateau.
  */
 function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -70,7 +69,7 @@ function sameCoord(a: Coord | undefined, b: Coord | undefined): boolean {
 }
 
 export function attachControls(options: ControlsOptions): void {
-  const { canvas, getCamera, setCamera, pickTile, setHovered, onPick, toggleViewer } = options;
+  const { canvas, getCamera, setCamera, pickTile, setHovered, onPick } = options;
 
   let drag: Drag | undefined;
   let hovered: Coord | undefined;
@@ -151,7 +150,6 @@ export function attachControls(options: ControlsOptions): void {
     if (isTyping(event.target)) return;
     if (event.key === "ArrowLeft") update((camera) => turn(camera, -1));
     else if (event.key === "ArrowRight") update((camera) => turn(camera, 1));
-    else if (event.key === " ") toggleViewer();
     else return;
     event.preventDefault();
   });

@@ -81,9 +81,6 @@ export const SELECTION = {
   destination: STATE.legalMove,
   destinationWidth: 1.5,
   destinationFillAlpha: 0.1,
-  strike: STATE.threat,
-  strikeWidth: 2.5,
-  strikeFillAlpha: 0.16,
 } as const;
 
 export const PIECES = {

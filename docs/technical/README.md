@@ -22,8 +22,8 @@ justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ic
 | Fichier | Couvre | Paquet |
 |---|---|---|
 | [core.md](core.md) | Les règles du jeu : plateau, hauteur, ligne de vue, déplacement, capture, fog of war, types de pièces | `packages/core` |
-| [engine.md](engine.md) | Le moteur de rendu et le client : projection isométrique, caméra, sélection et déplacement animé, couches, code couleur, saisie de coups | `apps/web` |
-| [server.md](server.md) | Le serveur : Worker, Durable Object de partie, base D1, protocole réseau | `apps/server` |
+| [engine.md](engine.md) | Le moteur de rendu et le client : écrans de compte et de menu, entrée en partie, projection isométrique, caméra, sélection et déplacement animé, couches, code couleur, saisie de coups | `apps/web` |
+| [server.md](server.md) | Le serveur : Worker, Durable Objects de partie et de file (appariement et salons privés), base D1, protocole réseau | `apps/server`, `packages/protocol` |
 | [infra.md](infra.md) | L'outillage et la CI/CD : environnements, migrations, déploiement | `tooling/infra`, `.github` |
 
 ## Carte du système
@@ -31,13 +31,14 @@ justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ic
 ```
                     packages/core  ── logique de jeu pure, aucune dépendance de rendu
                     │                 y compris les types de pièces (pieces/)
+                    packages/protocol ── messages du fil, aucune règle, aucun transport
                     ┌──────┴──────┐
                     │             │
               apps/web       apps/server
-        rendu + partie locale  Worker + Durable Object
-                                  │
-                                  ├── D1 (log d'actions = source de vérité)
-                                  └── sert apps/web/dist via le binding ASSETS
+        rendu + écrans        Worker + DO de partie + DO de file et de salons
+        + parties en ligne       │
+                                 ├── D1 (log d'actions = source de vérité)
+                                 └── sert apps/web/dist via le binding ASSETS
 
    tooling/infra ── TUI qui pilote wrangler, wrangler.toml et le manifeste de déploiement
    .github/workflows/ci.yml ── vérifications sur toute branche, déploiement sur les branches listées
@@ -52,23 +53,21 @@ le laisser diverger.
 
 ## L'état réel du câblage
 
-C'est le point le plus important à comprendre avant de lire le reste, et le plus facile à
-se tromper : **le client et le serveur ne se parlent pas encore.**
+**Le client et le serveur se parlent, et le serveur arbitre.**
 
-- `apps/web` ne contient **aucun appel réseau** — ni `fetch`, ni `WebSocket`. La partie est
-  jouée **en local**, en hot-seat : `Match` (`apps/web/src/game/match.ts`) détient l'état
-  réel et les deux `PlayerKnowledge`. Un coup se joue au clic
-  (`apps/web/src/game/selection.ts`) ou en tapant ses coordonnées
-  (`apps/web/src/ui/console.ts`).
-- `apps/server` est un squelette complet et cohérent (Worker, Durable Object, schéma D1,
-  protocole), mais **rien ne l'appelle**. Le type `ClientMessage`
-  (`apps/server/src/protocol.ts`) n'a pas d'émetteur.
-- Il n'existe donc à ce jour **aucun chemin de bout en bout** entre une action jouée et
-  un état persisté.
+- **Il n'existe aucune partie locale.** `apps/web` ne joue rien tout seul : à l'arrivée
+  sur la page, le canevas est masqué et c'est l'écran de compte qui s'affiche
+  (`apps/web/src/ui/flow.ts`). La partie commence quand le Durable Object assied le joueur,
+  et `OnlineMatch` (`apps/web/src/game/online-match.ts`) ne détient qu'une **hypothèse**
+  reconstruite depuis les vues reçues — jamais la position.
+- **Trois façons d'entrer en partie**, toutes par le même canal de file
+  (`apps/web/src/net/queue-channel.ts` → `apps/server/src/queue-do.ts`) : appariement
+  rapide, ouverture d'un salon privé avec un code, entrée par code.
+- **Le log d'actions en D1 est la source de vérité** ; l'état du Durable Object est un
+  cache reconstructible par rejeu.
 
-La jonction est cependant préparée : `Match` tient exactement ce que le Durable Object
-tiendra et n'expose au rendu que des `PlayerView`. Câbler le serveur reviendra à remplacer
-cette classe par un transport, sans toucher au rendu ni à la saisie.
+Le fog est donc structurel : un client ne peut pas recevoir ce que le serveur ne lui envoie
+pas.
 
 ## Règle de maintenance
 

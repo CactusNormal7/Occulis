@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyAction } from "./actions.js";
+import { applyAction, legalActions } from "./actions.js";
 import { Board } from "./board.js";
 import { coordKey } from "./coord.js";
 import { emptyKnowledge, observe, viewFor, visibleTilesFor } from "./fog.js";
@@ -47,6 +47,23 @@ describe("visibleTilesFor", () => {
     expect(visible.has(coordKey({ x: 6, y: 0 }))).toBe(false);
   });
 
+  it("une pièce cache ce qui est derrière elle", () => {
+    // b-blocker est à portée du scout de A et sur sa ligne : la pièce d'après ne
+    // l'est plus, alors que rien dans le relief ne la couvre.
+    const state = createGame(Board.flat(9, 1), ruleset, [
+      placePiece("a-scout", "scout", "A", 0, 0),
+      placePiece("a-cmd", "commander", "A", 8, 0),
+      placePiece("b-blocker", "scout", "B", 2, 0),
+      placePiece("b-cmd", "commander", "B", 3, 0),
+    ]);
+    const visible = visibleTilesFor(state.board, state, "A");
+    expect(visible.has(coordKey({ x: 2, y: 0 }))).toBe(true);
+    expect(visible.has(coordKey({ x: 3, y: 0 }))).toBe(false);
+
+    const view = viewFor(state, observe(emptyKnowledge("A"), state));
+    expect(view.visibleEnemies.map((piece) => piece.id)).toEqual(["b-blocker"]);
+  });
+
   it("borne la vision à la portée de chaque pièce", () => {
     const state = createGame(Board.flat(9, 1), ruleset, [
       placePiece("a-scout", "scout", "A", 0, 0),
@@ -83,10 +100,11 @@ describe("observe — mémoire du fog of war", () => {
   });
 
   it("efface le fantôme quand la case mémorisée est revue vide", () => {
-    // A garde (3,0) en vue ; b-cmd s'en va sous ses yeux.
-    const state = createGame(Board.flat(8, 1), ruleset, [
+    // A garde (3,0) en vue ; b-cmd s'en va sous ses yeux. La maîtresse de A est
+    // rangée sur l'autre rangée : sur la même, elle couperait la ligne du scout.
+    const state = createGame(Board.flat(8, 2), ruleset, [
       placePiece("a-scout", "scout", "A", 0, 0),
-      placePiece("a-cmd", "commander", "A", 1, 0),
+      placePiece("a-cmd", "commander", "A", 0, 1),
       placePiece("b-cmd", "commander", "B", 3, 0),
     ], "B");
     const seen = observe(emptyKnowledge("A"), state);
@@ -149,5 +167,36 @@ describe("viewFor — redaction serveur-side", () => {
 
     expect(view.visibleEnemies).toEqual([]);
     expect(view.ghosts.map((g) => g.id)).toEqual(["b-cmd"]);
+  });
+});
+
+describe("viewFor — les coups légaux transmis", () => {
+  it("porte les coups du camp au trait, calculés sur la position réelle", () => {
+    // Le client ne peut pas les recalculer : il ignore les pièces hors LOS, donc les
+    // menaces qui lui interdisent un coup comme les pièces qui barrent une route.
+    const state = corridor();
+    const view = viewFor(state, observe(emptyKnowledge("A"), state));
+
+    expect(view.legalActions).toEqual(legalActions(state));
+    expect(view.legalActions.length).toBeGreaterThan(0);
+  });
+
+  it("n'en transmet aucun au camp qui n'est pas au trait", () => {
+    // La liste de l'adversaire trahirait la position de ses pièces.
+    const state = corridor();
+    expect(state.activePlayer).toBe("A");
+
+    const view = viewFor(state, observe(emptyKnowledge("B"), state));
+    expect(view.legalActions).toEqual([]);
+  });
+
+  it("suit le trait d'un tour à l'autre", () => {
+    const state = corridor();
+    const after = unwrap(applyAction(state, legalActions(state)[0]!));
+
+    expect(viewFor(after, observe(emptyKnowledge("A"), after)).legalActions).toEqual([]);
+    expect(
+      viewFor(after, observe(emptyKnowledge("B"), after)).legalActions.length,
+    ).toBeGreaterThan(0);
   });
 });

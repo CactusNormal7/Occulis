@@ -7,39 +7,31 @@ import { type Action, type Coord, type Piece, type Result, err, ok } from "@occu
  *
  *   1,6 2,5        déplace la pièce en (1,6) vers (2,5)
  *   1,6 > 2,5      identique : la flèche est facultative
- *   1,6 2,5 x 3,5  se déplace en (2,5) puis capture la pièce en (3,5)
- *   1,6 x 1,5      frappe un adjacent sans bouger
  *   abandon        abandonne la partie
+ *
+ * Un tour se réduit à un déplacement : la capture est retirée le temps de
+ * reconstruire la géométrie du jeu (docs/design.md section 3.1).
  */
 
 export type Command =
-  | {
-      readonly kind: "move";
-      readonly from: Coord;
-      readonly to: Coord;
-      readonly capture?: Coord | undefined;
-    }
+  | { readonly kind: "move"; readonly from: Coord; readonly to: Coord }
   | { readonly kind: "resign" };
 
 export type CommandFault =
   | { readonly code: "empty" }
   | { readonly code: "bad-coord"; readonly token: string }
   | { readonly code: "missing-destination" }
-  | { readonly code: "missing-target" }
   | { readonly code: "trailing"; readonly token: string }
-  | { readonly code: "no-piece-here"; readonly coord: Coord }
-  | { readonly code: "no-target-here"; readonly coord: Coord };
+  | { readonly code: "no-piece-here"; readonly coord: Coord };
 
 const RESIGN_WORDS = ["abandon", "abandonne", "resign"];
 const COORD = /^(-?\d+),(-?\d+)$/;
 
-/** `x` sépare la capture ; il n'apparaît jamais dans une coordonnée. */
 function tokenize(input: string): string[] {
   return input
     .toLowerCase()
     .replace(/->|→|>/g, " ")
     .replace(/\s*,\s*/g, ",")
-    .replace(/x/g, " x ")
     .trim()
     .split(/\s+/)
     .filter((token) => token.length > 0);
@@ -63,24 +55,14 @@ export function parseCommand(input: string): Result<Command, CommandFault> {
   const from = parseCoord(fromToken);
   if (from === undefined) return err({ code: "bad-coord", token: fromToken });
 
-  // Une frappe sur place s'écrit sans destination : `1,6 x 1,5`.
-  const strikeOnly = rest[0] === "x";
-  const destinationToken = strikeOnly ? undefined : rest.shift();
-  if (!strikeOnly && destinationToken === undefined) return err({ code: "missing-destination" });
+  const destinationToken = rest.shift();
+  if (destinationToken === undefined) return err({ code: "missing-destination" });
 
-  const to = destinationToken === undefined ? from : parseCoord(destinationToken);
-  if (to === undefined) return err({ code: "bad-coord", token: destinationToken ?? "" });
+  const to = parseCoord(destinationToken);
+  if (to === undefined) return err({ code: "bad-coord", token: destinationToken });
+  if (rest.length > 0) return err({ code: "trailing", token: rest[0] ?? "" });
 
-  if (rest.length === 0) return ok({ kind: "move", from, to });
-  if (rest[0] !== "x") return err({ code: "trailing", token: rest[0] ?? "" });
-
-  const targetToken = rest[1];
-  if (targetToken === undefined) return err({ code: "missing-target" });
-  const capture = parseCoord(targetToken);
-  if (capture === undefined) return err({ code: "bad-coord", token: targetToken });
-  if (rest.length > 2) return err({ code: "trailing", token: rest[2] ?? "" });
-
-  return ok({ kind: "move", from, to, capture });
+  return ok({ kind: "move", from, to });
 }
 
 /**
@@ -97,13 +79,5 @@ export function toAction(
   const piece = pieceAt(command.from);
   if (piece === undefined) return err({ code: "no-piece-here", coord: command.from });
 
-  if (command.capture === undefined) return ok({ kind: "move", pieceId: piece.id, to: command.to });
-
-  const target = pieceAt(command.capture);
-  // Une pièce qui reste sur place occupe encore sa case de départ : elle ne peut
-  // pas être sa propre cible.
-  if (target === undefined || target.id === piece.id) {
-    return err({ code: "no-target-here", coord: command.capture });
-  }
-  return ok({ kind: "move", pieceId: piece.id, to: command.to, capture: target.id });
+  return ok({ kind: "move", pieceId: piece.id, to: command.to });
 }

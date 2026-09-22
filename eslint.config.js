@@ -4,7 +4,11 @@ import prettier from "eslint-config-prettier";
 
 export default [
   {
-    ignores: ["**/dist/**", "**/node_modules/**"],
+    // `.wrangler/` contient le bundle que `wrangler dev` reconstruit à chaque lancement :
+    // du code tiers concaténé, avec ses propres directives eslint pour des règles absentes
+    // d'ici. Il est ignoré par git, donc invisible en CI, et faisait échouer `pnpm lint`
+    // sur la seule machine qui a lancé le serveur en local.
+    ignores: ["**/dist/**", "**/node_modules/**", "**/.wrangler/**"],
   },
   {
     files: ["**/*.ts"],

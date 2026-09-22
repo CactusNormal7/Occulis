@@ -51,14 +51,26 @@ export abstract class PieceType {
    * Voit-elle `to` depuis `from` ? Portée horizontale d'abord, occultation ensuite.
    * La hauteur n'étend ni ne réduit la portée, elle ne joue que sur l'occultation
    * (docs/design.md section 5.3).
+   *
+   * `occupied` porte les cases tenues par une pièce : elles coupent la vue au même
+   * titre que le relief (docs/design.md section 5.2).
    */
-  canSee(board: Board, from: Coord, to: Coord): boolean {
-    return this.visionRangeCovers(from, to) && hasLineOfSight(board, from, to);
+  canSee(
+    board: Board,
+    from: Coord,
+    to: Coord,
+    occupied: ReadonlySet<CoordKey> = new Set(),
+  ): boolean {
+    return this.visionRangeCovers(from, to) && hasLineOfSight(board, from, to, occupied);
   }
 
   /** Champ de vision complet depuis `from`, dérivé de `canSee`. */
-  fieldOfView(board: Board, from: Coord): Set<CoordKey> {
-    return collectVisible(board, from, (to) => this.canSee(board, from, to));
+  fieldOfView(
+    board: Board,
+    from: Coord,
+    occupied: ReadonlySet<CoordKey> = new Set(),
+  ): Set<CoordKey> {
+    return collectVisible(board, from, (to) => this.canSee(board, from, to, occupied));
   }
 
   /**

@@ -1,0 +1,10 @@
+# Copier en `.dev.vars` pour `wrangler dev`. Ce fichier n'est pas versionné.
+#
+# En déployé, ces valeurs sont des secrets Wrangler, pas des variables :
+#   wrangler secret put AUTH_SECRET --env production
+AUTH_SECRET="un-secret-local-quelconque-mais-long"
+
+# Sans clé Resend, les messages de vérification et de réinitialisation sont
+# journalisés dans la console au lieu d'être envoyés : le lien reste cliquable.
+# RESEND_API_KEY="re_..."
+# MAIL_FROM="Occulis <no-reply@0kl.fr>"

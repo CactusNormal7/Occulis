@@ -123,6 +123,21 @@ export class Scene {
     this.root.addChild(this.world, this.overlay);
   }
 
+  /**
+   * Efface la table. Appelé en quittant une partie : sans cela le plateau précédent
+   * resterait dessiné derrière le menu, et la partie suivante hériterait des
+   * conditions de réémission de celle d'avant.
+   */
+  clear(): void {
+    this.world.clear();
+    this.overlay.clear();
+    this.lastBoard = undefined;
+    this.lastView = undefined;
+    this.lastProjection = undefined;
+    this.lastHovered = undefined;
+    this.lastSelection = undefined;
+  }
+
   render(input: SceneInput): void {
     this.root.position.set(input.origin.x, input.origin.y);
 
