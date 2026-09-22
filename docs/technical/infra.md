@@ -205,13 +205,19 @@ Catalogue dans `ACTIONS` (`tooling/infra/src/actions.ts`). Chaque `ActionDef` d�
 | **Créer un environnement de branche** | Voir ci-dessous — branche courante |
 | **Supprimer un environnement de branche** | Voir ci-dessous — **n'importe quelle cible, depuis n'importe quelle branche** |
 | Appliquer les migrations | `wrangler d1 migrations apply` |
-| Lancer le serveur en local | `wrangler dev` (interactive) |
+| Lancer le serveur en local | `build:local` du client, migrations locales, puis `wrangler dev` (interactive) |
 | Déployer | `wrangler deploy --env …` |
 | Exécuter une requête SQL | `wrangler d1 execute` avec saisie libre |
 | Décrire une base | `wrangler d1 info` |
 | Logs en direct | `wrangler tail` (interactive) |
 | Historique des déploiements | `wrangler deployments list` |
 | Connexion Cloudflare | `wrangler login` (interactive) |
+
+« Lancer le serveur en local » construit le client avec **`build:local` et non `build`** : le
+Worker ne sert que `../web/dist`, et seul le build local y dépose les maquettes de
+`docs/mockups/`, accessibles sous `/mockups` (voir l'invariant 16 de
+[engine.md](engine.md)). Le déploiement, lui, reste sur `build` — les maquettes ne partent
+jamais en production.
 
 Deux garde-fous transverses : `guardPlaceholder()` refuse d'agir tant que le
 `database_id` de l'environnement visé est un placeholder ; `checkConfig()` signale les
