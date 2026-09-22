@@ -1,9 +1,23 @@
 # Maquettes des écrans
 
-Cinq écrans dessinés pour donner une lecture concrète de la direction artistique. Ouvrir
-[`index.html`](index.html) — ou n'importe quel fichier de ce dossier — directement depuis le disque : ce sont des
-pages autonomes, sans serveur, sans dépendance et sans étape de build. Elles ne font partie ni du workspace pnpm,
-ni de la CI.
+Cinq écrans dessinés pour donner une lecture concrète de la direction artistique. Ce sont des pages autonomes,
+sans dépendance et sans étape de build. Elles ne font partie ni du workspace pnpm, ni de la CI.
+
+Trois façons de les regarder :
+
+| | Commande | Adresse |
+|---|---|---|
+| Depuis le disque | *(double-clic)* | `docs/mockups/index.html` |
+| Serveur de développement | `pnpm dev` | `http://localhost:5173/mockups/` |
+| Serveur local wrangler | `pnpm --filter @occulis/web build:local`<br>puis `cd apps/server && pnpm exec wrangler dev` | `http://localhost:8787/mockups/` |
+
+Sous `pnpm dev`, les fichiers sont lus directement ici : les modifier se voit au rafraîchissement, sans rebuild.
+Le serveur wrangler ne sait servir que `apps/web/dist`, d'où le `build:local` — `pnpm build` seul n'embarque
+rien, délibérément. Le mécanisme est décrit dans
+[`../technical/engine.md`](../technical/engine.md#viteconfigts--le-service-des-maquettes).
+
+**Les maquettes ne sont jamais déployées.** Ni sur la recette, ni en production : `docs/` est hors du build.
+Une URL du type `occulis-staging.0kl.fr/mockups` n'existe pas et n'est pas prévue.
 
 | Écran | Fichier | Phase |
 | --- | --- | --- |
