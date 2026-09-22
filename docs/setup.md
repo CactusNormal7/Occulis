@@ -65,7 +65,7 @@ démarrer. Copier `apps/server/.dev.vars.example` en `.dev.vars` (non versionné
 
 ```bash
 cp apps/server/.dev.vars.example apps/server/.dev.vars
-pnpm --filter @occulis/web build          # le Worker sert ../web/dist
+pnpm --filter @occulis/web build:local    # le Worker sert ../web/dist, maquettes comprises
 cd apps/server
 pnpm exec wrangler d1 migrations apply occulis-local --local
 pnpm exec wrangler dev
