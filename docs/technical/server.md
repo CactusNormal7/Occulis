@@ -72,12 +72,14 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 | tout le reste de `/api/auth/*` | toute | `auth.handler(request)` |
 | `/api/matches` | `POST` | `createMatch()` — partie directe, hors file d'attente |
 | `/api/queue` | WebSocket | `joinQueue()` — **401 sans session, 403 sans adresse vérifiée** |
+| `/api/auth/*`, `/api/queue` sans `AUTH_SECRET` | toute | **503** — garde-fou `hasAuthSecret()`, avant toute construction de Better Auth |
 | `/match/:id?seat=<jeton>` | WebSocket | `env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(request)` |
 | tout le reste | toute | `env.ASSETS.fetch(request)` — le client statique |
 
 | Fonction | Emplacement | Rôle |
 |---|---|---|
 | `fetch()` (handler par défaut) | `apps/server/src/index.ts` | Routage |
+| `hasAuthSecret()` | `apps/server/src/index.ts` | Vrai si `AUTH_SECRET` fait au moins 32 caractères ; sinon l'authentification et la file répondent 503 |
 | `scheduled()` (handler cron) | `apps/server/src/index.ts` | Ménage nocturne : sessions, vérifications, compteurs de débit |
 | `buildAuth()` | `apps/server/src/auth/better-auth.ts` | Construit l'instance Better Auth autour des bindings |
 | `currentAccount()` | `apps/server/src/auth/routes.ts` | Session → `{ userId, playerId, handle, emailVerified }` |
@@ -351,8 +353,12 @@ que le SHA-256. C'est une régression sur cet axe, et elle est compensée : le c
 session ouverte avec le seul jeton lu en base est refusée — c'est vérifié par un test.
 Sept jours d'inactivité, `updateAge` repoussant l'échéance chaque jour d'usage.
 
-**`AUTH_SECRET` est donc ce qui tient toute la construction.** Sans lui Better Auth refuse
-de démarrer ; le changer déconnecte tout le monde ; le divulguer permet de forger n'importe
+**`AUTH_SECRET` est donc ce qui tient toute la construction.** Sans lui, Better Auth ne
+refuse **pas** de démarrer dans un Worker : il ne reconnaît la production qu'à `NODE_ENV`,
+absent ici, et retombe en silence sur son secret par défaut, qui est public. C'est
+`hasAuthSecret()` (`index.ts`) qui ferme la porte : sans secret d'au moins 32 caractères,
+`/api/auth/*` et `/api/queue` répondent 503, le client statique et les parties restent
+servis — vérifié par un test. Le changer déconnecte tout le monde ; le changer déconnecte tout le monde ; le divulguer permet de forger n'importe
 quelle session.
 
 ### La limitation de débit
@@ -395,7 +401,14 @@ qu'une fois l'adresse prouvée.
 MailChannels a fermé son offre gratuite aux Workers en 2024. **Sans `RESEND_API_KEY`, les
 messages sont journalisés au lieu d'être émis**, lien compris — c'est ce qui rend les
 parcours traversables en local et en test sans compte Resend. Un échec d'envoi est
-journalisé sans être propagé : le compte existe, un second message peut être demandé.
+journalisé sans être propagé : le compte existe, un second message peut être demandé. Le
+corps de la réponse de Resend est journalisé avec le statut, parce que c'est lui qui dit
+pourquoi l'envoi est refusé (domaine non vérifié, expéditeur non autorisé, clé révoquée) —
+visible par `wrangler tail --env <env>`.
+
+**En déployé, la clé n'est pas facultative en pratique** : la file d'attente et les salons
+privés passent tous deux par `/api/queue`, qui exige une adresse vérifiée. Sans message
+reçu, aucun joueur ne peut entrer en partie.
 
 ## `@occulis/protocol` — le protocole partagé
 
@@ -552,7 +565,7 @@ Bindings (type dans `apps/server/src/env.d.ts`) :
 |---|---|---|
 | `DB` | `D1Database` | La base |
 | `AUTH_SECRET` | `string` (secret) | Signe les cookies de session. **À provisionner par environnement** |
-| `RESEND_API_KEY` | `string` (secret, optionnel) | Sans elle, les messages sont journalisés |
+| `RESEND_API_KEY` | `string` (secret) | Sans elle, les messages sont journalisés — donc aucune adresse vérifiable en déployé |
 | `MAIL_FROM` | `string` (optionnel) | Expéditeur affiché |
 | `MATCH` | `DurableObjectNamespace` | Les parties |
 | `ASSETS` | `Fetcher` | Le client statique, servi depuis `../web/dist` |

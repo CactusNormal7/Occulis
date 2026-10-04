@@ -24,6 +24,19 @@ export default {
     // Construite par requête : les bindings n'existent que là, et l'URL de base doit
     // être celle par laquelle on est joint, sinon les liens envoyés par courrier
     // pointeraient vers un autre environnement que celui où l'inscription a eu lieu.
+    //
+    // Sans secret, Better Auth ne refuse **pas** de démarrer dans un Worker : il ne
+    // reconnaît la production qu'à `NODE_ENV`, absent ici, et retombe sans rien dire sur
+    // son secret par défaut, public — n'importe qui pourrait alors signer un cookie de
+    // session. On refuse donc l'authentification plutôt que de la servir ainsi ; le
+    // client statique et les parties, qui ne reposent que sur le jeton de siège, restent
+    // servis.
+    if (!hasAuthSecret(env)) {
+      if (url.pathname.startsWith("/api/auth/") || url.pathname === "/api/queue") {
+        console.error("[auth] AUTH_SECRET absent ou trop court : authentification refusée");
+        return new Response("authentification indisponible", { status: 503 });
+      }
+    }
     const auth = buildAuth(env, url.origin);
 
     const authenticated = await handleAuth(auth, request, url.pathname);
@@ -66,6 +79,13 @@ export default {
 } satisfies ExportedHandler<Env>;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Le minimum que Better Auth recommande pour un secret de signature. */
+const MIN_AUTH_SECRET_LENGTH = 32;
+
+function hasAuthSecret(env: Env): boolean {
+  return typeof env.AUTH_SECRET === "string" && env.AUTH_SECRET.length >= MIN_AUTH_SECRET_LENGTH;
+}
 
 /**
  * L'identité passée à la file vient du cookie, **jamais de la requête**. Le Durable
