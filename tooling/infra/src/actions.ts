@@ -317,8 +317,11 @@ export const ACTIONS: ActionDef[] = [
     hint: "build client + migrations locales + wrangler dev",
     interactive: true,
     async run(ctx) {
-      ctx.log("Build du client (le Worker sert ../web/dist)", "step");
-      await runInherited("pnpm", ["--filter", "@occulis/web", "build"], ROOT);
+      // `build:local` et non `build` : le Worker ne sert que ../web/dist, et seul
+      // le build local y dépose les maquettes de docs/mockups/ (engine.md,
+      // invariant 16). Le déploiement, lui, doit rester sur `build`.
+      ctx.log("Build du client (le Worker sert ../web/dist, maquettes comprises)", "step");
+      await runInherited("pnpm", ["--filter", "@occulis/web", "build:local"], ROOT);
       ctx.log("Migrations locales", "step");
       await runWranglerInherited(["d1", "migrations", "apply", dbName("local"), "--local"]);
       ctx.log("Démarrage de wrangler dev — Ctrl+C pour revenir au menu.", "step");
