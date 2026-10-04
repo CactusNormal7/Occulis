@@ -259,7 +259,7 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
    l'utilisateur actif. Les fournisseurs hébergés (Clerk, Auth0, Stytch, Supabase Auth) ont été
    écartés pour trois raisons cumulées : 25 $/mois passé leur palier gratuit, soit cinq fois le
    budget d'infrastructure entier (docs/costs.md) ; des composants d'interface préfabriqués
-   inutilisables avec la DA filaire et la règle « `theme.ts` seul porte une couleur » ; et, pour
+   inutilisables avec la DA filaire et la règle « un seul fichier porte les couleurs » (aujourd'hui `packages/ui/src/tokens.ts`) ; et, pour
    Supabase, un Postgres hors Cloudflare qui contredirait « tout ce qui s'agrège va en D1 ».
    Le hachage PBKDF2 du projet est conservé en le branchant sur la bibliothèque, donc aucun mot
    de passe n'a eu à être réencodé.

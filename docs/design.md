@@ -161,7 +161,8 @@ ne soit pas la seule trace d'une décision de DA.
   partie (camps, et plus tard sélection, coups légaux, menace). Conséquence directe : un
   trait coloré signifie toujours quelque chose. La contrainte est verrouillée
   mécaniquement — une règle ESLint interdit toute valeur de couleur hors de
-  `apps/web/src/theme.ts`, seul détenteur du code couleur.
+  `packages/ui/src/tokens.ts`, seul détenteur du code couleur, que le rendu PixiJS
+  (`apps/web/src/theme.ts`) et la charte d'interface (`@occulis/ui`) partagent.
 - **Rendu filaire par défaut, sans remplissage.** Les faces des cases ne sont pas remplies ;
   seule la case survolée reçoit un aplat blanc de faible opacité. En l'absence de surfaces
   opaques, le volume est restitué par une atténuation des traits en profondeur. Le

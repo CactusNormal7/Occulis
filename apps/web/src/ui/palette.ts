@@ -1,20 +1,15 @@
+import { cssColor } from "@occulis/ui/tokens";
 import { BACKGROUND, GEOMETRY, STATE } from "../theme.js";
 
 /**
  * Passe le code couleur de `theme.ts` à la feuille de style de l'interface.
  *
- * Les tokens sont des entiers 0xRRGGBB, seul format utile à Pixi ; le CSS les
- * reçoit via des propriétés personnalisées calculées ici. Aucune couleur n'est
- * donc réécrite en dur dans `ui.css`, et `theme.ts` reste l'unique détenteur du
- * code couleur du client (docs/design.md 8.1).
+ * Les tokens sont des entiers 0xRRGGBB, seul format utile à Pixi ; le CSS des écrans
+ * du jeu les reçoit via des propriétés personnalisées calculées ici. Aucune couleur
+ * n'est donc réécrite en dur dans `ui.css` : les valeurs restent celles de
+ * `@occulis/ui/tokens` (docs/design.md 8.1). Le back-office, lui, lit directement la
+ * feuille de `@occulis/ui`.
  */
-
-function cssColor(color: number, alpha = 1): string {
-  const r = (color >> 16) & 0xff;
-  const g = (color >> 8) & 0xff;
-  const b = color & 0xff;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 
 export function applyPalette(root: HTMLElement): void {
   const variables: Record<string, string> = {

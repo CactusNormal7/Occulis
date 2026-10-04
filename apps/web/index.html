@@ -20,6 +20,13 @@
       aucun design system n'est acté (docs/design.md 8.1), et des champs natifs
       donnent gratuitement le focus, la saisie, l'autocomplétion et l'accessibilité.
     -->
+    <!-- Visible sur tous les écrans, partie comprise : jouer sous un nom d'emprunt ne
+         doit jamais passer inaperçu. -->
+    <aside id="impersonation" role="status" hidden>
+      Session d'emprunt : vous incarnez <strong id="impersonated"></strong>
+      <button id="stop-impersonating" type="button">Revenir à mon compte</button>
+    </aside>
+
     <main id="shell">
       <!-- Compte : connexion, inscription, mot de passe oublié. -->
       <section id="screen-auth" class="screen" hidden>
@@ -111,6 +118,7 @@
           </form>
 
           <p id="menu-notice" role="status"></p>
+          <a id="menu-admin" class="quiet" href="/admin/" hidden>Back-office</a>
           <button id="account-signout" type="button" class="quiet">Se déconnecter</button>
         </div>
       </section>

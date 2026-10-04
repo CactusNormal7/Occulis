@@ -8,10 +8,13 @@ export default [
     // du code tiers concaténé, avec ses propres directives eslint pour des règles absentes
     // d'ici. Il est ignoré par git, donc invisible en CI, et faisait échouer `pnpm lint`
     // sur la seule machine qui a lancé le serveur en local.
-    ignores: ["**/dist/**", "**/node_modules/**", "**/.wrangler/**"],
+    // `ds-bundle/` et `.ds-sync/` sont la sortie et les scripts de la synchronisation vers
+    // Claude Design (.design-sync/NOTES.md) : du code tiers et généré, ignoré par git, que
+    // la CI ne voit jamais.
+    ignores: ["**/dist/**", "**/node_modules/**", "**/.wrangler/**", "ds-bundle/**", ".ds-sync/**"],
   },
   {
-    files: ["**/*.ts"],
+    files: ["**/*.ts", "**/*.tsx"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -28,26 +31,27 @@ export default [
     },
   },
   {
-    // Le code couleur est strict : toute valeur de couleur du client vit dans
-    // src/theme.ts, et nulle part ailleurs. La règle rend la contrainte
-    // mécanique plutôt que conventionnelle.
-    files: ["apps/web/src/**/*.ts"],
+    // Le code couleur est strict : toute valeur de couleur du projet vit dans
+    // packages/ui/src/tokens.ts, et nulle part ailleurs — ni dans le client, ni dans les
+    // composants de la charte. La règle rend la contrainte mécanique plutôt que
+    // conventionnelle ; les feuilles de style sont gardées par un test du paquet.
+    files: ["apps/web/src/**/*.{ts,tsx}", "packages/ui/src/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-syntax": [
         "error",
         {
           selector: "Literal[raw=/^0[xX][0-9a-fA-F]{3,8}$/]",
-          message: "Couleur en dur : elle doit venir d'un token de apps/web/src/theme.ts.",
+          message: "Couleur en dur : elle doit venir d'un token de packages/ui/src/tokens.ts.",
         },
         {
           selector: "Literal[value=/^#[0-9a-fA-F]{3,8}$/]",
-          message: "Couleur en dur : elle doit venir d'un token de apps/web/src/theme.ts.",
+          message: "Couleur en dur : elle doit venir d'un token de packages/ui/src/tokens.ts.",
         },
       ],
     },
   },
   {
-    files: ["apps/web/src/theme.ts"],
+    files: ["packages/ui/src/tokens.ts"],
     rules: {
       "no-restricted-syntax": "off",
     },

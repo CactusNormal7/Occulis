@@ -4,13 +4,17 @@
  * C'est voulu — un jeton lisible en JavaScript est un jeton exfiltrable.
  *
  * Les chemins sont ceux de Better Auth, qui porte l'authentification côté serveur.
- * Seul `/api/auth/me` appartient au projet : il ne rend que le pseudo et l'état de
- * vérification, là où `/api/auth/get-session` rendrait le compte entier.
+ * Seul `/api/auth/me` appartient au projet : il ne rend que le pseudo, l'état de
+ * vérification et le rôle d'administrateur, là où `/api/auth/get-session` rendrait le compte entier.
  */
 export interface Identity {
   readonly signedIn: boolean;
   readonly handle?: string;
   readonly emailVerified?: boolean;
+  /** Montre le lien du back-office. Le serveur revérifie le rôle à chaque appel. */
+  readonly admin?: boolean;
+  /** Session ouverte par un administrateur au nom du joueur (back-office). */
+  readonly impersonating?: boolean;
 }
 
 export type AuthOutcome =
@@ -35,6 +39,16 @@ export async function signIn(email: string, password: string): Promise<AuthOutco
 
 export async function signOut(): Promise<void> {
   await fetch("/api/auth/sign-out", { method: "POST", headers: JSON_HEADERS, body: "{}" });
+}
+
+/** Rend à l'administrateur sa propre session, après une usurpation. */
+export async function stopImpersonating(): Promise<boolean> {
+  const response = await fetch("/api/auth/admin/stop-impersonating", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: "{}",
+  });
+  return response.ok;
 }
 
 /**
@@ -90,6 +104,7 @@ const MESSAGES: Record<string, string> = {
   // quelles adresses sont inscrites.
   INVALID_EMAIL_OR_PASSWORD: "Identifiants invalides.",
   INVALID_TOKEN: "Ce lien a expiré. Demandez-en un nouveau.",
+  BANNED_USER: "Ce compte est suspendu.",
 };
 
 const JSON_HEADERS = { "Content-Type": "application/json" };

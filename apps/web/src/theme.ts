@@ -1,19 +1,23 @@
 /**
- * Tokens de direction artistique.
+ * Tokens de direction artistique du rendu.
  *
- * C'est le SEUL fichier du client autorisé à contenir une valeur de couleur ;
- * la contrainte est verrouillée mécaniquement dans `eslint.config.js`.
+ * Les **valeurs** de couleur ne vivent plus ici mais dans `@occulis/ui/tokens`, seule
+ * source du projet, que la charte d'interface (`packages/ui`) partage avec le plateau. Ce
+ * fichier les reprend et y ajoute ce qui n'appartient qu'au rendu PixiJS : métriques,
+ * alphas, épaisseurs. La règle ESLint interdit toute couleur ailleurs que dans
+ * `packages/ui/src/tokens.ts`.
  *
  * Code couleur acté (docs/design.md section 8.1), provisoire : le blanc porte la
  * géométrie, la couleur porte l'état de jeu. Le fog et le relief se lisent donc
  * par alpha et par épaisseur de trait, jamais par teinte — un trait coloré
  * signifie toujours une information de partie.
  */
+import { BACKGROUND, CAMP, INK, STATE as STATE_TOKENS } from "@occulis/ui/tokens";
 
-const WHITE = 0xffffff;
+const WHITE = INK;
 
 /** Doit rester synchronisé à la main avec le `background` de `index.html`. */
-export const BACKGROUND = 0x0d0f12;
+export { BACKGROUND };
 
 export const METRICS = {
   tileWidth: 72,
@@ -57,8 +61,8 @@ export const HOVER = {
 
 /** Couleurs de camp — provisoires, le code couleur définitif reste à arrêter. */
 export const PLAYERS = {
-  A: 0x74d3c4,
-  B: 0xe0785f,
+  A: CAMP.A,
+  B: CAMP.B,
 } as const;
 
 /**
@@ -66,11 +70,11 @@ export const PLAYERS = {
  * mise en avant ne doit jamais se confondre avec une pièce.
  */
 export const STATE = {
-  selection: 0xf5d76e,
-  legalMove: 0x6aa9ff,
+  selection: STATE_TOKENS.selection,
+  legalMove: STATE_TOKENS.legalMove,
   /** Réservé : grimper consomme le tour entier et mériterait un marquage propre. */
-  climb: 0x9b8cf0,
-  threat: 0xe0785f,
+  climb: STATE_TOKENS.climb,
+  threat: STATE_TOKENS.threat,
 } as const;
 
 /** Marquage de la pièce sélectionnée et de ce qu'elle peut faire ce tour-ci. */

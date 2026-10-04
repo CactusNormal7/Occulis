@@ -199,6 +199,19 @@ la fusion ou l'effacement de la branche concernée.
   ```
 
   **Changer `AUTH_SECRET` déconnecte tout le monde** : il signe les cookies de session.
+- **Le premier administrateur se nomme à la main**, une fois par environnement : aucune
+  migration n'en désigne, et le back-office (`/admin/`) ne s'ouvre qu'à un compte portant le
+  rôle `admin`. Le compte doit déjà exister (inscription normale), puis :
+
+  ```bash
+  cd apps/server
+  pnpm exec wrangler d1 execute DB --local \
+    --command "UPDATE users SET role = 'admin' WHERE email = 'vous@exemple.fr'"
+  # En déployé : --remote --env staging, ou --remote --env production, à la place de --local.
+  ```
+
+  Se reconnecter ensuite : la session ouverte garde une copie du compte d'avant la
+  promotion. Les administrateurs suivants se nomment depuis le back-office lui-même.
 - **Le domaine d'envoi Resend n'est pas déclaré.** Tant que `0kl.fr` n'est pas vérifié
   chez Resend (enregistrements DNS SPF et DKIM), aucun message ne partira réellement en
   production, même avec une clé posée.

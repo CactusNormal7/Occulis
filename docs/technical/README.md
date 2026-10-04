@@ -17,12 +17,13 @@ justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ic
 | Comment installer et déployer ? | [docs/setup.md](../setup.md) |
 | Combien ça coûte ? | [docs/costs.md](../costs.md) |
 
-## Les quatre documents
+## Les cinq documents
 
 | Fichier | Couvre | Paquet |
 |---|---|---|
 | [core.md](core.md) | Les règles du jeu : plateau, hauteur, ligne de vue, déplacement, capture, fog of war, types de pièces | `packages/core` |
 | [engine.md](engine.md) | Le moteur de rendu et le client : écrans de compte et de menu, entrée en partie, projection isométrique, caméra, sélection et déplacement animé, couches, code couleur, saisie de coups | `apps/web` |
+| [ui.md](ui.md) | La charte graphique : tokens (seule source des couleurs), feuille de style, composants React, synchronisation vers Claude Design | `packages/ui` |
 | [server.md](server.md) | Le serveur : Worker, Durable Objects de partie et de file (appariement et salons privés), base D1, protocole réseau | `apps/server`, `packages/protocol` |
 | [infra.md](infra.md) | L'outillage et la CI/CD : environnements, migrations, déploiement | `tooling/infra`, `.github` |
 
@@ -32,6 +33,7 @@ justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ic
                     packages/core  ── logique de jeu pure, aucune dépendance de rendu
                     │                 y compris les types de pièces (pieces/)
                     packages/protocol ── messages du fil, aucune règle, aucun transport
+                    packages/ui ──────── charte : tokens, feuille, composants React
                     ┌──────┴──────┐
                     │             │
               apps/web       apps/server

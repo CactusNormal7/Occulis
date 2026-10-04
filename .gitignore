@@ -11,3 +11,10 @@ dist/
 # Sauvegardes datées créées par « graphify update »
 graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
 .dev.vars
+
+# design-sync : scripts recopiés, build généré et état machine (voir .design-sync/NOTES.md).
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

@@ -32,6 +32,29 @@
   height: 100%;
 }
 
+/* ---- Session d'emprunt -------------------------------------------------------- */
+
+/* Au-dessus de tout, partie comprise, et dans la teinte des refus : jouer sous un nom
+   d'emprunt est une situation anormale, qui doit se voir. */
+#impersonation {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--refused);
+  background: var(--panel);
+  color: var(--ink);
+  transform: translateX(-50%);
+}
+
+#impersonation button {
+  padding: 4px 10px;
+}
+
 /* ---- Écrans hors partie ---------------------------------------------------- */
 
 /* Le conteneur couvre la page, mais ne l'intercepte pas : pendant une partie il
@@ -172,6 +195,12 @@ button:disabled {
   padding: 6px 10px;
   border-color: var(--ink-faint);
   color: var(--ink-soft);
+}
+
+/* Le lien du back-office, habillé comme les autres gestes discrets du menu. */
+a.quiet {
+  border: 1px solid var(--ink-faint);
+  text-decoration: none;
 }
 
 #join-form {

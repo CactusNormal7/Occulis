@@ -97,6 +97,16 @@ function embedMockups(): Plugin {
   };
 }
 
+/**
+ * Deux pages : le jeu, et le back-office sous `/admin/`. Séparées pour que le second
+ * ne charge ni Pixi ni le moteur, et que le premier n'embarque rien du second.
+ */
+const PAGES = {
+  main: fileURLToPath(new URL("index.html", import.meta.url)),
+  admin: fileURLToPath(new URL("admin/index.html", import.meta.url)),
+};
+
 export default defineConfig(({ mode }) => ({
   plugins: [serveMockups(), ...(mode === MOCKUPS_MODE ? [embedMockups()] : [])],
+  build: { rollupOptions: { input: PAGES } },
 }));

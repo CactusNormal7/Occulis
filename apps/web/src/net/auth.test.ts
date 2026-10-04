@@ -18,6 +18,10 @@ describe("traduction des refus", () => {
     expect(message).toBe("Identifiants invalides.");
   });
 
+  it("annonce un compte suspendu par le back-office", () => {
+    expect(authMessage(403, { code: "BANNED_USER" })).toBe("Ce compte est suspendu.");
+  });
+
   it("annonce la limitation de débit sur le statut, qui n'a pas de code", () => {
     expect(authMessage(429, {})).toContain("Trop de tentatives");
   });

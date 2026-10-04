@@ -2,6 +2,7 @@ import { QUEUE_SINGLETON } from "./queue-do.js";
 import { buildAuth } from "./auth/better-auth.js";
 import { currentAccount, handleAuth } from "./auth/routes.js";
 import { startMatch } from "./match-setup.js";
+import { handleAdmin } from "./admin/routes.js";
 
 export { MatchDO } from "./match-do.js";
 export { QueueDO } from "./queue-do.js";
@@ -32,7 +33,11 @@ export default {
     // client statique et les parties, qui ne reposent que sur le jeton de siège, restent
     // servis.
     if (!hasAuthSecret(env)) {
-      if (url.pathname.startsWith("/api/auth/") || url.pathname === "/api/queue") {
+      if (
+        url.pathname.startsWith("/api/auth/") ||
+        url.pathname.startsWith("/api/admin/") ||
+        url.pathname === "/api/queue"
+      ) {
         console.error("[auth] AUTH_SECRET absent ou trop court : authentification refusée");
         return new Response("authentification indisponible", { status: 503 });
       }
@@ -41,6 +46,9 @@ export default {
 
     const authenticated = await handleAuth(auth, request, url.pathname);
     if (authenticated !== undefined) return authenticated;
+
+    const administered = await handleAdmin(auth, env, request, url);
+    if (administered !== undefined) return administered;
 
     if (url.pathname === "/api/matches" && request.method === "POST") {
       return createMatch(request, env);

@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
+import { admin } from "better-auth/plugins";
 import { MIN_PASSWORD_LENGTH, hashPassword, verifyPassword } from "./password.js";
 import { resetLetter, sendLetter, verificationLetter } from "./mail.js";
 
@@ -25,6 +26,40 @@ import { resetLetter, sendLetter, verificationLetter } from "./mail.js";
  */
 export function buildAuth(env: Env, origin: string) {
   return betterAuth({
+    plugins: [
+      // Le back-office (docs/technical/server.md, « `admin/` »). Le greffon ajoute le
+      // rôle et le bannissement au compte, et l'usurpation à la session ; les noms de
+      // colonnes suivent la convention du schéma, comme pour les tables ci-dessous.
+      admin({
+        defaultRole: "user",
+        adminRoles: [ADMIN_ROLE],
+        // Une session d'emprunt dure une heure, puis tombe d'elle-même : l'oublier ouverte
+        // ne doit pas laisser un administrateur jouer indéfiniment sous un autre nom.
+        // Usurper un autre administrateur reste refusé (réglage par défaut du greffon).
+        impersonationSessionDuration: 60 * 60,
+        schema: {
+          user: {
+            fields: { banReason: "ban_reason", banExpires: "ban_expires" },
+          },
+          session: { fields: { impersonatedBy: "impersonated_by" } },
+        },
+      }),
+    ],
+
+    hooks: {
+      // Le pseudo vit deux fois — `users.name` pour Better Auth, `players.handle` pour
+      // le jeu, qui en tient l'unicité — et les routes de mise à jour de la bibliothèque
+      // n'écriraient que le premier. Le renommage passe donc par
+      // `POST /api/admin/players/:id/handle`, qui écrit les deux d'un coup.
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/update-user" && ctx.path !== "/admin/update-user") return;
+        const body = ctx.body as { name?: unknown; data?: { name?: unknown } } | undefined;
+        if (body?.name !== undefined || body?.data?.name !== undefined) {
+          throw new APIError("BAD_REQUEST", { message: "handle-readonly", code: "HANDLE_READONLY" });
+        }
+      }),
+    },
+
     database: env.DB,
     baseURL: origin,
     secret: env.AUTH_SECRET,
@@ -160,3 +195,11 @@ export function buildAuth(env: Env, origin: string) {
 }
 
 export type Auth = ReturnType<typeof buildAuth>;
+
+/** Le seul rôle qui ouvre le back-office. Tout autre compte porte le rôle `user`. */
+export const ADMIN_ROLE = "admin";
+
+/** Better Auth range plusieurs rôles séparés par des virgules dans la même colonne. */
+export function isAdmin(role: string | null | undefined): boolean {
+  return (role ?? "").split(",").some((entry) => entry.trim() === ADMIN_ROLE);
+}
