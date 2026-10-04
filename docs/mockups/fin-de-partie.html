@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Occulis — Fin de partie</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="./mockup.css" />
+  </head>
+  <body>
+    <main class="screen">
+      <!-- Le viewBox est volontairement plus large que le plateau : il le réduit à une toile de fond. -->
+      <svg id="board" width="1280" height="800" viewBox="-542 -284 1120 680"
+        style="position: absolute; inset: 0; opacity: 0.16" aria-hidden="true"></svg>
+
+      <div
+        style="
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(ellipse at center, rgba(13, 15, 18, 0.6) 0%, rgba(13, 15, 18, 0.96) 62%);
+        "
+      ></div>
+
+      <svg id="motes" width="1280" height="800" viewBox="0 0 1280 800"
+        style="position: absolute; inset: 0" aria-hidden="true"></svg>
+
+      <div
+        style="
+          position: relative;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 26px;
+        "
+      >
+        <svg id="crown" class="occ-breathe" width="44" height="56" aria-hidden="true"></svg>
+
+        <div class="mono" style="letter-spacing: 4px; color: var(--occ-camp-a); text-transform: uppercase">
+          Échec et mat
+        </div>
+
+        <h1 style="margin: 0; font-size: 48px; font-weight: 600; letter-spacing: 6px">VICTOIRE</h1>
+
+        <div class="mono" style="font-size: 13px; color: rgba(255, 255, 255, 0.55)">
+          Le roi adverse n'a plus aucune parade
+        </div>
+
+        <div class="mono-sm muted" style="display: flex; gap: 48px; margin-top: 10px; letter-spacing: 1px">
+          <div style="text-align: center">
+            <div style="font-size: 22px; color: #ffffff; letter-spacing: 0">18</div>
+            <div style="margin-top: 4px">TOURS</div>
+          </div>
+          <div style="text-align: center">
+            <div style="font-size: 22px; color: #ffffff; letter-spacing: 0">3</div>
+            <div style="margin-top: 4px">CAPTURES</div>
+          </div>
+          <div style="text-align: center">
+            <div style="font-size: 22px; color: #ffffff; letter-spacing: 0">4</div>
+            <div style="margin-top: 4px">PIÈCES RESTANTES</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 14px; margin-top: 22px">
+          <button class="btn" type="button">REJOUER</button>
+          <button class="btn btn-quiet" type="button">MENU PRINCIPAL</button>
+        </div>
+      </div>
+
+      <div
+        class="wordmark"
+        style="position: absolute; left: 32px; top: 28px; color: rgba(255, 255, 255, 0.25)"
+      >
+        OCCULIS
+      </div>
+    </main>
+
+    <script src="./mockup.js"></script>
+    <script>
+      (function () {
+        "use strict";
+        var O = window.Occulis;
+        var board = document.getElementById("board");
+        var terrain = O.FLAT_TERRAIN;
+
+        O.drawTerrain(board, terrain, { visibleAlpha: 0.45 });
+
+        O.drawPieces(board, terrain, [
+          { type: "roi", gx: 3, gy: 5, camp: "A" },
+          { type: "commandant", gx: 2, gy: 4, camp: "A" },
+          { type: "eclaireur", gx: 4, gy: 3, camp: "A" },
+          { type: "roi", gx: 3, gy: 0, camp: "B", alpha: 0.45 },
+        ]);
+
+        // Le roi adverse est mat : la pièce reste lisible, barrée plutôt qu'effacée.
+        var mat = O.projectOn(terrain, 3, 0);
+        board.appendChild(
+          O.el("line", {
+            x1: mat.bx - 14,
+            y1: mat.ty - 42,
+            x2: mat.bx + 14,
+            y2: mat.ty - 2,
+            stroke: O.PALETTE.campB,
+            "stroke-width": 2,
+            "stroke-linecap": "round",
+          })
+        );
+
+        var motes = document.getElementById("motes");
+        var rand = O.seeded(20260922);
+        for (var i = 0; i < 22; i++) {
+          var node = O.el("circle", {
+            class: "occ-rise",
+            cx: Math.round(rand() * 1280),
+            cy: Math.round(420 + rand() * 380),
+            r: (0.8 + rand() * 1.4).toFixed(2),
+            fill: rand() > 0.72 ? O.PALETTE.campA : O.PALETTE.geometry,
+          });
+          node.style.animationDuration = (26 + rand() * 16).toFixed(1) + "s";
+          node.style.animationDelay = (-rand() * 30).toFixed(1) + "s";
+          node.style.setProperty("--occ-peak", 0.4);
+          motes.appendChild(node);
+        }
+
+        O.drawGlyphIcon(document.getElementById("crown"), "roi", { color: O.PALETTE.campA });
+      })();
+    </script>
+  </body>
+</html>

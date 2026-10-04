@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Occulis — Partie en cours</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="./mockup.css" />
+  </head>
+  <body>
+    <main class="screen">
+      <div class="hud">
+        <div class="hud-group">
+          <div class="wordmark">OCCULIS</div>
+          <div class="hud-sep"></div>
+          <div class="mono" style="letter-spacing: 2px">TOUR 12 — À VOUS DE JOUER</div>
+        </div>
+        <div class="hud-group" style="gap: 20px">
+          <div class="camp">
+            <span class="dot dot-a"></span>
+            <span class="mono muted-strong">Vous</span>
+            <span class="mono-sm muted">· 2 captures</span>
+          </div>
+          <div class="camp">
+            <span class="dot dot-b"></span>
+            <span class="mono muted-strong">Adversaire</span>
+            <span class="mono-sm muted">· 1 capture</span>
+          </div>
+          <button class="btn btn-danger" type="button">ABANDONNER</button>
+        </div>
+      </div>
+
+      <div class="body">
+        <div class="stage">
+          <svg id="board" width="860" height="520" viewBox="-260 -110 560 340" role="img"
+            aria-label="Plateau isométrique filaire, tour 12"></svg>
+
+          <div class="legend">
+            <div class="legend-row" style="color: var(--occ-selection)">
+              <span class="swatch"></span><span class="muted-strong">Sélection</span>
+            </div>
+            <div class="legend-row" style="color: var(--occ-legal)">
+              <span class="swatch"></span><span class="muted-strong">Déplacement légal</span>
+            </div>
+            <div class="legend-row" style="color: var(--occ-threat)">
+              <span class="swatch" style="border-style: dashed"></span>
+              <span class="muted-strong">Zone d'attaque — résout au prochain tour</span>
+            </div>
+            <div class="legend-row" style="color: rgba(255, 255, 255, 0.25)">
+              <span class="swatch"></span><span class="muted-strong">Brouillard de guerre</span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="panel">
+          <div>
+            <div class="label" style="margin-bottom: 10px">SÉLECTION</div>
+            <div class="card card-selected">
+              <svg id="icon-selection" width="30" height="38" aria-hidden="true"></svg>
+              <div style="flex: 1 1 auto">
+                <div style="font-size: 15px">Commandant</div>
+                <div class="mono-sm muted" style="margin-top: 4px">case 2,4 — altitude 0</div>
+                <div class="mono-sm" style="margin-top: 6px; color: var(--occ-legal)">3 déplacements légaux</div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="label" style="margin-bottom: 10px">MENACE ACTIVE</div>
+            <div class="card card-threat">
+              <div class="mono" style="color: var(--occ-threat)">Zone déclarée en 4,1</div>
+              <div class="mono-sm muted" style="margin-top: 4px">Se résout à la fin de votre tour</div>
+            </div>
+          </div>
+
+          <div style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column">
+            <div class="label" style="margin-bottom: 10px">HISTORIQUE</div>
+            <div
+              id="history"
+              class="mono"
+              style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto"
+            ></div>
+          </div>
+
+          <div>
+            <div class="label" style="margin-bottom: 8px">SAISIE CLAVIER</div>
+            <div style="display: flex; gap: 8px">
+              <label class="sr-only" for="cmd">Coordonnées du coup</label>
+              <input id="cmd" class="field" type="text" value="2,4 3,4" readonly />
+              <button class="btn btn-sm" type="button">JOUER</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <script src="./mockup.js"></script>
+    <script>
+      (function () {
+        "use strict";
+        var O = window.Occulis;
+        var board = document.getElementById("board");
+        var terrain = O.DEMO_TERRAIN;
+
+        O.drawTerrain(board, terrain);
+
+        // Destinations légales : le client filtre legalActions, il ne redéduit jamais la légalité.
+        [
+          [2, 3, 0],
+          [1, 4, -0.9],
+          [3, 4, -1.8],
+        ].forEach(function (tile) {
+          O.drawTileOverlay(board, terrain, tile[0], tile[1], {
+            fill: O.PALETTE.legalMove,
+            fillOpacity: 0.1,
+            stroke: O.PALETTE.legalMove,
+            className: "occ-breathe",
+            delay: tile[2],
+          });
+        });
+
+        O.drawTileOverlay(board, terrain, 2, 4, {
+          fill: O.PALETTE.selection,
+          fillOpacity: 0.12,
+          stroke: O.PALETTE.selection,
+          strokeWidth: 2,
+        });
+
+        O.drawMoveTrail(board, terrain, [2, 5], [2, 4]);
+
+        // Attaque à distance télégraphiée : déclarée ce tour, résolue au suivant (design.md 3.2).
+        O.drawTileOverlay(board, terrain, 4, 1, {
+          fill: O.PALETTE.threat,
+          fillOpacity: 0.14,
+          stroke: O.PALETTE.threat,
+          strokeWidth: 1,
+          strokeOpacity: 0.5,
+          dash: "4 3",
+        });
+        O.drawTileOverlay(board, terrain, 4, 1, {
+          stroke: O.PALETTE.threat,
+          strokeWidth: 1.8,
+          className: "occ-pulse",
+        });
+
+        var threatOrigin = O.projectOn(terrain, 4, 1);
+        O.emitAround(
+          board,
+          { x: threatOrigin.bx, y: threatOrigin.ty },
+          {
+            seed: 4242,
+            count: 11,
+            className: "occ-charge",
+            color: O.PALETTE.threat,
+            radiusX: 30,
+            radiusY: 15,
+            minRadius: 0.9,
+            minDuration: 2,
+            durationSpread: 1.6,
+            delaySpread: 3.4,
+          }
+        );
+
+        O.drawPieces(board, terrain, [
+          { type: "roi", gx: 3, gy: 5, camp: "A" },
+          { type: "commandant", gx: 2, gy: 4, camp: "A" },
+          { type: "eclaireur", gx: 5, gy: 4, camp: "A" },
+          { type: "roi", gx: 3, gy: 0, camp: "B" },
+          { type: "commandant", gx: 4, gy: 1, camp: "B" },
+          { type: "eclaireur", gx: 6, gy: 1, camp: "B", ghost: true },
+        ]);
+
+        var selected = O.projectOn(terrain, 2, 4);
+        O.emitAround(board, { x: selected.bx, y: selected.ty - 4 }, { seed: 77, count: 8, radiusX: 8, radiusY: 4 });
+
+        O.scatter(board, {
+          seed: 1337,
+          count: 26,
+          box: { x: -240, y: -60, width: 520, height: 270 },
+        });
+
+        O.drawGlyphIcon(document.getElementById("icon-selection"), "commandant", { color: O.PALETTE.campA });
+
+        var history = [
+          ["T10", "5,3 → 5,4", "rgba(255,255,255,0.35)"],
+          ["T10", "3,1 → 4,1", O.PALETTE.campB],
+          ["T11", "2,5 → 2,4", O.PALETTE.campA],
+          ["T11", "4,1 déclare zone", O.PALETTE.campB],
+          ["T12", "en attente…", "rgba(255,255,255,0.35)"],
+        ];
+        var list = document.getElementById("history");
+        history.forEach(function (entry) {
+          var row = document.createElement("div");
+          row.style.display = "flex";
+          row.style.justifyContent = "space-between";
+          row.style.color = "rgba(255,255,255,0.55)";
+
+          var turn = document.createElement("span");
+          turn.style.color = entry[2];
+          turn.textContent = entry[0];
+
+          var text = document.createElement("span");
+          text.textContent = entry[1];
+
+          row.appendChild(turn);
+          row.appendChild(text);
+          list.appendChild(row);
+        });
+      })();
+    </script>
+  </body>
+</html>

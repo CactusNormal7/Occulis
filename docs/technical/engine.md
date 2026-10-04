@@ -809,6 +809,44 @@ l'emporteraient sinon sur l'attribut, et un écran masqué resterait visible.
 
 ---
 
+## `vite.config.ts` — le service des maquettes
+
+Les maquettes d'écrans de [`docs/mockups/`](../mockups/README.md) sont exposées sous
+`/mockups`. Elles restent de la documentation : le client ne les importe jamais, et elles
+ne doivent jamais partir en production.
+
+Deux greffons, volontairement disjoints, parce que les deux chemins n'ont pas les mêmes
+contraintes :
+
+| Greffon | `apply` | Ce qu'il fait |
+|---|---|---|
+| `occulis-mockups-serve` | `serve` | Middleware sur `/mockups` qui lit les fichiers **dans `docs/`**, sans rien copier |
+| `occulis-mockups-embed` | `build` | Copie `docs/mockups/` vers `dist/mockups/` — **uniquement sous le mode `mockups`** |
+
+`pnpm dev` sert donc les maquettes depuis la source : les modifier se voit au rafraîchissement,
+sans build. Le serveur local wrangler, lui, ne sait servir que `apps/web/dist` (binding
+`ASSETS`) : il faut donc `pnpm --filter @occulis/web build:local`, qui pose `--mode mockups`.
+
+Trois points qui se sont révélés à l'usage et qu'il ne faut pas défaire :
+
+- **Le middleware est posé dans le corps de `configureServer`**, pas dans la fonction qu'il
+  retourne. Dans la fonction de retour il passerait *après* les middlewares internes de Vite,
+  et le repli SPA capterait `/mockups/` avant lui.
+- **`resolveWithin()` vérifie que le chemin résolu ne sort pas du dossier.** Sans ce contrôle,
+  `/mockups/../../../etc/passwd` servirait n'importe quel fichier du poste. Les deux formes,
+  brute et pourcent-encodée, sont refusées et repassent la main à Vite.
+- **Le mode ne peut pas s'appeler `local`** : Vite rejette ce nom, en collision avec le suffixe
+  des fichiers `.env.local`. Il ne s'appelle pas non plus `development`, qui basculerait
+  `NODE_ENV` et produirait un bundle différent de celui qui est déployé — or le serveur local
+  sert précisément à tester celui-là. Sous `--mode mockups`, le bundle est identique au bundle
+  de production, au dossier `mockups/` près.
+
+Sous wrangler, Cloudflare applique son `html_handling` par défaut : `/mockups` redirige en 307
+vers `/mockups/`, et `/mockups/partie.html` vers `/mockups/partie`. Les liens relatifs des
+maquettes continuent de résoudre, la redirection étant transparente pour le navigateur.
+
+---
+
 ## Invariants à ne pas casser
 
 1. **Rien n'est pivoté au niveau du rendu.** Faire tourner un `Container` PixiJS
@@ -839,6 +877,10 @@ l'emporteraient sinon sur l'attribut, et un écran masqué resterait visible.
 15. **Aucune partie ne se joue sans le serveur.** Réintroduire une partie locale rendrait
     le fog contournable — le client aurait la position entière — et contredirait le pilier
     « pas de local multiplayer » (`docs/design.md` section 2).
+16. **Les maquettes ne partent jamais en production.** `pnpm build` tourne en mode
+    `production` et ne copie rien ; seul le mode `mockups` embarque `docs/mockups/`. Les
+    servir inconditionnellement mettrait la documentation de conception dans le site
+    déployé, et demain dans le binaire Electron distribué.
 
 ## Tests
 

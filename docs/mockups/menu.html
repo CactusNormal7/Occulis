@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Occulis — Menu principal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="./mockup.css" />
+  </head>
+  <body>
+    <main class="screen">
+      <svg id="motes" width="1280" height="800" viewBox="0 0 1280 800"
+        style="position: absolute; inset: 0" aria-hidden="true"></svg>
+
+      <div
+        style="
+          position: relative;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 48px;
+        "
+      >
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 20px">
+          <svg width="92" height="92" viewBox="-46 -46 92 92" aria-hidden="true">
+            <polygon points="0,-30 36,-12 0,6 -36,-12" fill="none" stroke="#FFFFFF" stroke-width="1.5"></polygon>
+            <line x1="-36" y1="-12" x2="-36" y2="14" stroke="#FFFFFF" stroke-width="1.5" stroke-opacity="0.6"></line>
+            <line x1="0" y1="6" x2="0" y2="32" stroke="#FFFFFF" stroke-width="1.5" stroke-opacity="0.6"></line>
+            <line x1="36" y1="-12" x2="36" y2="14" stroke="#FFFFFF" stroke-width="1.5" stroke-opacity="0.6"></line>
+            <polygon points="-36,14 0,32 36,14 0,-4" fill="none" stroke="#FFFFFF" stroke-width="1.5"
+              stroke-opacity="0.6"></polygon>
+          </svg>
+
+          <h1 style="margin: 0; font-size: 56px; font-weight: 600; letter-spacing: 14px">OCCULIS</h1>
+          <div
+            class="mono-sm"
+            style="letter-spacing: 2px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase"
+          >
+            Tactique 1v1 — hauteur, ligne de vue, embuscade
+          </div>
+        </div>
+
+        <nav style="display: flex; flex-direction: column; gap: 14px; width: 340px">
+          <button class="btn" type="button" style="display: flex; justify-content: space-between; padding: 16px 24px">
+            <span style="font-size: 15px; letter-spacing: 3px">JOUER</span>
+            <span class="mono-sm" style="color: rgba(255, 255, 255, 0.35)">ENTRÉE</span>
+          </button>
+          <button
+            class="btn btn-quiet"
+            type="button"
+            style="display: flex; justify-content: space-between; padding: 16px 24px; color: #ffffff"
+          >
+            <span style="font-size: 15px; letter-spacing: 3px">RÈGLES</span>
+            <span class="mono-sm" style="color: rgba(255, 255, 255, 0.35)">R</span>
+          </button>
+          <button
+            class="btn btn-quiet"
+            type="button"
+            style="display: flex; justify-content: space-between; padding: 16px 24px; color: #ffffff"
+          >
+            <span style="font-size: 15px; letter-spacing: 3px">RÉGLAGES</span>
+            <span class="mono-sm" style="color: rgba(255, 255, 255, 0.35)">P</span>
+          </button>
+          <button
+            class="btn btn-quiet"
+            type="button"
+            style="display: flex; justify-content: space-between; padding: 16px 24px"
+          >
+            <span style="font-size: 15px; letter-spacing: 3px">QUITTER</span>
+            <span class="mono-sm" style="color: rgba(255, 255, 255, 0.35)">ÉCHAP</span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="mono-sm" style="position: absolute; left: 32px; bottom: 24px; color: rgba(255, 255, 255, 0.3)">
+        OCCULIS — BUILD INTERNE
+      </div>
+      <div
+        class="mono-sm"
+        style="
+          position: absolute;
+          right: 32px;
+          bottom: 24px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: rgba(255, 255, 255, 0.3);
+        "
+      >
+        <span class="dot dot-a"></span>
+        COMPTE — [Pseudo]
+      </div>
+    </main>
+
+    <script src="./mockup.js"></script>
+    <script>
+      (function () {
+        "use strict";
+        var O = window.Occulis;
+        O.scatter(document.getElementById("motes"), {
+          seed: 505,
+          count: 18,
+          box: { x: 0, y: 380, width: 1280, height: 420 },
+          className: "occ-rise",
+          minRadius: 0.8,
+          radiusSpread: 1.2,
+          minDuration: 24,
+          durationSpread: 16,
+          delaySpread: 30,
+          peakOpacity: 0.22,
+        });
+      })();
+    </script>
+  </body>
+</html>

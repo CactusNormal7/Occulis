@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Occulis — Déploiement</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="./mockup.css" />
+  </head>
+  <body>
+    <main class="screen">
+      <div class="hud">
+        <div class="hud-group">
+          <div class="wordmark">OCCULIS</div>
+          <div class="hud-sep"></div>
+          <div class="mono" style="letter-spacing: 2px">DÉPLOIEMENT — PLACEZ VOS PIÈCES</div>
+        </div>
+        <div class="mono muted">4 pièces restantes</div>
+      </div>
+
+      <div class="body">
+        <div class="stage">
+          <svg id="board" width="840" height="480" viewBox="-260 -80 560 320" role="img"
+            aria-label="Plateau de déploiement, zone du joueur en surbrillance"></svg>
+
+          <div class="legend">
+            <div class="legend-row" style="color: var(--occ-legal)">
+              <span class="swatch"></span><span class="muted-strong">Zone de déploiement</span>
+            </div>
+            <div class="legend-row" style="color: var(--occ-selection)">
+              <span class="swatch"></span><span class="muted-strong">Case ciblée — aperçu de la pièce</span>
+            </div>
+            <div class="legend-row" style="color: rgba(255, 255, 255, 0.2)">
+              <span class="swatch"></span><span class="muted-strong">Hors ligne de vue — zone adverse</span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="panel" style="gap: 14px">
+          <div class="label">PIÈCES À DÉPLOYER</div>
+
+          <div class="card" style="padding: 12px 14px">
+            <svg class="roster-icon" data-type="roi" width="30" height="38" aria-hidden="true"></svg>
+            <div style="flex: 1 1 auto">
+              <div style="font-size: 14px">Roi</div>
+              <div class="mono-sm muted">Pièce maîtresse</div>
+            </div>
+            <div class="mono" style="color: rgba(255, 255, 255, 0.5)">×1</div>
+          </div>
+
+          <div class="card" style="padding: 12px 14px">
+            <svg class="roster-icon" data-type="commandant" width="30" height="38" aria-hidden="true"></svg>
+            <div style="flex: 1 1 auto">
+              <div style="font-size: 14px">Commandant</div>
+              <div class="mono-sm muted">Frappe télégraphiée</div>
+            </div>
+            <div class="mono" style="color: rgba(255, 255, 255, 0.5)">×1</div>
+          </div>
+
+          <div class="card card-selected" style="padding: 12px 14px">
+            <svg class="roster-icon" data-type="eclaireur" width="30" height="38" aria-hidden="true"></svg>
+            <div style="flex: 1 1 auto">
+              <div style="font-size: 14px">Éclaireur</div>
+              <div class="mono-sm muted">Vision étendue</div>
+            </div>
+            <div class="mono" style="color: var(--occ-selection)">×2</div>
+          </div>
+
+          <div class="spacer"></div>
+
+          <div class="mono-sm" style="color: rgba(255, 255, 255, 0.35); line-height: 1.5">
+            La zone adverse est hors ligne de vue : votre placement lui reste caché.
+          </div>
+
+          <button class="btn" type="button" style="padding: 14px">PRÊT</button>
+        </aside>
+      </div>
+    </main>
+
+    <script src="./mockup.js"></script>
+    <script>
+      (function () {
+        "use strict";
+        var O = window.Occulis;
+        var board = document.getElementById("board");
+        var terrain = O.FLAT_TERRAIN;
+
+        /*
+         * Si les deux zones de déploiement n'ont pas de LOS mutuelle, le placement
+         * est caché sans mécanique dédiée : ça découle du système de LOS
+         * (design.md 7).
+         */
+        for (var gy = 0; gy < 6; gy++) {
+          for (var gx = 0; gx < 7; gx++) {
+            var inDeployZone = gy >= 4;
+            var inEnemyZone = gy <= 1;
+
+            board.appendChild(
+              O.el("polygon", {
+                points: O.tilePoints(terrain, gx, gy),
+                fill: "none",
+                stroke: O.PALETTE.geometry,
+                "stroke-width": 1,
+                "stroke-opacity": inEnemyZone ? 0.12 : inDeployZone ? 0.6 : 0.5,
+              })
+            );
+
+            if (inDeployZone) {
+              O.drawTileOverlay(board, terrain, gx, gy, {
+                fill: O.PALETTE.legalMove,
+                fillOpacity: 0.06,
+                stroke: O.PALETTE.legalMove,
+                strokeWidth: 1,
+                strokeOpacity: 0.4,
+              });
+            }
+          }
+        }
+
+        O.drawTileOverlay(board, terrain, 3, 4, {
+          fill: O.PALETTE.geometry,
+          fillOpacity: 0.12,
+          stroke: O.PALETTE.selection,
+          strokeWidth: 1.8,
+          className: "occ-breathe",
+        });
+
+        O.drawPieces(board, terrain, [
+          { type: "commandant", gx: 2, gy: 5, camp: "A" },
+          { type: "eclaireur", gx: 4, gy: 5, camp: "A" },
+          { type: "eclaireur", gx: 5, gy: 4, camp: "A" },
+          // Aperçu de la pièce en cours de placement, sous le curseur.
+          { type: "eclaireur", gx: 3, gy: 4, color: O.PALETTE.selection, alpha: 0.45 },
+        ]);
+
+        O.scatter(board, {
+          seed: 91,
+          count: 16,
+          box: { x: -240, y: -40, width: 520, height: 260 },
+          peakOpacity: 0.24,
+          minDuration: 10,
+        });
+
+        Array.prototype.forEach.call(document.querySelectorAll(".roster-icon"), function (svg) {
+          O.drawGlyphIcon(svg, svg.dataset.type, { color: O.PALETTE.campA });
+        });
+      })();
+    </script>
+  </body>
+</html>
