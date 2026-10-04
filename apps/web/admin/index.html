@@ -5,27 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
     <title>Occulis — back-office</title>
-    <link rel="stylesheet" href="/src/ui/ui.css" />
-    <link rel="stylesheet" href="/src/admin/admin.css" />
+    <!-- Le fond vient des tokens de @occulis/ui : aucune couleur écrite ici. -->
+    <style>
+      html, body { margin: 0; background: var(--occ-bg); }
+    </style>
   </head>
-  <body class="admin">
+  <body>
     <!--
       Le back-office : une page à part, sans canevas ni moteur de jeu. La garde est
       côté serveur — cette page ne fait que présenter ce que les routes d'administration
       acceptent de lui rendre.
     -->
-    <div id="admin-progress" aria-hidden="true"></div>
-    <header id="admin-header">
-      <a class="brand" href="#/">Occulis <small>back-office</small></a>
-      <nav id="admin-tabs" hidden>
-        <a href="#/" data-section="overview">Vue d'ensemble</a>
-        <a href="#/users" data-section="users">Comptes</a>
-        <a href="#/matches" data-section="matches">Parties</a>
-      </nav>
-      <p class="who"><span id="admin-identity"></span><a href="/">retour au jeu →</a></p>
-    </header>
-    <main id="admin-view"></main>
-    <div id="admin-toasts" aria-live="polite"></div>
-    <script type="module" src="/src/admin/main.ts"></script>
+    <div id="admin"></div>
+    <script type="module" src="/src/admin/main.tsx"></script>
   </body>
 </html>

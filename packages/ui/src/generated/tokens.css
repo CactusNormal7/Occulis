@@ -1,0 +1,39 @@
+/* Généré depuis src/tokens.ts par `pnpm --filter @occulis/ui tokens` — ne pas modifier. */
+:root {
+  --occ-bg: rgb(13 15 18);
+  --occ-panel: rgb(13 15 18 / 0.82);
+  --occ-ink: rgb(255 255 255);
+  --occ-ink-soft: rgb(255 255 255 / 0.55);
+  --occ-ink-dim: rgb(255 255 255 / 0.35);
+  --occ-ink-faint: rgb(255 255 255 / 0.2);
+  --occ-ink-line: rgb(255 255 255 / 0.1);
+  --occ-ink-ghost: rgb(255 255 255 / 0.05);
+  --occ-camp-a: rgb(116 211 196);
+  --occ-camp-b: rgb(224 120 95);
+  --occ-selection: rgb(245 215 110);
+  --occ-legal: rgb(106 169 255);
+  --occ-climb: rgb(155 140 240);
+  --occ-threat: rgb(224 120 95);
+  --occ-accepted: rgb(106 169 255);
+  --occ-refused: rgb(224 120 95);
+  --occ-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --occ-text-xs: 10px;
+  --occ-text-sm: 11px;
+  --occ-text-md: 13px;
+  --occ-text-lg: 15px;
+  --occ-text-xl: 20px;
+  --occ-text-xxl: 26px;
+  --occ-caps: 0.16em;
+  --occ-wordmark: 5px;
+  --occ-space-1: 4px;
+  --occ-space-2: 8px;
+  --occ-space-3: 12px;
+  --occ-space-4: 16px;
+  --occ-space-5: 20px;
+  --occ-space-6: 24px;
+  --occ-space-8: 32px;
+  --occ-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --occ-fast: 150ms;
+  --occ-base: 250ms;
+  --occ-slow: 420ms;
+}

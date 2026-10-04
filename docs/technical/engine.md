@@ -34,7 +34,7 @@ qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 | `scene/` | Le dessin | PixiJS |
 | `input/` | Les gestes sur le canevas | DOM |
 | `ui/` | Les écrans et le bandeau de partie | DOM sauf `flow.ts`, `messages.ts`, `command.ts` |
-| `admin/` | Le back-office, page à part sous `/admin/` | DOM et réseau sauf `model.ts` |
+| `admin/` | Le back-office, page à part sous `/admin/`, en React sur `@occulis/ui` | React, DOM et réseau sauf `model.ts` et `replay.ts` |
 | racine | `main.ts` (composition) et `theme.ts` (tokens de DA) | — |
 
 Les modules de `view/`, `game/` et `net/session.ts` sont purs : c'est là que vivent tous
@@ -127,14 +127,18 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/ui/console.ts` | Bandeau de partie : saisie de coups et comptes rendus | non |
 | `apps/web/src/ui/ui.css` | Mise en page des écrans — **aucune couleur en dur** | — |
 | `apps/web/admin/index.html` | Page du back-office, seconde entrée Vite | — |
-| `apps/web/src/admin/main.ts` | Racine du back-office : garde d'affichage, routage par fragment, messages éphémères | non |
+| `apps/web/src/admin/main.tsx` | Point d'entrée du back-office : monte `App` | non |
+| `apps/web/src/admin/App.tsx` | Racine : garde d'affichage, barre du haut, aiguillage des vues | non |
+| `apps/web/src/admin/views.tsx` | Vue d'ensemble, comptes, fiche, profil, liste des parties | non |
+| `apps/web/src/admin/MatchDetail.tsx` | Détail d'une partie et son rejeu | non |
+| `apps/web/src/admin/ReplayBoard.tsx` | Le canevas du rejeu, en composant React | non |
+| `apps/web/src/admin/actions.tsx` | Actions rapides d'un compte et leurs fenêtres | non |
+| `apps/web/src/admin/shared.tsx` | Pastilles d'état, résultat, table des parties | non |
+| `apps/web/src/admin/hooks.ts` | `useRoute()` et `useLoad()` | non |
 | `apps/web/src/admin/model.ts` | Routes du back-office et mise en mots des données | oui |
 | `apps/web/src/admin/api.ts` | Appels `/api/admin/*` et `/api/auth/admin/*` | non |
-| `apps/web/src/admin/page.ts` | Le dessin des vues, les actions rapides et les fenêtres modales | non |
-| `apps/web/src/admin/icons.ts` | Les icônes au trait, en `currentColor` | non |
 | `apps/web/src/admin/replay.ts` | Rejeu : coups lus entre deux images, libellés, cadrage du plateau | oui |
 | `apps/web/src/admin/replay-canvas.ts` | Rejeu : le plateau dessiné en Canvas 2D, avec la géométrie du jeu | non |
-| `apps/web/src/admin/admin.css` | Mise en page du back-office — **aucune couleur en dur** | — |
 
 ---
 
@@ -594,8 +598,9 @@ une position hors LOS. Un test le verrouille.
 ## `ui/palette.ts` et `ui/console.ts`
 
 `applyPalette()` convertit les tokens entiers de `theme.ts` en propriétés personnalisées
-CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--ink-ghost`, `--panel`,
-`--ground`, `--ink-line`, `--accepted`, `--refused`, `--camp-a`, `--camp-b`, `--selection`), posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
+CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--panel`, `--accepted`, `--refused`)
+pour les écrans du jeu ; la conversion est `cssColor()` de `@occulis/ui/tokens`. Le back-office
+n'en dépend pas : il lit les `--occ-*` de la feuille de `@occulis/ui`, posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
 `ui.css`.**
 
 `ui/console.ts` porte le bandeau affiché **pendant une partie**, et rien d'autre : le
@@ -742,7 +747,10 @@ correspondance `kind` → forme appartient donc à ce module. Le roster n'étant
 
 ## `theme.ts` — le code couleur
 
-Code couleur acté dans `docs/design.md` section 8.1, **provisoire** :
+Code couleur acté dans `docs/design.md` section 8.1, **provisoire**. Les **valeurs** de couleur
+(`BACKGROUND`, camps, états) viennent de `@occulis/ui/tokens`, seule source du projet
+(`docs/technical/ui.md`) ; `theme.ts` les reprend et y ajoute ce qui n'appartient qu'au rendu
+PixiJS — métriques, alphas, épaisseurs :
 
 > Le blanc porte la géométrie, la couleur porte l'état de jeu.
 
@@ -766,10 +774,11 @@ cette seule valeur.
 
 ### La règle est mécanique, pas conventionnelle
 
-`eslint.config.js` interdit tout littéral de couleur dans `apps/web/src/**/*.ts`, avec une
-exception unique pour `theme.ts`. Deux sélecteurs `no-restricted-syntax` couvrent
-`0xffffff` (par le `raw`) et `"#ffffff"` (par la valeur). Le CSS échappe à ESLint : c'est
-`ui/palette.ts` qui l'y soumet en pratique.
+`eslint.config.js` interdit tout littéral de couleur dans `apps/web/src/**` et
+`packages/ui/src/**` (`.ts` et `.tsx`), avec une exception unique : `packages/ui/src/tokens.ts`.
+Deux sélecteurs `no-restricted-syntax` couvrent `0xffffff` (par le `raw`) et `"#ffffff"` (par
+la valeur). Le CSS échappe à ESLint : `ui/palette.ts` y soumet les écrans du jeu, et les tests
+de `@occulis/ui` gardent sa feuille.
 
 ---
 
@@ -836,102 +845,76 @@ l'emporteraient sinon sur l'attribut, et un écran masqué resterait visible.
 
 ## `admin/` — le back-office
 
-Une **page à part**, `apps/web/admin/index.html`, servie sous `/admin/` : elle ne charge ni
-PixiJS ni le moteur de jeu (son bundle fait une quinzaine de kilo-octets), et le jeu
-n'embarque rien d'elle. Elle reprend `ui/ui.css` pour les champs et les boutons, et
-`applyPalette()` pour les couleurs ; `admin.css` n'ajoute que la mise en page d'une page qui
-défile et des tableaux.
+Une **page à part**, `apps/web/admin/index.html`, servie sous `/admin/`, **en React sur les
+composants de `@occulis/ui`** (`docs/technical/ui.md`). Elle ne charge ni PixiJS ni le moteur
+de jeu, et le jeu n'embarque rien d'elle. Elle n'a **ni classe ni feuille propres** : tout ce
+qui manquait à une vue (`Toolbar`, `Versus`…) a été ajouté à la charte, pas à la page.
 
-**La garde réelle est côté serveur.** `admin/main.ts` interroge `whoAmI()` et n'affiche rien
-à qui n'est pas connecté ou pas administrateur, mais ce n'est qu'une politesse : chaque appel
-d'`api.ts` est revérifié par `handleAdmin()` ou par le greffon Better Auth
-(`docs/technical/server.md`, « `admin/` »).
+**La garde réelle est côté serveur.** `App` interroge `whoAmI()` et n'affiche rien à qui n'est
+pas connecté ou pas administrateur, mais ce n'est qu'une politesse : chaque appel d'`api.ts`
+est revérifié par `handleAdmin()` ou par le greffon Better Auth (`docs/technical/server.md`,
+« `admin/` »). Pendant une usurpation, la page n'affiche que le bouton de retour.
 
 **Le routage tient dans le fragment** (`#/users/<id>`, `#/matches?status=ongoing`…) : la page
 reste un seul fichier statique, et une fiche se partage par son lien. `parseRoute()` et
-`routeHash()` sont inverses l'un de l'autre, ce que les tests vérifient sur chaque forme.
+`routeHash()` (`model.ts`) sont inverses l'un de l'autre, ce que les tests vérifient ;
+`useRoute()` (`hooks.ts`) suit `hashchange`. `App` rend la vue sous une clé égale à la route,
+ce qui rejoue l'animation d'entrée (`occ-enter`) à chaque navigation.
 
-| Route | Vue | Contenu |
+**Les données passent par `useLoad(key, load)`** : une réponse arrivée après un changement de
+`key` est jetée — une navigation rapide n'affiche jamais la vue d'avant — et `reload()` relit
+depuis le serveur après chaque geste, pour que l'écran montre ce que la base contient et non ce
+qu'on vient d'envoyer.
+
+| Route | Vue (`views.tsx`, `MatchDetail.tsx`) | Contenu |
 |---|---|---|
-| `#/` | `overview()` | Les compteurs de `/api/admin/stats`, et les dernières parties |
-| `#/users?q=&offset=` | `userList()` | Recherche (par adresse si la saisie contient `@`, par pseudo sinon), tableau paginé avec les **actions rapides** de chaque compte, création d'un compte en fenêtre modale |
-| `#/users/<id>` | `userDetail()` | En-tête (insigne, pastilles, actions rapides), bandeau de suspension ; en deux colonnes : profil de jeu et dernières parties, puis édition (pseudo, adresse, mot de passe) et sessions |
-| `#/players/<id>` | `playerDetail()` | Profil de jeu — y compris ceux **sans compte**, créés par `POST /api/matches` — et tout son historique |
-| `#/matches?status=&offset=` | `matchList()` | Toutes, en cours ou terminées, paginées |
-| `#/matches/<id>` | `matchDetail()` | Sièges, résultat, dates, règles, carte ; la liste des coups, et sous elle **le plateau rejoué** |
+| `#/` | `Overview` | Les huit compteurs de `/api/admin/stats`, les dernières parties, les derniers inscrits |
+| `#/users?q=&offset=` | `UserList` | Recherche (par adresse si la saisie contient `@`, par pseudo sinon), table paginée avec les **actions rapides** de chaque compte, création en fenêtre modale |
+| `#/users/<id>` | `UserDetail` | `Hero` (insigne, pastilles, actions rapides), bandeau de suspension ; en deux colonnes : profil de jeu et dernières parties, puis édition (pseudo, adresse, mot de passe) et sessions |
+| `#/players/<id>` | `PlayerDetail` | Profil de jeu — y compris ceux **sans compte**, créés par `POST /api/matches` — et tout son historique |
+| `#/matches?status=&offset=` | `MatchList` | Toutes, en cours ou terminées (`Segmented` en liens), paginées |
+| `#/matches/<id>` | `MatchDetail` | `Versus`, `FactStrip` ; la liste des coups, et sous elle **le plateau rejoué** |
 
-**Les actions rapides** (`quickBar()`) sont une rangée d'icônes, la même dans la liste et
-sur la fiche : vérification de l'adresse, rôle, suspension ou levée, usurpation, fermeture
-des sessions, suppression. `quickActions()` (`model.ts`, pur et testé) dit lesquelles sont
-fermées et pourquoi — l'infobulle d'un bouton grisé donne la raison. Sont fermés : se
-suspendre, se supprimer, s'usurper ou se retirer soi-même le rôle (le seul moyen de
-s'enfermer dehors), usurper un administrateur ou un compte suspendu. Les gestes lourds
-passent par une **fenêtre modale** (`openDialog()`, un `<dialog>` natif : focus piégé,
-Échap, page inerte derrière) : suspension avec durées proposées d'un clic, suppression,
-usurpation, nomination d'un administrateur, création d'un compte. Une fenêtre ne se ferme
-que si le serveur a accepté ; sur un refus elle reste ouverte, le message affiché.
+**Les actions rapides** (`QuickActions`, `actions.tsx`) sont une rangée d'`IconButton`, la même
+dans la liste et sur la fiche : vérification de l'adresse, rôle, suspension ou levée,
+usurpation, fermeture des sessions, suppression. `quickActions()` (`model.ts`, pur et testé)
+dit lesquelles sont fermées et pourquoi — `disabledReason` met la raison dans l'infobulle. Sont
+fermés : se suspendre, se supprimer, s'usurper ou se retirer soi-même le rôle (le seul moyen de
+s'enfermer dehors), usurper un administrateur ou un compte suspendu. Les gestes lourds passent
+par un `Dialog` : suspension (durées en `ChipGroup`, `banDuration()` refuse une valeur
+illisible plutôt que de la lire comme définitive), suppression (le pseudo est à retaper),
+usurpation, nomination, création d'un compte. Un `Dialog` ne se ferme que si le serveur a
+accepté ; sur un refus il reste ouvert et le message s'affiche. `useAct()` annonce chaque
+résultat par `useToast()` et relit la vue ; `useGo()` change de route en gardant le message.
 
-**La direction artistique est celle des maquettes** (`docs/mockups/`) : angles vifs, traits
-fins à faible opacité (`--ink-line`), libellés en capitales espacées, boutons au trait
-jamais pleins, mot-symbole estompé précédé du cube filaire du menu. L'insigne d'un compte
-est une **case du plateau** — un losange 2:1 aux proportions de `METRICS` — et non un
-rond. La couleur garde son sens de jeu (`docs/design.md` 8.1) : les pastilles d'état sont
-blanches ou estompées, seules la suspension (teinte des refus) et le résultat d'une partie
-(couleur du camp vainqueur) sont teintés ; les sièges, les coups et le point de vue du
-rejeu portent la couleur de leur camp.
+**Le pseudo se change par `/api/admin/players/:id/handle`**, jamais par `update-user` : le
+serveur refuse ce dernier, qui n'écrirait qu'une des deux tables portant le pseudo.
 
-**Le rejeu d'une partie** (`replaySection()`) montre la liste des coups — numéro, camp,
-`2,4 → 3,4`, chaque ligne dans la couleur du camp, comme l'historique de la maquette de
-partie — et sous elle le plateau. **Survoler** un coup montre la position qui le suit ;
-**cliquer** l'épingle, et le plateau y revient quand la souris quitte la liste. Les
-flèches du clavier parcourent la partie, la lecture la déroule coup par coup, deux
-boutons tournent le plateau d'un quart de tour. Le point de vue **tout / vue de A / vue
-de B** estompe les cases hors de la ligne de vue du camp choisi et passe en fantôme
-(`PIECES.alphaGhost`) les pièces adverses qu'il ne voyait pas : l'administrateur lit ce
-qui était caché, sans le confondre avec ce qui était vu.
+**L'usurpation** ouvre une session au nom du joueur et renvoie sur le jeu (`/`), où le bandeau
+`#impersonation` permet de revenir.
 
-Le plateau est dessiné en **Canvas 2D** (`replay-canvas.ts`), pas en PixiJS : le
-back-office ne charge pas le moteur. Mais il reprend la géométrie du jeu à l'identique —
+### Le rejeu d'une partie
+
+`Replay` (`MatchDetail.tsx`) montre la `MoveList` — numéro, camp, `2,4 → 3,4`, chaque ligne
+dans la couleur du camp, comme l'historique de la maquette de partie — et sous elle une
+`Toolbar` (lecture, libellé de l'image, point de vue, rotation) puis le plateau. **Survoler** un
+coup montre la position qui le suit ; **cliquer** l'épingle, et le plateau y revient quand la
+souris quitte la liste. Les flèches du clavier parcourent la partie, la lecture la déroule. Le
+point de vue **tout / vue de A / vue de B** estompe les cases hors de la ligne de vue du camp
+choisi et passe en fantôme (`PIECES.alphaGhost`) les pièces adverses qu'il ne voyait pas.
+
+`ReplayBoard` enveloppe le canevas impératif de `replay-canvas.ts` : React ne lui transmet que
+l'image, le point de vue et le nombre de quarts de tour ; le dessin et ses animations restent
+hors du cycle de rendu, et `destroy()` cesse d'observer le canevas au démontage. Le plateau est
+dessiné en **Canvas 2D**, pas en PixiJS, mais avec la géométrie du jeu à l'identique —
 `view/iso.ts` pour la projection et l'ordre du peintre (relief et pièces dans une seule
-liste), `view/camera.ts` pour le quart de tour amorti, `view/animation.ts` pour le
-glissement des pièces, `theme.ts` pour les métriques et les couleurs — et la carte vient
-du registre de `core` (`boardForScenario`). Le dernier coup est marqué : départ en
-pointillé, trajet dans la couleur du camp, arrivée dans la teinte de la sélection.
-`fitScale()` calcule une échelle qui tient **aux quatre quarts de tour**, pour que le
-plateau ne change pas de taille en tournant. Les positions viennent du serveur
-(`frames`) : le client ne rejoue rien, il n'a pas les rulesets versionnés.
-
-**L'usurpation** ouvre une session au nom du joueur et renvoie sur le jeu (`/`), où le
-bandeau `#impersonation` permet de revenir. Ouverte pendant une usurpation, la page
-`/admin/` n'affiche que ce bouton de retour.
-
-**Les messages sont éphémères** (`toast()` dans `main.ts`) : empilés en bas à droite, ils
-ne poussent pas la page et disparaissent d'eux-mêmes — deux fois plus lentement pour un
-refus — ou au clic.
-
-**Les animations ne portent aucune information** : entrée de la vue et de ses rangées en
-cascade, chiffres de la vue d'ensemble qui montent (`countUp()`), barre de chargement
-pendant un rendu, ouverture et fermeture des fenêtres et des messages. Toutes s'éteignent
-sous `prefers-reduced-motion`, en CSS comme en script.
-
-Quelques choix de fonctionnement :
-
-- **Tout passe par `textContent`, jamais `innerHTML`** (`h()`, `fill()`) : pseudos, adresses
-  et motifs de suspension sont saisis par d'autres que l'administrateur qui les lit.
-- **Les icônes sont des tracés au trait en `currentColor`** (`icons.ts`) : elles suivent
-  la couleur du bouton, et aucune couleur n'entre dans le script.
-- **Après chaque geste, la fiche est redessinée depuis le serveur** (`View.reload()`), pour
-  que l'écran montre ce que la base contient et non ce qu'on vient d'envoyer — la même règle
-  que `whoAmI()` pour le compte.
-- **Une réponse lente n'écrase pas la navigation suivante** : `show()` dessine dans un
-  conteneur détaché et ne l'échange que si aucune autre navigation n'a eu lieu entre-temps.
-  `View.go()` porte un message d'une route à l'autre, qu'une navigation simple effacerait.
-- **La suppression exige de retaper le pseudo** : un bouton « OK » se valide d'un réflexe,
-  et ce geste ne se défait pas. Le profil de jeu et les parties survivent au compte.
-- **`banDuration()` refuse une durée illisible** au lieu de la lire comme « définitive », qui
-  serait la pire erreur possible dans ce sens. Vide signifie définitif.
-- **Le pseudo se change par `/api/admin/players/:id/handle`**, jamais par `update-user` : le
-  serveur refuse ce dernier, qui n'écrirait qu'une des deux tables portant le pseudo.
+liste), `view/camera.ts` pour le quart de tour amorti, `view/animation.ts` pour le glissement
+des pièces, `theme.ts` pour les métriques et les couleurs — et la carte vient du registre de
+`core` (`boardForScenario`). Le dernier coup est marqué : départ en pointillé, trajet dans la
+couleur du camp, arrivée dans la teinte de la sélection. `fitScale()` (`replay.ts`) calcule une
+échelle qui tient **aux quatre quarts de tour**, pour que le plateau ne change pas de taille en
+tournant. Les positions viennent du serveur (`frames`) : le client ne rejoue rien, il n'a pas
+les rulesets versionnés.
 
 ## `vite.config.ts` — le service des maquettes
 
@@ -1012,6 +995,8 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 17. **Le back-office ne décide d'aucun accès.** Masquer un bouton n'est pas une garde :
     toute permission se vérifie côté serveur, et la page se contente d'afficher ce que les
     routes d'administration acceptent de lui rendre.
+18. **Le back-office n'a ni classe ni couleur propres.** Ce qui manque à une vue s'ajoute à
+    `@occulis/ui`, pour que la charte synchronisée vers Claude Design reste celle du produit.
 
 ## Tests
 

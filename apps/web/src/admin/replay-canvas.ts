@@ -1,7 +1,7 @@
 import type { Board, Coord, PlayerId } from "@occulis/core";
 import type { AdminFrame } from "@occulis/protocol";
 import { GEOMETRY, METRICS, PIECES, PLAYERS, STATE } from "../theme.js";
-import { cssColor } from "../ui/palette.js";
+import { cssColor } from "@occulis/ui/tokens";
 import { type Camera, createCamera, pivotOf, settle, toProjection, turn } from "../view/camera.js";
 import { type MoveAnimation, advance, positionOf, startMove } from "../view/animation.js";
 import { type IsoProjection, type Quad, type ScreenPoint, cliffQuads, compareDepth, depthOf, project, tileQuad } from "../view/iso.js";
@@ -24,6 +24,8 @@ export interface ReplayCanvas {
   show(index: number, animate: boolean): void;
   setPerspective(perspective: Perspective): void;
   rotate(direction: 1 | -1): void;
+  /** Cesse d'observer la taille du canevas ; à appeler quand il quitte la page. */
+  destroy(): void;
 }
 
 const PADDING = 28;
@@ -186,6 +188,10 @@ export function mountReplay(canvas: HTMLCanvasElement, board: Board, frames: rea
       camera = turn(camera, direction);
       if (reducedMotion()) camera = { ...camera, rotation: camera.targetRotation };
       animateLoop();
+    },
+    destroy() {
+      observer.disconnect();
+      if (frameRequest !== undefined) cancelAnimationFrame(frameRequest);
     },
   };
 }

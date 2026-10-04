@@ -130,9 +130,9 @@ export function banDuration(days: string): { ok: true; seconds: number | undefin
 }
 
 export interface BanState {
-  readonly banned?: boolean | null;
-  readonly banReason?: string | null;
-  readonly banExpires?: string | Date | null;
+  readonly banned?: boolean | null | undefined;
+  readonly banReason?: string | null | undefined;
+  readonly banExpires?: string | Date | null | undefined;
 }
 
 export function describeBan(user: BanState): string {
@@ -191,7 +191,7 @@ export interface QuickAction {
 
 export interface QuickTarget extends BanState {
   readonly name: string;
-  readonly role?: string | null;
+  readonly role?: string | null | undefined;
   readonly emailVerified: boolean;
 }
 
