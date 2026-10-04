@@ -34,10 +34,11 @@ qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 | `scene/` | Le dessin | PixiJS |
 | `input/` | Les gestes sur le canevas | DOM |
 | `ui/` | Les écrans et le bandeau de partie | DOM sauf `flow.ts`, `messages.ts`, `command.ts` |
+| `admin/` | Le back-office, page à part sous `/admin/` | DOM et réseau sauf `model.ts` |
 | racine | `main.ts` (composition) et `theme.ts` (tokens de DA) | — |
 
 Les modules de `view/`, `game/` et `net/session.ts` sont purs : c'est là que vivent tous
-les tests, avec `ui/flow.ts`, `ui/command.ts` et `ui/messages.ts`. `net/channel.ts` est la
+les tests, avec `ui/flow.ts`, `ui/command.ts`, `ui/messages.ts` et `admin/model.ts`. `net/channel.ts` est la
 seule exception de son dossier — il ouvre le socket, et rien d'autre.
 
 ## Le pipeline, de bout en bout
@@ -125,6 +126,12 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/ui/palette.ts` | Passe le code couleur au CSS | non |
 | `apps/web/src/ui/console.ts` | Bandeau de partie : saisie de coups et comptes rendus | non |
 | `apps/web/src/ui/ui.css` | Mise en page des écrans — **aucune couleur en dur** | — |
+| `apps/web/admin/index.html` | Page du back-office, seconde entrée Vite | — |
+| `apps/web/src/admin/main.ts` | Racine du back-office : garde d'affichage, routage par fragment | non |
+| `apps/web/src/admin/model.ts` | Routes du back-office et mise en mots des données | oui |
+| `apps/web/src/admin/api.ts` | Appels `/api/admin/*` et `/api/auth/admin/*` | non |
+| `apps/web/src/admin/page.ts` | Le dessin des vues et leurs gestes | non |
+| `apps/web/src/admin/admin.css` | Mise en page du back-office — **aucune couleur en dur** | — |
 
 ---
 
@@ -419,6 +426,11 @@ que la touche Entrée fasse exactement ce que le formulaire affiche.
 `whoAmI()` redemande l'identité au serveur. Lui seul sait si l'adresse est vérifiée, et
 c'est ce qui ouvre ou ferme le jeu en ligne.
 
+Un compte administrateur voit en plus, sous le menu, un lien **Back-office** vers
+`/admin/` (`#menu-admin`) : `/api/auth/me` rend `admin: true`, et `shell.setIdentity()`
+démasque le lien. Rien d'autre ne dépend de ce drapeau côté client — le serveur revérifie
+le rôle à chaque appel d'administration.
+
 Les trois entrées du menu restent désactivées tant que personne n'est connecté **ou tant
 que l'adresse n'est pas vérifiée** : la file répondrait 401 dans le premier cas, 403 dans
 le second. `describeIdentity()` dit laquelle des deux raisons s'applique — sans quoi des
@@ -431,6 +443,9 @@ message d'une bibliothèque change sans prévenir, son code est un contrat. Deux
 restent volontairement indiscernables, parce que le serveur les rend indiscernables :
 adresse inconnue et mot de passe faux d'un côté, adresse inscrite ou non à la demande de
 réinitialisation de l'autre. Les distinguer à l'écran annulerait la précaution serveur.
+
+Un compte suspendu depuis le back-office reçoit `BANNED_USER` à la connexion, traduit en
+« Ce compte est suspendu. »
 
 `authMessage()` et `resetTokenFrom()` sont les deux seules parties décidantes du module,
 et les deux seules pures — d'où leurs tests.
@@ -570,8 +585,8 @@ une position hors LOS. Un test le verrouille.
 ## `ui/palette.ts` et `ui/console.ts`
 
 `applyPalette()` convertit les tokens entiers de `theme.ts` en propriétés personnalisées
-CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--panel`, `--accepted`,
-`--refused`), posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
+CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--panel`, `--ground`,
+`--accepted`, `--refused`), posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
 `ui.css`.**
 
 `ui/console.ts` porte le bandeau affiché **pendant une partie**, et rien d'autre : le
@@ -793,7 +808,7 @@ focus, la saisie, l'autocomplétion et l'accessibilité.
 | `#app` | Hôte du canevas PixiJS — **masqué hors partie** |
 | `#shell` | Conteneur des écrans, transparent aux clics |
 | `#screen-auth` | Compte : onglets, champs, formulaire de réinitialisation, statut |
-| `#screen-menu` | Identité, partie rapide, création, entrée par code, déconnexion |
+| `#screen-menu` | Identité, partie rapide, création, entrée par code, lien du back-office (`#menu-admin`, administrateurs seuls), déconnexion |
 | `#screen-waiting` | Le code du salon, sa copie, l'attente et son annulation |
 | `#console` | Le bandeau de partie |
 | `#status` | Ligne d'état : tour, camp au trait, camp du joueur |
@@ -809,7 +824,54 @@ l'emporteraient sinon sur l'attribut, et un écran masqué resterait visible.
 
 ---
 
+## `admin/` — le back-office
+
+Une **page à part**, `apps/web/admin/index.html`, servie sous `/admin/` : elle ne charge ni
+PixiJS ni le moteur de jeu (son bundle fait une quinzaine de kilo-octets), et le jeu
+n'embarque rien d'elle. Elle reprend `ui/ui.css` pour les champs et les boutons, et
+`applyPalette()` pour les couleurs ; `admin.css` n'ajoute que la mise en page d'une page qui
+défile et des tableaux.
+
+**La garde réelle est côté serveur.** `admin/main.ts` interroge `whoAmI()` et n'affiche rien
+à qui n'est pas connecté ou pas administrateur, mais ce n'est qu'une politesse : chaque appel
+d'`api.ts` est revérifié par `handleAdmin()` ou par le greffon Better Auth
+(`docs/technical/server.md`, « `admin/` »).
+
+**Le routage tient dans le fragment** (`#/users/<id>`, `#/matches?status=ongoing`…) : la page
+reste un seul fichier statique, et une fiche se partage par son lien. `parseRoute()` et
+`routeHash()` sont inverses l'un de l'autre, ce que les tests vérifient sur chaque forme.
+
+| Route | Vue | Contenu |
+|---|---|---|
+| `#/` | `overview()` | Les compteurs de `/api/admin/stats`, et les dernières parties |
+| `#/users?q=&offset=` | `userList()` | Recherche (par adresse si la saisie contient `@`, par pseudo sinon), tableau paginé, création d'un compte |
+| `#/users/<id>` | `userDetail()` | Fiche du compte, profil de jeu et bilan, dernières parties ; renommage, adresse, mot de passe, vérification, rôle, suspension, sessions, suppression |
+| `#/players/<id>` | `playerDetail()` | Profil de jeu — y compris ceux **sans compte**, créés par `POST /api/matches` — et tout son historique |
+| `#/matches?status=&offset=` | `matchList()` | Toutes, en cours ou terminées, paginées |
+| `#/matches/<id>` | `matchDetail()` | Sièges, résultat, dates, règles, carte, et le log rejoué coup par coup avec son camp |
+
+Quelques choix de fonctionnement :
+
+- **Tout passe par `textContent`, jamais `innerHTML`** (`h()`, `fill()`) : pseudos, adresses
+  et motifs de suspension sont saisis par d'autres que l'administrateur qui les lit.
+- **Après chaque geste, la fiche est redessinée depuis le serveur** (`View.reload()`), pour
+  que l'écran montre ce que la base contient et non ce qu'on vient d'envoyer — la même règle
+  que `whoAmI()` pour le compte.
+- **Une réponse lente n'écrase pas la navigation suivante** : `show()` dessine dans un
+  conteneur détaché et ne l'échange que si aucune autre navigation n'a eu lieu entre-temps.
+  `View.go()` porte un message d'une route à l'autre, qu'une navigation simple effacerait.
+- **La suppression exige de retaper le pseudo** : `confirm()` se valide d'un réflexe, et ce
+  geste ne se défait pas. Le profil de jeu et les parties survivent au compte.
+- **`banDuration()` refuse une durée illisible** au lieu de la lire comme « définitive », qui
+  serait la pire erreur possible dans ce sens. Vide signifie définitif.
+- **Le pseudo se change par `/api/admin/players/:id/handle`**, jamais par `update-user` : le
+  serveur refuse ce dernier, qui n'écrirait qu'une des deux tables portant le pseudo.
+
 ## `vite.config.ts` — le service des maquettes
+
+**Deux pages d'entrée** (`PAGES`, `build.rollupOptions.input`) : `index.html`, le jeu, et
+`admin/index.html`, le back-office. `pnpm dev` sert la seconde sous `/admin/` sans
+configuration de plus.
 
 Les maquettes d'écrans de [`docs/mockups/`](../mockups/README.md) sont exposées sous
 `/mockups`. Elles restent de la documentation : le client ne les importe jamais, et elles
@@ -881,10 +943,13 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
     `production` et ne copie rien ; seul le mode `mockups` embarque `docs/mockups/`. Les
     servir inconditionnellement mettrait la documentation de conception dans le site
     déployé, et demain dans le binaire Electron distribué.
+17. **Le back-office ne décide d'aucun accès.** Masquer un bouton n'est pas une garde :
+    toute permission se vérifie côté serveur, et la page se contente d'afficher ce que les
+    routes d'administration acceptent de lui rendre.
 
 ## Tests
 
-90 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+107 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
@@ -901,7 +966,8 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/game/movement-diff.test.ts` | Le déplacement lu entre deux vues, y compris celui de l'adversaire ; une pièce qui entre ou sort de la LOS n'est pas animée |
 | `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, code de salon retenu, code refusé sans siège, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré |
 | `apps/web/src/net/backoff.test.ts` | Croissance exponentielle, plafond, robustesse à une tentative absurde |
-| `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut, lecture du jeton de réinitialisation dans l'URL |
+| `apps/web/src/admin/model.test.ts` | Routes du back-office lues et réécrites à l'identique, fiche rangée sous sa liste, résultat nommé par le siège, coups, dates ISO et millisecondes, pagination, **durée de suspension illisible refusée plutôt que lue comme définitive** |
+| `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, compte suspendu, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut, lecture du jeton de réinitialisation dans l'URL |
 
 ## Non implémenté
 

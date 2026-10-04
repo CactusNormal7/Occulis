@@ -23,6 +23,8 @@ export interface ShellElements {
   readonly hud: HTMLElement;
 
   readonly identity: HTMLElement;
+  /** Le lien vers `/admin/`, montré aux seuls administrateurs. */
+  readonly admin: HTMLElement;
   readonly notice: HTMLElement;
   readonly quick: HTMLButtonElement;
   readonly host: HTMLButtonElement;
@@ -112,6 +114,7 @@ export function attachShell(options: ShellOptions): Shell {
     e.identity.textContent = describeIdentity(identity);
     for (const button of [e.quick, e.host, e.join]) button.disabled = !playable;
     e.joinCode.disabled = !playable;
+    e.admin.hidden = identity.admin !== true;
   };
 
   return {

@@ -117,3 +117,5 @@ export type QueueServerMessage =
       readonly seat: string;
     }
   | { readonly kind: "protocol-mismatch"; readonly expected: number };
+
+export type * from "./admin.js";

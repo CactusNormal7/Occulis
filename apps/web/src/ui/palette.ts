@@ -23,6 +23,7 @@ export function applyPalette(root: HTMLElement): void {
     "--ink-dim": cssColor(GEOMETRY.stroke, 0.35),
     "--ink-faint": cssColor(GEOMETRY.stroke, 0.2),
     "--panel": cssColor(BACKGROUND, 0.82),
+    "--ground": cssColor(BACKGROUND),
     // Un coup accepté et un coup refusé sont de l'information de partie : ils
     // reprennent donc les tokens d'état, pas une couleur d'interface propre.
     "--accepted": cssColor(STATE.legalMove),

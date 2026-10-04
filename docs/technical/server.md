@@ -39,6 +39,10 @@ Trois principes, actés dans `docs/architecture.md` :
 | `apps/server/src/auth/routes.ts` | `/api/auth/me` et la délégation du reste à Better Auth |
 | `apps/server/src/auth/password.ts` | PBKDF2 enchaîné et comparaison à temps constant, **branchés dans Better Auth** |
 | `apps/server/src/auth/mail.ts` | Envoi des messages transactionnels par Resend |
+| `apps/server/src/admin/routes.ts` | `/api/admin/*` : garde de rôle, puis lectures et renommage du back-office |
+| `apps/server/src/admin/queries.ts` | Les requêtes D1 du back-office : statistiques, parties, bilan d'un joueur, renommage |
+| `apps/server/src/admin/paging.ts` | **Pur** — pagination, filtres de liste et validation du pseudo |
+| `packages/protocol/src/admin.ts` | Les réponses de `/api/admin/*` — **paquet partagé** |
 | `apps/server/scripts/generate-schema.mts` | Recrache le schéma SQL attendu — hors du Worker |
 | `apps/server/src/pairing.ts` | **Pur** — la file d'attente comme structure de données |
 | `apps/server/src/rooms.ts` | **Pur** — les salons privés : table des codes, tirage, consommation |
@@ -61,7 +65,7 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 
 | Route | Méthode | Traitement |
 |---|---|---|
-| `/api/auth/me` | toute | **Au projet** — le pseudo et l'état de vérification, ou `{ signedIn: false }` |
+| `/api/auth/me` | toute | **Au projet** — le pseudo, l'état de vérification et `admin`, ou `{ signedIn: false }` |
 | `/api/auth/sign-up/email` | `POST` | Better Auth — crée un compte, et son profil via le crochet |
 | `/api/auth/sign-in/email` | `POST` | Better Auth — ouvre une session |
 | `/api/auth/sign-out` | `POST` | Better Auth — ferme la session |
@@ -69,10 +73,13 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 | `/api/auth/reset-password` | `POST` | Better Auth — consomme le jeton et change le mot de passe |
 | `/api/auth/send-verification-email` | `POST` | Better Auth — renvoie le message de vérification |
 | `/api/auth/verify-email` | `GET` | Better Auth — marque l'adresse vérifiée |
+| `/api/auth/admin/*` | `GET`/`POST` | Greffon `admin` de Better Auth — comptes, rôles, suspensions, sessions ; **403 sans le rôle `admin`** |
+| `/api/auth/update-user`, `/api/auth/admin/update-user` avec un `name` | `POST` | **400 `HANDLE_READONLY`** — le pseudo se change par `/api/admin/players/:id/handle` |
 | tout le reste de `/api/auth/*` | toute | `auth.handler(request)` |
+| `/api/admin/*` | `GET`/`POST` | `handleAdmin()` — **401 sans session, 403 sans le rôle `admin`**, 403 sur un `POST` d'une autre origine |
 | `/api/matches` | `POST` | `createMatch()` — partie directe, hors file d'attente |
 | `/api/queue` | WebSocket | `joinQueue()` — **401 sans session, 403 sans adresse vérifiée** |
-| `/api/auth/*`, `/api/queue` sans `AUTH_SECRET` | toute | **503** — garde-fou `hasAuthSecret()`, avant toute construction de Better Auth |
+| `/api/auth/*`, `/api/admin/*`, `/api/queue` sans `AUTH_SECRET` | toute | **503** — garde-fou `hasAuthSecret()`, avant toute construction de Better Auth |
 | `/match/:id?seat=<jeton>` | WebSocket | `env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(request)` |
 | tout le reste | toute | `env.ASSETS.fetch(request)` — le client statique |
 
@@ -82,7 +89,9 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 | `hasAuthSecret()` | `apps/server/src/index.ts` | Vrai si `AUTH_SECRET` fait au moins 32 caractères ; sinon l'authentification et la file répondent 503 |
 | `scheduled()` (handler cron) | `apps/server/src/index.ts` | Ménage nocturne : sessions, vérifications, compteurs de débit |
 | `buildAuth()` | `apps/server/src/auth/better-auth.ts` | Construit l'instance Better Auth autour des bindings |
-| `currentAccount()` | `apps/server/src/auth/routes.ts` | Session → `{ userId, playerId, handle, emailVerified }` |
+| `currentAccount()` | `apps/server/src/auth/routes.ts` | Session → `{ userId, playerId, handle, emailVerified, admin }` |
+| `isAdmin()` | `apps/server/src/auth/better-auth.ts` | Vrai si la colonne `role` contient `admin` (Better Auth y range plusieurs rôles séparés par des virgules) |
+| `handleAdmin()` | `apps/server/src/admin/routes.ts` | Garde de rôle, puis routage de `/api/admin/*` |
 | `handleAuth()` | `apps/server/src/auth/routes.ts` | `/api/auth/me`, puis délégation |
 | `sendLetter()` | `apps/server/src/auth/mail.ts` | Resend, ou journalisation sans clé |
 | `createMatch()` | `apps/server/src/index.ts` | Lit `playerA`/`playerB`, délègue à `startMatch()` |
@@ -337,8 +346,23 @@ expliquer.
 que la bibliothèque n'expose pas au renommage.
 
 **Le schéma n'est jamais écrit à la main.** `pnpm --filter @occulis/server auth:schema`
-recrache le DDL attendu ; il est recopié tel quel dans une migration. Le rejouer à chaque
-greffon ajouté (OAuth, 2FA) ou champ supplémentaire.
+rejoue d'abord les migrations existantes dans une base en mémoire, puis recrache **le
+delta** attendu (`ALTER TABLE …`, rien si le schéma est à jour) ; il est recopié tel quel
+dans une nouvelle migration. Le rejouer à chaque greffon ajouté (OAuth, 2FA) ou champ
+supplémentaire.
+
+**Le greffon `admin` est branché** (`plugins: [admin(…)]`) : il ajoute `role`, `banned`,
+`ban_reason` et `ban_expires` à `users`, `impersonated_by` à `sessions`, et les routes
+`/api/auth/admin/*`. Ses noms de champs sont ramenés au style du projet par son option
+`schema`, comme pour les tables. Un compte suspendu voit ses sessions révoquées et ne
+peut plus en ouvrir — donc plus entrer dans la file. Voir « `admin/` » plus bas.
+
+**Le pseudo est en lecture seule pour les routes de Better Auth.** Il vit deux fois —
+`users.name` pour la bibliothèque, `players.handle` pour le jeu, qui en tient l'unicité —
+et `/update-user` comme `/admin/update-user` n'écriraient que le premier. Un crochet
+`hooks.before` (`createAuthMiddleware`) refuse donc tout `name` sur ces deux chemins
+(400, `HANDLE_READONLY`) ; le renommage passe par `POST /api/admin/players/:id/handle`,
+qui écrit les deux tables dans le même lot.
 
 ### La session
 
@@ -409,6 +433,56 @@ visible par `wrangler tail --env <env>`.
 **En déployé, la clé n'est pas facultative en pratique** : la file d'attente et les salons
 privés passent tous deux par `/api/queue`, qui exige une adresse vérifiée. Sans message
 reçu, aucun joueur ne peut entrer en partie.
+
+## `admin/` — le back-office
+
+Le back-office se partage en deux familles de routes, selon qui possède la donnée :
+
+| Préfixe | Porté par | Couvre |
+|---|---|---|
+| `/api/auth/admin/*` | Greffon `admin` de Better Auth | Le **compte** : liste et recherche, fiche, création, adresse et vérification, rôle, suspension (motif, durée), mot de passe, sessions, suppression |
+| `/api/admin/*` | `admin/routes.ts`, le projet | Ce que Better Auth ignore : **statistiques**, **parties**, **bilan d'un joueur**, et le **pseudo**, qui vit dans les deux mondes |
+
+**La garde de rôle est faite côté serveur, à chaque appel.** `handleAdmin()` résout la
+session depuis le cookie et exige `isAdmin(user.role)` avant toute route ; le greffon
+porte son propre contrôle, indépendant. Le lien du menu et la vérification faite par la
+page `/admin/` ne sont qu'une politesse d'affichage. Un `POST` sur `/api/admin/*` doit en
+plus venir de la même origine (`Origin`), comme Better Auth l'exige pour ses routes.
+
+Le premier administrateur se nomme à la main, par une requête sur la base de
+l'environnement (`docs/setup.md` section 7) ; les suivants, depuis le back-office.
+
+| Route | Méthode | Fonction | Réponse |
+|---|---|---|---|
+| `/api/admin/stats` | `GET` | `readStats()` | `AdminStats` — comptes, vérifiés, suspendus, admins, profils, parties, en cours, coups, et les deux compteurs sur 7 jours |
+| `/api/admin/matches?player=&status=&limit=&offset=` | `GET` | `listMatches()` | `AdminMatchPage` — les parties, les plus récentes d'abord, avec les deux pseudos et le nombre de coups, et le total filtré |
+| `/api/admin/matches/:id` | `GET` | `readMatch()` | `AdminMatchDetail` — la partie et son log **rejoué** |
+| `/api/admin/players/:id` | `GET` | `readPlayer()` | `AdminPlayer` — profil, compte lié s'il existe, bilan victoires/défaites/en cours |
+| `/api/admin/players/:id/handle` | `POST` | `renamePlayer()` | `{ handle }`, ou 400 `HANDLE_LENGTH`, 422 `HANDLE_TAKEN`, 404 |
+
+Quelques points de fonctionnement :
+
+- **`parsePage()` borne la taille de page à 100** (25 par défaut) : une page démesurée
+  ferait lire toute la table à chaque appel. `parseMatchFilter()` n'accepte que les
+  statuts `ongoing` et `finished`.
+- **`listMatches()` partage son filtre** (`MATCH_FILTER`, paramètres `?1`/`?2`) entre la
+  page et le décompte, pour que la pagination ne mente pas.
+- **`readStats()` compare chaque seuil dans le format de sa colonne** : texte ISO pour
+  `users.created_at`, millisecondes pour `matches.started_at` — le piège déjà décrit pour
+  le ménage nocturne.
+- **`readPlayer()` rapporte le vainqueur au joueur par le siège** :
+  `json_extract(outcome, '$.winner')` donne `A` ou `B`, et `player_a` joue toujours `A`.
+- **`readMatch()` rejoue le log avec `core`** (`createGame` + `replay`), comme
+  `MatchDO.load()`, pour attribuer chaque coup à son camp : l'`Action` sérialisée ne nomme
+  pas son auteur. Si le rejeu échoue — log corrompu, ruleset retiré du registre — le log
+  est rendu quand même, le camp à `null`, et `replayError` dit pourquoi.
+- **`renamePlayer()` écrit `players.handle` et `users.name` dans un même `batch`**, que D1
+  exécute en transaction : un pseudo pris laisse les deux tables intactes.
+
+Ce que le back-office **n'expose pas** : l'usurpation de session (`impersonate-user`),
+pourtant fournie par le greffon. Elle remplacerait le cookie de l'administrateur par celui
+du joueur, et l'identité de la file et des parties viendrait alors d'une session que
+personne n'a ouverte.
 
 ## `@occulis/protocol` — le protocole partagé
 
@@ -557,6 +631,13 @@ Trois choses à savoir sur cette migration :
   donc comparer une échéance à un nombre de millisecondes est **toujours faux**, sans rien
   signaler. Le ménage nocturne compare des chaînes ISO pour cette raison.
 
+### `migrations/0005_admin.sql`
+
+Le greffon `admin`. Les cinq `ALTER TABLE` sont **générés** par `auth:schema` (`role`,
+`banned`, `ban_reason`, `ban_expires` sur `users` ; `impersonated_by` sur `sessions`).
+S'y ajoute une reprise : les comptes existants prennent le rôle `user`, celui que Better
+Auth donne aux nouveaux. **Aucun administrateur n'est désigné par la migration.**
+
 ## `wrangler.toml` — bindings et environnements
 
 Bindings (type dans `apps/server/src/env.d.ts`) :
@@ -593,7 +674,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 
 ## Les tests
 
-50 tests, dont 29 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
+74 tests, dont 48 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
 @occulis/server test`.
 
 | Fichier | Où | Ce qui est verrouillé |
@@ -605,6 +686,8 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `queue-do.integration.test.ts` | workerd | Deux joueurs appariés sur une même partie avec des sièges distincts, partie réellement joignable, **401 sans session et sur identité forgée dans l'URL**, salon privé apparié par son code (casse et espaces pardonnés, hôte en A), salon consommé une seule fois, refus d'un code inconnu et de son propre code |
 | `auth/password.test.ts` | workerd | **Plafond de 100 000 itérations par passe jamais dépassé**, coût effectif conforme à l'OWASP, aller-retour hachage/vérification, salage, paramétrage inscrit dans l'empreinte, lecture de la forme d'avant le chaînage, empreinte illisible rejetée sans lever |
 | `auth/auth.integration.test.ts` | workerd | Inscription et profil créés ensemble, session reconnue, jeton inventé refusé, attributs du cookie, **jeton lu en base insuffisant pour ouvrir une session**, mot de passe faux, **réponses indiscernables entre adresse inconnue et mot de passe faux**, adresse et pseudo uniques **sans compte orphelin**, mot de passe trop court, déconnexion, **limitation de débit**, **réinitialisation de bout en bout**, **file fermée sans adresse vérifiée** |
+| `admin/paging.test.ts` | Node | Taille de page bornée, décalage négatif refusé, valeur illisible ignorée, statut inconnu écarté, bornes du pseudo |
+| `admin/admin.integration.test.ts` | workerd | **401 anonyme et 403 joueur ordinaire, sur nos routes comme sur celles du greffon**, `admin` dans `/api/auth/me`, **`POST` d'une autre origine refusé**, liste des comptes avec rôle et `playerId`, **suspension qui ferme les sessions et la connexion**, puis levée, **renommage refusé par les routes de Better Auth**, parties filtrées par joueur et paginées, log rejoué avec son camp, **bilan correct quel que soit le siège**, **renommage des deux tables d'un geste, intactes sur un pseudo pris** |
 | `maintenance.integration.test.ts` | workerd | Purge des sessions périmées, des vérifications expirées et des compteurs retombés, et **format de conversion des horodatages de la migration** |
 
 **Les tests d'intégration sont aussi le test d'hibernation** que `CLAUDE.md` réclame :
@@ -653,13 +736,21 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
    une colonne renommée à la main casse silencieusement les requêtes de la bibliothèque.
 9. **Les échéances en base sont du texte ISO 8601.** Les comparer à un nombre de
    millisecondes est toujours faux et ne signale rien.
+10. **Le pseudo s'écrit dans les deux tables à la fois.** `users.name` et
+    `players.handle` ne changent que par `renamePlayer()` ; le crochet qui refuse `name`
+    sur les routes de Better Auth en est la garde.
+11. **Toute route `/api/admin/*` passe par la garde de rôle de `handleAdmin()`.** Une
+    route ajoutée hors de ce préfixe ne la reçoit pas.
 
 ## Non implémenté
 
 - **Aucun fournisseur OAuth.** La table `accounts` est prête à en recevoir et Better Auth
   les porte ; rien n'est configuré. C'est le prochain pas décidé (`docs/architecture.md`
   section 7).
-- **Aucune authentification à deux facteurs**, bien que le greffon existe.
+- **Aucune authentification à deux facteurs**, bien que le greffon existe — elle serait
+  pourtant la bienvenue sur les comptes administrateurs.
+- **Aucun journal des actions d'administration.** Qui a suspendu ou renommé qui n'est
+  consigné nulle part.
 - **`trustedOrigins` n'est pas configuré.** Sans lui, un client Electron — qui n'est plus
   de même origine — se verra refuser les routes qui changent l'état.
 - **Le corps de réponse de Better Auth expose `id` et `playerId`** à l'inscription et à la

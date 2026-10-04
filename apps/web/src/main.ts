@@ -163,6 +163,7 @@ async function main(): Promise<void> {
       board: host,
       hud: element<HTMLElement>("console"),
       identity: element<HTMLElement>("menu-identity"),
+      admin: element<HTMLElement>("menu-admin"),
       notice: element<HTMLElement>("menu-notice"),
       quick: element<HTMLButtonElement>("play-quick"),
       host: element<HTMLButtonElement>("play-host"),

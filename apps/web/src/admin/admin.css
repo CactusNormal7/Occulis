@@ -1,0 +1,244 @@
+/*
+ * Habillage du back-office. Il reprend `ui/ui.css` (champs, boutons, typographie) et
+ * n'ajoute que la mise en page d'une page qui défile et des tableaux. Comme là-bas,
+ * aucune couleur en dur : tout vient des propriétés posées par `ui/palette.ts`.
+ */
+
+html,
+body.admin {
+  margin: 0;
+  min-height: 100%;
+  background: var(--ground);
+  color: var(--ink);
+}
+
+body.admin {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+body.admin header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px 28px;
+  padding-bottom: 12px;
+  border-bottom: var(--line);
+}
+
+body.admin h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+body.admin h1 small {
+  color: var(--ink-soft);
+  letter-spacing: 0.1em;
+}
+
+body.admin header p {
+  margin: 0 0 0 auto;
+  color: var(--ink-soft);
+}
+
+body.admin h2 {
+  margin: 20px 0 12px;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+body.admin h3 {
+  margin: 24px 0 8px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-soft);
+  text-transform: lowercase;
+  letter-spacing: 0.1em;
+}
+
+body.admin a {
+  color: var(--ink);
+}
+
+#admin-tabs,
+.filters {
+  display: flex;
+  gap: 18px;
+}
+
+#admin-tabs a,
+.filters a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+#admin-tabs a[aria-current],
+.filters a[aria-current] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+#admin-flash {
+  min-height: 1.6em;
+  margin: 10px 0 0;
+}
+
+#admin-flash[data-state="ok"] {
+  color: var(--accepted);
+}
+
+#admin-flash[data-state="ko"],
+.error,
+.warn {
+  color: var(--refused);
+}
+
+.note,
+.crumbs {
+  color: var(--ink-soft);
+}
+
+.crumbs {
+  margin: 12px 0 0;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  border: var(--line);
+}
+
+.tile strong {
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.tile span,
+.tile small {
+  color: var(--ink-soft);
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 6px 10px 6px 0;
+  border-bottom: var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: var(--ink-soft);
+  font-weight: 400;
+  text-transform: lowercase;
+}
+
+td.clip {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+td button {
+  padding: 2px 8px;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 18px;
+  margin: 0;
+}
+
+dt {
+  color: var(--ink-soft);
+}
+
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.pager {
+  display: flex;
+  gap: 18px;
+  margin-top: 10px;
+  color: var(--ink-soft);
+}
+
+.actions,
+body.admin form {
+  max-width: 520px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+form.inline {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+form.inline > .field,
+form.inline > input {
+  flex: 1;
+}
+
+body.admin input,
+body.admin select {
+  padding: 8px 10px;
+  border: var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+body.admin select option {
+  background: var(--ground);
+}
+
+details {
+  margin-top: 24px;
+}
+
+summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+  margin-bottom: 12px;
+}
+
+button.danger:not(:disabled) {
+  border-color: var(--refused);
+  color: var(--refused);
+}

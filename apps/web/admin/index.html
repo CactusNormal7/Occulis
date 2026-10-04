@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Occulis — back-office</title>
+    <link rel="stylesheet" href="/src/ui/ui.css" />
+    <link rel="stylesheet" href="/src/admin/admin.css" />
+  </head>
+  <body class="admin">
+    <!--
+      Le back-office : une page à part, sans canevas ni moteur de jeu. La garde est
+      côté serveur — cette page ne fait que présenter ce que les routes d'administration
+      acceptent de lui rendre.
+    -->
+    <header>
+      <h1>Occulis <small>back-office</small></h1>
+      <nav id="admin-tabs" hidden>
+        <a href="#/" data-section="overview">Vue d'ensemble</a>
+        <a href="#/users" data-section="users">Comptes</a>
+        <a href="#/matches" data-section="matches">Parties</a>
+      </nav>
+      <p><span id="admin-identity"></span> · <a href="/">retour au jeu</a></p>
+    </header>
+    <p id="admin-flash" role="status"></p>
+    <main id="admin-view">…</main>
+    <script type="module" src="/src/admin/main.ts"></script>
+  </body>
+</html>

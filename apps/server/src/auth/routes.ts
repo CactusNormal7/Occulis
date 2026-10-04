@@ -1,4 +1,4 @@
-import type { Auth } from "./better-auth.js";
+import { isAdmin, type Auth } from "./better-auth.js";
 
 /**
  * Ce qui reste des routes d'authentification maintenant que Better Auth les porte :
@@ -7,7 +7,7 @@ import type { Auth } from "./better-auth.js";
  * `/api/auth/me` survit à la migration alors que la bibliothèque expose déjà
  * `/api/auth/get-session`, parce que les deux ne disent pas la même chose : celle-ci
  * rend le compte entier — identifiant interne, adresse, profil — quand le client n'a
- * besoin que du pseudo et de l'état de vérification. Une réponse qui n'a pas la donnée
+ * besoin que du pseudo, de l'état de vérification et de savoir s'il administre. Une réponse qui n'a pas la donnée
  * ne peut pas la laisser fuiter.
  */
 export interface Account {
@@ -15,6 +15,8 @@ export interface Account {
   readonly playerId: string;
   readonly handle: string;
   readonly emailVerified: boolean;
+  /** Ouvre le lien vers le back-office ; l'accès lui-même est revérifié à chaque appel. */
+  readonly admin: boolean;
 }
 
 export async function currentAccount(auth: Auth, request: Request): Promise<Account | undefined> {
@@ -33,6 +35,7 @@ export async function currentAccount(auth: Auth, request: Request): Promise<Acco
     playerId: user.playerId,
     handle: user.name,
     emailVerified: user.emailVerified,
+    admin: isAdmin(user.role),
   };
 }
 
@@ -48,6 +51,7 @@ export async function handleAuth(
       signedIn: true,
       handle: account.handle,
       emailVerified: account.emailVerified,
+      admin: account.admin,
     });
   }
 
