@@ -24,6 +24,10 @@ export function applyPalette(root: HTMLElement): void {
     "--ink-faint": cssColor(GEOMETRY.stroke, 0.2),
     "--panel": cssColor(BACKGROUND, 0.82),
     "--ground": cssColor(BACKGROUND),
+    "--ink-ghost": cssColor(GEOMETRY.stroke, 0.05),
+    // Le back-office signale un rôle particulier dans la teinte de la sélection :
+    // une mise en avant, qui n'est ni un succès ni un refus.
+    "--notice": cssColor(STATE.selection),
     // Un coup accepté et un coup refusé sont de l'information de partie : ils
     // reprennent donc les tokens d'état, pas une couleur d'interface propre.
     "--accepted": cssColor(STATE.legalMove),

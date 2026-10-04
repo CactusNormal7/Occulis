@@ -34,6 +34,7 @@ import { Scene } from "./scene/scene.js";
 import { BACKGROUND } from "./theme.js";
 import { type GameConsole, attachConsole } from "./ui/console.js";
 import { applyPalette } from "./ui/palette.js";
+import { stopImpersonating } from "./net/auth.js";
 
 /** Racine de composition : elle câble les modules, elle n'en implémente aucun. */
 async function main(): Promise<void> {
@@ -164,6 +165,9 @@ async function main(): Promise<void> {
       hud: element<HTMLElement>("console"),
       identity: element<HTMLElement>("menu-identity"),
       admin: element<HTMLElement>("menu-admin"),
+      impersonation: element<HTMLElement>("impersonation"),
+      impersonated: element<HTMLElement>("impersonated"),
+      stopImpersonating: element<HTMLButtonElement>("stop-impersonating"),
       notice: element<HTMLElement>("menu-notice"),
       quick: element<HTMLButtonElement>("play-quick"),
       host: element<HTMLButtonElement>("play-host"),
@@ -199,6 +203,10 @@ async function main(): Promise<void> {
       });
     },
     onCancel: leave,
+    onStopImpersonating: () => {
+      leave();
+      void stopImpersonating().then(() => location.assign("/admin/"));
+    },
   });
 
   // L'identité vient du serveur, via un cookie de session : le client ne l'annonce

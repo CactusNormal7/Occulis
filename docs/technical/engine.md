@@ -127,10 +127,11 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/ui/console.ts` | Bandeau de partie : saisie de coups et comptes rendus | non |
 | `apps/web/src/ui/ui.css` | Mise en page des écrans — **aucune couleur en dur** | — |
 | `apps/web/admin/index.html` | Page du back-office, seconde entrée Vite | — |
-| `apps/web/src/admin/main.ts` | Racine du back-office : garde d'affichage, routage par fragment | non |
+| `apps/web/src/admin/main.ts` | Racine du back-office : garde d'affichage, routage par fragment, messages éphémères | non |
 | `apps/web/src/admin/model.ts` | Routes du back-office et mise en mots des données | oui |
 | `apps/web/src/admin/api.ts` | Appels `/api/admin/*` et `/api/auth/admin/*` | non |
-| `apps/web/src/admin/page.ts` | Le dessin des vues et leurs gestes | non |
+| `apps/web/src/admin/page.ts` | Le dessin des vues, les actions rapides et les fenêtres modales | non |
+| `apps/web/src/admin/icons.ts` | Les icônes au trait, en `currentColor` | non |
 | `apps/web/src/admin/admin.css` | Mise en page du back-office — **aucune couleur en dur** | — |
 
 ---
@@ -426,6 +427,12 @@ que la touche Entrée fasse exactement ce que le formulaire affiche.
 `whoAmI()` redemande l'identité au serveur. Lui seul sait si l'adresse est vérifiée, et
 c'est ce qui ouvre ou ferme le jeu en ligne.
 
+**Pendant une usurpation** (`/api/auth/me` rend `impersonating: true`), un bandeau
+`#impersonation` reste affiché au-dessus de tous les écrans, partie comprise, avec le pseudo
+incarné et un bouton **Revenir à mon compte** : `stopImpersonating()` (`net/auth.ts`) rend sa
+session à l'administrateur, et la page repart vers `/admin/`. Jouer sous un nom d'emprunt ne
+doit jamais passer inaperçu.
+
 Un compte administrateur voit en plus, sous le menu, un lien **Back-office** vers
 `/admin/` (`#menu-admin`) : `/api/auth/me` rend `admin: true`, et `shell.setIdentity()`
 démasque le lien. Rien d'autre ne dépend de ce drapeau côté client — le serveur revérifie
@@ -585,8 +592,8 @@ une position hors LOS. Un test le verrouille.
 ## `ui/palette.ts` et `ui/console.ts`
 
 `applyPalette()` convertit les tokens entiers de `theme.ts` en propriétés personnalisées
-CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--panel`, `--ground`,
-`--accepted`, `--refused`), posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
+CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--ink-ghost`, `--panel`,
+`--ground`, `--accepted`, `--refused`, `--notice`), posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
 `ui.css`.**
 
 `ui/console.ts` porte le bandeau affiché **pendant une partie**, et rien d'autre : le
@@ -808,6 +815,7 @@ focus, la saisie, l'autocomplétion et l'accessibilité.
 | `#app` | Hôte du canevas PixiJS — **masqué hors partie** |
 | `#shell` | Conteneur des écrans, transparent aux clics |
 | `#screen-auth` | Compte : onglets, champs, formulaire de réinitialisation, statut |
+| `#impersonation` | Bandeau de session d'emprunt, au-dessus de tous les écrans — masqué hors usurpation |
 | `#screen-menu` | Identité, partie rapide, création, entrée par code, lien du back-office (`#menu-admin`, administrateurs seuls), déconnexion |
 | `#screen-waiting` | Le code du salon, sa copie, l'attente et son annulation |
 | `#console` | Le bandeau de partie |
@@ -844,24 +852,50 @@ reste un seul fichier statique, et une fiche se partage par son lien. `parseRout
 | Route | Vue | Contenu |
 |---|---|---|
 | `#/` | `overview()` | Les compteurs de `/api/admin/stats`, et les dernières parties |
-| `#/users?q=&offset=` | `userList()` | Recherche (par adresse si la saisie contient `@`, par pseudo sinon), tableau paginé, création d'un compte |
-| `#/users/<id>` | `userDetail()` | Fiche du compte, profil de jeu et bilan, dernières parties ; renommage, adresse, mot de passe, vérification, rôle, suspension, sessions, suppression |
+| `#/users?q=&offset=` | `userList()` | Recherche (par adresse si la saisie contient `@`, par pseudo sinon), tableau paginé avec les **actions rapides** de chaque compte, création d'un compte en fenêtre modale |
+| `#/users/<id>` | `userDetail()` | En-tête (insigne, pastilles, actions rapides), bandeau de suspension ; en deux colonnes : profil de jeu et dernières parties, puis édition (pseudo, adresse, mot de passe) et sessions |
 | `#/players/<id>` | `playerDetail()` | Profil de jeu — y compris ceux **sans compte**, créés par `POST /api/matches` — et tout son historique |
 | `#/matches?status=&offset=` | `matchList()` | Toutes, en cours ou terminées, paginées |
 | `#/matches/<id>` | `matchDetail()` | Sièges, résultat, dates, règles, carte, et le log rejoué coup par coup avec son camp |
+
+**Les actions rapides** (`quickBar()`) sont une rangée d'icônes, la même dans la liste et
+sur la fiche : vérification de l'adresse, rôle, suspension ou levée, usurpation, fermeture
+des sessions, suppression. `quickActions()` (`model.ts`, pur et testé) dit lesquelles sont
+fermées et pourquoi — l'infobulle d'un bouton grisé donne la raison. Sont fermés : se
+suspendre, se supprimer, s'usurper ou se retirer soi-même le rôle (le seul moyen de
+s'enfermer dehors), usurper un administrateur ou un compte suspendu. Les gestes lourds
+passent par une **fenêtre modale** (`openDialog()`, un `<dialog>` natif : focus piégé,
+Échap, page inerte derrière) : suspension avec durées proposées d'un clic, suppression,
+usurpation, nomination d'un administrateur, création d'un compte. Une fenêtre ne se ferme
+que si le serveur a accepté ; sur un refus elle reste ouverte, le message affiché.
+
+**L'usurpation** ouvre une session au nom du joueur et renvoie sur le jeu (`/`), où le
+bandeau `#impersonation` permet de revenir. Ouverte pendant une usurpation, la page
+`/admin/` n'affiche que ce bouton de retour.
+
+**Les messages sont éphémères** (`toast()` dans `main.ts`) : empilés en bas à droite, ils
+ne poussent pas la page et disparaissent d'eux-mêmes — deux fois plus lentement pour un
+refus — ou au clic.
+
+**Les animations ne portent aucune information** : entrée de la vue et de ses rangées en
+cascade, chiffres de la vue d'ensemble qui montent (`countUp()`), barre de chargement
+pendant un rendu, ouverture et fermeture des fenêtres et des messages. Toutes s'éteignent
+sous `prefers-reduced-motion`, en CSS comme en script.
 
 Quelques choix de fonctionnement :
 
 - **Tout passe par `textContent`, jamais `innerHTML`** (`h()`, `fill()`) : pseudos, adresses
   et motifs de suspension sont saisis par d'autres que l'administrateur qui les lit.
+- **Les icônes sont des tracés au trait en `currentColor`** (`icons.ts`) : elles suivent
+  la couleur du bouton, et aucune couleur n'entre dans le script.
 - **Après chaque geste, la fiche est redessinée depuis le serveur** (`View.reload()`), pour
   que l'écran montre ce que la base contient et non ce qu'on vient d'envoyer — la même règle
   que `whoAmI()` pour le compte.
 - **Une réponse lente n'écrase pas la navigation suivante** : `show()` dessine dans un
   conteneur détaché et ne l'échange que si aucune autre navigation n'a eu lieu entre-temps.
   `View.go()` porte un message d'une route à l'autre, qu'une navigation simple effacerait.
-- **La suppression exige de retaper le pseudo** : `confirm()` se valide d'un réflexe, et ce
-  geste ne se défait pas. Le profil de jeu et les parties survivent au compte.
+- **La suppression exige de retaper le pseudo** : un bouton « OK » se valide d'un réflexe,
+  et ce geste ne se défait pas. Le profil de jeu et les parties survivent au compte.
 - **`banDuration()` refuse une durée illisible** au lieu de la lire comme « définitive », qui
   serait la pire erreur possible dans ce sens. Vide signifie définitif.
 - **Le pseudo se change par `/api/admin/players/:id/handle`**, jamais par `update-user` : le
@@ -949,7 +983,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 
 ## Tests
 
-107 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+115 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
@@ -966,7 +1000,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/game/movement-diff.test.ts` | Le déplacement lu entre deux vues, y compris celui de l'adversaire ; une pièce qui entre ou sort de la LOS n'est pas animée |
 | `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, code de salon retenu, code refusé sans siège, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré |
 | `apps/web/src/net/backoff.test.ts` | Croissance exponentielle, plafond, robustesse à une tentative absurde |
-| `apps/web/src/admin/model.test.ts` | Routes du back-office lues et réécrites à l'identique, fiche rangée sous sa liste, résultat nommé par le siège, coups, dates ISO et millisecondes, pagination, **durée de suspension illisible refusée plutôt que lue comme définitive** |
+| `apps/web/src/admin/model.test.ts` | Routes du back-office lues et réécrites à l'identique, fiche rangée sous sa liste, résultat nommé par le siège, coups, dates ISO et millisecondes, pagination, **durée de suspension illisible refusée plutôt que lue comme définitive**, actions rapides fermées sur soi-même, sur un administrateur et sur un compte suspendu, initiales, taux de victoire, résumé du navigateur d'une session |
 | `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, compte suspendu, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut, lecture du jeton de réinitialisation dans l'URL |
 
 ## Non implémenté

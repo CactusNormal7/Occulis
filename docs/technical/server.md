@@ -65,7 +65,7 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 
 | Route | Méthode | Traitement |
 |---|---|---|
-| `/api/auth/me` | toute | **Au projet** — le pseudo, l'état de vérification et `admin`, ou `{ signedIn: false }` |
+| `/api/auth/me` | toute | **Au projet** — le pseudo, l'état de vérification, `admin` et `impersonating`, ou `{ signedIn: false }` |
 | `/api/auth/sign-up/email` | `POST` | Better Auth — crée un compte, et son profil via le crochet |
 | `/api/auth/sign-in/email` | `POST` | Better Auth — ouvre une session |
 | `/api/auth/sign-out` | `POST` | Better Auth — ferme la session |
@@ -89,7 +89,7 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 | `hasAuthSecret()` | `apps/server/src/index.ts` | Vrai si `AUTH_SECRET` fait au moins 32 caractères ; sinon l'authentification et la file répondent 503 |
 | `scheduled()` (handler cron) | `apps/server/src/index.ts` | Ménage nocturne : sessions, vérifications, compteurs de débit |
 | `buildAuth()` | `apps/server/src/auth/better-auth.ts` | Construit l'instance Better Auth autour des bindings |
-| `currentAccount()` | `apps/server/src/auth/routes.ts` | Session → `{ userId, playerId, handle, emailVerified, admin }` |
+| `currentAccount()` | `apps/server/src/auth/routes.ts` | Session → `{ userId, playerId, handle, emailVerified, admin, impersonating }` |
 | `isAdmin()` | `apps/server/src/auth/better-auth.ts` | Vrai si la colonne `role` contient `admin` (Better Auth y range plusieurs rôles séparés par des virgules) |
 | `handleAdmin()` | `apps/server/src/admin/routes.ts` | Garde de rôle, puis routage de `/api/admin/*` |
 | `handleAuth()` | `apps/server/src/auth/routes.ts` | `/api/auth/me`, puis délégation |
@@ -440,7 +440,7 @@ Le back-office se partage en deux familles de routes, selon qui possède la donn
 
 | Préfixe | Porté par | Couvre |
 |---|---|---|
-| `/api/auth/admin/*` | Greffon `admin` de Better Auth | Le **compte** : liste et recherche, fiche, création, adresse et vérification, rôle, suspension (motif, durée), mot de passe, sessions, suppression |
+| `/api/auth/admin/*` | Greffon `admin` de Better Auth | Le **compte** : liste et recherche, fiche, création, adresse et vérification, rôle, suspension (motif, durée), mot de passe, sessions, suppression, **usurpation** |
 | `/api/admin/*` | `admin/routes.ts`, le projet | Ce que Better Auth ignore : **statistiques**, **parties**, **bilan d'un joueur**, et le **pseudo**, qui vit dans les deux mondes |
 
 **La garde de rôle est faite côté serveur, à chaque appel.** `handleAdmin()` résout la
@@ -479,10 +479,24 @@ Quelques points de fonctionnement :
 - **`renamePlayer()` écrit `players.handle` et `users.name` dans un même `batch`**, que D1
   exécute en transaction : un pseudo pris laisse les deux tables intactes.
 
-Ce que le back-office **n'expose pas** : l'usurpation de session (`impersonate-user`),
-pourtant fournie par le greffon. Elle remplacerait le cookie de l'administrateur par celui
-du joueur, et l'identité de la file et des parties viendrait alors d'une session que
-personne n'a ouverte.
+### L'usurpation
+
+`POST /api/auth/admin/impersonate-user` ouvre une session **au nom du joueur** : le cookie
+de session est remplacé par celui d'une session neuve, marquée `impersonated_by` avec
+l'identifiant de l'administrateur, et la session de ce dernier est mise de côté dans un
+cookie signé (`occulis.admin_session`). `POST /api/auth/admin/stop-impersonating` supprime
+la session d'emprunt et rend la sienne à l'administrateur. Trois garde-fous :
+
+- **une heure au plus** (`impersonationSessionDuration`) : une session d'emprunt oubliée
+  tombe d'elle-même ;
+- **jamais un autre administrateur** — réglage par défaut du greffon, verrouillé par un
+  test ;
+- **toujours visible** : `currentAccount()` lit `session.impersonatedBy`, `/api/auth/me`
+  le rend en `impersonating`, et le client affiche un bandeau sur tous ses écrans.
+
+Pendant l'usurpation, **tout ce qui lit l'identité lit celle du joueur** : la file d'attente,
+les salons, et le back-office lui-même, qui se ferme (403) faute de rôle. C'est voulu — c'est
+ce qui permet de reproduire ce qu'il voit — mais tout coup joué l'est en son nom.
 
 ## `@occulis/protocol` — le protocole partagé
 
@@ -674,7 +688,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 
 ## Les tests
 
-74 tests, dont 48 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
+76 tests, dont 50 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
 @occulis/server test`.
 
 | Fichier | Où | Ce qui est verrouillé |
@@ -687,7 +701,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `auth/password.test.ts` | workerd | **Plafond de 100 000 itérations par passe jamais dépassé**, coût effectif conforme à l'OWASP, aller-retour hachage/vérification, salage, paramétrage inscrit dans l'empreinte, lecture de la forme d'avant le chaînage, empreinte illisible rejetée sans lever |
 | `auth/auth.integration.test.ts` | workerd | Inscription et profil créés ensemble, session reconnue, jeton inventé refusé, attributs du cookie, **jeton lu en base insuffisant pour ouvrir une session**, mot de passe faux, **réponses indiscernables entre adresse inconnue et mot de passe faux**, adresse et pseudo uniques **sans compte orphelin**, mot de passe trop court, déconnexion, **limitation de débit**, **réinitialisation de bout en bout**, **file fermée sans adresse vérifiée** |
 | `admin/paging.test.ts` | Node | Taille de page bornée, décalage négatif refusé, valeur illisible ignorée, statut inconnu écarté, bornes du pseudo |
-| `admin/admin.integration.test.ts` | workerd | **401 anonyme et 403 joueur ordinaire, sur nos routes comme sur celles du greffon**, `admin` dans `/api/auth/me`, **`POST` d'une autre origine refusé**, liste des comptes avec rôle et `playerId`, **suspension qui ferme les sessions et la connexion**, puis levée, **renommage refusé par les routes de Better Auth**, parties filtrées par joueur et paginées, log rejoué avec son camp, **bilan correct quel que soit le siège**, **renommage des deux tables d'un geste, intactes sur un pseudo pris** |
+| `admin/admin.integration.test.ts` | workerd | **401 anonyme et 403 joueur ordinaire, sur nos routes comme sur celles du greffon**, `admin` dans `/api/auth/me`, **`POST` d'une autre origine refusé**, **usurpation signalée par `/api/auth/me`, back-office fermé pendant, session rendue à l'arrêt**, **usurpation d'un administrateur refusée**, liste des comptes avec rôle et `playerId`, **suspension qui ferme les sessions et la connexion**, puis levée, **renommage refusé par les routes de Better Auth**, parties filtrées par joueur et paginées, log rejoué avec son camp, **bilan correct quel que soit le siège**, **renommage des deux tables d'un geste, intactes sur un pseudo pris** |
 | `maintenance.integration.test.ts` | workerd | Purge des sessions périmées, des vérifications expirées et des compteurs retombés, et **format de conversion des horodatages de la migration** |
 
 **Les tests d'intégration sont aussi le test d'hibernation** que `CLAUDE.md` réclame :
@@ -750,7 +764,8 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
 - **Aucune authentification à deux facteurs**, bien que le greffon existe — elle serait
   pourtant la bienvenue sur les comptes administrateurs.
 - **Aucun journal des actions d'administration.** Qui a suspendu ou renommé qui n'est
-  consigné nulle part.
+  consigné nulle part. Seule l'usurpation laisse une trace, `sessions.impersonated_by`, et
+  elle disparaît avec la session.
 - **`trustedOrigins` n'est pas configuré.** Sans lui, un client Electron — qui n'est plus
   de même origine — se verra refuser les routes qui changent l'état.
 - **Le corps de réponse de Better Auth expose `id` et `playerId`** à l'inscription et à la

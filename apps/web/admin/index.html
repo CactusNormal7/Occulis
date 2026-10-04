@@ -14,17 +14,18 @@
       côté serveur — cette page ne fait que présenter ce que les routes d'administration
       acceptent de lui rendre.
     -->
-    <header>
-      <h1>Occulis <small>back-office</small></h1>
+    <div id="admin-progress" aria-hidden="true"></div>
+    <header id="admin-header">
+      <a class="brand" href="#/">Occulis <small>back-office</small></a>
       <nav id="admin-tabs" hidden>
         <a href="#/" data-section="overview">Vue d'ensemble</a>
         <a href="#/users" data-section="users">Comptes</a>
         <a href="#/matches" data-section="matches">Parties</a>
       </nav>
-      <p><span id="admin-identity"></span> · <a href="/">retour au jeu</a></p>
+      <p class="who"><span id="admin-identity"></span><a href="/">retour au jeu →</a></p>
     </header>
-    <p id="admin-flash" role="status"></p>
-    <main id="admin-view">…</main>
+    <main id="admin-view"></main>
+    <div id="admin-toasts" aria-live="polite"></div>
     <script type="module" src="/src/admin/main.ts"></script>
   </body>
 </html>

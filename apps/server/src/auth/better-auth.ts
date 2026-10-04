@@ -33,6 +33,10 @@ export function buildAuth(env: Env, origin: string) {
       admin({
         defaultRole: "user",
         adminRoles: [ADMIN_ROLE],
+        // Une session d'emprunt dure une heure, puis tombe d'elle-même : l'oublier ouverte
+        // ne doit pas laisser un administrateur jouer indéfiniment sous un autre nom.
+        // Usurper un autre administrateur reste refusé (réglage par défaut du greffon).
+        impersonationSessionDuration: 60 * 60,
         schema: {
           user: {
             fields: { banReason: "ban_reason", banExpires: "ban_expires" },

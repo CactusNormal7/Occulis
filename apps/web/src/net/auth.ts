@@ -13,6 +13,8 @@ export interface Identity {
   readonly emailVerified?: boolean;
   /** Montre le lien du back-office. Le serveur revérifie le rôle à chaque appel. */
   readonly admin?: boolean;
+  /** Session ouverte par un administrateur au nom du joueur (back-office). */
+  readonly impersonating?: boolean;
 }
 
 export type AuthOutcome =
@@ -37,6 +39,16 @@ export async function signIn(email: string, password: string): Promise<AuthOutco
 
 export async function signOut(): Promise<void> {
   await fetch("/api/auth/sign-out", { method: "POST", headers: JSON_HEADERS, body: "{}" });
+}
+
+/** Rend à l'administrateur sa propre session, après une usurpation. */
+export async function stopImpersonating(): Promise<boolean> {
+  const response = await fetch("/api/auth/admin/stop-impersonating", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: "{}",
+  });
+  return response.ok;
 }
 
 /**

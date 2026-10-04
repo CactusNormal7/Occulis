@@ -17,6 +17,12 @@ export interface Account {
   readonly emailVerified: boolean;
   /** Ouvre le lien vers le back-office ; l'accès lui-même est revérifié à chaque appel. */
   readonly admin: boolean;
+  /**
+   * Vrai quand la session a été ouverte par un administrateur à la place du joueur
+   * (greffon `admin`, `impersonate-user`). Le client l'affiche, pour que personne ne
+   * joue sous une identité d'emprunt sans le savoir.
+   */
+  readonly impersonating: boolean;
 }
 
 export async function currentAccount(auth: Auth, request: Request): Promise<Account | undefined> {
@@ -36,6 +42,7 @@ export async function currentAccount(auth: Auth, request: Request): Promise<Acco
     handle: user.name,
     emailVerified: user.emailVerified,
     admin: isAdmin(user.role),
+    impersonating: typeof session.session.impersonatedBy === "string" && session.session.impersonatedBy.length > 0,
   };
 }
 
@@ -52,6 +59,7 @@ export async function handleAuth(
       handle: account.handle,
       emailVerified: account.emailVerified,
       admin: account.admin,
+      impersonating: account.impersonating,
     });
   }
 

@@ -25,6 +25,10 @@ export interface ShellElements {
   readonly identity: HTMLElement;
   /** Le lien vers `/admin/`, montré aux seuls administrateurs. */
   readonly admin: HTMLElement;
+  /** Le bandeau d'usurpation, et son bouton de retour au compte administrateur. */
+  readonly impersonation: HTMLElement;
+  readonly impersonated: HTMLElement;
+  readonly stopImpersonating: HTMLButtonElement;
   readonly notice: HTMLElement;
   readonly quick: HTMLButtonElement;
   readonly host: HTMLButtonElement;
@@ -45,6 +49,8 @@ export interface ShellOptions {
   readonly onSeek: (seeking: Seeking, code?: string) => void;
   /** Retour au menu : annulation d'une attente, ou sortie d'une partie. */
   readonly onCancel: () => void;
+  /** L'administrateur quitte l'identité d'emprunt. */
+  readonly onStopImpersonating: () => void;
 }
 
 export interface Shell {
@@ -60,6 +66,7 @@ export function attachShell(options: ShellOptions): Shell {
   let playable = false;
 
   e.quick.addEventListener("click", () => options.onSeek("quick"));
+  e.stopImpersonating.addEventListener("click", () => options.onStopImpersonating());
   e.host.addEventListener("click", () => options.onSeek("host"));
 
   e.joinForm.addEventListener("submit", (event) => {
@@ -115,6 +122,8 @@ export function attachShell(options: ShellOptions): Shell {
     for (const button of [e.quick, e.host, e.join]) button.disabled = !playable;
     e.joinCode.disabled = !playable;
     e.admin.hidden = identity.admin !== true;
+    e.impersonation.hidden = identity.impersonating !== true;
+    e.impersonated.textContent = identity.handle ?? "";
   };
 
   return {

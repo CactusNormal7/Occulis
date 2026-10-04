@@ -160,5 +160,104 @@ const MESSAGES: Record<string, string> = {
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "Cette adresse est déjà utilisée.",
   YOU_CANNOT_BAN_YOURSELF: "Vous ne pouvez pas vous suspendre vous-même.",
   YOU_CANNOT_REMOVE_YOURSELF: "Vous ne pouvez pas supprimer votre propre compte.",
+  YOU_CANNOT_IMPERSONATE_ADMINS: "Un administrateur ne peut pas être usurpé.",
+  BANNED_USER: "Ce compte est suspendu.",
   VALIDATION_ERROR: "Valeur invalide.",
 };
+
+/** Deux lettres pour l'insigne d'un compte, faute d'avatar. */
+export function initials(name: string): string {
+  const letters = name.replace(/[^\p{L}\p{N}]/gu, "");
+  return (letters.slice(0, 2) || "?").toUpperCase();
+}
+
+/** Les durées proposées d'un clic dans la fenêtre de suspension. */
+export const BAN_PRESETS: readonly { readonly label: string; readonly days: string }[] = [
+  { label: "1 jour", days: "1" },
+  { label: "7 jours", days: "7" },
+  { label: "30 jours", days: "30" },
+  { label: "définitive", days: "" },
+];
+
+export type QuickActionKind = "view" | "verify" | "role" | "ban" | "impersonate" | "revoke" | "delete";
+
+export interface QuickAction {
+  readonly kind: QuickActionKind;
+  readonly label: string;
+  /** Absent : l'action est permise. Présent : pourquoi elle ne l'est pas. */
+  readonly disabled?: string;
+  readonly danger?: boolean;
+}
+
+export interface QuickTarget extends BanState {
+  readonly name: string;
+  readonly role?: string | null;
+  readonly emailVerified: boolean;
+}
+
+export function isAdminRole(role: string | null | undefined): boolean {
+  return (role ?? "").split(",").some((entry) => entry.trim() === "admin");
+}
+
+/**
+ * Les actions rapides d'un compte, et celles qui sont fermées. Le serveur refuse de
+ * toute façon ce qui l'est (se suspendre, se supprimer, usurper un administrateur) :
+ * griser le bouton évite seulement de cliquer sur un refus. Se retirer soi-même le rôle
+ * est fermé ici sans que le serveur l'interdise — c'est le seul moyen de s'enfermer
+ * dehors, et un autre administrateur peut le faire à votre place.
+ */
+export function quickActions(user: QuickTarget, self: string): QuickAction[] {
+  const isSelf = user.name === self;
+  const admin = isAdminRole(user.role);
+  const banned = user.banned === true;
+  const closed = (when: boolean, reason: string) => (when ? { disabled: reason } : {});
+  return [
+    { kind: "view", label: "Ouvrir la fiche" },
+    { kind: "verify", label: user.emailVerified ? "Marquer l'adresse non vérifiée" : "Marquer l'adresse vérifiée" },
+    {
+      kind: "role",
+      label: admin ? "Retirer le rôle administrateur" : "Nommer administrateur",
+      ...closed(isSelf && admin, "Vous ne pouvez pas retirer votre propre rôle."),
+    },
+    {
+      kind: "ban",
+      label: banned ? "Lever la suspension" : "Suspendre",
+      danger: !banned,
+      ...closed(isSelf, "Vous ne pouvez pas vous suspendre vous-même."),
+    },
+    {
+      kind: "impersonate",
+      label: "Se connecter en tant que ce joueur",
+      ...closed(isSelf, "C'est déjà votre compte."),
+      ...closed(!isSelf && admin, "Un administrateur ne peut pas être usurpé."),
+      ...closed(!isSelf && !admin && banned, "Un compte suspendu ne peut pas ouvrir de session."),
+    },
+    { kind: "revoke", label: "Fermer toutes les sessions" },
+    {
+      kind: "delete",
+      label: "Supprimer le compte",
+      danger: true,
+      ...closed(isSelf, "Vous ne pouvez pas supprimer votre propre compte."),
+    },
+  ];
+}
+
+/** Part des victoires sur les parties conclues, en pourcentage entier ; `null` sans partie conclue. */
+export function winRate(record: { readonly won: number; readonly lost: number }): number | null {
+  const decided = record.won + record.lost;
+  return decided === 0 ? null : Math.round((record.won / decided) * 100);
+}
+
+/** « Chrome · Windows » plutôt que la chaîne entière, illisible dans un tableau. */
+export function shortAgent(agent: string | null | undefined): string {
+  if (agent == null || agent.length === 0) return "inconnu";
+  const browser =
+    [["Edg/", "Edge"], ["Firefox/", "Firefox"], ["Chrome/", "Chrome"], ["Safari/", "Safari"]].find(([token]) =>
+      agent.includes(token as string),
+    )?.[1] ?? "navigateur";
+  const system =
+    [["Android", "Android"], ["iPhone", "iOS"], ["iPad", "iOS"], ["Windows", "Windows"], ["Mac OS", "macOS"], ["Linux", "Linux"]].find(
+      ([token]) => agent.includes(token as string),
+    )?.[1] ?? "système inconnu";
+  return `${browser} · ${system}`;
+}

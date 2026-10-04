@@ -95,7 +95,7 @@ describe("authentification", () => {
   it("inscrit un compte, ouvre une session et la reconnaît", async () => {
     const handle = unique("anne");
     const cookie = await signUp(handle);
-    expect(await me(cookie)).toEqual({ signedIn: true, handle, emailVerified: true, admin: false });
+    expect(await me(cookie)).toEqual({ signedIn: true, handle, emailVerified: true, admin: false, impersonating: false });
   });
 
   it("crée le profil de jeu en même temps que le compte", async () => {

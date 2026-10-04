@@ -1,15 +1,20 @@
 import { describe, expect, it } from "vitest";
 import type { AdminMatchSummary } from "@occulis/protocol";
 import {
+  BAN_PRESETS,
   banDuration,
   describeAction,
   describeBan,
   describeResult,
   formatDate,
+  initials,
   pageLabel,
   parseRoute,
+  quickActions,
   routeHash,
   sectionOf,
+  shortAgent,
+  winRate,
   type Route,
 } from "./model.js";
 
@@ -101,5 +106,57 @@ describe("durée de suspension", () => {
     expect(banDuration("abc")).toEqual({ ok: false });
     expect(banDuration("0")).toEqual({ ok: false });
     expect(banDuration("-2")).toEqual({ ok: false });
+  });
+});
+
+describe("actions rapides", () => {
+  const player = { name: "anne", role: "user", emailVerified: true, banned: false };
+  const closed = (actions: ReturnType<typeof quickActions>) =>
+    Object.fromEntries(actions.map((action) => [action.kind, action.disabled !== undefined]));
+
+  it("ouvre tout sur un joueur ordinaire", () => {
+    expect(Object.values(closed(quickActions(player, "chef")))).not.toContain(true);
+  });
+
+  it("ferme sur soi-même ce qui enfermerait dehors", () => {
+    const self = closed(quickActions({ ...player, name: "chef", role: "admin" }, "chef"));
+    expect(self).toMatchObject({ role: true, ban: true, impersonate: true, delete: true, verify: false });
+  });
+
+  it("n'usurpe ni un administrateur ni un compte suspendu", () => {
+    expect(closed(quickActions({ ...player, role: "admin" }, "chef")).impersonate).toBe(true);
+    expect(closed(quickActions({ ...player, banned: true }, "chef")).impersonate).toBe(true);
+  });
+
+  it("propose de lever une suspension en cours", () => {
+    const ban = quickActions({ ...player, banned: true }, "chef").find((action) => action.kind === "ban");
+    expect(ban?.label).toBe("Lever la suspension");
+  });
+});
+
+describe("petites mises en forme", () => {
+  it("tire deux lettres d'un pseudo", () => {
+    expect(initials("cactus")).toBe("CA");
+    expect(initials("-x")).toBe("X");
+    expect(initials("--")).toBe("?");
+  });
+
+  it("calcule un taux de victoire sur les seules parties conclues", () => {
+    expect(winRate({ won: 1, lost: 3 })).toBe(25);
+    expect(winRate({ won: 0, lost: 0 })).toBeNull();
+  });
+
+  it("propose des durées que `banDuration` sait lire", () => {
+    for (const preset of BAN_PRESETS) expect(banDuration(preset.days).ok).toBe(true);
+  });
+});
+
+describe("navigateur d'une session", () => {
+  it("résume la chaîne en navigateur et système", () => {
+    expect(
+      shortAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36"),
+    ).toBe("Chrome · Windows");
+    expect(shortAgent("Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0")).toBe("Firefox · Linux");
+    expect(shortAgent(null)).toBe("inconnu");
   });
 });

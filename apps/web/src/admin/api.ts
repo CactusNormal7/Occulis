@@ -117,3 +117,9 @@ export const update = (userId: string, data: { email?: string; emailVerified?: b
 export const remove = (userId: string) => send("/api/auth/admin/remove-user", { userId });
 export const create = (email: string, password: string, name: string, role: string) =>
   send<{ user: AdminUser }>("/api/auth/admin/create-user", { email, password, name, role });
+
+/**
+ * Ouvre une session au nom du joueur. Better Auth met celle de l'administrateur de côté
+ * dans un cookie signé, et la rend à `stop-impersonating` (`net/auth.ts`).
+ */
+export const impersonate = (userId: string) => send("/api/auth/admin/impersonate-user", { userId });

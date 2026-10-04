@@ -64,7 +64,7 @@ describe("back-office : contrôle d'accès", () => {
     const handle = unique("chef");
     const cookie = await signUpAdmin(handle);
     const me = await (await get("/api/auth/me", cookie)).json();
-    expect(me).toEqual({ signedIn: true, handle, emailVerified: true, admin: true });
+    expect(me).toEqual({ signedIn: true, handle, emailVerified: true, admin: true, impersonating: false });
   });
 
   it("refuse une écriture venue d'une autre origine", async () => {
@@ -142,6 +142,69 @@ describe("back-office : comptes, par le greffon Better Auth", () => {
       cookie,
     );
     expect(verified.status).toBe(200);
+  });
+});
+
+/**
+ * Recompose l'en-tête `Cookie` qu'un navigateur renverrait après `response` : les
+ * cookies posés remplacent les anciens du même nom, ceux qu'on expire disparaissent.
+ * L'usurpation en pose et en retire plusieurs à la fois, ce que `cookieFrom` ne sait pas
+ * suivre.
+ */
+function jar(previous: string, response: Response): string {
+  const cookies = new Map(
+    previous
+      .split("; ")
+      .filter((entry) => entry.includes("="))
+      .map((entry) => [entry.slice(0, entry.indexOf("=")), entry.slice(entry.indexOf("=") + 1)] as const),
+  );
+  for (const header of response.headers.getSetCookie()) {
+    const [pair = ""] = header.split(";");
+    const name = pair.slice(0, pair.indexOf("="));
+    const value = pair.slice(pair.indexOf("=") + 1);
+    if (value.length === 0 || /max-age=0/i.test(header)) cookies.delete(name);
+    else cookies.set(name, value);
+  }
+  return [...cookies].map(([name, value]) => `${name}=${value}`).join("; ");
+}
+
+describe("back-office : usurpation", () => {
+  it("ouvre une session au nom du joueur, la signale, puis rend la sienne à l'administrateur", async () => {
+    const admin = unique("chef");
+    let cookie = await signUpAdmin(admin);
+    const target = unique("cible");
+    await signUp(target);
+    const { id } = await userIdOf(target);
+
+    const started = await post("/api/auth/admin/impersonate-user", { userId: id }, cookie);
+    expect(started.status).toBe(200);
+    cookie = jar(cookie, started);
+    expect(await (await get("/api/auth/me", cookie)).json()).toEqual({
+      signedIn: true,
+      handle: target,
+      emailVerified: true,
+      admin: false,
+      impersonating: true,
+    });
+    // Sous l'identité d'emprunt, le back-office se ferme : c'est le rôle du joueur qui vaut.
+    expect((await get("/api/admin/stats", cookie)).status).toBe(403);
+
+    const stopped = await post("/api/auth/admin/stop-impersonating", {}, cookie);
+    expect(stopped.status).toBe(200);
+    cookie = jar(cookie, stopped);
+    expect(await (await get("/api/auth/me", cookie)).json()).toMatchObject({
+      handle: admin,
+      admin: true,
+      impersonating: false,
+    });
+  });
+
+  it("refuse d'usurper un autre administrateur", async () => {
+    const cookie = await signUpAdmin(unique("chef"));
+    const other = unique("chef");
+    await signUpAdmin(other);
+    const { id } = await userIdOf(other);
+    expect((await post("/api/auth/admin/impersonate-user", { userId: id }, cookie)).status).toBe(403);
   });
 });
 
