@@ -1,10 +1,10 @@
-import type { AdminMatchSummary, AdminPlayer } from "@occulis/protocol";
+import type { AdminMatchDetail, AdminMatchSummary, AdminPlayer } from "@occulis/protocol";
+import { boardForScenario } from "../game/scenario.js";
 import * as api from "./api.js";
 import { icon, type IconName } from "./icons.js";
 import {
   BAN_PRESETS,
   banDuration,
-  describeAction,
   describeBan,
   describeResult,
   formatDate,
@@ -13,13 +13,14 @@ import {
   pageLabel,
   quickActions,
   routeHash,
-  seatHandle,
   shortAgent,
   winRate,
   type MatchStatus,
   type QuickAction,
   type Route,
 } from "./model.js";
+import { clampFrame, describeEntry, frameLabel, type Perspective } from "./replay.js";
+import { mountReplay, type ReplayCanvas } from "./replay-canvas.js";
 
 /**
  * Le dessin des vues du back-office. Tout passe par `textContent`, jamais par
@@ -122,12 +123,35 @@ function iconButton(
   return button;
 }
 
-function badge(text: string, tone: "plain" | "ok" | "ko" | "notice" = "plain"): HTMLElement {
+/**
+ * Une pastille d'état. Blanche ou estompée par défaut : la couleur reste réservée à
+ * l'information de partie (docs/design.md 8.1) — le camp d'un vainqueur, ou un refus
+ * (`ko`, la teinte des coups refusés), et rien d'autre.
+ */
+function badge(text: string, tone: "plain" | "strong" | "dim" | "ko" | "A" | "B" = "plain"): HTMLElement {
   return h("span", { class: `badge ${tone}` }, text);
 }
 
-function avatar(name: string, large = false): HTMLElement {
-  return h("span", { class: large ? "avatar large" : "avatar", "aria-hidden": "true" }, initials(name));
+const SVG = "http://www.w3.org/2000/svg";
+
+/**
+ * L'insigne d'un compte : ses initiales dans une case du plateau, en losange 2:1 aux
+ * proportions de `METRICS`, plutôt qu'un rond qui n'existe nulle part ailleurs dans le
+ * jeu. `camp` la teinte quand elle désigne un siège de partie.
+ */
+function avatar(name: string, large = false, camp?: "A" | "B"): Element {
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("viewBox", "0 0 72 36");
+  svg.setAttribute("class", `avatar${large ? " large" : ""}${camp !== undefined ? ` camp-${camp}` : ""}`);
+  svg.setAttribute("aria-hidden", "true");
+  const tile = document.createElementNS(SVG, "polygon");
+  tile.setAttribute("points", "36,1 71,18 36,35 1,18");
+  const text = document.createElementNS(SVG, "text");
+  text.setAttribute("x", "36");
+  text.setAttribute("y", "19");
+  text.textContent = initials(name);
+  svg.append(tile, text);
+  return svg;
 }
 
 function card(title: string | null, ...children: Child[]): HTMLElement {
@@ -139,11 +163,11 @@ function cardHead(title: string, action: Child): HTMLElement {
   return h("div", { class: "card-head" }, h("h3", {}, title), action);
 }
 
-function person(route: Route, name: string, detail: string): HTMLElement {
+function person(route: Route, name: string, detail: string, camp?: "A" | "B"): HTMLElement {
   return h(
     "a",
     { href: routeHash(route), class: "person" },
-    avatar(name),
+    avatar(name, false, camp),
     h("span", {}, h("strong", {}, name), h("small", {}, detail)),
   );
 }
@@ -172,10 +196,6 @@ function pager(offset: number, shown: number, total: number, at: (offset: number
     h("span", {}, pageLabel(offset, shown, total)),
     next < total ? link(at(next), "suivants →") : h("span", {}),
   );
-}
-
-function definitions(entries: readonly [string, string | Node][]): HTMLElement {
-  return h("dl", {}, ...entries.flatMap(([term, value]) => [h("dt", {}, term), h("dd", {}, value)]));
 }
 
 function field(label: string, type: string): { label: HTMLElement; input: HTMLInputElement } {
@@ -475,8 +495,8 @@ function stateBadges(user: QuickUser): HTMLElement {
   return h(
     "span",
     { class: "badges" },
-    isAdminRole(user.role) && badge("admin", "notice"),
-    user.emailVerified ? badge("vérifiée", "ok") : badge("non vérifiée"),
+    isAdminRole(user.role) && badge("admin", "strong"),
+    user.emailVerified ? badge("vérifiée") : badge("non vérifiée", "dim"),
     user.banned === true && badge("suspendu", "ko"),
   );
 }
@@ -808,7 +828,7 @@ async function playerDetail(view: View, id: string): Promise<void> {
       h(
         "div",
         { class: "hero-text" },
-        h("h2", {}, p.handle, p.userId === null && badge("sans compte")),
+        h("h2", {}, p.handle, p.userId === null && badge("sans compte", "dim")),
         h("p", { class: "muted" }, `profil créé le ${formatDate(p.createdAt)}`),
       ),
     ),
@@ -857,8 +877,9 @@ async function matchList(view: View, status: MatchStatus | null, offset: number)
   );
 }
 
+/** Le résultat dans la couleur du camp vainqueur : c'est une information de partie. */
 function resultBadge(match: AdminMatchSummary): HTMLElement {
-  return match.outcome === null ? badge("en cours", "notice") : badge(describeResult(match), "ok");
+  return match.outcome === null ? badge("en cours", "dim") : badge(describeResult(match), match.outcome.winner);
 }
 
 async function matchDetail(view: View, id: string): Promise<void> {
@@ -872,44 +893,183 @@ async function matchDetail(view: View, id: string): Promise<void> {
     h(
       "section",
       { class: "hero versus" },
-      person({ view: "player", id: m.playerA.id }, m.playerA.handle, "siège A"),
+      person({ view: "player", id: m.playerA.id }, m.playerA.handle, "siège A", "A"),
       h("span", { class: "vs" }, "contre"),
-      person({ view: "player", id: m.playerB.id }, m.playerB.handle, "siège B"),
+      person({ view: "player", id: m.playerB.id }, m.playerB.handle, "siège B", "B"),
       h("span", { class: "hero-end" }, resultBadge(m)),
     ),
     h(
       "div",
-      { class: "grid" },
-      card(
-        "Partie",
-        definitions([
-          ["identifiant", h("code", {}, m.id)],
-          ["début", formatDate(m.startedAt)],
-          ["fin", formatDate(m.finishedAt)],
-          ["règles", m.rulesetVersion],
-          ["carte", m.scenario],
-          ["coups", String(m.log.length)],
-        ]),
-      ),
-      card(
-        `Log (${m.log.length})`,
-        m.replayError !== null && h("p", { class: "error" }, `Rejeu impossible — ${m.replayError}`),
-        table(
-          ["#", "camp", "coup"],
-          m.log.map((entry) =>
-            h(
-              "tr",
-              {},
-              h("td", { class: "muted" }, String(entry.seq)),
-              h("td", {}, entry.player === null ? "?" : `${entry.player} · ${seatHandle(m, entry.player)}`),
-              h("td", {}, h("code", {}, describeAction(entry.action))),
-            ),
-          ),
-          "Aucun coup joué.",
-        ),
-      ),
+      { class: "facts" },
+      fact("début", formatDate(m.startedAt)),
+      fact("fin", formatDate(m.finishedAt)),
+      fact("règles", m.rulesetVersion),
+      fact("carte", m.scenario),
+      fact("coups", String(m.log.length)),
+      fact("identifiant", h("code", {}, m.id)),
+    ),
+    m.replayError !== null && h("div", { class: "banner" }, icon("ban"), h("span", {}, `Rejeu interrompu — ${m.replayError}`)),
+    replaySection(m),
+  );
+}
+
+function fact(label: string, value: string | Node): HTMLElement {
+  return h("div", { class: "fact" }, h("span", {}, label), h("strong", {}, value));
+}
+
+/**
+ * La liste des coups, et sous elle le plateau à l'image choisie. Survoler un coup le
+ * montre ; cliquer l'épingle, et c'est à lui que le plateau revient quand la souris
+ * quitte la liste. Les flèches du clavier parcourent la partie, la lecture la déroule.
+ */
+function replaySection(m: AdminMatchDetail): HTMLElement {
+  const count = m.frames.length;
+  let pinned = count - 1;
+  let shown = pinned;
+  let playing: ReturnType<typeof setInterval> | undefined;
+
+  const canvas = h("canvas", { class: "replay-canvas", "aria-label": "Plateau rejoué" });
+  const label = h("p", { class: "replay-label" });
+  const entries: HTMLElement[] = [];
+
+  let replay: ReplayCanvas | undefined;
+  try {
+    replay = mountReplay(canvas, boardForScenario(m.scenario), m.frames);
+  } catch {
+    // Une carte retirée du registre : le log reste lisible, le plateau ne l'est plus.
+    replay = undefined;
+  }
+
+  const display = (index: number, animate: boolean) => {
+    shown = index;
+    replay?.show(index, animate);
+    label.textContent = frameLabel(m, index);
+    for (const [i, entry] of entries.entries()) {
+      entry.classList.toggle("shown", i === index);
+      entry.classList.toggle("pinned", i === pinned);
+    }
+  };
+  const pin = (index: number, animate = true) => {
+    pinned = clampFrame(index, count);
+    display(pinned, animate);
+    entries[pinned]?.scrollIntoView({ block: "nearest" });
+  };
+  const stop = () => {
+    if (playing !== undefined) clearInterval(playing);
+    playing = undefined;
+    playButton.replaceChildren(icon("play"));
+    playButton.setAttribute("data-tip", "Lire la partie");
+  };
+  const play = () => {
+    if (playing !== undefined) return stop();
+    if (pinned >= count - 1) pin(0, false);
+    playButton.replaceChildren(icon("pause"));
+    playButton.setAttribute("data-tip", "Mettre en pause");
+    playing = setInterval(() => {
+      if (!canvas.isConnected || pinned >= count - 1) return stop();
+      pin(pinned + 1);
+    }, 900);
+  };
+
+  /** Un geste de navigation interrompt la lecture : la main revient à l'administrateur. */
+  const go = (index: number, animate = true) => {
+    stop();
+    pin(index, animate);
+  };
+
+  const playButton = iconButton("play", "Lire la partie", play);
+  const controls = h(
+    "div",
+    { class: "replay-controls" },
+    h(
+      "div",
+      { class: "quick-bar" },
+      iconButton("first", "Position de départ", () => go(0, false)),
+      iconButton("previous", "Coup précédent (←)", () => go(pinned - 1)),
+      playButton,
+      iconButton("next", "Coup suivant (→)", () => go(pinned + 1)),
+      iconButton("last", "Dernière position", () => go(count - 1, false)),
+    ),
+    label,
+    perspectiveSwitch(m, (perspective) => replay?.setPerspective(perspective)),
+    h(
+      "div",
+      { class: "quick-bar" },
+      iconButton("rotateLeft", "Tourner d'un quart", () => replay?.rotate(-1)),
+      iconButton("rotateRight", "Tourner d'un quart", () => replay?.rotate(1)),
     ),
   );
+
+  const entry = (index: number, seat: "A" | "B" | null, number: string, text: string, disabled: boolean) => {
+    const item = h(
+      "button",
+      { type: "button", class: `move${seat !== null ? ` camp-${seat}` : ""}` },
+      h("span", { class: "move-number" }, number),
+      h("span", { class: "move-seat" }, seat ?? ""),
+      h("span", { class: "move-text" }, text),
+    );
+    if (disabled) item.disabled = true;
+    item.addEventListener("mouseenter", () => display(index, true));
+    item.addEventListener("focus", () => display(index, true));
+    item.addEventListener("click", () => go(index));
+    entries.push(item);
+    return item;
+  };
+
+  const list = h(
+    "div",
+    { class: "moves" },
+    entry(0, null, "—", "départ", false),
+    ...m.log.map((logged) =>
+      entry(logged.seq + 1, logged.player, String(logged.seq + 1), describeEntry(m, logged.seq), logged.seq + 1 >= count),
+    ),
+  );
+  list.addEventListener("mouseleave", () => {
+    if (shown !== pinned) display(pinned, true);
+  });
+
+  // Le clavier ne parcourt la partie que tant que cette vue est affichée : l'écouteur
+  // se retire de lui-même à la première touche qui suit une navigation.
+  const onKey = (event: KeyboardEvent) => {
+    if (!canvas.isConnected) return document.removeEventListener("keydown", onKey);
+    if (event.target instanceof HTMLInputElement) return;
+    if (event.key === "ArrowLeft") go(pinned - 1);
+    else if (event.key === "ArrowRight") go(pinned + 1);
+    else return;
+    event.preventDefault();
+  };
+  document.addEventListener("keydown", onKey);
+
+  display(pinned, false);
+
+  return card(
+    null,
+    cardHead(`Coups (${m.log.length})`, h("span", { class: "muted" }, "survoler pour voir · cliquer pour épingler")),
+    list,
+    replay === undefined
+      ? h("p", { class: "empty" }, `Carte « ${m.scenario} » inconnue de ce client : le plateau ne peut pas être redessiné.`)
+      : h("div", { class: "replay" }, controls, canvas),
+  );
+}
+
+function perspectiveSwitch(m: AdminMatchDetail, change: (perspective: Perspective) => void): HTMLElement {
+  const options: [Perspective, string][] = [
+    ["all", "tout"],
+    ["A", `vue de ${m.playerA.handle}`],
+    ["B", `vue de ${m.playerB.handle}`],
+  ];
+  const nav = h("nav", { class: "segmented", "aria-label": "Point de vue" });
+  for (const [value, text] of options) {
+    const button = h("button", { type: "button", class: value === "all" ? "" : `camp-${value}` }, text);
+    if (value === "all") button.setAttribute("aria-current", "true");
+    button.addEventListener("click", () => {
+      for (const other of Array.from(nav.children)) other.removeAttribute("aria-current");
+      button.setAttribute("aria-current", "true");
+      change(value);
+    });
+    nav.append(button);
+  }
+  return nav;
 }
 
 function matchTable(matches: readonly AdminMatchSummary[], compact = false): HTMLElement {

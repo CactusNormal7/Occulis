@@ -456,7 +456,7 @@ l'environnement (`docs/setup.md` section 7) ; les suivants, depuis le back-offic
 |---|---|---|---|
 | `/api/admin/stats` | `GET` | `readStats()` | `AdminStats` — comptes, vérifiés, suspendus, admins, profils, parties, en cours, coups, et les deux compteurs sur 7 jours |
 | `/api/admin/matches?player=&status=&limit=&offset=` | `GET` | `listMatches()` | `AdminMatchPage` — les parties, les plus récentes d'abord, avec les deux pseudos et le nombre de coups, et le total filtré |
-| `/api/admin/matches/:id` | `GET` | `readMatch()` | `AdminMatchDetail` — la partie et son log **rejoué** |
+| `/api/admin/matches/:id` | `GET` | `readMatch()` | `AdminMatchDetail` — la partie, son log **rejoué**, et une image de la position par coup (`frames`) |
 | `/api/admin/players/:id` | `GET` | `readPlayer()` | `AdminPlayer` — profil, compte lié s'il existe, bilan victoires/défaites/en cours |
 | `/api/admin/players/:id/handle` | `POST` | `renamePlayer()` | `{ handle }`, ou 400 `HANDLE_LENGTH`, 422 `HANDLE_TAKEN`, 404 |
 
@@ -472,10 +472,19 @@ Quelques points de fonctionnement :
   le ménage nocturne.
 - **`readPlayer()` rapporte le vainqueur au joueur par le siège** :
   `json_extract(outcome, '$.winner')` donne `A` ou `B`, et `player_a` joue toujours `A`.
-- **`readMatch()` rejoue le log avec `core`** (`createGame` + `replay`), comme
-  `MatchDO.load()`, pour attribuer chaque coup à son camp : l'`Action` sérialisée ne nomme
-  pas son auteur. Si le rejeu échoue — log corrompu, ruleset retiré du registre — le log
-  est rendu quand même, le camp à `null`, et `replayError` dit pourquoi.
+- **`readMatch()` rejoue le log avec `core`** (`createGame`, `startMemory`,
+  `advanceMemory`), comme `MatchDO.load()`. Deux usages : attribuer chaque coup à son camp
+  — l'`Action` sérialisée ne nomme pas son auteur — et produire les **images** du rejeu
+  (`frameOf()`) : `frames[0]` est la position de départ, `frames[n + 1]` celle qui suit le
+  coup `n`, chacune avec **toutes** les pièces et les cases que chaque camp voyait alors.
+  Passer par la mémoire de brouillard plutôt que par `replay` seul est ce qui donne ces
+  lignes de vue. Si le rejeu échoue — log corrompu, ruleset retiré du registre — le log est
+  rendu quand même, les images s'arrêtent au coup fautif, le camp passe à `null`, et
+  `replayError` dit pourquoi.
+- **Ces images sont exactement ce que le serveur refuse à un joueur** : la position
+  complète, pièces hors LOS comprises. Elles ne sortent que derrière la garde de rôle, et
+  un administrateur qui joue une partie en cours pourrait s'en servir — c'est une
+  confiance accordée au rôle, pas une garantie du protocole.
 - **`renamePlayer()` écrit `players.handle` et `users.name` dans un même `batch`**, que D1
   exécute en transaction : un pseudo pris laisse les deux tables intactes.
 
@@ -701,7 +710,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `auth/password.test.ts` | workerd | **Plafond de 100 000 itérations par passe jamais dépassé**, coût effectif conforme à l'OWASP, aller-retour hachage/vérification, salage, paramétrage inscrit dans l'empreinte, lecture de la forme d'avant le chaînage, empreinte illisible rejetée sans lever |
 | `auth/auth.integration.test.ts` | workerd | Inscription et profil créés ensemble, session reconnue, jeton inventé refusé, attributs du cookie, **jeton lu en base insuffisant pour ouvrir une session**, mot de passe faux, **réponses indiscernables entre adresse inconnue et mot de passe faux**, adresse et pseudo uniques **sans compte orphelin**, mot de passe trop court, déconnexion, **limitation de débit**, **réinitialisation de bout en bout**, **file fermée sans adresse vérifiée** |
 | `admin/paging.test.ts` | Node | Taille de page bornée, décalage négatif refusé, valeur illisible ignorée, statut inconnu écarté, bornes du pseudo |
-| `admin/admin.integration.test.ts` | workerd | **401 anonyme et 403 joueur ordinaire, sur nos routes comme sur celles du greffon**, `admin` dans `/api/auth/me`, **`POST` d'une autre origine refusé**, **usurpation signalée par `/api/auth/me`, back-office fermé pendant, session rendue à l'arrêt**, **usurpation d'un administrateur refusée**, liste des comptes avec rôle et `playerId`, **suspension qui ferme les sessions et la connexion**, puis levée, **renommage refusé par les routes de Better Auth**, parties filtrées par joueur et paginées, log rejoué avec son camp, **bilan correct quel que soit le siège**, **renommage des deux tables d'un geste, intactes sur un pseudo pris** |
+| `admin/admin.integration.test.ts` | workerd | **401 anonyme et 403 joueur ordinaire, sur nos routes comme sur celles du greffon**, `admin` dans `/api/auth/me`, **`POST` d'une autre origine refusé**, **usurpation signalée par `/api/auth/me`, back-office fermé pendant, session rendue à l'arrêt**, **usurpation d'un administrateur refusée**, liste des comptes avec rôle et `playerId`, **suspension qui ferme les sessions et la connexion**, puis levée, **renommage refusé par les routes de Better Auth**, parties filtrées par joueur et paginées, log rejoué avec son camp, une image par coup où chaque camp voit ses pièces, **bilan correct quel que soit le siège**, **renommage des deux tables d'un geste, intactes sur un pseudo pris** |
 | `maintenance.integration.test.ts` | workerd | Purge des sessions périmées, des vérifications expirées et des compteurs retombés, et **format de conversion des horodatages de la migration** |
 
 **Les tests d'intégration sont aussi le test d'hibernation** que `CLAUDE.md` réclame :

@@ -4,13 +4,20 @@
  * modales, messages éphémères. Comme là-bas, aucune couleur en dur : tout vient des
  * propriétés posées par `ui/palette.ts`, seul relais de `theme.ts`.
  *
+ * La ligne est celle des maquettes (`docs/mockups/`) : angles vifs, traits fins à faible
+ * opacité, libellés en capitales espacées, boutons au trait. La couleur reste réservée à
+ * l'information de partie (docs/design.md 8.1) — camps, sélection, refus.
+ *
  * Les animations sont courtes et ne portent aucune information : elles s'éteignent
  * toutes quand le système demande moins de mouvement (dernier bloc).
  */
 
 :root {
-  --radius: 6px;
+  --radius: 0;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* Plus discret que le trait des écrans du jeu : une page dense en cadres. */
+  --line: 1px solid var(--ink-line);
+  --caps: 0.16em;
 }
 
 html,
@@ -46,9 +53,9 @@ body.admin h3 {
 
 body.admin h3 {
   font-size: 11px;
-  color: var(--ink-soft);
+  color: var(--ink-dim);
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: var(--caps);
 }
 
 code {
@@ -97,17 +104,36 @@ small.block {
   backdrop-filter: blur(10px);
 }
 
-#admin-header .brand {
-  font-size: 15px;
-  letter-spacing: 0.32em;
+/* Le mot-symbole estompé et le cube filaire du menu, puis le nom de l'écran : la barre
+   de HUD de la maquette de partie. */
+body.admin #admin-header .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink-dim);
+  font-size: 14px;
+  letter-spacing: 5px;
   text-transform: uppercase;
   text-decoration: none;
+  transition: color 0.2s;
+}
+
+body.admin #admin-header .brand:hover {
+  color: var(--ink-soft);
+}
+
+#admin-header .brand .icon {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.2;
 }
 
 #admin-header .brand small {
-  margin-left: 6px;
-  color: var(--ink-soft);
-  letter-spacing: 0.12em;
+  padding-left: 16px;
+  border-left: var(--line);
+  color: var(--ink);
+  font-size: 11px;
+  letter-spacing: var(--caps);
 }
 
 #admin-tabs {
@@ -119,6 +145,9 @@ small.block {
   position: relative;
   padding: 4px 0;
   color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: var(--caps);
+  text-transform: uppercase;
   text-decoration: none;
   transition: color 0.15s;
 }
@@ -238,14 +267,16 @@ body.loading #admin-progress {
 .page-head h2 {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 20px;
+  gap: 12px;
+  font-size: 15px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
 }
 
 .count {
   padding: 1px 8px;
   border: var(--line);
-  border-radius: 999px;
+  letter-spacing: normal;
   color: var(--ink-soft);
   font-size: 12px;
 }
@@ -290,8 +321,6 @@ body.loading #admin-progress {
   min-width: 0;
   padding: 18px 20px;
   border: var(--line);
-  border-radius: var(--radius);
-  background: var(--ink-ghost);
 }
 
 .card-head {
@@ -320,11 +349,9 @@ body.loading #admin-progress {
 .tile {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   padding: 16px 18px;
   border: var(--line);
-  border-radius: var(--radius);
-  background: var(--ink-ghost);
   color: inherit;
   text-decoration: none;
   transition:
@@ -345,6 +372,9 @@ body.admin a.tile:hover {
 
 .tile span {
   color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: var(--caps);
+  text-transform: uppercase;
 }
 
 .tile small {
@@ -353,22 +383,45 @@ body.admin a.tile:hover {
 
 /* ---- Identité : insigne, personne, pastilles ---------------------------------------- */
 
+/* Une case du plateau, aux proportions 2:1 de `METRICS`, en guise d'insigne. */
 .avatar {
-  display: inline-grid;
   flex: none;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--ink-soft);
-  border-radius: 50%;
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  width: 52px;
+  height: 26px;
+  overflow: visible;
+}
+
+.avatar polygon {
+  fill: none;
+  stroke: var(--ink-soft);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  transition: stroke 0.2s;
+}
+
+.avatar text {
+  fill: var(--ink);
+  font: 14px ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  text-anchor: middle;
+  dominant-baseline: middle;
 }
 
 .avatar.large {
-  width: 60px;
-  height: 60px;
-  font-size: 19px;
+  width: 104px;
+  height: 52px;
+}
+
+.avatar.large text {
+  font-size: 12px;
+}
+
+.avatar.camp-A polygon {
+  stroke: var(--camp-a);
+}
+
+.avatar.camp-B polygon {
+  stroke: var(--camp-b);
 }
 
 .person {
@@ -395,8 +448,8 @@ body.admin a.person {
   white-space: nowrap;
 }
 
-.person:hover .avatar {
-  border-color: var(--ink);
+.person:hover .avatar:not(.camp-A, .camp-B) polygon {
+  stroke: var(--ink);
 }
 
 .badges {
@@ -408,17 +461,23 @@ body.admin a.person {
 }
 
 .badge {
-  padding: 1px 8px;
+  padding: 1px 7px;
   border: 1px solid var(--ink-faint);
-  border-radius: 999px;
   color: var(--ink-soft);
-  font-size: 11px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
-.badge.ok {
-  border-color: var(--accepted);
-  color: var(--accepted);
+.badge.strong {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.badge.dim {
+  border-color: var(--ink-line);
+  color: var(--ink-dim);
 }
 
 .badge.ko {
@@ -426,9 +485,14 @@ body.admin a.person {
   color: var(--refused);
 }
 
-.badge.notice {
-  border-color: var(--notice);
-  color: var(--notice);
+.badge.A {
+  border-color: var(--camp-a);
+  color: var(--camp-a);
+}
+
+.badge.B {
+  border-color: var(--camp-b);
+  color: var(--camp-b);
 }
 
 /* ---- Boutons à icône et infobulles ---------------------------------------------------- */
@@ -452,7 +516,6 @@ body.admin .icon-button,
   height: 30px;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: var(--radius);
   background: transparent;
   color: var(--ink-soft);
   transition:
@@ -500,8 +563,7 @@ body.admin .icon-button:disabled {
   left: 50%;
   z-index: 40;
   padding: 4px 8px;
-  border: var(--line);
-  border-radius: 4px;
+  border: 1px solid var(--ink-faint);
   background: var(--ground);
   color: var(--ink);
   font-size: 11px;
@@ -551,9 +613,9 @@ th {
   padding: 0 12px 10px 0;
   border-bottom: var(--line);
   color: var(--ink-dim);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 400;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--caps);
   text-align: left;
   text-transform: uppercase;
 }
@@ -632,8 +694,7 @@ form.search .icon {
 body.admin input,
 body.admin select {
   padding: 7px 10px;
-  border: var(--line);
-  border-radius: 4px;
+  border: 1px solid var(--ink-faint);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -659,29 +720,43 @@ form.search input {
 
 .segmented {
   display: inline-flex;
-  padding: 2px;
   border: var(--line);
-  border-radius: var(--radius);
 }
 
-body.admin .segmented a {
-  padding: 5px 12px;
-  border-radius: 4px;
+body.admin .segmented a,
+body.admin .segmented button {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
   color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: 0.12em;
   text-decoration: none;
+  text-transform: uppercase;
   transition:
     background 0.15s,
     color 0.15s;
 }
 
 body.admin .segmented a:hover,
-body.admin .segmented a[aria-current] {
+body.admin .segmented button:hover,
+body.admin .segmented [aria-current] {
   color: var(--ink);
 }
 
-.segmented a[aria-current] {
+body.admin .segmented [aria-current] {
   background: var(--ink-ghost);
-  box-shadow: inset 0 0 0 1px var(--ink-faint);
+  box-shadow: inset 0 -1px 0 var(--ink);
+}
+
+body.admin .segmented .camp-A[aria-current] {
+  color: var(--camp-a);
+  box-shadow: inset 0 -1px 0 var(--camp-a);
+}
+
+body.admin .segmented .camp-B[aria-current] {
+  color: var(--camp-b);
+  box-shadow: inset 0 -1px 0 var(--camp-b);
 }
 
 /* ---- Fiche : en-tête, bandeau, chiffres, édition ------------------------------------- */
@@ -690,11 +765,9 @@ body.admin .segmented a[aria-current] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 16px 20px;
+  gap: 16px 22px;
   padding: 20px 22px;
   border: var(--line);
-  border-radius: var(--radius);
-  background: var(--ink-ghost);
 }
 
 .hero-text {
@@ -709,8 +782,9 @@ body.admin .segmented a[aria-current] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  font-size: 22px;
+  gap: 14px;
+  font-size: 20px;
+  letter-spacing: 0.08em;
 }
 
 .hero .meta {
@@ -730,7 +804,6 @@ body.admin .segmented a[aria-current] {
 .hero .quick-bar {
   padding: 4px;
   border: var(--line);
-  border-radius: var(--radius);
 }
 
 .hero.versus .vs {
@@ -750,7 +823,6 @@ body.admin .segmented a[aria-current] {
   gap: 12px;
   padding: 10px 12px 10px 16px;
   border: 1px solid var(--refused);
-  border-radius: var(--radius);
   color: var(--refused);
   animation: rise 0.3s var(--ease) backwards;
 }
@@ -758,7 +830,6 @@ body.admin .segmented a[aria-current] {
 .banner button {
   margin-left: auto;
   padding: 5px 12px;
-  border-radius: 4px;
 }
 
 .stats {
@@ -802,10 +873,21 @@ body.admin form.inline-edit {
   color: var(--ink-soft);
 }
 
+/* Les boutons à libellé : capitales espacées, au trait, comme « JOUER » ou
+   « ABANDONNER » dans les maquettes. */
 body.admin .inline-edit button,
 body.admin .banner button,
-body.admin .modal footer button {
-  border-radius: 4px;
+body.admin .empty button,
+body.admin .modal footer button,
+body.admin .icon-button.with-text {
+  font-size: 11px;
+  letter-spacing: var(--caps);
+  text-transform: uppercase;
+}
+
+body.admin .banner button {
+  border-color: var(--refused);
+  color: var(--refused);
 }
 
 body.admin .inline-edit button {
@@ -862,27 +944,28 @@ dd {
   color: var(--ink-soft);
 }
 
-/* ---- Boutons pleins ------------------------------------------------------------------ */
+/* ---- Bouton de confirmation ------------------------------------------------------------ */
 
+/* Au trait, jamais plein : la confirmation se distingue par un trait franc, et le geste
+   destructeur par la teinte des refus. */
 body.admin button.solid {
   border-color: var(--ink);
-  background: var(--ink);
-  color: var(--ground);
-  transition: opacity 0.15s;
+  color: var(--ink);
+  transition: background 0.15s;
 }
 
 body.admin button.solid:hover:not(:disabled) {
-  opacity: 0.88;
+  background: var(--ink-ghost);
 }
 
 body.admin button.solid.danger {
   border-color: var(--refused);
-  background: var(--refused);
+  color: var(--refused);
 }
 
 body.admin button.solid:disabled {
-  opacity: 0.35;
-  color: var(--ground);
+  border-color: var(--ink-line);
+  color: var(--ink-dim);
 }
 
 body.admin button.ghost {
@@ -903,8 +986,7 @@ body.admin button.ghost:hover {
 dialog.modal {
   width: min(460px, calc(100vw - 32px));
   padding: 0;
-  border: var(--line);
-  border-radius: 8px;
+  border: 1px solid var(--ink-faint);
   background: var(--ground);
   color: var(--ink);
   animation: pop-in 0.22s var(--ease) both;
@@ -937,7 +1019,9 @@ dialog.modal header {
 }
 
 dialog.modal h2 {
-  font-size: 15px;
+  font-size: 13px;
+  letter-spacing: var(--caps);
+  text-transform: uppercase;
 }
 
 .dialog-body {
@@ -963,7 +1047,6 @@ dialog.modal footer {
 body.admin .chip {
   padding: 4px 12px;
   border-color: var(--ink-faint);
-  border-radius: 999px;
   color: var(--ink-soft);
   font-size: 12px;
   transition:
@@ -996,7 +1079,6 @@ body.admin .chip.selected {
   max-width: 380px;
   padding: 10px 16px;
   border: 1px solid;
-  border-radius: var(--radius);
   background: var(--ground);
   cursor: pointer;
   pointer-events: auto;
@@ -1015,6 +1097,131 @@ body.admin .chip.selected {
 
 .toast.leaving {
   animation: slide-out 0.22s ease both;
+}
+
+/* ---- Partie : faits, coups, rejeu ------------------------------------------------- */
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  border: var(--line);
+}
+
+.fact {
+  display: flex;
+  flex: 1 1 140px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 16px;
+  border-right: var(--line);
+}
+
+.fact:last-child {
+  flex-grow: 3;
+  border-right: none;
+}
+
+.fact span {
+  color: var(--ink-dim);
+  font-size: 10px;
+  letter-spacing: var(--caps);
+  text-transform: uppercase;
+}
+
+.fact strong {
+  overflow: hidden;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* L'historique de la maquette de partie : numéro, camp, coup, chaque ligne dans la
+   couleur du camp qui l'a joué. En colonnes pour rester bas. */
+.moves {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0 18px;
+  max-height: 232px;
+  overflow-y: auto;
+  scrollbar-color: var(--ink-faint) transparent;
+}
+
+body.admin .move {
+  display: grid;
+  grid-template-columns: 30px 14px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border: none;
+  border-left: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    color 0.12s;
+}
+
+body.admin .move:hover:not(:disabled),
+body.admin .move.shown {
+  background: var(--ink-ghost);
+  color: var(--ink);
+}
+
+body.admin .move.pinned {
+  border-left-color: var(--selection);
+  color: var(--ink);
+}
+
+body.admin .move:disabled {
+  color: var(--ink-faint);
+}
+
+.move-number {
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.move.camp-A .move-seat {
+  color: var(--camp-a);
+}
+
+.move.camp-B .move-seat {
+  color: var(--camp-b);
+}
+
+.move-text {
+  white-space: nowrap;
+}
+
+.replay {
+  display: flex;
+  flex-direction: column;
+  border-top: var(--line);
+  margin: 4px -20px -18px;
+}
+
+.replay-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 12px 20px;
+  border-bottom: var(--line);
+}
+
+.replay-label {
+  flex: 1;
+  min-width: 220px;
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.replay-canvas {
+  display: block;
+  width: 100%;
+  height: clamp(320px, 58vh, 560px);
 }
 
 /* ---- Écran étroit ------------------------------------------------------------------- */

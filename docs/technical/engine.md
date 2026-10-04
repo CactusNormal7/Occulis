@@ -132,6 +132,8 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/admin/api.ts` | Appels `/api/admin/*` et `/api/auth/admin/*` | non |
 | `apps/web/src/admin/page.ts` | Le dessin des vues, les actions rapides et les fenêtres modales | non |
 | `apps/web/src/admin/icons.ts` | Les icônes au trait, en `currentColor` | non |
+| `apps/web/src/admin/replay.ts` | Rejeu : coups lus entre deux images, libellés, cadrage du plateau | oui |
+| `apps/web/src/admin/replay-canvas.ts` | Rejeu : le plateau dessiné en Canvas 2D, avec la géométrie du jeu | non |
 | `apps/web/src/admin/admin.css` | Mise en page du back-office — **aucune couleur en dur** | — |
 
 ---
@@ -593,7 +595,7 @@ une position hors LOS. Un test le verrouille.
 
 `applyPalette()` convertit les tokens entiers de `theme.ts` en propriétés personnalisées
 CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--ink-ghost`, `--panel`,
-`--ground`, `--accepted`, `--refused`, `--notice`), posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
+`--ground`, `--ink-line`, `--accepted`, `--refused`, `--camp-a`, `--camp-b`, `--selection`), posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
 `ui.css`.**
 
 `ui/console.ts` porte le bandeau affiché **pendant une partie**, et rien d'autre : le
@@ -856,7 +858,7 @@ reste un seul fichier statique, et une fiche se partage par son lien. `parseRout
 | `#/users/<id>` | `userDetail()` | En-tête (insigne, pastilles, actions rapides), bandeau de suspension ; en deux colonnes : profil de jeu et dernières parties, puis édition (pseudo, adresse, mot de passe) et sessions |
 | `#/players/<id>` | `playerDetail()` | Profil de jeu — y compris ceux **sans compte**, créés par `POST /api/matches` — et tout son historique |
 | `#/matches?status=&offset=` | `matchList()` | Toutes, en cours ou terminées, paginées |
-| `#/matches/<id>` | `matchDetail()` | Sièges, résultat, dates, règles, carte, et le log rejoué coup par coup avec son camp |
+| `#/matches/<id>` | `matchDetail()` | Sièges, résultat, dates, règles, carte ; la liste des coups, et sous elle **le plateau rejoué** |
 
 **Les actions rapides** (`quickBar()`) sont une rangée d'icônes, la même dans la liste et
 sur la fiche : vérification de l'adresse, rôle, suspension ou levée, usurpation, fermeture
@@ -868,6 +870,36 @@ passent par une **fenêtre modale** (`openDialog()`, un `<dialog>` natif : focus
 Échap, page inerte derrière) : suspension avec durées proposées d'un clic, suppression,
 usurpation, nomination d'un administrateur, création d'un compte. Une fenêtre ne se ferme
 que si le serveur a accepté ; sur un refus elle reste ouverte, le message affiché.
+
+**La direction artistique est celle des maquettes** (`docs/mockups/`) : angles vifs, traits
+fins à faible opacité (`--ink-line`), libellés en capitales espacées, boutons au trait
+jamais pleins, mot-symbole estompé précédé du cube filaire du menu. L'insigne d'un compte
+est une **case du plateau** — un losange 2:1 aux proportions de `METRICS` — et non un
+rond. La couleur garde son sens de jeu (`docs/design.md` 8.1) : les pastilles d'état sont
+blanches ou estompées, seules la suspension (teinte des refus) et le résultat d'une partie
+(couleur du camp vainqueur) sont teintés ; les sièges, les coups et le point de vue du
+rejeu portent la couleur de leur camp.
+
+**Le rejeu d'une partie** (`replaySection()`) montre la liste des coups — numéro, camp,
+`2,4 → 3,4`, chaque ligne dans la couleur du camp, comme l'historique de la maquette de
+partie — et sous elle le plateau. **Survoler** un coup montre la position qui le suit ;
+**cliquer** l'épingle, et le plateau y revient quand la souris quitte la liste. Les
+flèches du clavier parcourent la partie, la lecture la déroule coup par coup, deux
+boutons tournent le plateau d'un quart de tour. Le point de vue **tout / vue de A / vue
+de B** estompe les cases hors de la ligne de vue du camp choisi et passe en fantôme
+(`PIECES.alphaGhost`) les pièces adverses qu'il ne voyait pas : l'administrateur lit ce
+qui était caché, sans le confondre avec ce qui était vu.
+
+Le plateau est dessiné en **Canvas 2D** (`replay-canvas.ts`), pas en PixiJS : le
+back-office ne charge pas le moteur. Mais il reprend la géométrie du jeu à l'identique —
+`view/iso.ts` pour la projection et l'ordre du peintre (relief et pièces dans une seule
+liste), `view/camera.ts` pour le quart de tour amorti, `view/animation.ts` pour le
+glissement des pièces, `theme.ts` pour les métriques et les couleurs — et la carte vient
+du registre de `core` (`boardForScenario`). Le dernier coup est marqué : départ en
+pointillé, trajet dans la couleur du camp, arrivée dans la teinte de la sélection.
+`fitScale()` calcule une échelle qui tient **aux quatre quarts de tour**, pour que le
+plateau ne change pas de taille en tournant. Les positions viennent du serveur
+(`frames`) : le client ne rejoue rien, il n'a pas les rulesets versionnés.
 
 **L'usurpation** ouvre une session au nom du joueur et renvoie sur le jeu (`/`), où le
 bandeau `#impersonation` permet de revenir. Ouverte pendant une usurpation, la page
@@ -983,7 +1015,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 
 ## Tests
 
-115 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+121 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
@@ -1001,6 +1033,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, code de salon retenu, code refusé sans siège, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré |
 | `apps/web/src/net/backoff.test.ts` | Croissance exponentielle, plafond, robustesse à une tentative absurde |
 | `apps/web/src/admin/model.test.ts` | Routes du back-office lues et réécrites à l'identique, fiche rangée sous sa liste, résultat nommé par le siège, coups, dates ISO et millisecondes, pagination, **durée de suspension illisible refusée plutôt que lue comme définitive**, actions rapides fermées sur soi-même, sur un administrateur et sur un compte suspendu, initiales, taux de victoire, résumé du navigateur d'une session |
+| `apps/web/src/admin/replay.test.ts` | Pièce déplacée retrouvée entre deux images et elle seule, coup écrit comme l'historique de la maquette, libellé d'image avec camp et joueur, navigation bornée, **plateau centré et contenu dans son cadre aux quatre quarts de tour** |
 | `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, compte suspendu, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut, lecture du jeton de réinitialisation dans l'URL |
 
 ## Non implémenté

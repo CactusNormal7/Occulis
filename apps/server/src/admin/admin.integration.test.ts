@@ -238,6 +238,13 @@ describe("back-office : parties et profils", () => {
     // Le camp vient du rejeu : l'action sérialisée ne le porte pas.
     expect(detail.log).toEqual([{ seq: 0, player: "A", action: { kind: "resign" } }]);
     expect(detail.replayError).toBeNull();
+    // Une image de départ, puis une par coup ; chaque camp voit au moins ses pièces.
+    expect(detail.frames).toHaveLength(2);
+    const [start] = detail.frames;
+    expect(start?.pieces.length).toBeGreaterThan(0);
+    for (const piece of start?.pieces ?? []) {
+      expect(start?.visible[piece.owner]).toContain(`${piece.x},${piece.y}`);
+    }
 
     expect((await get(`/api/admin/matches/inconnue`, cookie)).status).toBe(404);
   });

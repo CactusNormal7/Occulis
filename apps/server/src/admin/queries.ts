@@ -1,5 +1,14 @@
-import { createGame, replay, scenarioFor, type Action, type Outcome } from "@occulis/core";
+import {
+  advanceMemory,
+  createGame,
+  scenarioFor,
+  startMemory,
+  type Action,
+  type MatchMemory,
+  type Outcome,
+} from "@occulis/core";
 import type {
+  AdminFrame,
   AdminLogEntry,
   AdminMatchDetail,
   AdminMatchPage,
@@ -122,29 +131,57 @@ export async function readMatch(db: D1Database, id: string): Promise<AdminMatchD
 }
 
 /**
- * Rattache chaque coup à son camp en rejouant le log, comme `MatchDO.load()` le fait :
- * l'action sérialisée ne nomme pas son auteur, c'est le trait qui le dit. Le déduire de
- * la parité de `seq` supposerait un premier joueur fixe et un coup par tour — deux
- * choses que le scénario et une future résolution différée ne garantissent pas.
+ * Rejoue le log comme `MatchDO.load()` le fait, en gardant une image après chaque coup.
+ *
+ * Le camp de chaque coup vient du trait : l'action sérialisée ne nomme pas son auteur,
+ * et le déduire de la parité de `seq` supposerait un premier joueur fixe et un coup par
+ * tour — deux choses que le scénario et une future résolution différée ne garantissent
+ * pas. Les images passent par la mémoire de brouillard (`advanceMemory`) et non par
+ * `replay` seul, pour dire aussi ce que chaque camp voyait à cet instant.
  */
 function annotate(
   row: MatchRow,
   actions: readonly Action[],
-): { log: AdminLogEntry[]; replayError: string | null } {
-  let history: readonly { readonly player: AdminLogEntry["player"] }[] = [];
+): { log: AdminLogEntry[]; frames: AdminFrame[]; replayError: string | null } {
+  const frames: AdminFrame[] = [];
   let replayError: string | null = null;
+  let memory: MatchMemory | undefined;
   try {
     const scenario = scenarioFor(row.scenario);
-    const start = createGame(scenario.board(), rulesetFor(row.ruleset_version), [...scenario.pieces]);
-    const replayed = replay(start, actions);
-    if (replayed.ok) history = replayed.value.history;
-    else replayError = `coup ${replayed.error.seq} : ${replayed.error.code}`;
+    memory = startMemory(
+      createGame(scenario.board(), rulesetFor(row.ruleset_version), [...scenario.pieces]),
+    );
+    frames.push(frameOf(memory));
+    for (const [seq, action] of actions.entries()) {
+      const advanced = advanceMemory(memory, action);
+      if (!advanced.ok) {
+        replayError = `coup ${seq} : ${advanced.error.code}`;
+        break;
+      }
+      memory = advanced.value;
+      frames.push(frameOf(memory));
+    }
   } catch (cause) {
     replayError = String(cause);
   }
+  const history = memory?.state.history ?? [];
   return {
     log: actions.map((action, seq) => ({ seq, player: history[seq]?.player ?? null, action })),
+    frames,
     replayError,
+  };
+}
+
+function frameOf(memory: MatchMemory): AdminFrame {
+  return {
+    pieces: [...memory.state.pieces.values()].map((piece) => ({
+      id: piece.id,
+      kind: piece.kind,
+      owner: piece.owner,
+      x: piece.coord.x,
+      y: piece.coord.y,
+    })),
+    visible: { A: [...memory.knowledge.A.visible], B: [...memory.knowledge.B.visible] },
   };
 }
 

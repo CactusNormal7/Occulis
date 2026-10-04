@@ -2,6 +2,7 @@ import { stopImpersonating, whoAmI } from "../net/auth.js";
 import { applyPalette } from "../ui/palette.js";
 import { parseRoute, routeHash, sectionOf } from "./model.js";
 import { h, render, type View } from "./page.js";
+import { icon } from "./icons.js";
 
 /**
  * Racine du back-office, servi sous `/admin/` — une page à part, qui ne charge ni Pixi
@@ -19,6 +20,8 @@ function element<T extends HTMLElement>(id: string): T {
 }
 
 applyPalette(document.documentElement);
+// Le cube filaire du menu (`docs/mockups/menu.html`), marque du jeu.
+document.querySelector("#admin-header .brand")?.prepend(icon("cube"));
 
 const root = element<HTMLElement>("admin-view");
 const toasts = element<HTMLElement>("admin-toasts");

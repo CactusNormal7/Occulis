@@ -140,8 +140,8 @@
     "semantic_hash": ""
   },
   "apps/web/src/ui/palette.ts": {
-    "mtime": 1791118127.3519871,
-    "ast_hash": "ef685505af200a580e68753ded2529d4",
+    "mtime": 1791119109.6030402,
+    "ast_hash": "dbbc995461ad91f8d2a9c59ceadd675e",
     "semantic_hash": ""
   },
   "apps/web/src/view/animation.test.ts": {
@@ -425,8 +425,8 @@
     "semantic_hash": "907b5ef3dd6efc6c41112fb93eb0460d"
   },
   "CLAUDE.md": {
-    "mtime": 1791118622.2966053,
-    "ast_hash": "1b4821d727fa12eae527751b8e012f50",
+    "mtime": 1791119233.438613,
+    "ast_hash": "7fe6f944606ce87606db325be76f083b",
     "semantic_hash": ""
   },
   "apps/web/index.html": {
@@ -470,8 +470,8 @@
     "semantic_hash": ""
   },
   "docs/technical/engine.md": {
-    "mtime": 1791118622.2966053,
-    "ast_hash": "2ef35e17e4fb0858b19f4c9d66b9e0f5",
+    "mtime": 1791119233.438613,
+    "ast_hash": "a83f94cde46c11f82fea4887f74003bb",
     "semantic_hash": ""
   },
   "docs/technical/infra.md": {
@@ -480,8 +480,8 @@
     "semantic_hash": ""
   },
   "docs/technical/server.md": {
-    "mtime": 1791118622.2925546,
-    "ast_hash": "bbbcf666135203d7db1f24012d8097d8",
+    "mtime": 1791119233.438613,
+    "ast_hash": "f024c6b82615666624908c980244d880",
     "semantic_hash": ""
   },
   "pnpm-workspace.yaml": {
@@ -705,8 +705,8 @@
     "semantic_hash": ""
   },
   "apps/server/src/admin/admin.integration.test.ts": {
-    "mtime": 1791118026.05629,
-    "ast_hash": "0c98ffdf700408d96995ee36fee00eee",
+    "mtime": 1791118857.716671,
+    "ast_hash": "47467d7aeba64265ae06af01a0188e14",
     "semantic_hash": ""
   },
   "apps/server/src/admin/paging.test.ts": {
@@ -720,8 +720,8 @@
     "semantic_hash": ""
   },
   "apps/server/src/admin/queries.ts": {
-    "mtime": 1791117202.3538926,
-    "ast_hash": "7d8c16b54f42eeb38a4137bc054bce1d",
+    "mtime": 1791118857.716671,
+    "ast_hash": "06f2b476a55785021defa9089f13e486",
     "semantic_hash": ""
   },
   "apps/server/src/admin/routes.ts": {
@@ -745,8 +745,8 @@
     "semantic_hash": ""
   },
   "apps/web/src/admin/main.ts": {
-    "mtime": 1791118367.6673946,
-    "ast_hash": "0eeaf0b6c3601d5d68c328382b39b33d",
+    "mtime": 1791119116.1628358,
+    "ast_hash": "28d2d00d074f89df9ceccf9c405e374e",
     "semantic_hash": ""
   },
   "apps/web/src/admin/model.test.ts": {
@@ -760,8 +760,8 @@
     "semantic_hash": ""
   },
   "apps/web/src/admin/page.ts": {
-    "mtime": 1791118331.7794082,
-    "ast_hash": "fa0b98f3cad97323794eec2979d96e13",
+    "mtime": 1791119128.287997,
+    "ast_hash": "49c3d789bb7407862f9979ef588355e7",
     "semantic_hash": ""
   },
   "apps/web/src/game/movement-diff.test.ts": {
@@ -810,8 +810,8 @@
     "semantic_hash": ""
   },
   "packages/protocol/src/admin.ts": {
-    "mtime": 1791117202.3538926,
-    "ast_hash": "7b3a4f01bcd187d8ca22ad751a4e80b0",
+    "mtime": 1791118857.716671,
+    "ast_hash": "2c19bd375800258466a6be478474d16c",
     "semantic_hash": ""
   },
   "apps/web/admin/index.html": {
@@ -855,8 +855,23 @@
     "semantic_hash": ""
   },
   "apps/web/src/admin/icons.ts": {
-    "mtime": 1791118127.3358192,
-    "ast_hash": "578c64c76f27f3e366128e64a24d82a8",
+    "mtime": 1791119002.9015396,
+    "ast_hash": "17d9e2b2ac1ef2e4750e40e677236e96",
+    "semantic_hash": ""
+  },
+  "apps/web/src/admin/replay-canvas.ts": {
+    "mtime": 1791119233.438613,
+    "ast_hash": "48750d32b38dc17e49942316463f085f",
+    "semantic_hash": ""
+  },
+  "apps/web/src/admin/replay.test.ts": {
+    "mtime": 1791118957.3140514,
+    "ast_hash": "8c1e4bd9bc397b4c8673c120eb1862b1",
+    "semantic_hash": ""
+  },
+  "apps/web/src/admin/replay.ts": {
+    "mtime": 1791118948.3931048,
+    "ast_hash": "9fd8ce44bcb18ab3413fa8b04b907718",
     "semantic_hash": ""
   }
 }

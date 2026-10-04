@@ -1,16 +1,16 @@
 # Graph Report - Occulis  (2026-10-04)
 
 ## Corpus Check
-- 161 files · ~107,493 words
+- 164 files · ~111,713 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1344 nodes · 3131 edges · 93 communities (65 shown, 28 thin omitted)
+- 1370 nodes · 3268 edges · 90 communities (63 shown, 27 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 40 edges (avg confidence: 0.81)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e848d4b4`
+- Built from commit: `5e57958e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -101,17 +101,14 @@
 - [[_COMMUNITY_Community 86|Community 86]]
 - [[_COMMUNITY_Community 87|Community 87]]
 - [[_COMMUNITY_Community 88|Community 88]]
-- [[_COMMUNITY_Community 89|Community 89]]
-- [[_COMMUNITY_Community 90|Community 90]]
-- [[_COMMUNITY_Community 91|Community 91]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `Board` - 56 edges
-2. `Coord` - 55 edges
-3. `packages/core/src/index.ts (barrel, referenced)` - 50 edges
-4. `main()` - 34 edges
-5. `PlayerId` - 34 edges
-6. `h()` - 33 edges
+1. `Board` - 59 edges
+2. `Coord` - 58 edges
+3. `packages/core/src/index.ts (barrel, referenced)` - 53 edges
+4. `PlayerId` - 38 edges
+5. `h()` - 35 edges
+6. `main()` - 34 edges
 7. `Le moteur de rendu et le client — `apps/web`` - 30 edges
 8. `Action` - 28 edges
 9. `coordKey` - 28 edges
@@ -150,23 +147,23 @@
 - **PieceType Roster Implementations** — roster_commander_commander, roster_scout_scout, pieces_piece_type_piecetype [INFERRED 0.85]
 - **Branch Environment Lifecycle** — src_actions_create_branch_env, src_actions_delete_branch_env, src_toml_appendenvblock, src_toml_removeenvblock, src_deploy_manifest_upsertdeployenvironment, src_deploy_manifest_removedeployenvironment, src_git_commitpaths, src_git_pushcurrentbranch [INFERRED 0.85]
 
-## Communities (93 total, 28 thin omitted)
+## Communities (90 total, 27 thin omitted)
 
 ### Community 0 - "Rendu isométrique et entrées"
-Cohesion: 0.14
-Nodes (30): DA et caméra provisoires, boardForScenario(), Saisie des coups : clic + clavier, MatchChannel, joinQueue(), QueueChannel, element(), main() (+22 more)
+Cohesion: 0.12
+Nodes (33): mountReplay(), DA et caméra provisoires, Saisie des coups : clic + clavier, MatchChannel, QueueChannel, element(), main(), BACKGROUND (+25 more)
 
 ### Community 1 - "Types de pièces et vision"
-Cohesion: 0.08
-Nodes (42): Height as Wall (not a flag), LOS Canonical-Order Symmetry, One Piece Type = One Class, Verticality Movement Rules, ConfigurablePieceType, PieceProfile, PieceKind, PieceType (+34 more)
+Cohesion: 0.06
+Nodes (56): Move, Height as Wall (not a flag), LOS Canonical-Order Symmetry, One Piece Type = One Class, Verticality Movement Rules, ConfigurablePieceType, PieceProfile, PieceKind (+48 more)
 
 ### Community 2 - "TUI d'infrastructure Ink"
 Cohesion: 0.05
-Nodes (93): App(), envItems(), InteractiveOutcome, Phase, Props, tomlBadge(), LogLine, OutputPane() (+85 more)
+Nodes (92): App(), envItems(), InteractiveOutcome, Phase, Props, tomlBadge(), LogLine, OutputPane() (+84 more)
 
 ### Community 3 - "État de partie et scénarios"
-Cohesion: 0.13
-Nodes (22): One Action = One Piece's Full Turn, Fog of War Ghost Memory, hypothesisFrom(), OnlineMatch, SeatedContext, QueueSeat, Piece, PlayerId (+14 more)
+Cohesion: 0.12
+Nodes (23): One Action = One Piece's Full Turn, Fog of War Ghost Memory, hypothesisFrom(), Movement, movementBetween(), OnlineMatch, Piece, PieceId (+15 more)
 
 ### Community 4 - "Décisions d'architecture et coûts"
 Cohesion: 0.04
@@ -174,7 +171,7 @@ Nodes (48): Module actions.ts : coups légaux et résolution, Invariant : déter
 
 ### Community 5 - "Sélection et coups légaux"
 Cohesion: 0.07
-Nodes (48): integer(), MatchFilter, MatchStatus, Page, parseMatchFilter(), parsePage(), validHandle(), annotate() (+40 more)
+Nodes (49): integer(), MatchFilter, MatchStatus, Page, parseMatchFilter(), parsePage(), validHandle(), annotate() (+41 more)
 
 ### Community 6 - "Console de commandes texte"
 Cohesion: 0.11
@@ -209,8 +206,8 @@ Cohesion: 0.29
 Nodes (6): main, d1Database, wranglerEnv, staging, d1Database, wranglerEnv
 
 ### Community 14 - "Scripts racine et CI"
-Cohesion: 0.13
-Nodes (29): Cible de distribution (Electron), Choix technique (stack, séparation logique/rendu), Le dossier dit la dépendance (view/game purs vs scene/input/ui), 12 invariants du moteur de rendu, depthAlpha(), drawTile(), GEOMETRY, cliffQuads() (+21 more)
+Cohesion: 0.14
+Nodes (27): Cible de distribution (Electron), Choix technique (stack, séparation logique/rendu), Le dossier dit la dépendance (view/game purs vs scene/input/ui), 12 invariants du moteur de rendu, depthAlpha(), drawTile(), cliffQuads(), compareDepth() (+19 more)
 
 ### Community 15 - "Configuration TypeScript web"
 Cohesion: 0.20
@@ -225,8 +222,8 @@ Cohesion: 0.05
 Nodes (43): `admin/` — le back-office, Carte des modules, Ce que le client fait, et ne fait pas, Clic contre glissé, `cliffQuads()` et l'ordre du peintre, Conditions de réémission, `game/hypothesis.ts` — la position telle que le joueur peut la croire, `game/movement-diff.ts` — ce que la vue a fait bouger (+35 more)
 
 ### Community 18 - "Métadonnées du monorepo"
-Cohesion: 0.14
-Nodes (18): drawHover(), drawSelection(), Mark, markTile(), drawPiece(), isTile(), occupantsOf(), sameProjection() (+10 more)
+Cohesion: 0.16
+Nodes (19): drawHover(), drawSelection(), Mark, markTile(), drawPiece(), Drawable, isTile(), occupantsOf() (+11 more)
 
 ### Community 19 - "Outils de développement racine"
 Cohesion: 0.08
@@ -245,8 +242,8 @@ Cohesion: 0.40
 Nodes (4): /graphify skill trigger (.claude/CLAUDE.md), graphify usage rules (root CLAUDE.md), hooks, PreToolUse
 
 ### Community 23 - "Environnements de branche"
-Cohesion: 0.12
-Nodes (16): `config.ts` — chemins et conventions, « Créer un environnement de branche », `deploy-manifest.ts` — édition du manifeste, `git.ts`, `.github/deploy-environments.json` — le mécanisme de sélection, Les actions de la TUI, Les quatre environnements, Les tests (+8 more)
+Cohesion: 0.14
+Nodes (14): `checks` — les vérifications, Concurrence, « Créer un environnement de branche », `deploy` — le déploiement, `.github/deploy-environments.json` — le mécanisme de sélection, `.github/workflows/ci.yml` — le pipeline, Les actions de la TUI, Les quatre environnements (+6 more)
 
 ### Community 24 - "Règle ESLint des couleurs"
 Cohesion: 1.00
@@ -257,28 +254,28 @@ Cohesion: 0.17
 Nodes (12): 1. Cible de distribution, 2. Hébergement : Cloudflare Worker + Durable Objects, 3. Base de données : D1, 4. Environnements, 5. CI/CD, 6. Coûts, 7. Points ouverts, Conséquence : versionner les règles par partie (+4 more)
 
 ### Community 50 - "Community 50"
-Cohesion: 0.15
-Nodes (13): `admin/` — le back-office, Fichiers, `index.ts` — le Worker, Invariants à ne pas casser, L'usurpation, Le serveur — `apps/server`, Les tests, Non implémenté (+5 more)
+Cohesion: 0.06
+Nodes (32): `admin/` — le back-office, `auth/` — comptes et sessions, Better Auth, et ce que le projet garde, Ce que le serveur ne dit pas, Fichiers, `index.ts` — le Worker, Invariants à ne pas casser, L'autorité de tour (+24 more)
 
 ### Community 51 - "Community 51"
-Cohesion: 0.08
-Nodes (80): icon(), IconName, Shape, element(), identity, root, show(), start() (+72 more)
+Cohesion: 0.07
+Nodes (88): icon(), IconName, Shape, element(), identity, root, show(), start() (+80 more)
 
 ### Community 52 - "Community 52"
 Cohesion: 0.22
 Nodes (8): Commandes, Conventions, graphify, Infrastructure et CI/CD, Modules de `packages/core`, Occulis, Stack et architecture, État du projet
 
 ### Community 53 - "Community 53"
-Cohesion: 0.50
-Nodes (4): Coûts hors hébergement, L'hibernation est une condition, pas une optimisation, Non chiffré, Occulis — Estimation des coûts
+Cohesion: 0.22
+Nodes (7): Coûts hors hébergement (signature, Steam, domaine), Chiffrage plan Workers Paid, Coûts hors hébergement, L'hibernation est une condition, pas une optimisation, Non chiffré, Occulis — Estimation des coûts, pnpm infra (TUI Ink)
 
 ### Community 54 - "Community 54"
 Cohesion: 0.22
 Nodes (9): 0. Préalables, 1. Outillage local, 2. Développement local, 3. Créer les bases distantes, 4. Premier déploiement en recette, 5. Secrets pour la CI, 6. Déclencher un déploiement, 7. Ce qui reste à écrire (+1 more)
 
 ### Community 55 - "Community 55"
-Cohesion: 0.14
-Nodes (13): Log d'actions comme source de vérité, Base D1, Hébergement Cloudflare Worker + Durable Objects, Hibernation : condition, pas optimisation (~20000x), Coûts hors hébergement (signature, Steam, domaine), Chiffrage plan Workers Paid, Pipeline gestes/saisie → application → rendu, Cycle d'une action (load → applyAction → observe → log → broadcast) (+5 more)
+Cohesion: 0.29
+Nodes (6): Log d'actions comme source de vérité, Pipeline gestes/saisie → application → rendu, Cycle d'une action (load → applyAction → observe → log → broadcast), WireView / encodeView() protocole réseau, Client et serveur pas encore connectés, Séparation comment/pourquoi dans la doc technique
 
 ### Community 56 - "Community 56"
 Cohesion: 0.29
@@ -294,39 +291,39 @@ Nodes (20): dequeue(), enqueue(), Pairing, takePairing(), ANNE, BORIS, Waiting, 
 
 ### Community 59 - "Community 59"
 Cohesion: 0.08
-Nodes (36): signUpAdmin(), AdminSession, AdminUser, ban(), call(), create(), impersonate(), match() (+28 more)
+Nodes (35): signUpAdmin(), AdminSession, AdminUser, ban(), call(), create(), impersonate(), match() (+27 more)
 
 ### Community 62 - "Community 62"
-Cohesion: 0.31
-Nodes (9): attachControls(), ControlsOptions, Drag, DragKind, dragKindOf(), isTyping(), Camera, panBy() (+1 more)
+Cohesion: 0.27
+Nodes (10): attachControls(), ControlsOptions, Drag, DragKind, dragKindOf(), isTyping(), sameCoord(), Camera (+2 more)
 
 ### Community 63 - "Community 63"
 Cohesion: 0.22
 Nodes (21): allCells(), byDepth(), diamond(), drawGlyph(), drawGlyphIcon(), drawMoveTrail(), drawPiece(), drawPieces() (+13 more)
 
 ### Community 66 - "Community 66"
-Cohesion: 0.19
-Nodes (23): opponentOf(), applyAction(), destinationsFor(), legalActions(), MoveAction, occupancyWithout(), replay(), ReplayError (+15 more)
+Cohesion: 0.23
+Nodes (18): opponentOf(), packages/core/src/actions.ts (referenced), applyAction(), destinationsFor(), legalActions(), MoveAction, occupancyWithout(), replay() (+10 more)
 
 ### Community 67 - "Community 67"
 Cohesion: 0.12
-Nodes (27): retryDelay(), Channel, ChannelOptions, ChannelStatus, openChannel(), connectToMatch(), MatchHandlers, QueueHandlers (+19 more)
+Nodes (28): retryDelay(), Channel, ChannelOptions, ChannelStatus, openChannel(), connectToMatch(), MatchHandlers, SeatedContext (+20 more)
 
 ### Community 68 - "Community 68"
-Cohesion: 0.10
-Nodes (30): authMessage(), AuthOutcome, Identity, JSON_HEADERS, MESSAGES, register(), requestReset(), resendVerification() (+22 more)
+Cohesion: 0.12
+Nodes (26): authMessage(), AuthOutcome, Identity, JSON_HEADERS, MESSAGES, register(), requestReset(), resendVerification() (+18 more)
 
 ### Community 69 - "Community 69"
-Cohesion: 0.19
-Nodes (19): Movement, movementBetween(), ClickOutcome, resolveClick(), Selection, selectionFor(), selection.ts test suite, sameCoord() (+11 more)
+Cohesion: 0.27
+Nodes (10): ClickOutcome, resolveClick(), Selection, selectionFor(), BOARD, game(), PIECES, selection.ts test suite (+2 more)
 
 ### Community 70 - "Community 70"
 Cohesion: 0.13
 Nodes (14): dependencies, @occulis/core, devDependencies, typescript, vitest, main, name, private (+6 more)
 
 ### Community 71 - "Community 71"
-Cohesion: 0.16
-Nodes (19): Server-Side Fog Redaction, memory(), WALLED, table(), WALLED, contact, duel(), ruleset (+11 more)
+Cohesion: 0.18
+Nodes (20): Server-Side Fog Redaction, memory(), WALLED, table(), WALLED, wireView(), provisionalRuleset(), contact (+12 more)
 
 ### Community 72 - "Community 72"
 Cohesion: 0.22
@@ -345,8 +342,8 @@ Cohesion: 0.25
 Nodes (8): docs/architecture.md (infra/server architecture reference), D1 action log is the source of truth, Durable Object must hibernate, Fog of war is structural, not applicative, Global matchmaking Durable Object, Rules versioned per match, not per connection, match_actions table, matches table
 
 ### Community 76 - "Community 76"
-Cohesion: 0.15
-Nodes (7): DEMO, MAP, PIECES, REGISTRY, Scenario, Board, TileSpec
+Cohesion: 0.17
+Nodes (17): drawPiece(), fillQuad(), strokeQuad(), trace(), centerOffset(), fitScale(), movesBetween(), Perspective (+9 more)
 
 ### Community 77 - "Community 77"
 Cohesion: 0.57
@@ -364,6 +361,10 @@ Nodes (5): packages/core strict determinism invariant, LOS symmetry-by-construct
 Cohesion: 0.67
 Nodes (4): One branch = one full hosted environment, deploy-environments.json manifest, Branches déployées README, CI target-environment resolution job
 
+### Community 83 - "Community 83"
+Cohesion: 0.30
+Nodes (5): advanceMemory(), MatchMemory, observe(), replayMemory(), MatchDO
+
 ### Community 84 - "Community 84"
 Cohesion: 0.29
 Nodes (3): MIME, MOCKUPS_DIR, PAGES
@@ -377,44 +378,32 @@ Cohesion: 0.42
 Nodes (7): advance(), AnimatedPosition, easeInOutCubic(), positionOf(), startMove(), BOARD, animation.test.ts suite
 
 ### Community 87 - "Community 87"
-Cohesion: 0.40
-Nodes (5): `checks` — les vérifications, Concurrence, `deploy` — le déploiement, `.github/workflows/ci.yml` — le pipeline, `target` — résoudre la branche
+Cohesion: 0.29
+Nodes (7): `config.ts` — chemins et conventions, `deploy-manifest.ts` — édition du manifeste, `git.ts`, Modules, `toml.ts` — édition de `wrangler.toml`, `tooling/infra` — la TUI, `wrangler.ts` — exécution de processus
 
 ### Community 88 - "Community 88"
-Cohesion: 0.25
-Nodes (8): `auth/` — comptes et sessions, Better Auth, et ce que le projet garde, Ce que le serveur ne dit pas, L'envoi des messages, L'origine est vérifiée, La limitation de débit, La session, La vérification d'adresse
-
-### Community 89 - "Community 89"
-Cohesion: 0.33
-Nodes (6): L'autorité de tour, L'hibernation — le point de coût, Le cycle d'une action, Le siège : à qui parle-t-on ?, `load()` — la reconstruction par rejeu, `match-do.ts` — `MatchDO`
-
-### Community 90 - "Community 90"
-Cohesion: 0.40
-Nodes (3): BOARD, game(), PIECES
-
-### Community 91 - "Community 91"
-Cohesion: 0.40
-Nodes (5): Le schéma D1, `migrations/0001_init.sql`, `migrations/0002_users.sql` et `0003_sessions.sql`, `migrations/0004_better_auth.sql`, `migrations/0005_admin.sql`
+Cohesion: 0.50
+Nodes (4): Base D1, Hébergement Cloudflare Worker + Durable Objects, Hibernation : condition, pas optimisation (~20000x), acceptWebSocket() vs accept() — point de coût
 
 ## Knowledge Gaps
-- **450 isolated node(s):** `PreToolUse`, `wranglerEnv`, `d1Database`, `wranglerEnv`, `d1Database` (+445 more)
+- **451 isolated node(s):** `PreToolUse`, `wranglerEnv`, `d1Database`, `wranglerEnv`, `d1Database` (+446 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **28 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **27 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `packages/core/src/index.ts (barrel, referenced)` connect `Community 69` to `Rendu isométrique et entrées`, `Community 66`, `État de partie et scénarios`, `Décisions d'architecture et coûts`, `Sélection et coups légaux`, `Community 67`, `Manifeste du paquet core`, `Community 71`, `Community 58`, `Console de commandes texte`, `Scripts racine et CI`, `Métadonnées du monorepo`, `Community 51`, `Community 86`, `Community 90`, `Community 59`, `Community 92`, `Community 62`?**
-  _High betweenness centrality (0.195) - this node is a cross-community bridge._
-- **Why does `packages/core/src/actions.ts (referenced)` connect `TUI d'infrastructure Ink` to `Types de pièces et vision`, `Community 66`, `Décisions d'architecture et coûts`, `Community 71`?**
-  _High betweenness centrality (0.118) - this node is a cross-community bridge._
-- **Why does `MatchDO` connect `Community 83` to `Community 66`, `Community 75`, `Sélection et coups légaux`?**
-  _High betweenness centrality (0.057) - this node is a cross-community bridge._
-- **Are the 3 inferred relationships involving `main()` (e.g. with `attachControls()` and `VIEWPORT`) actually correct?**
-  _`main()` has 3 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `packages/core/src/index.ts (barrel, referenced)` connect `Community 76` to `Rendu isométrique et entrées`, `État de partie et scénarios`, `Décisions d'architecture et coûts`, `Sélection et coups légaux`, `Community 69`, `Manifeste du paquet core`, `Community 71`, `Community 67`, `Console de commandes texte`, `Scripts racine et CI`, `Métadonnées du monorepo`, `Community 51`, `Community 83`, `Community 86`, `Community 58`, `Community 59`, `Community 92`, `Community 62`?**
+  _High betweenness centrality (0.196) - this node is a cross-community bridge._
+- **Why does `packages/core/src/actions.ts (referenced)` connect `Community 66` to `TUI d'infrastructure Ink`, `Décisions d'architecture et coûts`, `Community 71`?**
+  _High betweenness centrality (0.101) - this node is a cross-community bridge._
+- **Why does `Le moteur de rendu et le client — `apps/web`` connect `Invariants serveur et migrations D1` to `Scripts racine et CI`?**
+  _High betweenness centrality (0.058) - this node is a cross-community bridge._
 - **What connects `PreToolUse`, `wranglerEnv`, `d1Database` to the rest of the system?**
-  _476 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _477 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Rendu isométrique et entrées` be split into smaller, more focused modules?**
-  _Cohesion score 0.1361344537815126 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.11666666666666667 - nodes in this community are weakly interconnected._
 - **Should `Types de pièces et vision` be split into smaller, more focused modules?**
-  _Cohesion score 0.07747747747747748 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.055353535353535356 - nodes in this community are weakly interconnected._
+- **Should `TUI d'infrastructure Ink` be split into smaller, more focused modules?**
+  _Cohesion score 0.05105572862582208 - nodes in this community are weakly interconnected._

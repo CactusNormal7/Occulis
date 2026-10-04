@@ -26,6 +26,16 @@ const ICONS = {
   search: [{ circle: [11, 11, 7] }, { d: "M20 20l-4-4" }],
   copy: [{ d: "M9 9h11v11H9z" }, { d: "M5 15H4V4h11v1" }],
   back: [{ d: "M15 6l-6 6 6 6" }],
+  previous: [{ d: "M15 6l-6 6 6 6" }],
+  next: [{ d: "M9 6l6 6-6 6" }],
+  first: [{ d: "M17 6l-6 6 6 6" }, { d: "M7 6v12" }],
+  last: [{ d: "M7 6l6 6-6 6" }, { d: "M17 6v12" }],
+  play: [{ d: "M8 5l11 7-11 7z" }],
+  pause: [{ d: "M8 5v14M16 5v14" }],
+  rotateLeft: [{ d: "M4 4v5h5" }, { d: "M4.6 9A8 8 0 1 1 4 13" }],
+  rotateRight: [{ d: "M20 4v5h-5" }, { d: "M19.4 9A8 8 0 1 0 20 13" }],
+  /** Le cube filaire du menu : la marque du jeu, reprise dans l'en-tête. */
+  cube: [{ d: "M12 3l8 4-8 4-8-4z" }, { d: "M4 7v9l8 4 8-4V7" }, { d: "M12 11v9" }],
 } satisfies Record<string, readonly Shape[]>;
 
 export type IconName = keyof typeof ICONS;

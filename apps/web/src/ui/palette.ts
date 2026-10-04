@@ -1,4 +1,4 @@
-import { BACKGROUND, GEOMETRY, STATE } from "../theme.js";
+import { BACKGROUND, GEOMETRY, PLAYERS, STATE } from "../theme.js";
 
 /**
  * Passe le code couleur de `theme.ts` à la feuille de style de l'interface.
@@ -9,7 +9,7 @@ import { BACKGROUND, GEOMETRY, STATE } from "../theme.js";
  * code couleur du client (docs/design.md 8.1).
  */
 
-function cssColor(color: number, alpha = 1): string {
+export function cssColor(color: number, alpha = 1): string {
   const r = (color >> 16) & 0xff;
   const g = (color >> 8) & 0xff;
   const b = color & 0xff;
@@ -25,9 +25,11 @@ export function applyPalette(root: HTMLElement): void {
     "--panel": cssColor(BACKGROUND, 0.82),
     "--ground": cssColor(BACKGROUND),
     "--ink-ghost": cssColor(GEOMETRY.stroke, 0.05),
-    // Le back-office signale un rôle particulier dans la teinte de la sélection :
-    // une mise en avant, qui n'est ni un succès ni un refus.
-    "--notice": cssColor(STATE.selection),
+    "--ink-line": cssColor(GEOMETRY.stroke, 0.1),
+    // Le back-office montre des parties : camps et sélection y gardent leur sens de jeu.
+    "--camp-a": cssColor(PLAYERS.A),
+    "--camp-b": cssColor(PLAYERS.B),
+    "--selection": cssColor(STATE.selection),
     // Un coup accepté et un coup refusé sont de l'information de partie : ils
     // reprennent donc les tokens d'état, pas une couleur d'interface propre.
     "--accepted": cssColor(STATE.legalMove),
