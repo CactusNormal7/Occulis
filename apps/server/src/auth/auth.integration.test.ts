@@ -1,5 +1,6 @@
 import { SELF, env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
+import worker from "../index.js";
 
 /**
  * L'authentification dans workerd. PBKDF2 passe par WebCrypto et D1 par le vrai
@@ -317,5 +318,19 @@ describe("authentification", () => {
       headers: { Upgrade: "websocket", Cookie: cookie },
     });
     expect(refused.status).toBe(403);
+  });
+});
+
+describe("sans AUTH_SECRET", () => {
+  // Better Auth ne détecte la production qu'à `NODE_ENV`, absent d'un Worker : sans ce
+  // garde-fou, il signerait les sessions avec son secret par défaut, public.
+  it("refuse l'authentification et la file, mais sert encore le reste", async () => {
+    const unconfigured = { ...env, AUTH_SECRET: "" };
+    const call = (path: string) =>
+      worker.fetch(new Request(`https://occulis.test${path}`, { headers: { Origin: "https://occulis.test" } }), unconfigured);
+
+    expect((await call("/api/auth/get-session")).status).toBe(503);
+    expect((await call("/api/auth/me")).status).toBe(503);
+    expect((await call("/api/queue")).status).toBe(503);
   });
 });

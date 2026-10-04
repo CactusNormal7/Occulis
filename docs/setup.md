@@ -60,8 +60,8 @@ Noter l'**Account ID** : il servira en secret GitHub à l'étape 5.
 Aucune ressource cloud n'est nécessaire. `wrangler dev` émule D1 et les Durable Objects
 sur un SQLite local, persistant dans `.wrangler/state` et propre à chaque développeur.
 
-Une seule variable est obligatoire : `AUTH_SECRET`, sans quoi Better Auth refuse de
-démarrer. Copier `apps/server/.dev.vars.example` en `.dev.vars` (non versionné) suffit.
+Une seule variable est obligatoire : `AUTH_SECRET`, sans quoi l'authentification répond 503
+(Better Auth, lui, démarrerait sur un secret public — voir technical/server.md). Copier `apps/server/.dev.vars.example` en `.dev.vars` (non versionné) suffit.
 
 ```bash
 cp apps/server/.dev.vars.example apps/server/.dev.vars
@@ -192,7 +192,9 @@ la fusion ou l'effacement de la branche concernée.
   pnpm exec wrangler secret put AUTH_SECRET --env staging
   pnpm exec wrangler secret put AUTH_SECRET --env production
 
-  # Facultatif : sans clé, les messages sont journalisés au lieu d'être envoyés.
+  # Obligatoire en déployé : sans clé, les messages sont journalisés au lieu d'être
+  # envoyés, aucune adresse ne se vérifie, et la file comme les salons restent fermés.
+  pnpm exec wrangler secret put RESEND_API_KEY --env staging
   pnpm exec wrangler secret put RESEND_API_KEY --env production
   ```
 

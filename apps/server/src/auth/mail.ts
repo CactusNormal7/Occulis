@@ -38,8 +38,12 @@ export async function sendLetter(env: Env, letter: Letter): Promise<void> {
 
   // Un échec d'envoi ne doit pas faire échouer l'inscription : le compte existe, et un
   // second message peut toujours être demandé. On le signale sans le propager.
+  // Le corps est journalisé avec le statut : c'est lui qui dit *pourquoi* Resend refuse
+  // (domaine non vérifié, expéditeur non autorisé, clé révoquée), et le statut seul
+  // — presque toujours 403 — ne permet pas de les distinguer.
   if (!response.ok) {
-    console.error(`[mail] échec ${response.status} pour ${letter.to}`);
+    const reason = await response.text().catch(() => "");
+    console.error(`[mail] échec ${response.status} pour ${letter.to} : ${reason}`);
   }
 }
 
