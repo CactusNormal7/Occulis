@@ -87,10 +87,12 @@ l'attribut `data-tip`. Toutes les animations s'éteignent sous `prefers-reduced-
 | Parcours de compte | `FormPanel` (colonne étroite, marque, titre), `FormMessage` (`error`/`success`/`info`), `Divider` (« ou »), `ProviderButton` (« Continuer avec Google », logo monochrome) |
 | Réglages | `SettingList`, `SettingRow` (libellé, valeur, précision, bouton d'édition ou geste propre), `SettingEditor` (l'éditeur déplié dans la ligne) |
 | États | `Badge` (`plain`/`strong`/`dim`/`refused`/`A`/`B`), `BadgeRow`, `Banner`, `EmptyState`, `ToastProvider` + `useToast`, `ToastStack`, `ProgressBar` |
-| Joueurs | `TileAvatar` (initiales dans une case 2:1), `Person`, `Versus` |
+| Joueurs | `TileAvatar` (initiales dans une case 2:1), `Person`, `Versus`, `PlayerPlate` (la plaque d'un joueur à l'annonce d'une partie), `Reveal` (l'annonce : deux plaques et un « vs », réductible en bandeau) |
+| Choix | `ChoiceList`, `ChoiceRow` (une ligne choisissable, `aria-pressed`, marquée du trait de la sélection) |
+| Temps | `CountdownRing` (un anneau qui se vide, piloté par ses propriétés, dans la teinte des refus sous cinq secondes) |
 | Mise en page | `Card` (avec `id` d'ancre), `CardGrid`, `CardColumn`, `PageHead`, `BackLink`, `Hero`, `Toolbar`, `ToolbarText`, `TopBar`, `Wordmark`, `Note` |
 | Données | `StatTile`, `StatTileGrid`, `Stat`, `StatGrid`, `FactStrip`, `DefinitionList`, `Table`, `Pager`, `List`, `ListRow`, `MoveList` |
-| Fenêtres | `Dialog` |
+| Fenêtres | `Dialog` (`cancelLabel`, et `dismissible={false}` : ni croix, ni Échap, ni voile — pour une question qui attend une réponse) |
 
 Quelques comportements à connaître :
 
@@ -101,6 +103,12 @@ Quelques comportements à connaître :
   l'infobulle par la raison.
 - **`ToastProvider`** empile les messages en bas à droite ; un refus reste deux fois plus
   longtemps qu'un succès.
+- **`CountdownRing`** ne tient aucune horloge : l'appelant fait décroître `remainingMs`, et
+  l'anneau glisse d'une valeur à l'autre en une seconde. Une animation CSS aurait été
+  écrasée à zéro sous mouvement réduit, vidant l'anneau d'un coup — or le temps restant est
+  une information.
+- **`Reveal`** fait entrer les deux plaques chacune de son côté, puis le « vs » ; `compact` le
+  range en bandeau. Ces animations ne portent rien et s'éteignent sous mouvement réduit.
 - **`StatTile`** fait monter son chiffre de zéro (`animate`), sauf sous mouvement réduit.
 - **`MoveList`** sépare l'entrée montrée (`shown`, survol) de l'entrée épinglée (`pinned`,
   marquée dans la teinte de la sélection).
@@ -139,12 +147,12 @@ catégories (`docs/<Nom>.md`), l'en-tête de conventions lu par l'agent de desig
 
 ## Tests
 
-17 tests, sous Node : `pnpm --filter @occulis/ui test`.
+21 tests, sous Node : `pnpm --filter @occulis/ui test`.
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
 | `src/tokens.test.ts` | `generated/tokens.css` identique à sa source, `styles.css` sans propriété indéfinie ni couleur en dur, conversion des couleurs, **alpha précomposé pour les courriers** |
-| `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition**, **langue fixée par `UiRoot` (et anglais par défaut)** |
+| `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition**, **langue fixée par `UiRoot` (et anglais par défaut)**, compte à rebours proportionnel et urgent, plaques dans la couleur de leur camp, ligne de choix marquée, fenêtre sans croix |
 
 Le rendu visuel n'est pas testé ici : il l'est par les aperçus vérifiés sur captures lors de
 chaque synchronisation (`.design-sync/`).

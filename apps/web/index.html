@@ -87,6 +87,13 @@
             <button id="play-join" type="submit" data-i18n="game.menu.joinButton">Join</button>
           </form>
 
+          <!-- Les équipes préparées d'avance : ce n'est pas une entrée en partie, mais ce
+               qu'on emporte dans chacune. -->
+          <button id="menu-teams" type="button">
+            <span data-i18n="team.presets.menuEntry">Teams</span>
+            <small data-i18n="team.presets.menuHint">Prepare your line-ups</small>
+          </button>
+
           <p id="menu-notice" role="status"></p>
           <div class="menu-links">
             <a id="menu-admin" class="quiet" href="/admin/" data-i18n="game.menu.admin" hidden>Back office</a>
@@ -105,7 +112,21 @@
           <button id="waiting-cancel" type="button" class="quiet" data-i18n="game.waiting.cancel">Cancel</button>
         </div>
       </section>
+
+      <!-- Le déploiement : annonce de l'adversaire, puis composition et placement de
+           l'équipe. Un îlot React sur la charte (`src/prepare/`). -->
+      <section id="screen-deploy" class="screen screen--page" hidden>
+        <div id="deploy-root"></div>
+      </section>
+
+      <!-- Les équipes préparées, depuis le menu (`src/teams/`). -->
+      <section id="screen-teams" class="screen screen--page" hidden>
+        <div id="teams-root"></div>
+      </section>
     </main>
+
+    <!-- La fenêtre « partie trouvée », modale, au-dessus de l'écran d'attente. -->
+    <div id="match-found-root"></div>
 
     <!--
       Bandeau de partie : état du tour, lecture de case et saisie de coups. Le clavier

@@ -86,6 +86,7 @@ export const profile: Messages["profile"] = {
     lost: "défaites",
     ongoing: "en cours",
     rate: "taux",
+    elo: "Elo",
   },
   sessions: {
     title: (count) => `Sessions ouvertes (${count})`,
@@ -112,7 +113,9 @@ export const profile: Messages["profile"] = {
   },
   matches: {
     title: (total) => `Mes parties (${total})`,
-    columns: { start: "début", opponent: "adversaire", side: "camp", result: "résultat", moves: "coups" },
+    columns: { start: "début", opponent: "adversaire", side: "camp", result: "résultat", moves: "coups", elo: "Elo" },
+    ratingChange: (change) => (change > 0 ? `+${change}` : `${change}`),
+    unrated: "non classée",
     empty: "Aucune partie pour l'instant.",
     ongoingReplay: "Partie en cours : le replay s'ouvre à la fin",
     replay: "Revoir la partie",

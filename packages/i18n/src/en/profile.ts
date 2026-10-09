@@ -85,6 +85,7 @@ export const profile = {
     lost: "losses",
     ongoing: "ongoing",
     rate: "rate",
+    elo: "Elo",
   },
   sessions: {
     title: (count: number) => `Open sessions (${count})`,
@@ -110,7 +111,9 @@ export const profile = {
   },
   matches: {
     title: (total: number) => `My matches (${total})`,
-    columns: { start: "start", opponent: "opponent", side: "side", result: "result", moves: "moves" },
+    columns: { start: "start", opponent: "opponent", side: "side", result: "result", moves: "moves", elo: "Elo" },
+    ratingChange: (change: number) => (change > 0 ? `+${change}` : `${change}`),
+    unrated: "unranked",
     empty: "No matches yet.",
     ongoingReplay: "Match in progress: the replay opens at the end",
     replay: "Watch the match again",

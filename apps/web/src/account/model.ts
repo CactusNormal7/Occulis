@@ -44,7 +44,19 @@ export interface Notice {
 }
 
 /** Les paramètres de retour que la page lit une fois, puis retire de l'URL. */
-const ARRIVAL_PARAMETERS = ["verified", "deleted", "error", "error_description", "token"] as const;
+const ARRIVAL_PARAMETERS = ["verified", "deleted", "verifiee", "supprime", "error", "error_description", "token"] as const;
+
+/**
+ * Les anciens noms de ces paramètres, d'avant le passage du nommage en anglais : des
+ * courriers déjà envoyés ramènent sur `/?verifiee=1`. Le Worker redirige les anciennes
+ * pages (`legacy-routes.ts`), mais `/` est servi tel quel par les assets statiques, sans
+ * passer par lui — c'est donc ici qu'on les reconnaît encore.
+ */
+const LEGACY_FLAGS = { verified: "verifiee", deleted: "supprime" } as const;
+
+function flag(parameters: URLSearchParams, name: keyof typeof LEGACY_FLAGS): boolean {
+  return parameters.get(name) === "1" || parameters.get(LEGACY_FLAGS[name]) === "1";
+}
 
 /**
  * Le message à montrer en arrivant d'un lien ou d'une redirection : adresse confirmée,
@@ -62,10 +74,10 @@ export function arrivalNotice(pathname: string, search: string): Notice | undefi
       retry: expired ? (onReset ? "reset" : "verification") : undefined,
     };
   }
-  if (parameters.get("deleted") === "1") {
+  if (flag(parameters, "deleted")) {
     return { tone: "success", text: messages().account.arrival.deleted };
   }
-  if (parameters.get("verified") === "1") {
+  if (flag(parameters, "verified")) {
     return { tone: "success", text: messages().account.arrival.verified };
   }
   return undefined;

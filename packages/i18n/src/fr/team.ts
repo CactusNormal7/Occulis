@@ -61,7 +61,6 @@ export const team: Messages["team"] = {
     deleteNote: "Cette équipe sera perdue. Les parties déjà jouées ne changent pas.",
     copyOf: (name) => `${name} (copie)`,
     limit: (limit) => `${limit} équipes au plus.`,
-    count: (count, limit) => `${count} / ${limit}`,
     map: (map) => `carte ${map}`,
     incomplete: "Placez toutes les pièces avant d'enregistrer.",
     errors: {

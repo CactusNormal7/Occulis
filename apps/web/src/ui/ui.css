@@ -150,6 +150,15 @@
   pointer-events: auto;
 }
 
+/* Un écran pleine page, en React sur la charte (déploiement, équipes) : il prend toute la
+   place du conteneur et défile seul, la page du jeu ne défilant jamais. */
+.screen--page {
+  align-self: stretch;
+  max-width: none;
+  margin: -24px;
+  overflow-y: auto;
+}
+
 .panel {
   display: flex;
   flex-direction: column;
@@ -242,6 +251,18 @@ button:not([class*="occ-"]):disabled {
 }
 
 .primary small {
+  color: var(--ink-soft);
+}
+
+/* Les équipes : une entrée du menu sans être un geste de partie, donc en retrait. */
+#menu-teams {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+}
+
+#menu-teams small {
   color: var(--ink-soft);
 }
 

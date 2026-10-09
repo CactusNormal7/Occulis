@@ -7,6 +7,8 @@ import {
   Card,
   CardColumn,
   CardGrid,
+  ChoiceList,
+  ChoiceRow,
   Dialog,
   EmptyState,
   FactStrip,
@@ -229,6 +231,7 @@ function Account({ profile, reload }: { profile: MeProfile; reload: () => void }
             </SettingList>
           </Card>
           <RecordCard profile={profile} />
+          <FeatsCard readOnly={readOnly} />
         </CardColumn>
         <CardColumn>
           <Card title={m.security.title} id="security">
@@ -490,7 +493,61 @@ function RecordCard({ profile }: { profile: MeProfile }) {
         <Stat value={lost} label={m.lost} />
         <Stat value={ongoing} label={m.ongoing} />
         <Stat value={rate === null ? "—" : `${rate} %`} label={m.rate} />
+        <Stat value={profile.elo} label={m.elo} />
       </StatGrid>
+    </Card>
+  );
+}
+
+/**
+ * Les faits d'armes : ceux débloqués, et les trois au plus qu'on montre à ses adversaires
+ * à l'annonce d'une partie. Le serveur refuse ce qui n'est pas débloqué ; griser n'évite
+ * qu'un clic dans le vide.
+ */
+function FeatsCard({ readOnly }: { readOnly: boolean }) {
+  const all = useMessages();
+  const m = all.feats;
+  const notify = useToast();
+  const { loaded, reload } = useLoad("feats", api.feats);
+  if (loaded.state !== "ready") return null;
+  const { feats, showcase } = loaded.value;
+  const full = showcase.length >= 3;
+  const toggle = (id: string) => {
+    const next = showcase.includes(id) ? showcase.filter((other) => other !== id) : [...showcase, id];
+    void api.setShowcase(next).then((outcome) => {
+      notify(outcome.ok ? m.saved : outcome.message, outcome.ok);
+      if (outcome.ok) reload();
+    });
+  };
+  return (
+    <Card title={m.title}>
+      <Note>{m.lead}</Note>
+      <ChoiceList label={m.title}>
+        {feats.map((feat) => {
+          const shown = showcase.includes(feat.id);
+          return (
+            <ChoiceRow
+              key={feat.id}
+              muted={!feat.unlocked}
+              end={
+                !feat.unlocked ? (
+                  <Badge tone="dim">{m.locked}</Badge>
+                ) : (
+                  <Button size="sm" disabled={readOnly || (!shown && full)} title={!shown && full ? m.full : undefined} onClick={() => toggle(feat.id)}>
+                    {shown ? m.hide : m.show}
+                  </Button>
+                )
+              }
+            >
+              <strong>
+                {m.names[feat.id] ?? feat.id}
+                {shown && ` · ${m.shown}`}
+              </strong>
+              <small>{m.descriptions[feat.id] ?? ""}</small>
+            </ChoiceRow>
+          );
+        })}
+      </ChoiceList>
     </Card>
   );
 }
@@ -624,7 +681,7 @@ function MyMatchTable({ matches }: { matches: readonly MeMatchSummary[] }) {
   const t = useMessages().profile.matches;
   const c = t.columns;
   return (
-    <Table columns={[c.start, c.opponent, c.side, c.result, c.moves, ""]} rowCount={matches.length} empty={t.empty}>
+    <Table columns={[c.start, c.opponent, c.side, c.result, c.elo, c.moves, ""]} rowCount={matches.length} empty={t.empty}>
       {matches.map((m) => (
         <tr key={m.id}>
           <td className="occ-muted">{formatDate(m.startedAt)}</td>
@@ -635,6 +692,7 @@ function MyMatchTable({ matches }: { matches: readonly MeMatchSummary[] }) {
           <td>
             <MyResult match={m} />
           </td>
+          <td className="occ-muted">{m.ratingChange !== null ? t.ratingChange(m.ratingChange) : m.rated ? "—" : t.unrated}</td>
           <td className="occ-muted">{m.actions}</td>
           <td className="occ-actions-cell">
             <IconButton

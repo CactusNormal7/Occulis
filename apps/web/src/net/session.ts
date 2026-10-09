@@ -25,6 +25,15 @@ export type Phase =
   | { readonly kind: "hosting"; readonly code: string }
   /** Le code saisi n'a mené à aucune partie ; rien n'a été rejoint. */
   | { readonly kind: "room-fault"; readonly fault: RoomFault }
+  /** File rapide : un adversaire est trouvé, à accepter avant l'échéance. */
+  | {
+      readonly kind: "proposed";
+      readonly proposalId: string;
+      readonly remainingMs: number;
+      readonly accepted: { readonly self: boolean; readonly opponent: boolean };
+    }
+  /** La proposition est tombée ; `requeued` : on attend de nouveau, en tête de file. */
+  | { readonly kind: "lapsed"; readonly requeued: boolean }
   | {
       readonly kind: "seated";
       readonly matchId: string;
@@ -77,6 +86,17 @@ export function fromQueue(session: Session, message: QueueServerMessage): Sessio
       return { phase: { kind: "hosting", code: message.code }, rejection: undefined };
     case "room-fault":
       return { phase: { kind: "room-fault", fault: message.fault }, rejection: undefined };
+    case "proposal":
+      return {
+        phase: { kind: "proposed", proposalId: message.proposalId, remainingMs: message.remainingMs, accepted: { self: false, opponent: false } },
+        rejection: undefined,
+      };
+    case "proposal-update":
+      return session.phase.kind === "proposed"
+        ? { phase: { ...session.phase, accepted: message.accepted }, rejection: undefined }
+        : session;
+    case "proposal-lapsed":
+      return { phase: { kind: "lapsed", requeued: message.requeued }, rejection: undefined };
     case "matched":
       return {
         phase: {

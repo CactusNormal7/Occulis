@@ -58,6 +58,7 @@ Trois principes, actés dans `docs/architecture.md` :
 | `apps/server/scripts/generate-schema.mts` | Recrache le schéma SQL attendu — hors du Worker |
 | `apps/server/src/pairing.ts` | **Pur** — la file d'attente comme structure de données |
 | `apps/server/src/rooms.ts` | **Pur** — les salons privés : table des codes, tirage, consommation |
+| `apps/server/src/proposals.ts` | **Pur** — la fenêtre d'acceptation de la file rapide |
 | `packages/protocol/src/index.ts` | Messages client/serveur et version de protocole — **paquet partagé** |
 | `apps/server/src/rulesets.ts` | Réexpose le registre des rulesets, qui vit dans `@occulis/core` |
 | `apps/server/src/env.d.ts` | Type des bindings : `DB`, `MATCH`, `QUEUE`, `ASSETS`, `AUTH_SECRET`, `RESEND_API_KEY`, `GOOGLE_*`, `OAUTH_PROXY_*`… |
@@ -78,7 +79,7 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 | Route | Méthode | Traitement |
 |---|---|---|
 | `/.well-known/change-password` | toute | **302** vers `/profile/#security` — l'adresse que les gestionnaires de mots de passe ouvrent pour « changer le mot de passe » |
-| `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser`, `/profil(/)`, ou tout chemin portant `?verifiee`, `?supprime`, `?lie`, `?bienvenue` | `GET` | **301** vers l'équivalent anglais (`legacyRedirect()`), requête conservée — des courriers déjà envoyés portent ces adresses |
+| `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser`, `/profil(/)`, ou tout chemin portant `?verifiee`, `?supprime`, `?lie`, `?bienvenue` | `GET` | **301** vers l'équivalent anglais (`legacyRedirect()`), requête conservée — des courriers déjà envoyés portent ces adresses. **Exception : `/` est servi par les assets statiques avant le Worker**, donc `/?verifiee=1` n'est jamais redirigé ; c'est le client qui reconnaît encore ces anciens paramètres (`account/model.ts`) |
 | `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password` | `GET` | `pageFor()` — la page du jeu (`/`), dont l'îlot de compte lit le chemin ; liste explicite `ACCOUNT_PATHS`, pas de repli global |
 | `/profile` | `GET` | `pageFor()` — la page `/profile/` |
 | `/api/auth/me` | toute | **Au projet** — pseudo, adresse, état de vérification, `admin`, `impersonating`, `providers` ; sans session `{ signedIn: false, providers }` |
@@ -306,7 +307,7 @@ Elle porte **trois** façons d'entrer en partie, annoncées dans le `hello` :
 
 | Intention | Ce que le serveur répond | Ce qu'il fait |
 |---|---|---|
-| `{ kind: "quick" }` | `waiting`, puis `matched` | Met en file, puis apparie les deux plus anciennes attentes |
+| `{ kind: "quick" }` | `waiting`, puis `proposal`, puis `matched` ou `proposal-lapsed` | Met en file, puis propose une partie aux deux plus anciennes attentes ; ne la crée que si les deux acceptent |
 | `{ kind: "host" }` | `hosting` avec un code | Ouvre un salon privé sous un code libre |
 | `{ kind: "join", code }` | `matched`, ou `room-fault` | Consomme le salon désigné et crée la partie |
 
@@ -318,7 +319,38 @@ efface donc la précédente (`forget()`), file d'attente **et** salons.
 
 L'appariement et l'entrée par code aboutissent au même `seat()` : une partie créée par
 `startMatch()`, un jeton par camp, et un `matched` envoyé à chacun. Dans un salon,
-**l'hôte tient le camp A et l'arrivant le camp B**.
+**l'hôte tient le camp A et l'arrivant le camp B**. La file rapide crée une partie
+**classée**, un salon une partie qui ne l'est pas.
+
+### La fenêtre d'acceptation — `proposals.ts`
+
+La file rapide n'assied plus directement : `tryPair()` crée une **proposition**
+(`propose()`, 15 s, `ACCEPT_MS`) et envoie `proposal` (avec le temps restant) aux deux
+joueurs, sortis de la file. Les deux répondent `accept` ou `decline` ; chaque acceptation
+est annoncée (`proposal-update`, du point de vue de chacun).
+
+- **Les deux acceptent** : la proposition est réglée (`settle()`) et `seat()` crée la partie.
+- **Un refus, une connexion fermée ou une nouvelle intention** (`withdraw()`), **ou
+  l'échéance** (`expire()`, par l'alarme du DO) : la proposition tombe. Qui avait accepté
+  est **remis en tête de file** (`requeueFront()`) et reçoit `proposal-lapsed` avec
+  `requeued: true` ; les autres en sortent (`requeued: false`). Aucune pénalité.
+- Un joueur déjà sous proposition qui se remet en file depuis un autre onglet quitte sa
+  proposition : il n'attend qu'à un endroit.
+
+L'échéance est tenue par une **alarme** recalée à chaque changement sur la plus proche
+(`nextDeadline()`) : elle survit à l'hibernation, ce qu'un minuteur ne ferait pas. Les
+propositions vivent dans le stockage du DO, sous `"proposals"`, à côté de `"queue"` et
+`"rooms"`.
+
+| Fonction | Emplacement | Rôle |
+|---|---|---|
+| `propose()` | `apps/server/src/proposals.ts` | Une proposition à échéance de 15 s |
+| `accept()` | `apps/server/src/proposals.ts` | Enregistre une acceptation ; ignore une connexion étrangère ou une proposition inconnue |
+| `isSettled()` / `settle()` | `apps/server/src/proposals.ts` | Acceptée des deux côtés / retirée pour créer la partie |
+| `withdraw()` | `apps/server/src/proposals.ts` | Un refus ou une disparition : la proposition tombe, avec qui revient et qui sort |
+| `expire()` | `apps/server/src/proposals.ts` | Les propositions échues tombent ; qui n'avait pas accepté sort |
+| `nextDeadline()` | `apps/server/src/proposals.ts` | L'échéance la plus proche, pour l'alarme |
+| `requeueFront()` | `apps/server/src/pairing.ts` | Remet des attentes en tête de file, sans doublon du même joueur |
 
 | Fonction | Emplacement | Rôle |
 |---|---|---|
@@ -790,7 +822,10 @@ type QueueIntent =
   | { kind: "host" }
   | { kind: "join"; code: string }
 
-type QueueClientMessage = { kind: "hello"; protocol: number; intent: QueueIntent }
+type QueueClientMessage =
+  | { kind: "hello"; protocol: number; intent: QueueIntent }
+  | { kind: "accept"; proposalId: string }
+  | { kind: "decline"; proposalId: string }
 
 type RoomFault = { code: "unknown" } | { code: "own" }
 
@@ -798,6 +833,9 @@ type QueueServerMessage =
   | { kind: "waiting" }
   | { kind: "hosting";           code: string }
   | { kind: "room-fault";        fault: RoomFault }
+  | { kind: "proposal";          proposalId: string; remainingMs: number }
+  | { kind: "proposal-update";   accepted: { self: boolean; opponent: boolean } }
+  | { kind: "proposal-lapsed";   requeued: boolean }
   | { kind: "matched";           matchId: string; player: PlayerId; seat: string }
   | { kind: "protocol-mismatch"; expected: number }
 ```
@@ -981,7 +1019,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 
 ## Les tests
 
-133 tests, dont 97 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
+143 tests, dont 100 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
 @occulis/server test`.
 
 | Fichier | Où | Ce qui est verrouillé |
@@ -994,7 +1032,8 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `feats/feats.test.ts` | Node | Statistiques dans l'ordre des fins (plus longue série), aucun fait sans partie, déblocage par seuil dans l'ordre du catalogue, **exhibition limitée aux faits débloqués, sans doublon, trois au plus** |
 | `legacy-routes.test.ts` | Node | Anciennes adresses françaises → anglaises, jeton conservé, paramètres renommés, adresses actuelles intactes |
 | `me/preparation.integration.test.ts` | workerd | Elo du profil, **faits calculés depuis les parties et exhibition refusée hors déblocage**, presets créés, listés, renommés, changés de défaut et supprimés **pour le seul joueur de la session**, équipe invalide, nom vide et limite refusés |
-| `queue-do.integration.test.ts` | workerd | Deux joueurs appariés sur une même partie avec des sièges distincts, partie réellement joignable, **401 sans session et sur identité forgée dans l'URL**, salon privé apparié par son code (casse et espaces pardonnés, hôte en A), salon consommé une seule fois, refus d'un code inconnu et de son propre code |
+| `proposals.test.ts` | Node | Quinze secondes, réglée à deux acceptations seulement, acceptation étrangère ignorée, **remise en tête de qui avait accepté**, échéance, recherche par joueur, `requeueFront()` |
+| `queue-do.integration.test.ts` | workerd | **Proposition avant toute partie, acceptations annoncées**, **refus : l'un remis en file, l'autre sorti**, **connexion fermée = refus**, **échéance par l'alarme**, deux joueurs appariés sur une même partie avec des sièges distincts, partie réellement joignable, **401 sans session et sur identité forgée dans l'URL**, salon privé apparié par son code (casse et espaces pardonnés, hôte en A), salon consommé une seule fois, refus d'un code inconnu et de son propre code |
 | `auth/password.test.ts` | workerd | **Plafond de 100 000 itérations par passe jamais dépassé**, coût effectif conforme à l'OWASP, aller-retour hachage/vérification, salage, paramétrage inscrit dans l'empreinte, lecture de la forme d'avant le chaînage, empreinte illisible rejetée sans lever ; **contrôle des fuites : seul le préfixe part**, leurres ignorés, **service en panne laissé passer** |
 | `auth/handle.test.ts` | workerd | Normalisation NFKC, longueur en code points, écritures non latines, **refus des invisibles et du bidi**, symboles, emoji et diacritiques empilés, **noms réservés sous toutes leurs formes**, pseudo dérivé (nettoyage, suffixes, repli), profil anonymisé imprenable |
 | `auth/mail.test.ts` | workerd | Lien présent en texte et en HTML, **échappé**, aucune couleur transparente ni propriété CSS, **valeur utilisateur échappée** |

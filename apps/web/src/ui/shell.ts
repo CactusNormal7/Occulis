@@ -18,6 +18,10 @@ export interface ShellElements {
   readonly auth: HTMLElement;
   readonly menu: HTMLElement;
   readonly waiting: HTMLElement;
+  /** Le déploiement et les équipes : deux îlots React, ici seulement montrés ou masqués. */
+  readonly deploy: HTMLElement;
+  readonly teams: HTMLElement;
+  readonly teamsEntry: HTMLButtonElement;
   /** Le canevas de jeu, montré seulement une fois la partie commencée. */
   readonly board: HTMLElement;
   readonly hud: HTMLElement;
@@ -59,6 +63,8 @@ export interface ShellOptions {
   readonly onStopImpersonating: () => void;
   readonly onSignOut: () => void;
   readonly onResend: () => void;
+  /** Le joueur ouvre ses équipes préparées. */
+  readonly onTeams: () => void;
 }
 
 export interface Shell {
@@ -67,6 +73,8 @@ export interface Shell {
   setIdentity(identity: Identity): void;
   /** Un mot au joueur sur l'écran de menu — un code refusé, une partie terminée. */
   notify(message: string): void;
+  /** Un mot sur l'écran d'attente, à la place de la phrase d'attente — une partie non acceptée. */
+  notifyWaiting(message: string): void;
 }
 
 export function attachShell(options: ShellOptions): Shell {
@@ -85,6 +93,7 @@ export function attachShell(options: ShellOptions): Shell {
   e.signOut.addEventListener("click", () => options.onSignOut());
   e.resend.addEventListener("click", () => options.onResend());
   e.host.addEventListener("click", () => options.onSeek("host"));
+  e.teamsEntry.addEventListener("click", () => options.onTeams());
 
   e.joinForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -111,7 +120,10 @@ export function attachShell(options: ShellOptions): Shell {
   const render = (stage: Stage): void => {
     e.auth.hidden = stage.kind !== "auth";
     e.menu.hidden = stage.kind !== "menu";
-    e.waiting.hidden = stage.kind !== "waiting";
+    // La fenêtre d'acceptation se pose sur l'écran d'attente, qui reste derrière elle.
+    e.waiting.hidden = stage.kind !== "waiting" && stage.kind !== "proposal";
+    e.deploy.hidden = stage.kind !== "deploying";
+    e.teams.hidden = stage.kind !== "teams";
     e.board.hidden = stage.kind !== "game";
     e.hud.hidden = stage.kind !== "game";
     onMenu = stage.kind === "menu";
@@ -139,6 +151,7 @@ export function attachShell(options: ShellOptions): Shell {
     playable = identity.signedIn && identity.emailVerified !== false;
     e.identity.textContent = describeIdentity(identity);
     for (const button of [e.quick, e.host, e.join]) button.disabled = !playable;
+    e.teamsEntry.disabled = !identity.signedIn;
     e.joinCode.disabled = !playable;
     e.admin.hidden = identity.admin !== true;
     signedIn = identity.signedIn;
@@ -154,6 +167,9 @@ export function attachShell(options: ShellOptions): Shell {
     setIdentity,
     notify: (message) => {
       e.notice.textContent = message;
+    },
+    notifyWaiting: (message) => {
+      e.waitingNote.textContent = message;
     },
   };
 }

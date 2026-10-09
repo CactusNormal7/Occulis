@@ -1,10 +1,11 @@
-import type { Board, Coord, PlayerId } from "@occulis/core";
+import type { Board, Coord } from "@occulis/core";
 import type { AdminFrame } from "@occulis/protocol";
-import { GEOMETRY, METRICS, PIECES, PLAYERS, STATE } from "../theme.js";
+import { METRICS, PIECES, PLAYERS, STATE } from "../theme.js";
+import { type Drawable, drawPiece, fillQuad, strokeQuad, terrainDrawables } from "../canvas/paint.js";
 import { cssColor } from "@occulis/ui/tokens";
 import { type Camera, createCamera, pivotOf, settle, toProjection, turn } from "../view/camera.js";
 import { type MoveAnimation, advance, positionOf, startMove } from "../view/animation.js";
-import { type IsoProjection, type Quad, type ScreenPoint, cliffQuads, compareDepth, depthOf, project, tileQuad } from "../view/iso.js";
+import { compareDepth, depthOf, project, tileQuad } from "../view/iso.js";
 import { centerOffset, fitScale, movesBetween, type Perspective } from "./replay.js";
 
 /**
@@ -97,29 +98,7 @@ export function mountReplay(canvas: HTMLCanvasElement, board: Board, frames: rea
 
     // Un seul ordre du peintre pour le relief et les pièces, comme `scene.ts` : une pièce
     // derrière un mur doit être recouverte par lui.
-    const drawables: { depth: ReturnType<typeof depthOf>; paint: () => void }[] = [];
-    let near = -Infinity;
-    let far = Infinity;
-    for (const tile of board.allTiles()) {
-      const depth = depthOf(tile.coord, tile.height, proj);
-      near = Math.max(near, depth.plane);
-      far = Math.min(far, depth.plane);
-      drawables.push({
-        depth,
-        paint: () => {
-          const nearness = near === far ? 1 : (depth.plane - far) / (near - far);
-          const lit = sight === undefined || sight.has(`${tile.coord.x},${tile.coord.y}`);
-          const alpha =
-            (lit ? GEOMETRY.alphaVisible : GEOMETRY.alphaFogged) *
-            (tile.passable ? 1 : GEOMETRY.impassableFactor) *
-            (GEOMETRY.depthFadeFar + (GEOMETRY.depthFadeNear - GEOMETRY.depthFadeFar) * nearness);
-          for (const cliff of cliffQuads(board, tile.coord, tile.height, proj)) {
-            strokeQuad(context, cliff, cssColor(GEOMETRY.stroke, alpha), GEOMETRY.widthCliff);
-          }
-          strokeQuad(context, tileQuad(tile.coord, tile.height, proj), cssColor(GEOMETRY.stroke, alpha), GEOMETRY.widthTop);
-        },
-      });
-    }
+    const drawables: Drawable[] = terrainDrawables(context, board, proj, (key) => sight === undefined || sight.has(key));
 
     for (const piece of frame.pieces) {
       const glide = gliding.get(piece.id);
@@ -198,51 +177,4 @@ export function mountReplay(canvas: HTMLCanvasElement, board: Board, frames: rea
 
 function reducedMotion(): boolean {
   return matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-function trace(context: CanvasRenderingContext2D, quad: Quad): void {
-  context.beginPath();
-  quad.forEach((point, i) => (i === 0 ? context.moveTo(point.x, point.y) : context.lineTo(point.x, point.y)));
-  context.closePath();
-}
-
-function strokeQuad(context: CanvasRenderingContext2D, quad: Quad, color: string, width: number): void {
-  trace(context, quad);
-  context.strokeStyle = color;
-  context.lineWidth = width;
-  context.stroke();
-}
-
-function fillQuad(context: CanvasRenderingContext2D, quad: Quad, color: string): void {
-  trace(context, quad);
-  context.fillStyle = color;
-  context.fill();
-}
-
-/** La silhouette de `scene/pieces.ts` — tige et tête en losange — tracée en Canvas 2D. */
-function drawPiece(
-  context: CanvasRenderingContext2D,
-  base: ScreenPoint,
-  owner: PlayerId,
-  alpha: number,
-  proj: IsoProjection,
-): void {
-  const stem = proj.heightUnit * proj.scale * PIECES.stemRatio;
-  const half = proj.tileWidth * proj.scale * PIECES.headRatio;
-  const head = base.y - stem;
-  context.strokeStyle = cssColor(PLAYERS[owner], alpha);
-  context.lineWidth = PIECES.strokeWidth;
-
-  context.beginPath();
-  context.moveTo(base.x, base.y);
-  context.lineTo(base.x, head);
-  context.stroke();
-
-  context.beginPath();
-  context.moveTo(base.x, head - half * 0.9);
-  context.lineTo(base.x + half, head);
-  context.lineTo(base.x, head + half * 0.9);
-  context.lineTo(base.x - half, head);
-  context.closePath();
-  context.stroke();
 }

@@ -131,3 +131,20 @@ describe("fromMatch : déploiement", () => {
     expect(started.phase.kind === "seated" && started.phase.deployment).toBeUndefined();
   });
 });
+
+describe("fromQueue : fenêtre d'acceptation", () => {
+  it("ouvre une proposition, suit les acceptations, et rapporte sa chute", () => {
+    const proposed = fromQueue(fromQueue(OFFLINE, { kind: "waiting" }), { kind: "proposal", proposalId: "p1", remainingMs: 15_000 });
+    expect(proposed.phase).toEqual({ kind: "proposed", proposalId: "p1", remainingMs: 15_000, accepted: { self: false, opponent: false } });
+
+    const updated = fromQueue(proposed, { kind: "proposal-update", accepted: { self: true, opponent: false } });
+    expect(updated.phase.kind === "proposed" && updated.phase.accepted).toEqual({ self: true, opponent: false });
+
+    expect(fromQueue(updated, { kind: "proposal-lapsed", requeued: true }).phase).toEqual({ kind: "lapsed", requeued: true });
+  });
+
+  it("ignore une mise à jour sans proposition ouverte", () => {
+    const waiting = fromQueue(OFFLINE, { kind: "waiting" });
+    expect(fromQueue(waiting, { kind: "proposal-update", accepted: { self: true, opponent: true } })).toBe(waiting);
+  });
+});

@@ -32,6 +32,11 @@ describe("retour de redirection", () => {
     expect(arrivalNotice("/sign-in", "?deleted=1")?.text).toContain("supprimé");
   });
 
+  it("reconnaît encore les anciens noms, que portent des courriers déjà envoyés", () => {
+    expect(arrivalNotice("/", "?verifiee=1")).toMatchObject({ tone: "success" });
+    expect(cleanedSearch("?verifiee=1&supprime=1")).toBe("");
+  });
+
   it("propose de redemander un lien expiré, du bon type", () => {
     expect(arrivalNotice("/reset-password", "?error=INVALID_TOKEN")).toMatchObject({ tone: "error", retry: "reset" });
     expect(arrivalNotice("/", "?error=TOKEN_EXPIRED")).toMatchObject({ tone: "error", retry: "verification" });

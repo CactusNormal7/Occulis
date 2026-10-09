@@ -140,11 +140,15 @@ export type QueueIntent =
   /** Entrée dans le salon privé désigné par ce code. */
   | { readonly kind: "join"; readonly code: string };
 
-export type QueueClientMessage = {
-  readonly kind: "hello";
-  readonly protocol: number;
-  readonly intent: QueueIntent;
-};
+export type QueueClientMessage =
+  | {
+      readonly kind: "hello";
+      readonly protocol: number;
+      readonly intent: QueueIntent;
+    }
+  /** Réponse à une proposition de partie (file rapide seulement). */
+  | { readonly kind: "accept"; readonly proposalId: string }
+  | { readonly kind: "decline"; readonly proposalId: string };
 
 /** Pourquoi un code de salon n'a mené à aucune partie. */
 export type RoomFault =
@@ -161,6 +165,19 @@ export type QueueServerMessage =
    */
   | { readonly kind: "hosting"; readonly code: string }
   | { readonly kind: "room-fault"; readonly fault: RoomFault }
+  /**
+   * Un adversaire est trouvé : la partie ne sera créée que si les deux acceptent avant
+   * l'échéance. `remainingMs` plutôt qu'une échéance, l'horloge du client n'étant pas celle
+   * du serveur.
+   */
+  | { readonly kind: "proposal"; readonly proposalId: string; readonly remainingMs: number }
+  /** Qui a accepté, du point de vue du destinataire. */
+  | { readonly kind: "proposal-update"; readonly accepted: { readonly self: boolean; readonly opponent: boolean } }
+  /**
+   * La proposition est tombée. `requeued` : le destinataire avait accepté, il est remis en
+   * tête de file et attend de nouveau ; sinon il est sorti de la file.
+   */
+  | { readonly kind: "proposal-lapsed"; readonly requeued: boolean }
   | {
       readonly kind: "matched";
       readonly matchId: string;

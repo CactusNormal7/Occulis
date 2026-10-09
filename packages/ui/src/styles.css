@@ -1563,6 +1563,264 @@ select.occ-input option {
 .occ-enter .occ-stat-tile:nth-child(7) { animation-delay: 0.18s; }
 .occ-enter .occ-stat-tile:nth-child(8) { animation-delay: 0.21s; }
 
+/* ---- Compte à rebours ---------------------------------------------------------------- */
+
+.occ-countdown {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+}
+
+.occ-countdown--lg {
+  width: 72px;
+  height: 72px;
+}
+
+.occ-countdown svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.occ-countdown circle {
+  fill: none;
+  stroke-width: 1.5;
+}
+
+.occ-countdown__track {
+  stroke: var(--occ-ink-line);
+}
+
+/* Une seconde de transition linéaire : l'appelant met à jour chaque seconde, l'anneau
+   glisse d'une valeur à la suivante sans saccade. */
+.occ-countdown__arc {
+  stroke: var(--occ-ink);
+  transition: stroke-dashoffset 1s linear, stroke var(--occ-base) var(--occ-ease);
+}
+
+.occ-countdown--urgent .occ-countdown__arc {
+  stroke: var(--occ-refused);
+}
+
+.occ-countdown__value {
+  font-size: var(--occ-text-md);
+  letter-spacing: 0.04em;
+}
+
+.occ-countdown--lg .occ-countdown__value {
+  font-size: var(--occ-text-xl);
+}
+
+.occ-countdown--urgent .occ-countdown__value {
+  color: var(--occ-refused);
+}
+
+/* ---- Plaques de joueur et annonce de partie ------------------------------------------ */
+
+.occ-plate {
+  display: flex;
+  align-items: center;
+  gap: var(--occ-space-4);
+  min-width: 0;
+}
+
+.occ-plate--end {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.occ-plate__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.occ-plate--end .occ-plate__text {
+  align-items: flex-end;
+}
+
+.occ-plate__tag {
+  font-size: var(--occ-text-xs);
+  letter-spacing: var(--occ-caps);
+  text-transform: uppercase;
+  color: var(--occ-ink-dim);
+}
+
+.occ-plate__name {
+  overflow: hidden;
+  font-size: var(--occ-text-xl);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.occ-plate--A .occ-plate__name {
+  color: var(--occ-camp-a);
+}
+
+.occ-plate--B .occ-plate__name {
+  color: var(--occ-camp-b);
+}
+
+.occ-plate__text small {
+  color: var(--occ-ink-soft);
+}
+
+.occ-plate__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--occ-space-1);
+  margin-top: var(--occ-space-2);
+}
+
+.occ-plate--end .occ-plate__badges {
+  justify-content: flex-end;
+}
+
+.occ-reveal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--occ-space-4) var(--occ-space-8);
+  padding: var(--occ-space-8) var(--occ-space-6);
+  border: 1px solid var(--occ-ink-line);
+  transition: padding var(--occ-slow) var(--occ-ease), gap var(--occ-slow) var(--occ-ease);
+}
+
+.occ-reveal__side--self {
+  animation: occ-enter-left 0.6s var(--occ-ease) backwards;
+}
+
+.occ-reveal__side--opponent {
+  display: flex;
+  justify-content: flex-end;
+  animation: occ-enter-right 0.6s var(--occ-ease) 0.15s backwards;
+}
+
+.occ-reveal__versus {
+  font-size: var(--occ-text-xxl);
+  letter-spacing: var(--occ-caps);
+  text-transform: uppercase;
+  color: var(--occ-ink-dim);
+  animation: occ-pop-in 0.5s var(--occ-ease) 0.45s backwards;
+}
+
+.occ-reveal__footer {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  animation: occ-fade 0.4s ease 0.7s backwards;
+}
+
+.occ-reveal--compact {
+  padding: var(--occ-space-3) var(--occ-space-4);
+  gap: var(--occ-space-2) var(--occ-space-4);
+}
+
+.occ-reveal--compact .occ-tile-avatar--lg {
+  width: 48px;
+}
+
+.occ-reveal--compact .occ-plate__name {
+  font-size: var(--occ-text-lg);
+}
+
+.occ-reveal--compact .occ-reveal__versus {
+  font-size: var(--occ-text-md);
+}
+
+.occ-reveal--compact .occ-reveal__footer {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .occ-reveal {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .occ-reveal__side--opponent {
+    justify-content: center;
+  }
+}
+
+/* ---- Listes de choix ------------------------------------------------------------------- */
+
+.occ-choices {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.occ-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--occ-space-2);
+  border-left: 1px solid transparent;
+  border-bottom: 1px solid var(--occ-ink-ghost);
+  transition: border-color var(--occ-fast) var(--occ-ease), background var(--occ-fast) var(--occ-ease);
+}
+
+.occ-choice__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  padding: var(--occ-space-2) var(--occ-space-3);
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.occ-choice__main {
+  cursor: pointer;
+}
+
+.occ-choice__main small {
+  color: var(--occ-ink-dim);
+}
+
+.occ-choice:hover {
+  background: var(--occ-ink-ghost);
+}
+
+.occ-choice--selected {
+  border-left-color: var(--occ-selection);
+  background: var(--occ-ink-ghost);
+}
+
+.occ-choice--selected .occ-choice__main > :first-child {
+  color: var(--occ-selection);
+}
+
+.occ-choice--muted .occ-choice__main {
+  color: var(--occ-ink-soft);
+}
+
+.occ-choice__end {
+  display: flex;
+  align-items: center;
+  gap: var(--occ-space-2);
+  padding-right: var(--occ-space-2);
+}
+
+button.occ-choice__main:focus-visible {
+  outline: 1px solid var(--occ-ink-soft);
+  outline-offset: -1px;
+}
+
 @keyframes occ-rise {
   from {
     opacity: 0;
@@ -1607,6 +1865,20 @@ select.occ-input option {
   to {
     opacity: 0;
     transform: translateX(24px);
+  }
+}
+
+@keyframes occ-enter-left {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+}
+
+@keyframes occ-enter-right {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
   }
 }
 

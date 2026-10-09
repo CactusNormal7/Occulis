@@ -60,7 +60,6 @@ export const team = {
     deleteNote: "This team will be lost. Matches already played are not affected.",
     copyOf: (name: string) => `${name} (copy)`,
     limit: (limit: number) => `${limit} teams at most.`,
-    count: (count: number, limit: number) => `${count} / ${limit}`,
     map: (map: string) => `map ${map}`,
     incomplete: "Place every piece before saving.",
     errors: {

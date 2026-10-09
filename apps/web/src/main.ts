@@ -39,6 +39,12 @@ import { resendVerification, signOut, stopImpersonating, whoAmI, type Identity }
 import { chooseLocale, initLocale, translateDom } from "./i18n/browser.js";
 import { currentLocale, messages, onLocaleChange } from "./i18n/current.js";
 import { isLocale } from "@occulis/i18n";
+import type { TeamPreset } from "@occulis/protocol";
+import { mountDeployment, mountMatchFound } from "./prepare/mount.js";
+import type { DeploymentProps } from "./prepare/Deployment.js";
+import type { MatchFoundProps } from "./prepare/MatchFound.js";
+import { mountTeams } from "./teams/mount.js";
+import { presets as loadPresets } from "./profile/api.js";
 
 /** Racine de composition : elle câble les modules, elle n'en implémente aucun. */
 async function main(): Promise<void> {
@@ -79,7 +85,8 @@ async function main(): Promise<void> {
   const go = (event: Parameters<typeof advance>[1]): void => {
     stage = advance(stage, event);
     shell.render(stage);
-    localeSwitch.hidden = stage.kind === "game";
+    // Hors des écrans pleine page et de la partie seulement : il y couvrirait le contenu.
+    localeSwitch.hidden = stage.kind === "game" || stage.kind === "deploying" || stage.kind === "teams";
   };
 
   /**
@@ -126,11 +133,25 @@ async function main(): Promise<void> {
     selection = undefined;
     animation = undefined;
     hovered = undefined;
+    found = undefined;
+    deploying = undefined;
+    showIslands();
     scene.clear();
     go({ kind: "menu" });
   };
 
   const sit = (matchId: string, seat: string): void => {
+    let presets: readonly TeamPreset[] = [];
+    let lastRemaining: number | undefined;
+    // Les équipes préparées se chargent pendant l'annonce ; l'écran les reprend à l'arrivée.
+    void loadPresets().then((outcome) => {
+      if (!outcome.ok) return;
+      presets = outcome.value.presets;
+      if (deploying !== undefined) {
+        deploying = { ...deploying, presets };
+        showIslands();
+      }
+    });
     channel = connectToMatch(matchId, seat, {
       onSeated: ({ player, scenario, rulesetVersion, view }) => {
         match = new OnlineMatch(
@@ -141,18 +162,43 @@ async function main(): Promise<void> {
           view,
         );
         camera = createCamera(pivotOf(match.board), viewport());
+        deploying = undefined;
+        showIslands();
         go({ kind: "seated" });
         adopt();
       },
-      // Provisoire, jusqu'à l'écran de déploiement : l'équipe par défaut de la carte.
-      onDeployment: ({ deployment }) => {
-        if (!deployment.locks.self) channel?.deploy(deployment.defaultTeam);
+      onDeployment: ({ player, scenario, rulesetVersion, deployment }) => {
+        // Le compte à rebours repart de chaque annonce (une reconnexion en renvoie une),
+        // pas d'un simple changement de verrou, qui ne dit rien du temps.
+        const receivedAt =
+          deploying === undefined || deployment.remainingMs !== lastRemaining ? performance.now() : deploying.receivedAt;
+        lastRemaining = deployment.remainingMs;
+        deploying = {
+          player,
+          scenario,
+          rulesetVersion,
+          deployment,
+          receivedAt,
+          presets,
+          rejection: deploying?.rejection,
+          onDeploy: (team) => {
+            if (deploying !== undefined) deploying = { ...deploying, rejection: undefined };
+            channel?.deploy(team);
+          },
+        };
+        showIslands();
+        go({ kind: "deploying" });
       },
       onView: (incoming) => {
         adopt(match?.receive(incoming));
         if (incoming.outcome !== null) gameConsole.announce(incoming.outcome);
       },
       onRejected: (rejection) => {
+        if (stage.kind === "deploying" && deploying !== undefined) {
+          deploying = { ...deploying, rejection: describeRejection(rejection) };
+          showIslands();
+          return;
+        }
         // Rien à annuler : le coup n'avait pas été appliqué. Il reste au joueur d'en
         // jouer un autre, et c'est toujours son tour.
         pending = false;
@@ -174,6 +220,9 @@ async function main(): Promise<void> {
       auth: element<HTMLElement>("screen-auth"),
       menu: element<HTMLElement>("screen-menu"),
       waiting: element<HTMLElement>("screen-waiting"),
+      deploy: element<HTMLElement>("screen-deploy"),
+      teams: element<HTMLElement>("screen-teams"),
+      teamsEntry: element<HTMLButtonElement>("menu-teams"),
       board: host,
       hud: element<HTMLElement>("console"),
       identity: element<HTMLElement>("menu-identity"),
@@ -208,8 +257,30 @@ async function main(): Promise<void> {
           go({ kind: "menu" });
           shell.notify(describeRoomFault(fault));
         },
+        onProposal: ({ remainingMs, accepted }) => {
+          const receivedAt = found === undefined ? performance.now() : found.receivedAt;
+          found = {
+            remainingMs: found?.remainingMs ?? remainingMs,
+            receivedAt,
+            accepted,
+            onAccept: () => queue?.accept(),
+            onDecline: () => queue?.decline(),
+          };
+          showIslands();
+          go({ kind: "proposed" });
+        },
+        onLapsed: (requeued) => {
+          found = undefined;
+          showIslands();
+          if (!requeued) queue = undefined;
+          go({ kind: "lapsed", requeued });
+          shell.notify(requeued ? "" : messages().prepare.lapsed.dropped);
+          if (requeued) shell.notifyWaiting(messages().prepare.lapsed.requeued);
+        },
         onSeated: ({ matchId, seat }) => {
           queue = undefined;
+          found = undefined;
+          showIslands();
           sit(matchId, seat);
         },
         onOutdated: (expected) => {
@@ -226,6 +297,11 @@ async function main(): Promise<void> {
     },
     onSignOut: () => {
       void signOut().then(() => refresh());
+    },
+    onTeams: () => {
+      teamsOpen = true;
+      showIslands();
+      go({ kind: "teams" });
     },
     onResend: () => {
       const m = messages().game.menu;
@@ -245,6 +321,35 @@ async function main(): Promise<void> {
   if (cleaned !== location.search) history.replaceState(null, "", `${location.pathname}${cleaned}${location.hash}`);
 
   const renderAccount = mountAccount(element<HTMLElement>("account-root"));
+
+  /**
+   * Les îlots d'avant-partie et des équipes : leurs propriétés vivent ici, et
+   * `showIslands()` les rend toutes — après chaque message comme après un changement de
+   * langue. `undefined` vide un îlot.
+   */
+  const renderMatchFound = mountMatchFound(element<HTMLElement>("match-found-root"));
+  const renderDeployment = mountDeployment(element<HTMLElement>("deploy-root"));
+  const renderTeams = mountTeams(element<HTMLElement>("teams-root"));
+  let found: Omit<MatchFoundProps, "locale"> | undefined;
+  let deploying: Omit<DeploymentProps, "locale"> | undefined;
+  let teamsOpen = false;
+  function showIslands(): void {
+    const locale = currentLocale();
+    renderMatchFound(found === undefined ? undefined : { ...found, locale });
+    renderDeployment(deploying === undefined ? undefined : { ...deploying, locale });
+    renderTeams(
+      teamsOpen
+        ? {
+            locale,
+            onBack: () => {
+              teamsOpen = false;
+              showIslands();
+              go({ kind: "menu" });
+            },
+          }
+        : undefined,
+    );
+  }
   let identity: Identity = { signedIn: false };
 
   // L'identité vient du serveur, via un cookie de session : le client ne l'annonce
@@ -296,6 +401,7 @@ async function main(): Promise<void> {
     shell.render(stage);
     shell.setIdentity(identity);
     gameConsole.refresh();
+    showIslands();
     if (!identity.signedIn) showAccount();
   });
   markLocale();
@@ -315,7 +421,6 @@ async function main(): Promise<void> {
   });
 
   shell.render(stage);
-  localeSwitch.hidden = stage.kind === "game";
 
   app.renderer.on("resize", () => {
     camera = withViewport(camera, viewport());

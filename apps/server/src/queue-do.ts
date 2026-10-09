@@ -6,7 +6,20 @@ import {
   type QueueServerMessage,
 } from "@occulis/protocol";
 import { startMatch } from "./match-setup.js";
-import { type Waiting, dequeue, enqueue, takePairing } from "./pairing.js";
+import { type Waiting, dequeue, enqueue, requeueFront, takePairing } from "./pairing.js";
+import {
+  type Lapse,
+  type Proposal,
+  accept,
+  expire,
+  isSettled,
+  membersOf,
+  nextDeadline,
+  propose,
+  proposalOfPlayer,
+  settle,
+  withdraw,
+} from "./proposals.js";
 import { type Room, closeRoom, freeCode, normalizeCode, openRoom, takeRoom } from "./rooms.js";
 
 /**
@@ -20,6 +33,9 @@ import { type Room, closeRoom, freeCode, normalizeCode, openRoom, takeRoom } fro
  * par deux arrivants simultanés apparierait deux fois son hôte. Le mono-threading
  * l'écarte ici exactement comme il écarte le double appariement — les séparer en deux
  * objets rouvrirait la course entre « rejoindre un salon » et « être apparié ».
+ *
+ * L'appariement rapide passe par une **proposition** (`proposals.ts`) : la partie n'est
+ * créée que si les deux joueurs l'acceptent dans le délai, que tient une alarme du DO.
  */
 export const QUEUE_SINGLETON = "global";
 
@@ -49,6 +65,13 @@ export class QueueDO extends DurableObject<Env> {
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
     if (typeof raw !== "string") return;
     const message = JSON.parse(raw) as QueueClientMessage;
+    if (message.kind === "accept" || message.kind === "decline") {
+      const entry = this.waitingOf(ws);
+      if (entry === undefined) return;
+      if (message.kind === "accept") await this.accept(message.proposalId, entry);
+      else await this.withdraw(entry.connectionId);
+      return;
+    }
     if (message.kind !== "hello") return;
 
     if (message.protocol !== PROTOCOL_VERSION) {
@@ -78,8 +101,21 @@ export class QueueDO extends DurableObject<Env> {
     await this.forget(entry.connectionId);
   }
 
+  /** L'échéance d'une proposition : elle tombe, et qui n'avait pas accepté sort de la file. */
+  async alarm(): Promise<void> {
+    const { proposals, lapses } = expire(await this.proposals(), Date.now());
+    await this.saveProposals(proposals);
+    for (const lapse of lapses) await this.lapse(lapse);
+    await this.tryPair();
+  }
+
   /** Appariement automatique : premier arrivé, premier servi. */
   private async queueUp(ws: WebSocket, entry: Waiting): Promise<void> {
+    // Un joueur déjà sous proposition, depuis un autre onglet, la quitte : il ne doit
+    // attendre qu'à un seul endroit à la fois.
+    const pending = proposalOfPlayer(await this.proposals(), entry.playerId);
+    const other = pending === undefined ? undefined : membersOf(pending).find((member) => member.playerId === entry.playerId);
+    if (other !== undefined) await this.withdraw(other.connectionId);
     await this.ctx.storage.put("queue", enqueue(await this.queue(), entry));
     this.send(ws, { kind: "waiting" });
     await this.tryPair();
@@ -149,7 +185,71 @@ export class QueueDO extends DurableObject<Env> {
     }
 
     await this.ctx.storage.put("queue", rest);
-    await this.seat(pairing.a, pairing.b, true);
+    const proposal = propose(crypto.randomUUID(), pairing.a, pairing.b, Date.now());
+    await this.saveProposals([...(await this.proposals()), proposal]);
+    for (const member of membersOf(proposal)) {
+      const socket = this.socketOf(member.connectionId);
+      if (socket !== undefined) this.send(socket, { kind: "proposal", proposalId: proposal.id, remainingMs: proposal.deadline - Date.now() });
+    }
+  }
+
+  /** Une acceptation ; la seconde crée la partie, classée. */
+  private async accept(proposalId: string, entry: Waiting): Promise<void> {
+    const { proposals, proposal } = accept(await this.proposals(), proposalId, entry.connectionId);
+    if (proposal === undefined) return;
+    if (isSettled(proposal)) {
+      await this.saveProposals(settle(proposals, proposal.id));
+      await this.seat(proposal.a, proposal.b, true);
+      return;
+    }
+    await this.saveProposals(proposals);
+    for (const member of membersOf(proposal)) {
+      const socket = this.socketOf(member.connectionId);
+      const opponent = member === proposal.a ? proposal.b : proposal.a;
+      if (socket === undefined) continue;
+      this.send(socket, {
+        kind: "proposal-update",
+        accepted: { self: proposal.accepted.includes(member.connectionId), opponent: proposal.accepted.includes(opponent.connectionId) },
+      });
+    }
+  }
+
+  /** Un refus, une intention nouvelle ou une connexion perdue : la proposition tombe. */
+  private async withdraw(connectionId: string): Promise<void> {
+    const { proposals, lapse } = withdraw(await this.proposals(), connectionId);
+    if (lapse === undefined) return;
+    await this.saveProposals(proposals);
+    await this.lapse(lapse);
+    await this.tryPair();
+  }
+
+  /** Remet en tête qui avait accepté, et prévient chacun de ce qui lui arrive. */
+  private async lapse(lapse: Lapse): Promise<void> {
+    const live = lapse.requeue.filter((member) => this.socketOf(member.connectionId) !== undefined);
+    await this.ctx.storage.put("queue", requeueFront(await this.queue(), live));
+    for (const member of live) {
+      const socket = this.socketOf(member.connectionId);
+      if (socket !== undefined) this.send(socket, { kind: "proposal-lapsed", requeued: true });
+    }
+    for (const member of lapse.dropped) {
+      const socket = this.socketOf(member.connectionId);
+      if (socket !== undefined) this.send(socket, { kind: "proposal-lapsed", requeued: false });
+    }
+  }
+
+  private async proposals(): Promise<readonly Proposal[]> {
+    return (await this.ctx.storage.get<readonly Proposal[]>("proposals")) ?? [];
+  }
+
+  /**
+   * Enregistre les propositions et cale l'alarme sur la plus proche échéance. Une alarme
+   * et non un minuteur : elle survit à l'hibernation du DO.
+   */
+  private async saveProposals(proposals: readonly Proposal[]): Promise<void> {
+    await this.ctx.storage.put("proposals", proposals);
+    const next = nextDeadline(proposals);
+    if (next === undefined) await this.ctx.storage.deleteAlarm();
+    else await this.ctx.storage.setAlarm(next);
   }
 
   /**
@@ -172,8 +272,9 @@ export class QueueDO extends DurableObject<Env> {
     }
   }
 
-  /** Retire cette connexion de partout : la file comme les salons. */
+  /** Retire cette connexion de partout : la file, les salons, et sa proposition. */
   private async forget(connectionId: string): Promise<void> {
+    await this.withdraw(connectionId);
     await this.ctx.storage.put("queue", dequeue(await this.queue(), connectionId));
     await this.ctx.storage.put("rooms", closeRoom(await this.rooms(), connectionId));
   }

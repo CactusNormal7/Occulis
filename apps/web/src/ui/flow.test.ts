@@ -51,4 +51,36 @@ describe("advance", () => {
   it("ne remonte jamais au menu sans compte", () => {
     expect(advance({ kind: "auth" }, { kind: "menu" })).toEqual({ kind: "auth" });
   });
+
+  it("ouvre la fenêtre d'acceptation pendant l'attente rapide, et seulement là", () => {
+    const quick = advance({ kind: "menu" }, { kind: "seek", seeking: "quick" });
+    expect(advance(quick, { kind: "proposed" })).toEqual({ kind: "proposal" });
+    expect(advance(waiting, { kind: "proposed" })).toEqual(waiting);
+    expect(advance({ kind: "game" }, { kind: "proposed" })).toEqual({ kind: "game" });
+  });
+
+  it("remet en attente qui avait accepté, et au menu les autres", () => {
+    expect(advance({ kind: "proposal" }, { kind: "lapsed", requeued: true })).toEqual({
+      kind: "waiting",
+      seeking: "quick",
+      code: undefined,
+    });
+    expect(advance({ kind: "proposal" }, { kind: "lapsed", requeued: false })).toEqual({ kind: "menu" });
+    expect(advance({ kind: "game" }, { kind: "lapsed", requeued: false })).toEqual({ kind: "game" });
+  });
+
+  it("passe par le déploiement avant la partie, depuis la file comme depuis un salon", () => {
+    expect(advance({ kind: "proposal" }, { kind: "deploying" })).toEqual({ kind: "deploying" });
+    expect(advance(waiting, { kind: "deploying" })).toEqual({ kind: "deploying" });
+    expect(advance({ kind: "deploying" }, { kind: "seated" })).toEqual({ kind: "game" });
+    // Un déploiement annoncé à nouveau (reconnexion) ne fait pas sortir d'une partie commencée.
+    expect(advance({ kind: "game" }, { kind: "deploying" })).toEqual({ kind: "game" });
+  });
+
+  it("ouvre les équipes depuis le menu, et y revient", () => {
+    const teams = advance({ kind: "menu" }, { kind: "teams" });
+    expect(teams).toEqual({ kind: "teams" });
+    expect(advance(teams, { kind: "menu" })).toEqual({ kind: "menu" });
+    expect(advance({ kind: "game" }, { kind: "teams" })).toEqual({ kind: "game" });
+  });
 });

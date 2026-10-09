@@ -19,13 +19,31 @@ export interface DialogProps {
    */
   onConfirm: () => Promise<boolean> | boolean;
   onClose: () => void;
+  /** Le libellé du bouton qui renonce ; « Annuler » par défaut. */
+  cancelLabel?: string | undefined;
+  /**
+   * Faux : ni croix, ni Échap, ni clic sur le voile — seuls les deux boutons répondent. Pour
+   * une question qui attend une réponse explicite, comme accepter une partie.
+   */
+  dismissible?: boolean | undefined;
 }
 
 /**
  * Une fenêtre modale sur `<dialog>` natif : focus piégé, Échap, page inerte derrière.
  * Elle s'ouvre et se ferme en fondu ; un clic sur le voile la ferme aussi.
  */
-export function Dialog({ open, title, children, confirmLabel, danger = false, ready = true, onConfirm, onClose }: DialogProps) {
+export function Dialog({
+  open,
+  title,
+  children,
+  confirmLabel,
+  danger = false,
+  ready = true,
+  onConfirm,
+  onClose,
+  cancelLabel,
+  dismissible = true,
+}: DialogProps) {
   const m = useMessages();
   const ref = useRef<HTMLDialogElement>(null);
   const [closing, setClosing] = useState(false);
@@ -64,10 +82,10 @@ export function Dialog({ open, title, children, confirmLabel, danger = false, re
       className={closing ? "occ-dialog occ-dialog--closing" : "occ-dialog"}
       onCancel={(event) => {
         event.preventDefault();
-        close();
+        if (dismissible) close();
       }}
       onClick={(event) => {
-        if (event.target === ref.current) close();
+        if (dismissible && event.target === ref.current) close();
       }}
       onAnimationEnd={() => {
         if (closing) onClose();
@@ -76,12 +94,12 @@ export function Dialog({ open, title, children, confirmLabel, danger = false, re
       <form onSubmit={submit}>
         <header className="occ-dialog__head">
           <h2>{title}</h2>
-          <IconButton icon="close" label={m.ui.close} onClick={close} />
+          {dismissible && <IconButton icon="close" label={m.ui.close} onClick={close} />}
         </header>
         <div className="occ-dialog__body">{children}</div>
         <footer className="occ-dialog__foot">
           <Button variant="ghost" onClick={close}>
-            {m.ui.cancel}
+            {cancelLabel ?? m.ui.cancel}
           </Button>
           <Button type="submit" variant={danger ? "danger" : "primary"} disabled={!ready || busy}>
             {confirmLabel}
