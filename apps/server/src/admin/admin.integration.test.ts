@@ -1,7 +1,7 @@
 import { SELF, env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type { AdminMatchDetail, AdminMatchPage, AdminPlayer, AdminStats } from "@occulis/protocol";
-import { PASSWORD, cookieFrom, post, signUp, unique } from "../auth/auth.integration.test.js";
+import { PASSWORD, cookieFrom, post, signUp, unique } from "../test-helpers.js";
 
 /**
  * Le back-office dans workerd. Le contrôle de rôle est la seule chose qui sépare ces
@@ -64,7 +64,15 @@ describe("back-office : contrôle d'accès", () => {
     const handle = unique("chef");
     const cookie = await signUpAdmin(handle);
     const me = await (await get("/api/auth/me", cookie)).json();
-    expect(me).toEqual({ signedIn: true, handle, emailVerified: true, admin: true, impersonating: false });
+    expect(me).toEqual({
+      signedIn: true,
+      handle,
+      email: `${handle}@occulis.test`,
+      emailVerified: true,
+      admin: true,
+      impersonating: false,
+      providers: [],
+    });
   });
 
   it("refuse une écriture venue d'une autre origine", async () => {
@@ -108,7 +116,7 @@ describe("back-office : comptes, par le greffon Better Auth", () => {
     expect(banned.status).toBe(200);
 
     // Le bannissement révoque les sessions ouvertes…
-    expect(await (await get("/api/auth/me", targetCookie)).json()).toEqual({ signedIn: false });
+    expect(await (await get("/api/auth/me", targetCookie)).json()).toEqual({ signedIn: false, providers: [] });
     // … et refuse d'en ouvrir une neuve.
     const signIn = await post("/api/auth/sign-in/email", {
       email: `${target}@occulis.test`,
@@ -182,9 +190,11 @@ describe("back-office : usurpation", () => {
     expect(await (await get("/api/auth/me", cookie)).json()).toEqual({
       signedIn: true,
       handle: target,
+      email: `${target}@occulis.test`,
       emailVerified: true,
       admin: false,
       impersonating: true,
+      providers: [],
     });
     // Sous l'identité d'emprunt, le back-office se ferme : c'est le rôle du joueur qui vaut.
     expect((await get("/api/admin/stats", cookie)).status).toBe(403);

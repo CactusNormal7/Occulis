@@ -6,6 +6,7 @@ import {
   type Action,
   type MatchMemory,
   type Outcome,
+  type PlayerId,
 } from "@occulis/core";
 import type {
   AdminFrame,
@@ -73,7 +74,7 @@ export async function readStats(db: D1Database, now: number): Promise<AdminStats
   };
 }
 
-interface MatchRow {
+export interface MatchRow {
   id: string;
   player_a: string;
   handle_a: string;
@@ -87,7 +88,7 @@ interface MatchRow {
   actions: number;
 }
 
-const MATCH_COLUMNS = `
+export const MATCH_COLUMNS = `
   m.id, m.player_a, pa.handle AS handle_a, m.player_b, pb.handle AS handle_b,
   m.ruleset_version, m.scenario, m.started_at, m.finished_at, m.outcome,
   (SELECT COUNT(*) FROM match_actions a WHERE a.match_id = m.id) AS actions
@@ -130,8 +131,21 @@ export async function readMatch(db: D1Database, id: string): Promise<AdminMatchD
   return { ...summary(row), ...annotate(row, actions) };
 }
 
+function annotate(
+  row: MatchRow,
+  actions: readonly Action[],
+): { log: AdminLogEntry[]; frames: AdminFrame[]; replayError: string | null } {
+  const { frames, players, replayError } = replayLog(row, actions, frameOf);
+  return {
+    log: actions.map((action, seq) => ({ seq, player: players[seq] ?? null, action })),
+    frames,
+    replayError,
+  };
+}
+
 /**
  * Rejoue le log comme `MatchDO.load()` le fait, en gardant une image après chaque coup.
+ * Partagé avec le profil (`me/queries.ts`), qui n'en tire que la vue d'un camp.
  *
  * Le camp de chaque coup vient du trait : l'action sérialisée ne nomme pas son auteur,
  * et le déduire de la parité de `seq` supposerait un premier joueur fixe et un coup par
@@ -139,11 +153,12 @@ export async function readMatch(db: D1Database, id: string): Promise<AdminMatchD
  * pas. Les images passent par la mémoire de brouillard (`advanceMemory`) et non par
  * `replay` seul, pour dire aussi ce que chaque camp voyait à cet instant.
  */
-function annotate(
-  row: MatchRow,
+export function replayLog<F>(
+  row: Pick<MatchRow, "scenario" | "ruleset_version">,
   actions: readonly Action[],
-): { log: AdminLogEntry[]; frames: AdminFrame[]; replayError: string | null } {
-  const frames: AdminFrame[] = [];
+  frame: (memory: MatchMemory) => F,
+): { frames: F[]; players: PlayerId[]; replayError: string | null } {
+  const frames: F[] = [];
   let replayError: string | null = null;
   let memory: MatchMemory | undefined;
   try {
@@ -151,7 +166,7 @@ function annotate(
     memory = startMemory(
       createGame(scenario.board(), rulesetFor(row.ruleset_version), [...scenario.pieces]),
     );
-    frames.push(frameOf(memory));
+    frames.push(frame(memory));
     for (const [seq, action] of actions.entries()) {
       const advanced = advanceMemory(memory, action);
       if (!advanced.ok) {
@@ -159,17 +174,18 @@ function annotate(
         break;
       }
       memory = advanced.value;
-      frames.push(frameOf(memory));
+      frames.push(frame(memory));
     }
   } catch (cause) {
     replayError = String(cause);
   }
-  const history = memory?.state.history ?? [];
-  return {
-    log: actions.map((action, seq) => ({ seq, player: history[seq]?.player ?? null, action })),
-    frames,
-    replayError,
-  };
+  return { frames, players: (memory?.state.history ?? []).map((entry) => entry.player), replayError };
+}
+
+/** Le log d'une partie, désérialisé, dans l'ordre de `seq`. */
+export async function readLog(db: D1Database, matchId: string): Promise<Action[]> {
+  const log = await db.prepare("SELECT action FROM match_actions WHERE match_id = ? ORDER BY seq").bind(matchId).all<{ action: string }>();
+  return log.results.map((entry) => JSON.parse(entry.action) as Action);
 }
 
 function frameOf(memory: MatchMemory): AdminFrame {
@@ -252,7 +268,7 @@ export async function renamePlayer(
   }
 }
 
-function summary(row: MatchRow): AdminMatchSummary {
+export function summary(row: MatchRow): AdminMatchSummary {
   return {
     id: row.id,
     playerA: { id: row.player_a, handle: row.handle_a },

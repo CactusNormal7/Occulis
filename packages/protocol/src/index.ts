@@ -119,3 +119,4 @@ export type QueueServerMessage =
   | { readonly kind: "protocol-mismatch"; readonly expected: number };
 
 export type * from "./admin.js";
+export type * from "./me.js";

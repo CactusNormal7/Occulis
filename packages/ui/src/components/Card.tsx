@@ -10,12 +10,14 @@ export interface CardProps {
   flush?: boolean | undefined;
   children?: ReactNode | undefined;
   className?: string | undefined;
+  /** Une ancre, pour qu'un lien mène droit à cette carte (`/profil/#securite`). */
+  id?: string | undefined;
 }
 
 /** Un panneau : cadre fin, angles vifs, sans fond. L'unité de mise en page de toute vue. */
-export function Card({ title, action, flush = false, children, className }: CardProps) {
+export function Card({ title, action, flush = false, children, className, id }: CardProps) {
   return (
-    <section className={cx("occ-card", flush && "occ-card--flush", className)}>
+    <section id={id} className={cx("occ-card", flush && "occ-card--flush", className)}>
       {(title !== undefined || action !== undefined) && (
         <header className="occ-card__head">
           {title !== undefined && <h3 className="occ-label">{title}</h3>}

@@ -869,6 +869,176 @@ select.occ-input option {
   padding-left: 34px;
 }
 
+.occ-field__error {
+  color: var(--occ-refused);
+}
+
+.occ-field--error .occ-input {
+  border-color: var(--occ-refused);
+}
+
+/* Le bouton d'affichage se pose dans le champ, à droite, sans en sortir. */
+.occ-password {
+  position: relative;
+  display: flex;
+}
+
+.occ-password .occ-input {
+  flex: 1;
+  min-width: 0;
+  padding-right: 40px;
+}
+
+.occ-password__toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--occ-ink-dim);
+  cursor: pointer;
+  transition: color var(--occ-fast);
+}
+
+.occ-password__toggle:hover,
+.occ-password__toggle[aria-pressed="true"] {
+  color: var(--occ-ink);
+}
+
+.occ-password__toggle:focus-visible {
+  outline: 1px solid var(--occ-ink-soft);
+  outline-offset: -4px;
+}
+
+/* ---- Parcours de compte -------------------------------------------------------------- */
+
+.occ-form-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--occ-space-5);
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.occ-form-panel__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--occ-space-2);
+}
+
+.occ-form-panel__title {
+  margin: 0;
+  font-size: var(--occ-text-xl);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.occ-form-panel form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--occ-space-4);
+  margin: 0;
+}
+
+.occ-form-panel form > .occ-button {
+  justify-content: center;
+  height: 40px;
+}
+
+.occ-form-panel__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--occ-space-2) var(--occ-space-4);
+  color: var(--occ-ink-soft);
+  font-size: var(--occ-text-sm);
+}
+
+.occ-form-message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--occ-space-3);
+  padding: var(--occ-space-3) var(--occ-space-4);
+  border: 1px solid currentColor;
+  font-size: var(--occ-text-sm);
+  line-height: 1.5;
+  animation: occ-rise 0.3s var(--occ-ease) backwards;
+}
+
+.occ-form-message > .occ-icon {
+  margin-top: 1px;
+}
+
+.occ-form-message > span {
+  flex: 1;
+}
+
+.occ-form-message--error {
+  color: var(--occ-refused);
+}
+
+.occ-form-message--success {
+  color: var(--occ-accepted);
+}
+
+.occ-form-message--info {
+  color: var(--occ-ink-soft);
+  border-color: var(--occ-ink-faint);
+}
+
+.occ-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--occ-space-3);
+  color: var(--occ-ink-dim);
+  font-size: var(--occ-text-xs);
+  letter-spacing: var(--occ-caps);
+  text-transform: uppercase;
+}
+
+.occ-divider::before,
+.occ-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--occ-ink-line);
+}
+
+.occ-provider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--occ-space-3);
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--occ-space-4);
+  border: 1px solid var(--occ-ink-faint);
+  background: transparent;
+  color: var(--occ-ink);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color var(--occ-fast);
+}
+
+.occ-provider:hover {
+  border-color: var(--occ-ink-soft);
+}
+
+.occ-provider:focus-visible {
+  outline: 1px solid var(--occ-ink-soft);
+  outline-offset: 2px;
+}
+
+.occ-provider:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .occ-inline-edit {
   display: grid;
   grid-template-columns: 100px 1fr 112px;
@@ -1051,6 +1221,86 @@ select.occ-input option {
 
 .occ-list-row__main small {
   color: var(--occ-ink-soft);
+}
+
+/* ---- Réglages --------------------------------------------------------------------- */
+
+/* Une liste de réglages en lecture : libellé et valeur à gauche, geste à droite. L'éditeur
+   se déplie dans la ligne même, souligné d'un trait franc à gauche. */
+.occ-settings {
+  display: flex;
+  flex-direction: column;
+}
+
+.occ-setting {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--occ-space-4);
+  padding: var(--occ-space-4) 0;
+  border-bottom: 1px solid var(--occ-ink-ghost);
+  transition: padding var(--occ-fast) var(--occ-ease);
+}
+
+.occ-setting:first-child {
+  padding-top: 0;
+}
+
+.occ-setting:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.occ-setting--editing {
+  padding-left: var(--occ-space-4);
+  border-left: 1px solid var(--occ-ink-soft);
+}
+
+.occ-setting__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--occ-space-1);
+  min-width: 0;
+}
+
+.occ-setting__label {
+  margin: 0;
+  color: var(--occ-ink-dim);
+  font-size: var(--occ-text-xs);
+  font-weight: 400;
+  letter-spacing: var(--occ-caps);
+  text-transform: uppercase;
+}
+
+.occ-setting__value {
+  overflow-wrap: anywhere;
+}
+
+.occ-setting__description {
+  margin: 0;
+  color: var(--occ-ink-soft);
+  font-size: var(--occ-text-sm);
+}
+
+.occ-setting > .occ-button,
+.occ-setting > .occ-provider {
+  flex: none;
+  width: auto;
+}
+
+.occ-setting-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--occ-space-3);
+  max-width: 420px;
+  margin: var(--occ-space-2) 0 0;
+  animation: occ-rise 0.25s var(--occ-ease) backwards;
+}
+
+.occ-setting-editor__actions {
+  display: flex;
+  gap: var(--occ-space-2);
 }
 
 /* ---- Barre d'outils ---------------------------------------------------------------- */

@@ -1,5 +1,6 @@
 import { isAdmin, type Auth } from "../auth/better-auth.js";
-import { parseMatchFilter, validHandle } from "./paging.js";
+import { checkHandle } from "../auth/handle.js";
+import { parseMatchFilter } from "./paging.js";
 import { listMatches, readMatch, readPlayer, readStats, renamePlayer } from "./queries.js";
 
 /**
@@ -61,8 +62,9 @@ async function refuseNonAdmin(auth: Auth, request: Request, url: URL): Promise<R
 
 async function rename(env: Env, request: Request, playerId: string): Promise<Response> {
   const body = (await request.json().catch(() => ({}))) as { handle?: unknown };
-  const handle = validHandle(body.handle);
-  if (handle === undefined) return Response.json({ code: "HANDLE_LENGTH" }, { status: 400 });
+  const checked = checkHandle(body.handle);
+  if (!checked.ok) return Response.json({ code: checked.code }, { status: 400 });
+  const handle = checked.handle;
 
   const result = await renamePlayer(env.DB, playerId, handle, Date.now());
   if (result === "unknown-player") return new Response("introuvable", { status: 404 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, parseMatchFilter, parsePage, validHandle } from "./paging.js";
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, parseMatchFilter, parsePage } from "./paging.js";
 
 describe("pagination du back-office", () => {
   it("prend des valeurs par défaut", () => {
@@ -26,14 +26,5 @@ describe("pagination du back-office", () => {
     expect(parseMatchFilter(new URLSearchParams("status=n'importe")).status).toBeNull();
     expect(parseMatchFilter(new URLSearchParams("player=")).player).toBeNull();
     expect(parseMatchFilter(new URLSearchParams("player=p1")).player).toBe("p1");
-  });
-});
-
-describe("validation du pseudo", () => {
-  it("applique les bornes de l'inscription", () => {
-    expect(validHandle("  ab  ")).toBe("ab");
-    expect(validHandle("a")).toBeUndefined();
-    expect(validHandle("x".repeat(33))).toBeUndefined();
-    expect(validHandle(42)).toBeUndefined();
   });
 });

@@ -106,4 +106,34 @@ describe("ménage périodique", () => {
 
     expect(converted?.iso).toBe("2026-09-06T11:04:07.026Z");
   });
+
+  it("supprime les profils orphelins anciens, et seulement eux", async () => {
+    const old = Date.now() - 2 * 24 * HOUR_MS;
+    const insert = env.DB.prepare("INSERT INTO players (id, handle, created_at) VALUES (?, ?, ?)");
+    await env.DB.batch([
+      insert.bind("orphelin-ancien", "orphelin-ancien", old),
+      insert.bind("orphelin-recent", "orphelin-recent", Date.now()),
+      insert.bind("orphelin-joueur", "orphelin-joueur", old),
+      insert.bind("orphelin-adverse", "orphelin-adverse", old),
+    ]);
+    // Un profil sans compte mais qui a joué reste : ses parties doivent rester rejouables.
+    await env.DB.prepare(
+      "INSERT INTO matches (id, player_a, player_b, ruleset_version, scenario, started_at) VALUES (?, ?, ?, 'v', 's', ?)",
+    )
+      .bind("partie-orphelins", "orphelin-joueur", "orphelin-adverse", old)
+      .run();
+    await seedUser("menage-profil");
+
+    await sweep();
+
+    const remaining = await env.DB.prepare(
+      "SELECT id FROM players WHERE id LIKE 'orphelin-%' OR id = 'player-menage-profil' ORDER BY id",
+    ).all<{ id: string }>();
+    expect(remaining.results.map((row) => row.id)).toEqual([
+      "orphelin-adverse",
+      "orphelin-joueur",
+      "orphelin-recent",
+      "player-menage-profil",
+    ]);
+  });
 });

@@ -55,6 +55,47 @@
   padding: 4px 10px;
 }
 
+/* ---- Coin du compte ------------------------------------------------------------ */
+
+/* Le pseudo et le lien vers le profil, en haut à droite, hors du panneau de menu : c'est
+   la place où l'on cherche son compte, et ce n'est pas un geste de jeu. */
+#account-corner {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+  padding: 7px 12px;
+  border: var(--line);
+  background: var(--panel);
+  color: var(--ink-soft);
+  text-decoration: none;
+  transition: color 150ms, border-color 150ms;
+}
+
+#account-corner:hover,
+#account-corner:focus-visible {
+  border-color: var(--ink-soft);
+  color: var(--ink);
+  outline: none;
+}
+
+#account-corner svg {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+#account-corner span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ---- Écrans hors partie ---------------------------------------------------- */
 
 /* Le conteneur couvre la page, mais ne l'intercepte pas : pendant une partie il
@@ -98,29 +139,10 @@
   color: var(--ink-soft);
 }
 
-/* Onglets du formulaire de compte : le parcours choisi est simplement souligné. */
-#account-tabs {
-  display: flex;
-  gap: 18px;
-  border-bottom: var(--line);
-}
-
-#account-tabs button {
-  padding: 0 0 8px;
-  border: none;
-  border-bottom: 1px solid transparent;
-  background: none;
-  color: var(--ink-soft);
-  font: inherit;
-  cursor: pointer;
-}
-
-#account-tabs button[aria-selected="true"] {
-  color: var(--ink);
-  border-bottom-color: var(--ink);
-}
-
-form {
+/* Les formulaires du menu et du bandeau de partie. L'écran de compte est en React sur
+   la charte (`@occulis/ui`), qui habille les siens : ces règles ne doivent pas l'atteindre. */
+.panel form,
+#console form {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -151,7 +173,7 @@ form {
   border-color: var(--ink-soft);
 }
 
-button {
+button:not([class*="occ-"]) {
   padding: 9px 14px;
   border: 1px solid var(--ink-soft);
   background: transparent;
@@ -161,11 +183,11 @@ button {
   cursor: pointer;
 }
 
-button:hover:not(:disabled) {
+button:not([class*="occ-"]):hover:not(:disabled) {
   border-color: var(--ink);
 }
 
-button:disabled {
+button:not([class*="occ-"]):disabled {
   color: var(--ink-faint);
   border-color: var(--ink-faint);
   cursor: default;
@@ -197,7 +219,7 @@ button:disabled {
   color: var(--ink-soft);
 }
 
-/* Le lien du back-office, habillé comme les autres gestes discrets du menu. */
+/* Le lien du back-office, habillé comme les autres gestes discrets. */
 a.quiet {
   border: 1px solid var(--ink-faint);
   text-decoration: none;
@@ -232,7 +254,6 @@ a.quiet {
   margin-top: -8px;
 }
 
-#account-status,
 #menu-notice,
 #waiting-note {
   margin: 0;
@@ -241,7 +262,7 @@ a.quiet {
 }
 
 #menu-identity:empty,
-#account-status:empty {
+#menu-notice:empty {
   display: none;
 }
 
@@ -321,4 +342,23 @@ a.quiet {
 
 #leave-match {
   margin-top: 10px;
+}
+
+/* ---- Écran de compte ---------------------------------------------------------- */
+
+/* L'îlot de compte porte sa propre mise en page (`FormPanel`) : le panneau ne fait que
+   l'encadrer. Un peu plus large que les autres écrans, pour ses trois champs. */
+#screen-auth {
+  max-width: 460px;
+}
+
+#screen-auth .panel {
+  padding: 32px;
+}
+
+/* Les gestes discrets du menu, côte à côte en pied de panneau. */
+.menu-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }

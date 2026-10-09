@@ -8,3 +8,14 @@ AUTH_SECRET="un-secret-local-quelconque-mais-long"
 # journalisés dans la console au lieu d'être envoyés : le lien reste cliquable.
 # RESEND_API_KEY="re_..."
 # MAIL_FROM="Occulis <no-reply@0kl.fr>"
+# MAIL_REPLY_TO="contact@0kl.fr"
+
+# Connexion Google (client « dev », docs/setup.md section 7). Sans les deux, le bouton
+# « Continuer avec Google » n'apparaît pas. URI de retour à déclarer chez Google :
+#   http://localhost:8787/api/auth/callback/google
+# GOOGLE_CLIENT_ID="…apps.googleusercontent.com"
+# GOOGLE_CLIENT_SECRET="GOCSPX-…"
+
+# Le contrôle des mots de passe ayant fuité interroge Have I Been Pwned (5 caractères
+# d'empreinte seulement). `off` le coupe, pour travailler hors ligne.
+# PASSWORD_BREACH_CHECK="off"

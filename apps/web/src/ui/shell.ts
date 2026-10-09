@@ -1,7 +1,6 @@
 import type { Identity } from "../net/auth.js";
-import { describeIdentity } from "./account.js";
 import type { Seeking, Stage } from "./flow.js";
-import { describeWaiting } from "./messages.js";
+import { describeIdentity, describeWaiting } from "./messages.js";
 
 /**
  * Les écrans : compte, menu, attente, partie. Un seul est visible à la fois.
@@ -11,8 +10,8 @@ import { describeWaiting } from "./messages.js";
  * composition. C'est le pendant DOM de la machine à états, et le seul endroit qui
  * connaisse les identifiants de la page avec `main.ts`.
  *
- * Provisoire, comme tout l'habillage : aucun design system n'est acté
- * (docs/design.md 8.1).
+ * L'écran de compte n'est ici qu'un conteneur montré ou masqué : son contenu est
+ * l'îlot React de `src/account/`, sur la charte.
  */
 export interface ShellElements {
   readonly auth: HTMLElement;
@@ -25,6 +24,12 @@ export interface ShellElements {
   readonly identity: HTMLElement;
   /** Le lien vers `/admin/`, montré aux seuls administrateurs. */
   readonly admin: HTMLElement;
+  /** Le lien vers le profil, en haut à droite, et le pseudo qu'il affiche. */
+  readonly corner: HTMLElement;
+  readonly cornerName: HTMLElement;
+  /** Renvoie le message de vérification ; montré tant que l'adresse ne l'est pas. */
+  readonly resend: HTMLButtonElement;
+  readonly signOut: HTMLButtonElement;
   /** Le bandeau d'usurpation, et son bouton de retour au compte administrateur. */
   readonly impersonation: HTMLElement;
   readonly impersonated: HTMLElement;
@@ -51,6 +56,8 @@ export interface ShellOptions {
   readonly onCancel: () => void;
   /** L'administrateur quitte l'identité d'emprunt. */
   readonly onStopImpersonating: () => void;
+  readonly onSignOut: () => void;
+  readonly onResend: () => void;
 }
 
 export interface Shell {
@@ -64,9 +71,18 @@ export interface Shell {
 export function attachShell(options: ShellOptions): Shell {
   const e = options.elements;
   let playable = false;
+  let signedIn = false;
+  let onMenu = false;
+  // Le coin n'a de sens qu'au menu : en attente, il ferait quitter la file ; en partie, il
+  // ferait quitter le siège.
+  const showCorner = (): void => {
+    e.corner.hidden = !(signedIn && onMenu);
+  };
 
   e.quick.addEventListener("click", () => options.onSeek("quick"));
   e.stopImpersonating.addEventListener("click", () => options.onStopImpersonating());
+  e.signOut.addEventListener("click", () => options.onSignOut());
+  e.resend.addEventListener("click", () => options.onResend());
   e.host.addEventListener("click", () => options.onSeek("host"));
 
   e.joinForm.addEventListener("submit", (event) => {
@@ -97,6 +113,8 @@ export function attachShell(options: ShellOptions): Shell {
     e.waiting.hidden = stage.kind !== "waiting";
     e.board.hidden = stage.kind !== "game";
     e.hud.hidden = stage.kind !== "game";
+    onMenu = stage.kind === "menu";
+    showCorner();
 
     if (stage.kind === "menu") {
       e.joinCode.value = "";
@@ -122,6 +140,10 @@ export function attachShell(options: ShellOptions): Shell {
     for (const button of [e.quick, e.host, e.join]) button.disabled = !playable;
     e.joinCode.disabled = !playable;
     e.admin.hidden = identity.admin !== true;
+    signedIn = identity.signedIn;
+    e.cornerName.textContent = identity.handle ?? "";
+    showCorner();
+    e.resend.hidden = !identity.signedIn || identity.emailVerified !== false;
     e.impersonation.hidden = identity.impersonating !== true;
     e.impersonated.textContent = identity.handle ?? "";
   };

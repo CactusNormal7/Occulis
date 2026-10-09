@@ -7,7 +7,10 @@ import {
   Card,
   ChipGroup,
   Dialog,
+  Divider,
   FactStrip,
+  FormMessage,
+  FormPanel,
   Hero,
   ICON_NAMES,
   Icon,
@@ -15,10 +18,16 @@ import {
   InlineEdit,
   MoveList,
   Pager,
+  PasswordField,
   Person,
+  ProviderButton,
   Segmented,
+  SettingEditor,
+  SettingList,
+  SettingRow,
   StatTile,
   Table,
+  TextField,
   TileAvatar,
   ToastStack,
   TopBar,
@@ -97,5 +106,70 @@ describe("composants", () => {
       </UiRoot>
     );
     expect(html(tree)).toContain("occ-root");
+  });
+
+  it("rattache l'aide et l'erreur d'un champ par aria-describedby", () => {
+    const markup = html(<TextField label="Adresse" name="email" hint="Celle du compte." error="Adresse invalide." />);
+    expect(markup).toContain('aria-invalid="true"');
+    expect(markup).toContain("occ-field--error");
+    const described = markup.match(/aria-describedby="([^"]+)"/)?.[1]?.split(" ") ?? [];
+    expect(described).toHaveLength(2);
+    for (const id of described) expect(markup).toContain(`id="${id}"`);
+  });
+
+  it("garde le champ de mot de passe reconnaissable par les gestionnaires", () => {
+    const markup = html(<PasswordField label="Mot de passe" name="password" autoComplete="new-password" minLength={10} />);
+    expect(markup).toContain('type="password"');
+    expect(markup).toContain('autoComplete="new-password"');
+    expect(markup).toContain('minLength="10"');
+    // Le bouton d'affichage ne doit jamais soumettre le formulaire.
+    expect(markup).toContain('type="button"');
+    expect(markup).toContain('aria-pressed="false"');
+  });
+
+  it("rend les briques des parcours de compte", () => {
+    const panel = html(
+      <FormPanel title="Connexion" lead="Bon retour." footer={<a href="/inscription">Créer un compte</a>}>
+        <ProviderButton provider="google" />
+        <Divider>ou</Divider>
+        <FormMessage tone="error">Identifiants invalides.</FormMessage>
+      </FormPanel>,
+    );
+    expect(panel).toContain("occ-form-panel");
+    expect(panel).toContain("Continuer avec Google");
+    expect(panel).toContain('role="separator"');
+    expect(panel).toContain('role="alert"');
+    expect(html(<FormMessage tone="success">Fait.</FormMessage>)).toContain('role="status"');
+  });
+
+  it("dessine le logo Google sans couleur propre", () => {
+    const markup = html(<ProviderButton provider="google" />);
+    expect(markup).toContain('fill="currentColor"');
+    expect(markup).not.toMatch(/fill="(#|rgb)/);
+  });
+
+  it("montre un réglage en lecture, puis son éditeur à la place de la valeur", () => {
+    const reading = html(
+      <SettingList>
+        <SettingRow label="Pseudo" value="anne" description="Visible par vos adversaires." onEdit={() => undefined} />
+      </SettingList>,
+    );
+    expect(reading).toContain("occ-settings");
+    expect(reading).toContain("anne");
+    expect(reading).toContain("Modifier");
+
+    const editing = html(
+      <SettingRow label="Pseudo" value="anne" onEdit={() => undefined} editing>
+        <SettingEditor submitLabel="Enregistrer" onSubmit={() => undefined} onCancel={() => undefined} error="Ce pseudo est déjà pris.">
+          <input name="handle" defaultValue="anne" />
+        </SettingEditor>
+      </SettingRow>,
+    );
+    expect(editing).toContain("occ-setting--editing");
+    expect(editing).toContain("<form");
+    expect(editing).toContain('role="alert"');
+    expect(editing).toContain("Annuler");
+    // Le bouton d'édition disparaît tant que l'éditeur est ouvert.
+    expect(editing).not.toContain(">Modifier<");
   });
 });

@@ -36,13 +36,6 @@ export function parseMatchFilter(parameters: URLSearchParams): MatchFilter {
   };
 }
 
-/** Les mêmes bornes que l'inscription (`auth/better-auth.ts`), qui crée le pseudo. */
-export function validHandle(raw: unknown): string | undefined {
-  if (typeof raw !== "string") return undefined;
-  const handle = raw.trim();
-  return handle.length >= 2 && handle.length <= 32 ? handle : undefined;
-}
-
 function integer(raw: string | null, fallback: number): number {
   if (raw === null) return fallback;
   const value = Number.parseInt(raw, 10);

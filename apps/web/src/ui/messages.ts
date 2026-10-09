@@ -1,5 +1,6 @@
 import type { ActionError, Coord, GameState, Piece, PlayerId, Tile } from "@occulis/core";
 import type { Rejection, RoomFault } from "@occulis/protocol";
+import type { Identity } from "../net/auth.js";
 import type { CommandFault } from "./command.js";
 import type { Seeking } from "./flow.js";
 
@@ -107,4 +108,15 @@ export function describeTile(tile: Tile | undefined): string {
   if (tile === undefined) return "Hors plateau.";
   const relief = `${tile.coord.x},${tile.coord.y} · hauteur ${tile.height}`;
   return tile.passable ? relief : `${relief} · infranchissable`;
+}
+
+/** Ce que le menu affiche du compte : le pseudo, et l'état de la vérification. */
+export function describeIdentity(identity: Identity): string {
+  if (!identity.signedIn) return "";
+  if (identity.emailVerified === false) {
+    // Dit pourquoi le jeu reste fermé : sans ça, les boutons désactivés n'ont
+    // aucune explication à l'écran.
+    return `${identity.handle ?? ""} · adresse non vérifiée, le jeu reste fermé`;
+  }
+  return identity.handle ?? "";
 }

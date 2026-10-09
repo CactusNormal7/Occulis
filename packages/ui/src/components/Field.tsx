@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { useId, useState, type FormEvent, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 import { cx } from "../cx.js";
 import { Icon } from "./Icon.js";
 
@@ -7,17 +7,89 @@ export interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   /** Une précision sous le champ. */
   hint?: ReactNode | undefined;
+  /** Le refus propre à ce champ, sous lui, dans la teinte des refus. */
+  error?: string | undefined;
 }
 
-/** Un champ de saisie libellé. */
-export function TextField({ label, hint, className, ...rest }: TextFieldProps) {
+/**
+ * Un champ de saisie libellé. Le libellé **enveloppe** le champ : c'est ce qui l'y
+ * associe pour les lecteurs d'écran comme pour les gestionnaires de mots de passe, sans
+ * identifiant à tenir. L'aide et l'erreur lui sont rattachées par `aria-describedby`.
+ */
+export function TextField({ label, hint, error, className, ...rest }: TextFieldProps) {
+  const described = useDescription(hint, error);
   return (
-    <label className={cx("occ-field", className)}>
+    <label className={cx("occ-field", error !== undefined && "occ-field--error", className)}>
       <span className="occ-field__label">{label}</span>
-      <input className="occ-input" {...rest} />
-      {hint !== undefined && <small className="occ-field__hint">{hint}</small>}
+      <input className="occ-input" aria-invalid={error !== undefined || undefined} aria-describedby={described.ids} {...rest} />
+      {described.nodes}
     </label>
   );
+}
+
+export interface PasswordFieldProps extends Omit<TextFieldProps, "type"> {
+  /** `current-password` pour se connecter, `new-password` pour en choisir un. */
+  autoComplete: "current-password" | "new-password";
+}
+
+/**
+ * Un champ de mot de passe, avec un bouton pour l'afficher. Le champ reste de type
+ * `password` tant qu'on ne le demande pas — c'est à ce type que les gestionnaires de mots
+ * de passe le reconnaissent — et le bouton n'est jamais un `submit`.
+ */
+export function PasswordField({ label, hint, error, className, ...rest }: PasswordFieldProps) {
+  const [shown, setShown] = useState(false);
+  const described = useDescription(hint, error);
+  return (
+    <label className={cx("occ-field", error !== undefined && "occ-field--error", className)}>
+      <span className="occ-field__label">{label}</span>
+      <span className="occ-password">
+        <input
+          className="occ-input"
+          type={shown ? "text" : "password"}
+          spellCheck={false}
+          autoCapitalize="none"
+          aria-invalid={error !== undefined || undefined}
+          aria-describedby={described.ids}
+          {...rest}
+        />
+        <button
+          type="button"
+          className="occ-password__toggle"
+          aria-pressed={shown}
+          aria-label={shown ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+          onClick={() => setShown((value) => !value)}
+        >
+          <Icon name={shown ? "eyeOff" : "eye"} />
+        </button>
+      </span>
+      {described.nodes}
+    </label>
+  );
+}
+
+function useDescription(hint: ReactNode | undefined, error: string | undefined): { ids: string | undefined; nodes: ReactNode } {
+  const id = useId();
+  const hintId = hint === undefined ? undefined : `${id}-hint`;
+  const errorId = error === undefined ? undefined : `${id}-error`;
+  const ids = [errorId, hintId].filter((value) => value !== undefined).join(" ");
+  return {
+    ids: ids.length === 0 ? undefined : ids,
+    nodes: (
+      <>
+        {error !== undefined && (
+          <small id={errorId} className="occ-field__error">
+            {error}
+          </small>
+        )}
+        {hint !== undefined && (
+          <small id={hintId} className="occ-field__hint">
+            {hint}
+          </small>
+        )}
+      </>
+    ),
+  };
 }
 
 export interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {

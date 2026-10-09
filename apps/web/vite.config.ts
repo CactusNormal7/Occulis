@@ -98,12 +98,14 @@ function embedMockups(): Plugin {
 }
 
 /**
- * Deux pages : le jeu, et le back-office sous `/admin/`. Séparées pour que le second
- * ne charge ni Pixi ni le moteur, et que le premier n'embarque rien du second.
+ * Trois pages : le jeu, le back-office sous `/admin/` et le profil sous `/profil/`.
+ * Séparées pour que les deux dernières ne chargent ni Pixi ni le moteur, et que le jeu
+ * n'embarque rien d'elles.
  */
 const PAGES = {
   main: fileURLToPath(new URL("index.html", import.meta.url)),
   admin: fileURLToPath(new URL("admin/index.html", import.meta.url)),
+  profil: fileURLToPath(new URL("profil/index.html", import.meta.url)),
 };
 
 export default defineConfig(({ mode }) => ({
