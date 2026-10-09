@@ -23,6 +23,7 @@ const match: AdminMatchDetail = {
   finishedAt: 1,
   outcome: { kind: "victory", winner: "A", reason: "resignation" },
   actions: 2,
+  rated: false,
   log: [
     { seq: 0, player: "A", action: { kind: "move", pieceId: "a1", to: { x: 2, y: 1 } } },
     { seq: 1, player: "B", action: { kind: "resign" } },

@@ -34,7 +34,13 @@ Trois principes, actés dans `docs/architecture.md` :
 | `apps/server/src/legacy-routes.ts` | **Pur** — anciennes adresses françaises → leur équivalent anglais |
 | `apps/server/src/match-do.ts` | `MatchDO` : le Durable Object de partie |
 | `apps/server/src/queue-do.ts` | `QueueDO` : la file d'attente globale et les salons privés |
-| `apps/server/src/match-setup.ts` | Création d'une partie : ligne D1, jetons de siège, init du DO |
+| `apps/server/src/match-setup.ts` | Création d'une partie : ligne D1, jetons de siège, cartes des joueurs, init du DO |
+| `apps/server/src/cards.ts` | La carte d'un joueur (`PlayerCard`) : pseudo, Elo, bilan, faits exhibés |
+| `apps/server/src/rating.ts` | **Pur** — l'Elo : espérance de gain et variations (K = 32) |
+| `apps/server/src/feats/catalog.ts` | **Pur** — le catalogue des faits d'armes, leur déblocage et ce qui s'en exhibe |
+| `apps/server/src/feats/stats.ts` | Les statistiques d'un joueur depuis ses parties (`statsFrom()` pur, `readPlayerStats()` en D1) |
+| `apps/server/src/me/presets.ts` | Les équipes préparées (`team_presets`), **bornées au joueur de la session** |
+| `apps/server/src/me/feats.ts` | Les faits d'armes du joueur et leur exhibition |
 | `apps/server/src/seating.ts` | **Pur** — jeton de siège → camp, et autorité de tour |
 | `apps/server/src/auth/better-auth.ts` | La configuration Better Auth : hasher, schéma, débit, Google, crochets, gardes |
 | `apps/server/src/auth/routes.ts` | `/api/auth/me` et la délégation du reste à Better Auth |
@@ -53,7 +59,7 @@ Trois principes, actés dans `docs/architecture.md` :
 | `apps/server/src/pairing.ts` | **Pur** — la file d'attente comme structure de données |
 | `apps/server/src/rooms.ts` | **Pur** — les salons privés : table des codes, tirage, consommation |
 | `packages/protocol/src/index.ts` | Messages client/serveur et version de protocole — **paquet partagé** |
-| `apps/server/src/rulesets.ts` | Registre des rulesets par version |
+| `apps/server/src/rulesets.ts` | Réexpose le registre des rulesets, qui vit dans `@occulis/core` |
 | `apps/server/src/env.d.ts` | Type des bindings : `DB`, `MATCH`, `QUEUE`, `ASSETS`, `AUTH_SECRET`, `RESEND_API_KEY`, `GOOGLE_*`, `OAUTH_PROXY_*`… |
 | `apps/server/wrangler.toml` | Configuration et environnements |
 | `apps/server/migrations/*.sql` | Schéma D1 |
@@ -119,7 +125,8 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 | `handleAuth()` | `apps/server/src/auth/routes.ts` | `/api/auth/me`, puis délégation |
 | `sendLetter()` | `apps/server/src/auth/mail.ts` | Resend, ou journalisation sans clé |
 | `createMatch()` | `apps/server/src/index.ts` | Lit `playerA`/`playerB`, délègue à `startMatch()` |
-| `startMatch()` | `apps/server/src/match-setup.ts` | Identifiant, jetons de siège, ligne `matches`, `POST /init` |
+| `startMatch()` | `apps/server/src/match-setup.ts` | Identifiant, jetons de siège, cartes des joueurs, ligne `matches` (avec `rated`), `POST /init` ; `{ rated }` vaut vrai pour la file rapide seule |
+| `readPlayerCard()` | `apps/server/src/cards.ts` | Profil de jeu → `PlayerCard`, lue une fois à la création de la partie |
 
 **`idFromName(matchId)`** est le point clé : deux joueurs de la même partie atteignent
 forcément la même instance de DO, sans annuaire ni coordination.
@@ -150,9 +157,15 @@ l'API sont **de même origine**, une URL relative suffit.
 
 | Méthode | Visibilité | Rôle |
 |---|---|---|
-| `fetch()` | publique | `/init` ; sinon négociation WebSocket |
-| `webSocketMessage()` | publique | Aiguille `hello` et `action` |
-| `play()` | privée | Applique une action, journalise, rediffuse |
+| `fetch()` | publique | `/init` (et, sur une carte à déploiement, l'échéance et son alarme) ; sinon négociation WebSocket |
+| `webSocketMessage()` | publique | Aiguille `hello`, `deploy` et `action` |
+| `alarm()` | publique | L'échéance du déploiement : pose l'équipe par défaut de qui n'a rien verrouillé, et ouvre la partie |
+| `deploy()` | privée | Lit, valide et verrouille une équipe ; ouvre la partie quand les deux le sont |
+| `start()` | privée | `deployTeams()`, écrit les pièces de départ (DO **et** `matches.setup`), retire l'alarme, diffuse les vues |
+| `sendDeployment()` | privée | Le message `deployment` d'un camp : sa zone, celle d'en face, son équipe par défaut, le temps restant, les verrous, les deux cartes |
+| `deploying()` | privée | Vrai sur une carte à déploiement tant que les pièces ne sont pas posées |
+| `play()` | privée | Refuse pendant le déploiement ; sinon applique une action, journalise, rediffuse |
+| `recordOutcome()` | privée | Clôt la partie ; **classée**, fait varier l'Elo des deux joueurs dans le même lot |
 | `appendToLog()` | privée | `INSERT` dans `match_actions` |
 | `broadcastViews()` | privée | Envoie à chaque joueur son `viewFor()` |
 | `send()` | privée | Sérialise un `ServerMessage` |
@@ -177,6 +190,31 @@ incompatible avec l'hibernation.
 
 `fetch()` refuse une requête sans `?player=A|B` (400) ou sans en-tête
 `Upgrade: websocket` (426).
+
+### Le déploiement
+
+Sur une carte qui en prévoit un (`Scenario.deployment`, `ridge-1`), la partie commence par
+**poser les équipes**. `/init` fixe l'échéance (`DEPLOYMENT_MS`, 90 s) et pose une
+**alarme** deux secondes après (`DEPLOYMENT_GRACE_MS`, le temps au dernier envoi du client
+d'arriver) : une alarme et non un minuteur, parce qu'elle survit à l'hibernation.
+
+- À chaque `hello` pendant la phase, le joueur reçoit `welcome` puis `deployment` (et non
+  une vue) : sa zone, la zone d'en face — elle fait partie de la carte, publique —, son
+  équipe par défaut, le **temps restant** (et non l'échéance : l'horloge du client n'est pas
+  celle du serveur), les verrous, sa carte et celle de l'adversaire, et si la partie est
+  classée.
+- `deploy` : `parseTeam()` lit la forme (`malformed-team` sinon), `validateTeam()` les
+  règles (une `TeamError`). Une équipe acceptée est **verrouillée** — une seconde reçoit
+  `already-locked` — et chaque camp reçoit `deployment-update` avec les verrous **de son
+  point de vue**. Aucune pièce d'en face ne transite : on sait seulement qu'elle est posée.
+- Les deux verrouillées, ou l'alarme sonnée (l'équipe par défaut de la carte pour qui n'a
+  rien envoyé) : `start()` assemble la position (`deployTeams()`), l'écrit dans le stockage
+  du DO **et** dans `matches.setup`, retire l'alarme et diffuse les premières vues.
+- Un coup pendant la phase, ou une équipe après, reçoit `wrong-phase`. Un joueur
+  déconnecté n'arrête rien : l'échéance pose son équipe.
+
+Le placement adverse reste caché par la seule LOS : les zones de `ridge-1` n'ont pas de vue
+mutuelle, donc la première vue de chacun ne contient que ses propres pièces.
 
 ### Le siège : à qui parle-t-on ?
 
@@ -211,12 +249,19 @@ webSocketMessage  ──►  play(action, player, ws)
                          ├─ advanceMemory(live, action) @occulis/core
                          │     └─ échec ──► send({ kind: "rejected", error })  ← à l'émetteur seul
                          ├─ appendToLog(action, seq)    INSERT dans match_actions
-                         ├─ recordOutcome()             si la partie s'achève : UPDATE matches
+                         ├─ recordOutcome()             si la partie s'achève : UPDATE matches (+ Elo si classée)
                          └─ broadcastViews()            un viewFor() par joueur
 ```
 
 L'ordre compte : **le log est écrit avant la diffusion**. Un client ne voit donc jamais un
 état que la source de vérité ignore.
+
+**L'Elo** (`rating.ts`) ne bouge qu'à la clôture d'une partie **classée** — la file rapide ;
+un salon privé ou `POST /api/matches` ne l'est pas (`MatchConfig.rated`). `recordOutcome()`
+relit les deux Elo à ce moment-là, calcule des variations opposées (K = 32, départ 1200) et
+écrit d'un même lot la clôture, `rating_change_a/b` et les deux `players.elo` (par
+incrément) : un Elo qui bougerait sans que la partie soit close, ou l'inverse, ne se
+rattraperait jamais. Aucun classement n'en est tiré (pilier « pas de leaderboard »).
 
 `seq` est l'index du coup dans `state.history` **avant** application : la première action
 porte `seq = 0`. Il ne dépend donc plus de `turn` — deux notions qui coïncident aujourd'hui
@@ -229,8 +274,9 @@ garantit.
 Si `this.live` est en cache, elle le renvoie. Sinon :
 
 1. `config()` relit la `MatchConfig` du stockage du DO.
-2. `scenarioFor()` et `rulesetFor()` reconstruisent le plateau, les pièces et les règles
-   **de la version figée à la création**.
+2. `scenarioFor()` et `rulesetFor()` reconstruisent le plateau et les règles **de la
+   version figée à la création** ; les pièces de départ sont celles du déploiement
+   (stockage du DO, `setup`), ou celles de la carte si elle n'en a pas.
 3. `createGame()` reconstruit l'état initial.
 4. Toutes les lignes de `match_actions` sont relues `ORDER BY seq ASC` et passées à
    `replayMemory()` (`@occulis/core`), qui rejoue la position **et** fait avancer la
@@ -240,7 +286,7 @@ Si `this.live` est en cache, elle le renvoie. Sinon :
 positions traversées, pas seulement de la dernière. L'écrire ici, c'était une seconde
 occasion de diverger de la règle.
 
-Un rejeu qui échoue lève `Log corrompu pour <matchId> au coup <seq>` — volontairement fatal :
+Un rejeu qui échoue lève `Corrupted log for <matchId> at move <seq>` — volontairement fatal :
 poursuivre sur un état divergent serait pire.
 
 **Cette méthode n'est correcte que parce que `packages/core` est strictement
@@ -664,7 +710,14 @@ ignore, sous `/api/me/`.
 
 | Route | Méthode | Fonction | Réponse |
 |---|---|---|---|
-| `/api/me` | `GET` | `readProfileRow()` | `MeProfile` — pseudo, adresse, vérification, date d'inscription, prochain changement de pseudo, mot de passe défini ou non, fournisseurs liés et proposés, usurpation, bilan |
+| `/api/me` | `GET` | `readProfileRow()` | `MeProfile` — pseudo, adresse, vérification, date d'inscription, prochain changement de pseudo, mot de passe défini ou non, fournisseurs liés et proposés, usurpation, bilan, **Elo** |
+| `/api/me/feats` | `GET` | `readMyFeats()` | `MeFeats` — le catalogue, chaque fait débloqué ou non, et ceux exhibés |
+| `/api/me/showcase` | `POST` | `setShowcase()` | `{ showcase }`, ou **400 `SHOWCASE_INVALID`** : fait inconnu, non débloqué, en double, ou plus de trois |
+| `/api/me/presets` | `GET` | `listPresets()` | `TeamPresetList` — vos équipes, la carte et le ruleset courants, la limite (10) |
+| `/api/me/presets` | `POST` | `createPreset()` | `TeamPreset` ; 400 `PRESET_NAME` / `PRESET_TEAM`, **409 `PRESET_LIMIT`** ; la première devient celle par défaut |
+| `/api/me/presets/:id` | `PUT` | `updatePreset()` | `TeamPreset` renommé et/ou d'équipe remplacée — rattaché alors à la carte et au ruleset courants ; 404 si elle n'est pas à vous |
+| `/api/me/presets/:id` | `DELETE` | `deletePreset()` | `{ deleted: 1 }` ; supprimer celle par défaut en désigne une autre (la plus récente) |
+| `/api/me/presets/:id/default` | `POST` | `setDefaultPreset()` | `{ isDefault: true }` — une seule par défaut |
 | `/api/me/handle` | `POST` | `changeHandle()` | `{ handle, nextHandleChangeAt }`, ou 400 (`checkHandle()`, `HANDLE_UNCHANGED`), 422 `HANDLE_TAKEN`, 429 `HANDLE_COOLDOWN` |
 | `/api/me/sessions` | `GET` | `listSessions()` | `MeSession[]` — **sans jeton** : la session se désigne par son identifiant de ligne |
 | `/api/me/sessions/:id/revoke` | `POST` | `revokeSession()` | `{ revoked: 1 }`, ou 404 si la session n'est pas à vous |
@@ -679,6 +732,16 @@ Quelques points de fonctionnement :
   seulement lu avant : deux requêtes simultanées ne passent pas toutes les deux. La
   seconde instruction du lot ne touche `users.name` que si la première a écrit le nouveau
   pseudo. Le renommage par un administrateur ne touche pas `handle_changed_at`.
+- **Les faits d'armes ne sont jamais stockés débloqués** : `feats/catalog.ts` les recalcule
+  depuis les parties terminées (`statsFrom()` : jouées, gagnées, perdues, plus longue série,
+  dans l'ordre des fins ; Elo). Seul le choix exhibé l'est (`players.showcase`), et ce qui
+  n'est plus débloqué en est retiré à l'affichage (`shownFeats()`). Le serveur ne connaît
+  que les identifiants ; noms et descriptions vivent dans `@occulis/i18n` (domaine `feats`).
+- **Un preset s'écrit dans la zone du camp A** de sa carte ; au déploiement, le client le
+  transpose vers le camp tenu (`teamForSide()`). Sa validité est **recalculée à chaque
+  lecture** contre les règles de son ruleset et de sa carte (`isValid()`) : une équipe que
+  de nouvelles règles rendent caduque est gardée et signalée (`valid: false`), jamais
+  effacée.
 - **Les sessions ne passent pas par `/api/auth/list-sessions`**, qui rend les jetons au
   JavaScript de la page. `listSessions()` lit `sessions` directement et n'en sort que
   l'identifiant, les dates, l'agent, l'IP et le marqueur d'usurpation.
@@ -699,16 +762,25 @@ ajout. Le paquet ne contient que des types et la conversion de sérialisation �
 règle de jeu (elle vit dans `@occulis/core`), aucun transport (il vit dans chaque app).
 
 ```ts
-const PROTOCOL_VERSION = 4
+const PROTOCOL_VERSION = 5
 
 type ClientMessage =
   | { kind: "hello";  protocol: number }
   | { kind: "action"; action: Action }
+  | { kind: "deploy"; team: TeamEntry[] }
 
-type Rejection = ActionError | SeatDenial
+type PhaseDenial = { code: "wrong-phase" } | { code: "already-locked" } | { code: "malformed-team" }
+type Rejection = ActionError | TeamError | SeatDenial | PhaseDenial
+
+interface PlayerCard { handle: string; elo: number; played: number; won: number; feats: string[] }
+interface Locks { self: boolean; opponent: boolean }
 
 type ServerMessage =
-  | { kind: "welcome";           player: PlayerId }
+  | { kind: "welcome";           player: PlayerId; scenario: string; rulesetVersion: string }
+  | { kind: "deployment";        zone: Coord[]; opponentZone: Coord[]; defaultTeam: TeamEntry[];
+                                 remainingMs: number; locks: Locks; self: PlayerCard;
+                                 opponent: PlayerCard; rated: boolean }
+  | { kind: "deployment-update"; locks: Locks }
   | { kind: "view";              view: WireView }
   | { kind: "rejected";          error: Rejection }
   | { kind: "protocol-mismatch"; expected: number }
@@ -741,7 +813,8 @@ type QueueServerMessage =
 `Set`, et un client qui oublierait la conversion inverse afficherait un fog vide, donc
 tout le plateau.
 
-La version est passée de 3 à 4 avec le retrait de la capture et de la règle d'échec
+La version est passée de 4 à 5 avec le déploiement (`deploy`, `deployment`,
+`deployment-update`, les refus d'équipe et de phase). Elle était passée de 3 à 4 avec le retrait de la capture et de la règle d'échec
 (`docs/design.md` sections 3.1 et 7.1) : `Action` a perdu son champ `capture` et `WireView`
 son drapeau `check`. Un client resté en 3 enverrait des coups d'une forme que le serveur ne
 comprend plus — la négociation le refuse explicitement plutôt que de le laisser diverger.
@@ -767,13 +840,15 @@ plutôt que le laisser diverger en silence.
 
 | Fonction / constante | Emplacement | Rôle |
 |---|---|---|
-| `CURRENT_RULESET_VERSION` | `apps/server/src/rulesets.ts` | Version attribuée aux nouvelles parties — `"provisional-0"` |
-| `rulesetFor()` | `apps/server/src/rulesets.ts` | Version → `Ruleset` ; **lève** si inconnue |
-| `DEFAULT_SCENARIO` | `apps/server/src/scenarios.ts` | Scénario des nouvelles parties — `"demo-0"` |
-| `scenarioFor()` | `apps/server/src/scenarios.ts` | Nom → `{ board, pieces }` ; **lève** si inconnu |
+| `CURRENT_RULESET_VERSION` | `packages/core/src/rulesets/index.ts` | Version attribuée aux nouvelles parties — `"provisional-1"` |
+| `rulesetFor()` | `packages/core/src/rulesets/index.ts` | Version → `Ruleset` ; **lève** si inconnue |
+| `DEFAULT_SCENARIO` | `packages/core/src/scenarios/index.ts` | Scénario des nouvelles parties — `"ridge-1"` |
+| `scenarioFor()` | `packages/core/src/scenarios/index.ts` | Nom → `Scenario` ; **lève** si inconnu |
 
-Le registre ne définit **aucun type de pièce lui-même** : il appelle
-`provisionalRuleset()` de `@occulis/core` (`packages/core/src/pieces/roster/`). Client et
+Le registre vit désormais dans `@occulis/core` : le client doit appliquer la version de la
+partie qu'il joue (annoncée par `welcome`), donc le connaître aussi ; `apps/server/src/rulesets.ts`
+ne fait que le réexposer. Il ne définit **aucun type de pièce lui-même** : il assemble ceux
+du roster (`packages/core/src/pieces/roster/`). Client et
 serveur doivent appliquer exactement les mêmes règles, donc une seule définition — voir
 [core.md](core.md), section `pieces/`.
 
@@ -857,6 +932,15 @@ pseudo, les autres reçoivent `-<6 caractères de leur identifiant>`, et `users.
 C'est arrivé sur la base locale du porteur du projet (`Cactus` / `cactus`). Leur
 `handle_changed_at` reste `NULL` : ils peuvent changer de pseudo aussitôt.
 
+### `migrations/0007_match_preparation.sql`
+
+Écrite à la main. `matches` gagne `rated` (0 par défaut, donc les parties d'avant ne sont pas
+classées), `setup` (JSON des pièces déployées, `NULL` sur une carte à position fixe — c'est
+avec elles que le log se rejoue) et `rating_change_a` / `rating_change_b`. `players` gagne
+`showcase` (JSON des faits exhibés). Nouvelle table `team_presets` (`id`, `player_id`,
+`name`, `scenario`, `ruleset_version`, `team` en JSON, `is_default`, `created_at`,
+`updated_at`), indexée par `(player_id, updated_at DESC)`.
+
 ## `wrangler.toml` — bindings et environnements
 
 Bindings (type dans `apps/server/src/env.d.ts`) :
@@ -897,7 +981,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 
 ## Les tests
 
-111 tests, dont 86 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
+133 tests, dont 97 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
 @occulis/server test`.
 
 | Fichier | Où | Ce qui est verrouillé |
@@ -905,7 +989,11 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `seating.test.ts` | Node | Jeton → camp, refus d'un jeton inconnu ou vide, autorité de tour |
 | `pairing.test.ts` | Node | File d'attente, remplacement d'une attente en double, appariement du plus ancien |
 | `rooms.test.ts` | Node | Codes sans caractères confondables et déterministes, saisie normalisée, salon rendu à l'hôte qui revient, salon consommé une seule fois, code libre au tirage suivant |
-| `match-do.integration.test.ts` | workerd | 403 sans jeton, une vue par camp sans fuite, refus hors tour, coup appliqué + écrit au log + diffusé, clôture en base, refus de protocole |
+| `match-do.integration.test.ts` | workerd | 403 sans jeton, **annonce du déploiement** (zones, équipe par défaut, cartes, temps restant), **coup refusé pendant le déploiement, équipe invalide ou illisible refusée**, **verrou annoncé aux deux camps et seconde équipe refusée**, **démarrage à deux équipes sans fuite de pièce adverse**, `setup` écrit en base, **échéance par l'alarme qui pose l'équipe par défaut**, refus hors tour, coup appliqué + écrit au log + diffusé, clôture en base sans Elo pour une partie privée, **Elo des deux joueurs à la fin d'une partie classée**, refus de protocole |
+| `rating.test.ts` | Node | Espérance à Elo égal, variations opposées, victoire du moins bien classé mieux payée |
+| `feats/feats.test.ts` | Node | Statistiques dans l'ordre des fins (plus longue série), aucun fait sans partie, déblocage par seuil dans l'ordre du catalogue, **exhibition limitée aux faits débloqués, sans doublon, trois au plus** |
+| `legacy-routes.test.ts` | Node | Anciennes adresses françaises → anglaises, jeton conservé, paramètres renommés, adresses actuelles intactes |
+| `me/preparation.integration.test.ts` | workerd | Elo du profil, **faits calculés depuis les parties et exhibition refusée hors déblocage**, presets créés, listés, renommés, changés de défaut et supprimés **pour le seul joueur de la session**, équipe invalide, nom vide et limite refusés |
 | `queue-do.integration.test.ts` | workerd | Deux joueurs appariés sur une même partie avec des sièges distincts, partie réellement joignable, **401 sans session et sur identité forgée dans l'URL**, salon privé apparié par son code (casse et espaces pardonnés, hôte en A), salon consommé une seule fois, refus d'un code inconnu et de son propre code |
 | `auth/password.test.ts` | workerd | **Plafond de 100 000 itérations par passe jamais dépassé**, coût effectif conforme à l'OWASP, aller-retour hachage/vérification, salage, paramétrage inscrit dans l'empreinte, lecture de la forme d'avant le chaînage, empreinte illisible rejetée sans lever ; **contrôle des fuites : seul le préfixe part**, leurres ignorés, **service en panne laissé passer** |
 | `auth/handle.test.ts` | workerd | Normalisation NFKC, longueur en code points, écritures non latines, **refus des invisibles et du bidi**, symboles, emoji et diacritiques empilés, **noms réservés sous toutes leurs formes**, pseudo dérivé (nettoyage, suffixes, repli), profil anonymisé imprenable |

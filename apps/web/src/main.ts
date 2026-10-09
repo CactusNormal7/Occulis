@@ -5,7 +5,7 @@ import {
   type ActionError,
   type Coord,
   type Result,
-  provisionalRuleset,
+  rulesetFor,
 } from "@occulis/core";
 import { type MoveAnimation, advance as step, startMove } from "./view/animation.js";
 import type { Movement } from "./game/movement-diff.js";
@@ -132,10 +132,10 @@ async function main(): Promise<void> {
 
   const sit = (matchId: string, seat: string): void => {
     channel = connectToMatch(matchId, seat, {
-      onSeated: ({ player, scenario, view }) => {
+      onSeated: ({ player, scenario, rulesetVersion, view }) => {
         match = new OnlineMatch(
           boardForScenario(scenario),
-          provisionalRuleset(),
+          rulesetFor(rulesetVersion),
           player,
           (action) => channel?.submit(action),
           view,
@@ -143,6 +143,10 @@ async function main(): Promise<void> {
         camera = createCamera(pivotOf(match.board), viewport());
         go({ kind: "seated" });
         adopt();
+      },
+      // Provisoire, jusqu'à l'écran de déploiement : l'équipe par défaut de la carte.
+      onDeployment: ({ deployment }) => {
+        if (!deployment.locks.self) channel?.deploy(deployment.defaultTeam);
       },
       onView: (incoming) => {
         adopt(match?.receive(incoming));

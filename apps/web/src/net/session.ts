@@ -15,6 +15,9 @@ import {
  * (`welcome`), et ne connaît la position que par les vues que le serveur lui envoie.
  * D'où un état qui n'est qu'un accumulateur de messages, sans logique de jeu.
  */
+/** Le déploiement en cours, tel que le serveur l'annonce (message `deployment`). */
+export type DeploymentState = Omit<Extract<ServerMessage, { kind: "deployment" }>, "kind">;
+
 export type Phase =
   | { readonly kind: "offline" }
   | { readonly kind: "queued" }
@@ -32,6 +35,8 @@ export type Phase =
       readonly scenario: string | undefined;
       readonly rulesetVersion: string | undefined;
       readonly view: PlayerView | undefined;
+      /** Présent tant que la partie se déploie ; la première vue y met fin. */
+      readonly deployment: DeploymentState | undefined;
     }
   /** Le serveur parle une autre version : ce client est trop vieux ou trop neuf. */
   | { readonly kind: "outdated"; readonly expected: number };
@@ -58,6 +63,7 @@ export function seatedAt(matchId: string, seat: string): Session {
       scenario: undefined,
       rulesetVersion: undefined,
       view: undefined,
+      deployment: undefined,
     },
     rejection: undefined,
   };
@@ -81,6 +87,7 @@ export function fromQueue(session: Session, message: QueueServerMessage): Sessio
           scenario: undefined,
           rulesetVersion: undefined,
           view: undefined,
+          deployment: undefined,
         },
         rejection: undefined,
       };
@@ -110,8 +117,17 @@ export function fromMatch(session: Session, message: ServerMessage): Session {
         },
         rejection: undefined,
       };
+    case "deployment": {
+      const { zone, opponentZone, defaultTeam, remainingMs, locks, self, opponent, rated } = message;
+      const deployment = { zone, opponentZone, defaultTeam, remainingMs, locks, self, opponent, rated };
+      return { phase: { ...phase, deployment }, rejection: undefined };
+    }
+    case "deployment-update":
+      return phase.deployment === undefined
+        ? session
+        : { phase: { ...phase, deployment: { ...phase.deployment, locks: message.locks } }, rejection: undefined };
     case "view":
-      return { phase: { ...phase, view: decodeView(message.view) }, rejection: undefined };
+      return { phase: { ...phase, view: decodeView(message.view), deployment: undefined }, rejection: undefined };
     case "rejected":
       return { phase, rejection: message.error };
   }

@@ -130,7 +130,7 @@ export class QueueDO extends DurableObject<Env> {
 
     const taken = takeRoom(rooms, code);
     await this.ctx.storage.put("rooms", taken.rooms);
-    await this.seat(found.host, entry);
+    await this.seat(found.host, entry, false);
   }
 
   /**
@@ -149,12 +149,15 @@ export class QueueDO extends DurableObject<Env> {
     }
 
     await this.ctx.storage.put("queue", rest);
-    await this.seat(pairing.a, pairing.b);
+    await this.seat(pairing.a, pairing.b, true);
   }
 
-  /** Crée la partie et annonce son siège à chacun des deux joueurs. */
-  private async seat(a: Waiting, b: Waiting): Promise<void> {
-    const match = await startMatch(this.env, a.playerId, b.playerId);
+  /**
+   * Crée la partie et annonce son siège à chacun des deux joueurs. `rated` : la file
+   * rapide est classée, un salon privé ne l'est pas (`rating.ts`).
+   */
+  private async seat(a: Waiting, b: Waiting, rated: boolean): Promise<void> {
+    const match = await startMatch(this.env, a.playerId, b.playerId, { rated });
     const sockets = { A: this.socketOf(a.connectionId), B: this.socketOf(b.connectionId) };
 
     for (const player of ["A", "B"] as const) {

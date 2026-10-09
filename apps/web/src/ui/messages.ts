@@ -1,4 +1,4 @@
-import type { ActionError, Coord, GameState, Piece, PlayerId, Tile } from "@occulis/core";
+import type { ActionError, Coord, GameState, Piece, PlayerId, TeamError, Tile } from "@occulis/core";
 import type { Rejection, RoomFault } from "@occulis/protocol";
 import type { Identity } from "../net/auth.js";
 import type { CommandFault } from "./command.js";
@@ -51,13 +51,43 @@ export function describeActionError(error: ActionError): string {
  */
 export function describeRejection(rejection: Rejection): string {
   const m = messages().game.rejection;
+  const t = messages().team.errors;
   switch (rejection.code) {
     case "unknown-seat":
       return m.unknownSeat;
     case "not-your-turn":
       return m.notYourTurn(rejection.activePlayer);
+    case "wrong-phase":
+      return t.wrongPhase;
+    case "already-locked":
+      return t.alreadyLocked;
+    case "malformed-team":
+      return t.malformed;
+    case "no-team-rules":
+    case "unknown-kind":
+    case "wrong-count":
+    case "outside-zone":
+    case "same-tile":
+      return describeTeamError(rejection);
     default:
       return describeActionError(rejection);
+  }
+}
+
+/** Pourquoi une équipe n'est pas déployable — le refus du serveur comme le verdict du brouillon. */
+export function describeTeamError(error: TeamError): string {
+  const m = messages().team;
+  switch (error.code) {
+    case "no-team-rules":
+      return m.errors.noTeamRules;
+    case "unknown-kind":
+      return m.errors.unknownKind(error.kind);
+    case "wrong-count":
+      return m.errors.wrongCount(m.roles[error.role], error.expected, error.actual);
+    case "outside-zone":
+      return m.errors.outsideZone(error.coord.x, error.coord.y);
+    case "same-tile":
+      return m.errors.sameTile(error.coord.x, error.coord.y);
   }
 }
 

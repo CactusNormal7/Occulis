@@ -1,5 +1,6 @@
 import type { Board } from "../board.js";
 import type { Piece } from "../pieces/index.js";
+import type { Deployment } from "../team.js";
 
 /**
  * Une position de départ, référencée par son nom.
@@ -15,5 +16,11 @@ import type { Piece } from "../pieces/index.js";
 export interface Scenario {
   readonly name: string;
   readonly board: () => Board;
+  /**
+   * La position de départ fixe, pour une carte sans déploiement. Vide pour une carte qui
+   * en a un : ce sont alors les équipes des joueurs qui la remplissent.
+   */
   readonly pieces: readonly Piece[];
+  /** Les zones et équipes par défaut ; absent pour une carte à position fixe (`demo-0`). */
+  readonly deployment?: Deployment;
 }

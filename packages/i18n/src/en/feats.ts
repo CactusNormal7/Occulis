@@ -1,0 +1,32 @@
+/** Les faits d'armes : leur nom et ce qui les débloque. Les identifiants viennent du serveur. */
+export const feats = {
+  names: {
+    "first-match": "First steps",
+    "first-win": "First blood",
+    "matches-10": "Regular",
+    "matches-50": "Veteran",
+    "wins-10": "Tactician",
+    "streak-3": "On a roll",
+    "streak-5": "Unstoppable",
+    "rating-1400": "Rising star",
+  } as Record<string, string>,
+  descriptions: {
+    "first-match": "Finish a match.",
+    "first-win": "Win a match.",
+    "matches-10": "Finish 10 matches.",
+    "matches-50": "Finish 50 matches.",
+    "wins-10": "Win 10 matches.",
+    "streak-3": "Win 3 matches in a row.",
+    "streak-5": "Win 5 matches in a row.",
+    "rating-1400": "Reach 1400 Elo.",
+  } as Record<string, string>,
+  title: "Feats",
+  lead: "Unlocked by playing. Show up to three of them to your opponents.",
+  locked: "locked",
+  shown: "shown",
+  show: "Show",
+  hide: "Hide",
+  full: "Three feats are already shown.",
+  saved: "Showcase updated.",
+  none: "No feat shown.",
+};

@@ -67,6 +67,7 @@ describe("mise en mots", () => {
     finishedAt: null,
     outcome: null,
     actions: 0,
+    rated: false,
   };
 
   it("nomme le vainqueur par son siège", () => {

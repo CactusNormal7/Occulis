@@ -6,6 +6,7 @@ import {
   type Action,
   type MatchMemory,
   type Outcome,
+  type Piece,
   type PlayerId,
 } from "@occulis/core";
 import type {
@@ -86,11 +87,17 @@ export interface MatchRow {
   finished_at: number | null;
   outcome: string | null;
   actions: number;
+  rated: number;
+  /** Les pièces déployées (JSON) ; `NULL` pour une carte à position fixe. */
+  setup: string | null;
+  rating_change_a: number | null;
+  rating_change_b: number | null;
 }
 
 export const MATCH_COLUMNS = `
   m.id, m.player_a, pa.handle AS handle_a, m.player_b, pb.handle AS handle_b,
   m.ruleset_version, m.scenario, m.started_at, m.finished_at, m.outcome,
+  m.rated, m.setup, m.rating_change_a, m.rating_change_b,
   (SELECT COUNT(*) FROM match_actions a WHERE a.match_id = m.id) AS actions
   FROM matches m
   JOIN players pa ON pa.id = m.player_a
@@ -144,7 +151,8 @@ function annotate(
 }
 
 /**
- * Rejoue le log comme `MatchDO.load()` le fait, en gardant une image après chaque coup.
+ * Rejoue le log comme `MatchDO.load()` le fait, en gardant une image après chaque coup —
+ * depuis les pièces déployées s'il y en a, depuis la position de la carte sinon.
  * Partagé avec le profil (`me/queries.ts`), qui n'en tire que la vue d'un camp.
  *
  * Le camp de chaque coup vient du trait : l'action sérialisée ne nomme pas son auteur,
@@ -154,7 +162,7 @@ function annotate(
  * `replay` seul, pour dire aussi ce que chaque camp voyait à cet instant.
  */
 export function replayLog<F>(
-  row: Pick<MatchRow, "scenario" | "ruleset_version">,
+  row: Pick<MatchRow, "scenario" | "ruleset_version" | "setup">,
   actions: readonly Action[],
   frame: (memory: MatchMemory) => F,
 ): { frames: F[]; players: PlayerId[]; replayError: string | null } {
@@ -164,7 +172,7 @@ export function replayLog<F>(
   try {
     const scenario = scenarioFor(row.scenario);
     memory = startMemory(
-      createGame(scenario.board(), rulesetFor(row.ruleset_version), [...scenario.pieces]),
+      createGame(scenario.board(), rulesetFor(row.ruleset_version), row.setup === null ? [...scenario.pieces] : (JSON.parse(row.setup) as Piece[])),
     );
     frames.push(frame(memory));
     for (const [seq, action] of actions.entries()) {
@@ -279,5 +287,6 @@ export function summary(row: MatchRow): AdminMatchSummary {
     finishedAt: row.finished_at,
     outcome: row.outcome === null ? null : (JSON.parse(row.outcome) as Outcome),
     actions: row.actions,
+    rated: row.rated === 1,
   };
 }
