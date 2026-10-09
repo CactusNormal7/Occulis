@@ -36,9 +36,15 @@ import { BACKGROUND } from "./theme.js";
 import { type GameConsole, attachConsole } from "./ui/console.js";
 import { applyPalette } from "./ui/palette.js";
 import { resendVerification, signOut, stopImpersonating, whoAmI, type Identity } from "./net/auth.js";
+import { chooseLocale, initLocale, translateDom } from "./i18n/browser.js";
+import { currentLocale, messages, onLocaleChange } from "./i18n/current.js";
+import { isLocale } from "@occulis/i18n";
 
 /** Racine de composition : elle câble les modules, elle n'en implémente aucun. */
 async function main(): Promise<void> {
+  initLocale();
+  translateDom(document);
+
   const host = element<HTMLDivElement>("app");
   const app = new Application();
   await app.init({ background: BACKGROUND, resizeTo: window, antialias: true });
@@ -69,9 +75,11 @@ async function main(): Promise<void> {
    */
   let pending = false;
 
+  const localeSwitch = element<HTMLElement>("locale-switch");
   const go = (event: Parameters<typeof advance>[1]): void => {
     stage = advance(stage, event);
     shell.render(stage);
+    localeSwitch.hidden = stage.kind === "game";
   };
 
   /**
@@ -147,11 +155,11 @@ async function main(): Promise<void> {
         gameConsole.report(describeRejection(rejection), false);
       },
       onOutdated: (expected) => {
-        gameConsole.report(`Client trop ancien : le serveur attend le protocole ${expected}.`, false);
+        gameConsole.report(messages().game.outdated(expected), false);
       },
       onStatus: (state) => {
         if (state === "reconnecting") {
-          gameConsole.report("Connexion perdue, reprise en cours…", false);
+          gameConsole.report(messages().game.reconnecting, false);
         }
       },
     });
@@ -202,7 +210,7 @@ async function main(): Promise<void> {
         },
         onOutdated: (expected) => {
           leave();
-          shell.notify(`Client trop ancien : le serveur attend le protocole ${expected}.`);
+          shell.notify(messages().game.outdated(expected));
         },
         onStatus: () => undefined,
       });
@@ -216,9 +224,10 @@ async function main(): Promise<void> {
       void signOut().then(() => refresh());
     },
     onResend: () => {
-      shell.notify("Envoi…");
+      const m = messages().game.menu;
+      shell.notify(m.sending);
       void resendVerification(identity.email ?? "").then((outcome) => {
-        shell.notify(outcome.ok ? `Message renvoyé à ${identity.email ?? "votre adresse"}.` : outcome.message);
+        shell.notify(outcome.ok ? m.resent(identity.email ?? m.yourAddress) : outcome.message);
       });
     },
   });
@@ -253,14 +262,39 @@ async function main(): Promise<void> {
       arrival = undefined;
       return;
     }
+    showAccount();
+  };
+  const showAccount = (): void => {
     renderAccount({
       initialRoute,
       initialNotice: arrival,
       providers: identity.providers ?? [],
       onSignedIn: (text) => void refresh(text),
+      locale: currentLocale(),
     });
   };
   void refresh();
+
+  const markLocale = (): void => {
+    for (const button of localeSwitch.querySelectorAll<HTMLButtonElement>("button[data-locale]")) {
+      button.setAttribute("aria-current", String(button.dataset["locale"] === currentLocale()));
+    }
+  };
+  localeSwitch.addEventListener("click", (event) => {
+    const chosen = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-locale]")?.dataset["locale"];
+    if (isLocale(chosen)) chooseLocale(chosen);
+  });
+  // Tout ce qui est déjà écrit est réécrit : le HTML statique, l'écran courant, l'identité,
+  // l'îlot de compte. Les messages déjà affichés (`notify`) gardent leur langue d'origine.
+  onLocaleChange(() => {
+    translateDom(document);
+    markLocale();
+    shell.render(stage);
+    shell.setIdentity(identity);
+    gameConsole.refresh();
+    if (!identity.signedIn) showAccount();
+  });
+  markLocale();
 
   applyPalette(document.documentElement);
   gameConsole = attachConsole({
@@ -277,6 +311,7 @@ async function main(): Promise<void> {
   });
 
   shell.render(stage);
+  localeSwitch.hidden = stage.kind === "game";
 
   app.renderer.on("resize", () => {
     camera = withViewport(camera, viewport());
@@ -336,7 +371,7 @@ function intentOf(seeking: Seeking, code: string | undefined): QueueIntent {
 
 function element<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
-  if (found === null) throw new Error(`élément #${id} introuvable`);
+  if (found === null) throw new Error(`element #${id} not found`);
   return found as T;
 }
 

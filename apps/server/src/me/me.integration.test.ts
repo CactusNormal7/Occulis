@@ -338,7 +338,7 @@ describe("profil : suppression du compte", () => {
 
     expect(await env.DB.prepare("SELECT id FROM users WHERE id = ?").bind(id).first()).toBeNull();
     const player = await env.DB.prepare("SELECT handle FROM players WHERE id = ?").bind(player_id).first<{ handle: string }>();
-    expect(player?.handle.startsWith("supprimé-")).toBe(true);
+    expect(player?.handle.startsWith("deleted-")).toBe(true);
     expect(player?.handle).not.toContain(handle);
   });
 });
@@ -352,7 +352,7 @@ describe("authentification : bornes", () => {
     for (let attempt = 0; attempt < 5; attempt++) {
       const response = await post(
         "/api/auth/request-password-reset",
-        { email: `${handle}@occulis.test`, redirectTo: "/reinitialiser" },
+        { email: `${handle}@occulis.test`, redirectTo: "/reset-password" },
         undefined,
         ip,
       );
@@ -365,6 +365,6 @@ describe("authentification : bornes", () => {
   it("renvoie les gestionnaires de mots de passe vers le profil", async () => {
     const response = await get("/.well-known/change-password");
     expect(response.status).toBe(302);
-    expect(response.headers.get("Location")).toBe("https://occulis.test/profil/#securite");
+    expect(response.headers.get("Location")).toBe("https://occulis.test/profile/#security");
   });
 });

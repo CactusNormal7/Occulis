@@ -6,6 +6,13 @@
 export * from "./tokens.js";
 export { Icon, ICON_NAMES, type IconName, type IconProps } from "./components/Icon.js";
 export { UiRoot, type UiRootProps } from "./components/UiRoot.js";
+export {
+  LocaleProvider,
+  LocaleSwitch,
+  useLocale,
+  useMessages,
+  type LocaleSwitchProps,
+} from "./components/Locale.js";
 export { Button, type ButtonProps } from "./components/Button.js";
 export { IconButton, QuickBar, type IconButtonProps, type QuickBarProps } from "./components/IconButton.js";
 export { Badge, BadgeRow, type BadgeProps } from "./components/Badge.js";

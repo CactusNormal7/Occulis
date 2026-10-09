@@ -31,6 +31,7 @@ Trois principes, actés dans `docs/architecture.md` :
 | Fichier | Rôle |
 |---|---|
 | `apps/server/src/index.ts` | Worker : routage et service du client |
+| `apps/server/src/legacy-routes.ts` | **Pur** — anciennes adresses françaises → leur équivalent anglais |
 | `apps/server/src/match-do.ts` | `MatchDO` : le Durable Object de partie |
 | `apps/server/src/queue-do.ts` | `QueueDO` : la file d'attente globale et les salons privés |
 | `apps/server/src/match-setup.ts` | Création d'une partie : ligne D1, jetons de siège, init du DO |
@@ -39,7 +40,7 @@ Trois principes, actés dans `docs/architecture.md` :
 | `apps/server/src/auth/routes.ts` | `/api/auth/me` et la délégation du reste à Better Auth |
 | `apps/server/src/auth/password.ts` | PBKDF2 enchaîné, comparaison à temps constant, **branchés dans Better Auth** ; contrôle des fuites (HIBP) |
 | `apps/server/src/auth/handle.ts` | **Pur** — règles du pseudo : normalisation, caractères, noms réservés, pseudo dérivé, pseudo anonyme |
-| `apps/server/src/auth/mail.ts` | Les courriers (HTML et texte) et leur envoi par Resend |
+| `apps/server/src/auth/mail.ts` | Les courriers (HTML et texte), dans la langue de la requête, et leur envoi par Resend |
 | `apps/server/src/me/routes.ts` | `/api/me/*` : la page de profil — gardes, puis profil, pseudo, sessions, parties |
 | `apps/server/src/me/queries.ts` | Les requêtes D1 du profil, **toutes bornées au compte de la session** |
 | `apps/server/src/admin/routes.ts` | `/api/admin/*` : garde de rôle, puis lectures et renommage du back-office |
@@ -70,9 +71,10 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 
 | Route | Méthode | Traitement |
 |---|---|---|
-| `/.well-known/change-password` | toute | **302** vers `/profil/#securite` — l'adresse que les gestionnaires de mots de passe ouvrent pour « changer le mot de passe » |
-| `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser` | `GET` | `pageFor()` — la page du jeu (`/`), dont l'îlot de compte lit le chemin ; liste explicite `ACCOUNT_PATHS`, pas de repli global |
-| `/profil` | `GET` | `pageFor()` — la page `/profil/` |
+| `/.well-known/change-password` | toute | **302** vers `/profile/#security` — l'adresse que les gestionnaires de mots de passe ouvrent pour « changer le mot de passe » |
+| `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser`, `/profil(/)`, ou tout chemin portant `?verifiee`, `?supprime`, `?lie`, `?bienvenue` | `GET` | **301** vers l'équivalent anglais (`legacyRedirect()`), requête conservée — des courriers déjà envoyés portent ces adresses |
+| `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password` | `GET` | `pageFor()` — la page du jeu (`/`), dont l'îlot de compte lit le chemin ; liste explicite `ACCOUNT_PATHS`, pas de repli global |
+| `/profile` | `GET` | `pageFor()` — la page `/profile/` |
 | `/api/auth/me` | toute | **Au projet** — pseudo, adresse, état de vérification, `admin`, `impersonating`, `providers` ; sans session `{ signedIn: false, providers }` |
 | `/api/auth/sign-up/email` | `POST` | Better Auth — crée un compte, et son profil via le crochet |
 | `/api/auth/sign-in/social` | `POST` | Better Auth — rend l'adresse de consentement Google (`{ url }`) |
@@ -104,8 +106,10 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 | `fetch()` (handler par défaut) | `apps/server/src/index.ts` | Routage |
 | `hasAuthSecret()` | `apps/server/src/index.ts` | Vrai si `AUTH_SECRET` fait au moins 32 caractères ; sinon l'authentification et la file répondent 503 |
 | `scheduled()` (handler cron) | `apps/server/src/index.ts` | Ménage nocturne : sessions, vérifications, compteurs de débit, profils orphelins |
-| `pageFor()` | `apps/server/src/index.ts` | Chemin de parcours de compte ou `/profil` → page à servir, sinon `undefined` |
-| `buildAuth()` | `apps/server/src/auth/better-auth.ts` | Construit l'instance Better Auth autour des bindings |
+| `pageFor()` | `apps/server/src/index.ts` | Chemin de parcours de compte ou `/profile` → page à servir, sinon `undefined` |
+| `legacyRedirect()` | `apps/server/src/legacy-routes.ts` | Ancienne adresse → nouvelle (chemin et paramètres renommés), sinon `undefined` |
+| `localeOf()` | `apps/server/src/index.ts` | La langue d'une requête : cookie `occulis-locale`, sinon `Accept-Language`, sinon l'anglais (`resolveLocale()` de `@occulis/i18n`) |
+| `buildAuth()` | `apps/server/src/auth/better-auth.ts` | Construit l'instance Better Auth autour des bindings et de la langue de la requête |
 | `currentAccount()` | `apps/server/src/auth/routes.ts` | Session → `{ userId, playerId, handle, email, emailVerified, admin, impersonating }` |
 | `isImpersonated()` | `apps/server/src/auth/better-auth.ts` | Vrai si la session porte un `impersonatedBy` non vide |
 | `availableProviders()`, `hasGoogle()` | `apps/server/src/auth/better-auth.ts` | `["google"]` si les deux secrets Google sont posés, sinon `[]` |
@@ -465,9 +469,9 @@ d'`AUTH_SECRET`.
 | Fonction | Rôle |
 |---|---|
 | `normalizeHandle()` | NFKC, trim, espaces internes réduits à un seul |
-| `checkHandle()` | `{ ok, handle }` ou `{ ok: false, code }` : 2 à 24 caractères (code points) ; lettres, chiffres, diacritiques, `_ . -` et espace ; **pas** de contrôle, d'invisible, de bidi (U+202E), de symbole ni d'emoji ; pas deux diacritiques empilés ; ni nom réservé (`admin`, `moderateur`, `occulis`… comparés sans casse, accents ni séparateurs), ni préfixe `supprime` |
-| `handleCandidates()` | Les pseudos à essayer pour un compte Google, tous valides |
-| `anonymousHandle()` | Le pseudo d'un profil dont le compte est supprimé |
+| `checkHandle()` | `{ ok, handle }` ou `{ ok: false, code }` : 2 à 24 caractères (code points) ; lettres, chiffres, diacritiques, `_ . -` et espace ; **pas** de contrôle, d'invisible, de bidi (U+202E), de symbole ni d'emoji ; pas deux diacritiques empilés ; ni nom réservé (`admin`, `moderateur`, `occulis`… comparés sans casse, accents ni séparateurs), ni préfixe `deleted` ou `supprime` (l'ancien, que portent encore des profils en base) |
+| `handleCandidates()` | Les pseudos à essayer pour un compte Google, tous valides ; `player` si rien ne reste du nom |
+| `anonymousHandle()` | Le pseudo d'un profil dont le compte est supprimé : `deleted-<12 caractères de l'identifiant>` |
 
 L'unicité est **insensible à la casse** : index `players_handle_nocase` (migration 0006),
 en plus de la contrainte `UNIQUE` d'origine. Les pseudos existants de plus de 24 caractères
@@ -539,7 +543,12 @@ qu'une fois l'adresse prouvée.
 
 ### L'envoi des messages
 
-Six courriers, chacun en **HTML et en texte** (`compose()`) : vérification, réinitialisation,
+Six courriers, chacun en **HTML et en texte** (`compose()`), **dans la langue de la requête
+qui les déclenche** : `buildAuth()` reçoit celle de `localeOf()`, et chaque fonction de
+courrier la prend en premier paramètre (`verificationLetter(locale, to, url)`…) ; les
+textes sont ceux du domaine `mail` de `@occulis/i18n`. L'instance étant construite par
+requête, un courrier ne peut pas partir dans la langue d'un autre joueur. Les courriers :
+vérification, réinitialisation,
 confirmation de changement d'adresse (à l'ancienne), suppression, avis de mot de passe
 changé, avis de fournisseur lié. Le gabarit (`html()`) est fait de tableaux et de styles en
 ligne — ce que les clients de messagerie savent rendre — sans image : la marque est un

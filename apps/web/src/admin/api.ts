@@ -4,6 +4,7 @@ import type {
   AdminPlayer,
   AdminStats,
 } from "@occulis/protocol";
+import { messages } from "../i18n/current.js";
 import { adminMessage, type MatchStatus } from "./model.js";
 
 /**
@@ -46,7 +47,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<Outcome<T>> {
   try {
     response = await fetch(path, init);
   } catch {
-    return { ok: false, message: "Serveur injoignable." };
+    return { ok: false, message: messages().admin.unreachable };
   }
   const payload = (await response.json().catch(() => ({}))) as T & { code?: string; message?: string };
   if (!response.ok) return { ok: false, message: adminMessage(response.status, payload) };

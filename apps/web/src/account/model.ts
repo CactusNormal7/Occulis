@@ -1,3 +1,4 @@
+import { messages } from "../i18n/current.js";
 import { ROUTE_PATHS, redirectMessage } from "../net/auth.js";
 
 /**
@@ -43,7 +44,7 @@ export interface Notice {
 }
 
 /** Les paramètres de retour que la page lit une fois, puis retire de l'URL. */
-const ARRIVAL_PARAMETERS = ["verifiee", "supprime", "error", "error_description", "token"] as const;
+const ARRIVAL_PARAMETERS = ["verified", "deleted", "error", "error_description", "token"] as const;
 
 /**
  * Le message à montrer en arrivant d'un lien ou d'une redirection : adresse confirmée,
@@ -61,11 +62,11 @@ export function arrivalNotice(pathname: string, search: string): Notice | undefi
       retry: expired ? (onReset ? "reset" : "verification") : undefined,
     };
   }
-  if (parameters.get("supprime") === "1") {
-    return { tone: "success", text: "Votre compte a été supprimé. Merci d'avoir joué." };
+  if (parameters.get("deleted") === "1") {
+    return { tone: "success", text: messages().account.arrival.deleted };
   }
-  if (parameters.get("verifiee") === "1") {
-    return { tone: "success", text: "Adresse confirmée. Le jeu en ligne vous est ouvert." };
+  if (parameters.get("verified") === "1") {
+    return { tone: "success", text: messages().account.arrival.verified };
   }
   return undefined;
 }
@@ -98,10 +99,11 @@ export const MAX_PASSWORD_LENGTH = 128;
 
 /** L'indication sous un nouveau mot de passe, mise à jour à la frappe. */
 export function passwordHint(password: string): string {
+  const hint = messages().account.passwordHint;
   const length = [...password].length;
-  if (length === 0) return `${MIN_PASSWORD_LENGTH} caractères au moins. Un gestionnaire de mots de passe peut en générer un.`;
-  if (length < MIN_PASSWORD_LENGTH) return `Encore ${MIN_PASSWORD_LENGTH - length} caractère${MIN_PASSWORD_LENGTH - length > 1 ? "s" : ""}.`;
-  return "Longueur suffisante.";
+  if (length === 0) return hint.empty(MIN_PASSWORD_LENGTH);
+  if (length < MIN_PASSWORD_LENGTH) return hint.missing(MIN_PASSWORD_LENGTH - length);
+  return hint.enough;
 }
 
 /**

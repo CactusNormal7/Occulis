@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 import { cx } from "../cx.js";
 import { Icon, type IconName } from "./Icon.js";
+import { useMessages } from "./Locale.js";
 import { Wordmark } from "./TopBar.js";
 
 export interface FormPanelProps extends Omit<HTMLAttributes<HTMLDivElement>, "title"> {
@@ -73,10 +74,11 @@ export interface ProviderButtonProps extends ButtonHTMLAttributes<HTMLButtonElem
  * de la charte : la couleur reste réservée à l'information de partie.
  */
 export function ProviderButton({ provider, className, children, type = "button", ...rest }: ProviderButtonProps) {
+  const m = useMessages();
   return (
     <button type={type} className={cx("occ-provider", className)} {...rest}>
       {provider === "google" && <GoogleMark />}
-      <span>{children ?? "Continuer avec Google"}</span>
+      <span>{children ?? m.ui.continueWithGoogle}</span>
     </button>
   );
 }

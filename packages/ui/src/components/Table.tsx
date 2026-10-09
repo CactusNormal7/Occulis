@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { EmptyState } from "./Banner.js";
+import { useMessages } from "./Locale.js";
 
 export interface TableProps {
   /** Les en-têtes de colonne ; une chaîne vide pour la colonne d'actions. */
@@ -15,8 +16,9 @@ export interface TableProps {
  * Une table dense : en-têtes en petites capitales, lignes séparées d'un trait presque
  * invisible, survol estompé. Les actions de ligne ne s'affichent pleinement qu'au survol.
  */
-export function Table({ columns, children, rowCount, empty = "Rien à afficher." }: TableProps) {
-  if (rowCount === 0) return <EmptyState>{empty}</EmptyState>;
+export function Table({ columns, children, rowCount, empty }: TableProps) {
+  const m = useMessages();
+  if (rowCount === 0) return <EmptyState>{empty ?? m.ui.empty}</EmptyState>;
   return (
     <div className="occ-table-scroll">
       <table className="occ-table">
@@ -45,12 +47,13 @@ export interface PagerProps {
 
 /** La pagination d'une liste : précédents, « 26–50 sur 132 », suivants. */
 export function Pager({ offset, shown, total, pageSize, hrefFor }: PagerProps) {
-  const label = total === 0 || shown === 0 ? "aucun résultat" : `${offset + 1}–${offset + shown} sur ${total}`;
+  const m = useMessages();
+  const label = total === 0 || shown === 0 ? m.ui.pager.none : m.ui.pager.range(offset + 1, offset + shown, total);
   return (
     <nav className="occ-pager">
-      {offset > 0 ? <a href={hrefFor(Math.max(offset - pageSize, 0))}>← précédents</a> : <span />}
+      {offset > 0 ? <a href={hrefFor(Math.max(offset - pageSize, 0))}>{m.ui.pager.previous}</a> : <span />}
       <span>{label}</span>
-      {offset + pageSize < total ? <a href={hrefFor(offset + pageSize)}>suivants →</a> : <span />}
+      {offset + pageSize < total ? <a href={hrefFor(offset + pageSize)}>{m.ui.pager.next}</a> : <span />}
     </nav>
   );
 }

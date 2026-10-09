@@ -1,6 +1,7 @@
 import type { Identity } from "../net/auth.js";
 import type { Seeking, Stage } from "./flow.js";
 import { describeIdentity, describeWaiting } from "./messages.js";
+import { messages } from "../i18n/current.js";
 
 /**
  * Les écrans : compte, menu, attente, partie. Un seul est visible à la fois.
@@ -103,7 +104,7 @@ export function attachShell(options: ShellOptions): Shell {
 
   e.copy.addEventListener("click", () => {
     void navigator.clipboard?.writeText(e.waitingCode.textContent ?? "").then(() => {
-      e.copy.textContent = "Copié";
+      e.copy.textContent = messages().game.waiting.copied;
     });
   });
 
@@ -128,7 +129,7 @@ export function attachShell(options: ShellOptions): Shell {
     // Le presse-papiers n'existe pas hors contexte sécurisé : proposer le bouton
     // sans lui ferait cliquer dans le vide.
     e.copy.hidden = !showCode || navigator.clipboard === undefined;
-    e.copy.textContent = "Copier";
+    e.copy.textContent = messages().game.waiting.copy;
     if (stage.code !== undefined) e.waitingCode.textContent = stage.code;
   };
 

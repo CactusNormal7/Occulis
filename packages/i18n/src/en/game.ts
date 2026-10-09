@@ -1,0 +1,83 @@
+/** Le jeu : menu, attente, partie en cours. */
+export const game = {
+  title: "Occulis",
+  impersonation: {
+    text: "Impersonation session: you are playing as",
+    stop: "Back to my account",
+  },
+  myProfile: "My profile",
+  menu: {
+    resend: "Resend the verification email",
+    quick: "Quick match",
+    quickHint: "The first available opponent",
+    host: "Create a match",
+    hostHint: "A code to give to your opponent",
+    join: "Join a match",
+    joinButton: "Join",
+    codePlaceholder: "CODE",
+    admin: "Back office",
+    signOut: "Sign out",
+    sending: "Sending…",
+    resent: (email: string) => `Message sent again to ${email}.`,
+    yourAddress: "your address",
+    unverified: (handle: string) => `${handle} · address not verified, the game stays closed`,
+  },
+  waiting: {
+    copy: "Copy",
+    copied: "Copied",
+    cancel: "Cancel",
+    quick: "Looking for an opponent…",
+    join: "Joining the match…",
+    opening: "Opening the match…",
+    hosting: "Give this code to your opponent, then wait for them to arrive.",
+  },
+  roomFault: {
+    unknown: "No match under this code: check what you typed, or ask for it again.",
+    own: "This is your own code: give it to your opponent.",
+  },
+  outdated: (expected: number) => `Client too old: the server expects protocol ${expected}.`,
+  reconnecting: "Connection lost, reconnecting…",
+  console: {
+    label: "Match in progress",
+    move: "Move",
+    help: {
+      move: "moves",
+      resign: "resign",
+    },
+    leave: "Leave the match",
+    pending: "Move already sent: waiting for the server.",
+    resigned: "Resignation.",
+    sent: (summary: string) => `${summary} — sent.`,
+  },
+  fault: {
+    empty: "Empty input.",
+    badCoord: (token: string) => `Unreadable coordinate: “${token}”. Expected format: x,y`,
+    missingDestination: "Missing destination. Example: 1,6 2,5",
+    trailing: (token: string) => `Unexpected end of command: “${token}”`,
+    noPieceHere: (coord: string) => `No piece at ${coord}.`,
+  },
+  actionError: {
+    gameOver: "The match is over.",
+    unknownPiece: "Unknown piece.",
+    notYourPiece: "This piece is not to move.",
+    unreachable: (coord: string) => `${coord} is out of this piece's reach this turn.`,
+  },
+  rejection: {
+    unknownSeat: "Unknown seat: this connection belongs to neither side.",
+    notYourTurn: (active: string) => `Not your turn: ${active} is to move.`,
+  },
+  outcome: {
+    victory: (winner: string, reason: string) => `${winner} wins (${reason}).`,
+    reasons: { resignation: "resignation" },
+  },
+  turn: {
+    line: (turn: number, whose: string, seat: string) => `Turn ${turn} · ${whose} · you play ${seat}`,
+    yours: "your move",
+    theirs: "to move: the opponent",
+  },
+  tile: {
+    offBoard: "Off the board.",
+    relief: (x: number, y: number, height: number) => `${x},${y} · height ${height}`,
+    impassable: "impassable",
+  },
+};

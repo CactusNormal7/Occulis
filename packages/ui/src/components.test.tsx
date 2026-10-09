@@ -79,8 +79,15 @@ describe("composants", () => {
   it("cède la place à l'état vide quand une table n'a pas de ligne", () => {
     expect(html(<Table columns={["a"]} rowCount={0} empty="Aucune partie." />)).toContain("Aucune partie.");
     expect(html(<Pager offset={25} shown={25} total={132} pageSize={25} hrefFor={(o) => `#${o}`} />)).toContain(
-      "26–50 sur 132",
+      "26–50 of 132",
     );
+  });
+
+  it("parle la langue que lui fixe UiRoot", () => {
+    const pager = <Pager offset={25} shown={25} total={132} pageSize={25} hrefFor={(o) => `#${o}`} />;
+    expect(html(<UiRoot locale="fr">{pager}</UiRoot>)).toContain("26–50 sur 132");
+    expect(html(<UiRoot locale="fr">{pager}</UiRoot>)).toContain('lang="fr"');
+    expect(html(<UiRoot>{pager}</UiRoot>)).toContain("26–50 of 132");
   });
 
   it("rend les autres briques sans lever", () => {
@@ -129,14 +136,14 @@ describe("composants", () => {
 
   it("rend les briques des parcours de compte", () => {
     const panel = html(
-      <FormPanel title="Connexion" lead="Bon retour." footer={<a href="/inscription">Créer un compte</a>}>
+      <FormPanel title="Connexion" lead="Bon retour." footer={<a href="/sign-up">Créer un compte</a>}>
         <ProviderButton provider="google" />
         <Divider>ou</Divider>
         <FormMessage tone="error">Identifiants invalides.</FormMessage>
       </FormPanel>,
     );
     expect(panel).toContain("occ-form-panel");
-    expect(panel).toContain("Continuer avec Google");
+    expect(panel).toContain("Continue with Google");
     expect(panel).toContain('role="separator"');
     expect(panel).toContain('role="alert"');
     expect(html(<FormMessage tone="success">Fait.</FormMessage>)).toContain('role="status"');
@@ -156,7 +163,7 @@ describe("composants", () => {
     );
     expect(reading).toContain("occ-settings");
     expect(reading).toContain("anne");
-    expect(reading).toContain("Modifier");
+    expect(reading).toContain("Edit");
 
     const editing = html(
       <SettingRow label="Pseudo" value="anne" onEdit={() => undefined} editing>
@@ -168,8 +175,8 @@ describe("composants", () => {
     expect(editing).toContain("occ-setting--editing");
     expect(editing).toContain("<form");
     expect(editing).toContain('role="alert"');
-    expect(editing).toContain("Annuler");
+    expect(editing).toContain("Cancel");
     // Le bouton d'édition disparaît tant que l'éditeur est ouvert.
-    expect(editing).not.toContain(">Modifier<");
+    expect(editing).not.toContain(">Edit<");
   });
 });

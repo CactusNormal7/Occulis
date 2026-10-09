@@ -38,6 +38,9 @@ importers:
       '@occulis/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@occulis/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@occulis/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -69,6 +72,9 @@ importers:
       '@occulis/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@occulis/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@occulis/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -110,6 +116,15 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.1)
 
+  packages/i18n:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)
+
   packages/protocol:
     dependencies:
       '@occulis/core':
@@ -124,6 +139,10 @@ importers:
         version: 2.1.9(@types/node@22.20.1)
 
   packages/ui:
+    dependencies:
+      '@occulis/i18n':
+        specifier: workspace:*
+        version: link:../i18n
     devDependencies:
       '@types/react':
         specifier: ^18.3.31

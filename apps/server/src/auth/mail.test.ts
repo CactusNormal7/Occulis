@@ -12,14 +12,14 @@ import {
 const URL = "https://occulis.test/api/auth/verify-email?token=abc&callbackURL=%2F";
 
 describe("courriers", () => {
-  const letters = [
-    verificationLetter("a@occulis.test", URL),
-    resetLetter("a@occulis.test", URL),
-    changeEmailLetter("a@occulis.test", "b@occulis.test", URL),
-    deleteAccountLetter("a@occulis.test", URL),
-    passwordChangedLetter("a@occulis.test", URL),
-    providerLinkedLetter("a@occulis.test", "Google", URL),
-  ];
+  const letters = (["en", "fr"] as const).flatMap((locale) => [
+    verificationLetter(locale, "a@occulis.test", URL),
+    resetLetter(locale, "a@occulis.test", URL),
+    changeEmailLetter(locale, "a@occulis.test", "b@occulis.test", URL),
+    deleteAccountLetter(locale, "a@occulis.test", URL),
+    passwordChangedLetter(locale, "a@occulis.test", URL),
+    providerLinkedLetter(locale, "a@occulis.test", "Google", URL),
+  ]);
 
   it("portent le lien en texte comme en HTML, échappé dans le HTML", () => {
     for (const letter of letters) {
@@ -37,9 +37,16 @@ describe("courriers", () => {
   });
 
   it("échappent ce qui vient de l'utilisateur", () => {
-    const letter = changeEmailLetter("a@occulis.test", '"><script>x</script>@evil.test', URL);
+    const letter = changeEmailLetter("en", "a@occulis.test", '"><script>x</script>@evil.test', URL);
     expect(letter.html).not.toContain("<script>");
     expect(letter.html).toContain("&lt;script&gt;");
+  });
+
+  it("parlent la langue demandée, et la déclarent", () => {
+    expect(verificationLetter("en", "a@occulis.test", URL).subject).toBe("Confirm your address — Occulis");
+    expect(verificationLetter("fr", "a@occulis.test", URL).subject).toBe("Confirmez votre adresse — Occulis");
+    expect(verificationLetter("fr", "a@occulis.test", URL).html).toContain('<html lang="fr">');
+    expect(verificationLetter("en", "a@occulis.test", URL).html).toContain("Or copy this link");
   });
 });
 

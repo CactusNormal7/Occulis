@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "./Button.js";
 import { IconButton } from "./IconButton.js";
+import { useMessages } from "./Locale.js";
 
 export interface DialogProps {
   open: boolean;
@@ -25,6 +26,7 @@ export interface DialogProps {
  * Elle s'ouvre et se ferme en fondu ; un clic sur le voile la ferme aussi.
  */
 export function Dialog({ open, title, children, confirmLabel, danger = false, ready = true, onConfirm, onClose }: DialogProps) {
+  const m = useMessages();
   const ref = useRef<HTMLDialogElement>(null);
   const [closing, setClosing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -74,12 +76,12 @@ export function Dialog({ open, title, children, confirmLabel, danger = false, re
       <form onSubmit={submit}>
         <header className="occ-dialog__head">
           <h2>{title}</h2>
-          <IconButton icon="close" label="Fermer" onClick={close} />
+          <IconButton icon="close" label={m.ui.close} onClick={close} />
         </header>
         <div className="occ-dialog__body">{children}</div>
         <footer className="occ-dialog__foot">
           <Button variant="ghost" onClick={close}>
-            Annuler
+            {m.ui.cancel}
           </Button>
           <Button type="submit" variant={danger ? "danger" : "primary"} disabled={!ready || busy}>
             {confirmLabel}

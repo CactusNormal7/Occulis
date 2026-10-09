@@ -80,7 +80,8 @@ l'attribut `data-tip`. Toutes les animations s'éteignent sous `prefers-reduced-
 
 | Famille | Composants |
 |---|---|
-| Fondations | `UiRoot` (racine : fond, encre, police), `Icon` (tracés au trait, `currentColor`) |
+| Fondations | `UiRoot` (racine : fond, encre, police, langue), `Icon` (tracés au trait, `currentColor`) |
+| Langue | `LocaleProvider`, `useLocale()`, `useMessages()`, `LocaleSwitch` (choix EN/FR) |
 | Actions | `Button` (`default`/`primary`/`danger`/`ghost`), `IconButton` (infobulle, `disabledReason`), `QuickBar` |
 | Formulaires | `TextField` (aide et erreur rattachées par `aria-describedby`), `PasswordField` (bouton d'affichage), `SelectField`, `SearchField` (validé par Entrée), `InlineEdit`, `Segmented`, `ChipGroup` |
 | Parcours de compte | `FormPanel` (colonne étroite, marque, titre), `FormMessage` (`error`/`success`/`info`), `Divider` (« ou »), `ProviderButton` (« Continuer avec Google », logo monochrome) |
@@ -120,6 +121,12 @@ Quelques comportements à connaître :
   (`forwardRef`).
 - **`SettingEditor`** est un vrai `<form>` : Entrée envoie, **Échap annule**, le premier champ
   prend le focus, et le refus du serveur s'affiche dans l'éditeur, au-dessus des boutons.
+- **Aucun libellé par défaut n'est écrit en dur** : « Close », « Cancel », « Edit »,
+  « Search… », « Nothing to show. », la pagination, « Continue with Google », « seat A » —
+  tous viennent du domaine `ui` de `@occulis/i18n`, par `useMessages()`. La langue est celle
+  que fixe `UiRoot locale={…}` (qui pose aussi `lang` sur sa racine), à défaut celle d'un
+  `LocaleProvider` englobant, à défaut l'anglais. Le build (`tsup`) embarque
+  `@occulis/i18n` (`noExternal`) : hors du dépôt, Claude Design ne saurait pas le résoudre.
 - Toutes les props optionnelles acceptent `undefined` (`exactOptionalPropertyTypes`).
 
 ## La synchronisation vers Claude Design
@@ -132,12 +139,12 @@ catégories (`docs/<Nom>.md`), l'en-tête de conventions lu par l'agent de desig
 
 ## Tests
 
-16 tests, sous Node : `pnpm --filter @occulis/ui test`.
+17 tests, sous Node : `pnpm --filter @occulis/ui test`.
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
 | `src/tokens.test.ts` | `generated/tokens.css` identique à sa source, `styles.css` sans propriété indéfinie ni couleur en dur, conversion des couleurs, **alpha précomposé pour les courriers** |
-| `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition** |
+| `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition**, **langue fixée par `UiRoot` (et anglais par défaut)** |
 
 Le rendu visuel n'est pas testé ici : il l'est par les aperçus vérifiés sur captures lors de
 chaque synchronisation (`.design-sync/`).
@@ -151,3 +158,5 @@ chaque synchronisation (`.design-sync/`).
    `--occ-*` indéfinis chez un consommateur qui ne reçoit que la feuille.
 4. **Ce qui manque à une vue s'ajoute à la charte**, pas à la vue : `apps/web/src/admin/` n'a
    ni classe ni feuille propres.
+5. **Aucun texte en dur dans un composant** : un libellé par défaut vient de `useMessages()`,
+   donc existe en anglais et en français (`@occulis/i18n`).

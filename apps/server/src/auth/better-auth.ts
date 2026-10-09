@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { admin, oAuthProxy } from "better-auth/plugins";
+import { DEFAULT_LOCALE, type Locale } from "@occulis/i18n";
 import { anonymousHandle, checkHandle, handleCandidates } from "./handle.js";
 import { MIN_PASSWORD_LENGTH, breachedPassword, hashPassword, verifyPassword } from "./password.js";
 import {
@@ -33,7 +34,12 @@ import {
  *   `fetch`, et l'URL de base doit valoir celle par laquelle on est joint, sans quoi
  *   les liens envoyés par courrier pointeraient vers le mauvais environnement.
  */
-export function buildAuth(env: Env, origin: string) {
+/**
+ * `locale` est la langue de la requête (cookie de choix, sinon `Accept-Language`) : c'est
+ * elle que parlent les courriers qu'elle déclenche. L'objet étant construit par requête,
+ * aucun courrier ne part dans la langue d'un autre joueur.
+ */
+export function buildAuth(env: Env, origin: string, locale: Locale = DEFAULT_LOCALE) {
   return betterAuth({
     plugins: [
       // Le back-office (docs/technical/server.md, « `admin/` »). Le greffon ajoute le
@@ -102,7 +108,7 @@ export function buildAuth(env: Env, origin: string) {
         // si ce n'était pas le joueur, c'est par là qu'il l'apprend.
         if (ctx.path !== "/change-password" || isAPIError(ctx.context.returned)) return;
         const email = (ctx.context.returned as { user?: { email?: unknown } } | undefined)?.user?.email;
-        if (typeof email === "string") await sendLetter(env, passwordChangedLetter(email, securityUrl(origin)));
+        if (typeof email === "string") await sendLetter(env, passwordChangedLetter(locale, email, securityUrl(origin)));
       }),
     },
 
@@ -140,7 +146,7 @@ export function buildAuth(env: Env, origin: string) {
         verify: ({ password, hash }) => verifyPassword(password, hash),
       },
       sendResetPassword: async ({ user, url }) => {
-        await sendLetter(env, resetLetter(user.email, url));
+        await sendLetter(env, resetLetter(locale, user.email, url));
       },
       // Qui réinitialise reprend la main sur le compte : toute session ouverte avant —
       // peut-être celle de quelqu'un qui connaissait l'ancien mot de passe — tombe.
@@ -153,7 +159,7 @@ export function buildAuth(env: Env, origin: string) {
       sendOnSignUp: true,
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ user, url }) => {
-        await sendLetter(env, verificationLetter(user.email, url));
+        await sendLetter(env, verificationLetter(locale, user.email, url));
       },
     },
 
@@ -223,7 +229,7 @@ export function buildAuth(env: Env, origin: string) {
       changeEmail: {
         enabled: true,
         sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
-          await sendLetter(env, changeEmailLetter(user.email, newEmail, url));
+          await sendLetter(env, changeEmailLetter(locale, user.email, newEmail, url));
         },
       },
       // La suppression passe toujours par un lien envoyé à l'adresse du compte : c'est
@@ -231,7 +237,7 @@ export function buildAuth(env: Env, origin: string) {
       deleteUser: {
         enabled: true,
         sendDeleteAccountVerification: async ({ user, url }) => {
-          await sendLetter(env, deleteAccountLetter(user.email, url));
+          await sendLetter(env, deleteAccountLetter(locale, user.email, url));
         },
       },
     },
@@ -282,7 +288,7 @@ export function buildAuth(env: Env, origin: string) {
               .bind(account.userId)
               .first<{ email: string; created_at: string }>();
             if (owner === null || Date.now() - Date.parse(owner.created_at) < FRESH_ACCOUNT_MS) return;
-            await sendLetter(env, providerLinkedLetter(owner.email, providerLabel(account.providerId), securityUrl(origin)));
+            await sendLetter(env, providerLinkedLetter(locale, owner.email, providerLabel(account.providerId), securityUrl(origin)));
           },
         },
       },
@@ -439,5 +445,5 @@ function providerLabel(providerId: string): string {
 }
 
 function securityUrl(origin: string): string {
-  return `${origin}/profil/#securite`;
+  return `${origin}/profile/#security`;
 }

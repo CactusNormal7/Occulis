@@ -35,7 +35,8 @@ qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 | `input/` | Les gestes sur le canevas | DOM |
 | `ui/` | Les écrans et le bandeau de partie | DOM sauf `flow.ts`, `messages.ts`, `command.ts` |
 | `account/` | L'écran de compte, îlot React sur `@occulis/ui` dans la page du jeu | React, DOM et réseau sauf `model.ts` |
-| `profile/` | La page de profil, page à part sous `/profil/`, en React sur `@occulis/ui` | React, DOM et réseau sauf `model.ts` |
+| `profile/` | La page de profil, page à part sous `/profile/`, en React sur `@occulis/ui` | React, DOM et réseau sauf `model.ts` |
+| `i18n/` | La langue courante (`current.ts`) et son choix dans le navigateur (`browser.ts`) | Aucune sauf `browser.ts` (DOM, stockage, cookie) |
 | `admin/` | Le back-office, page à part sous `/admin/`, en React sur `@occulis/ui` | React, DOM et réseau sauf `model.ts` et `replay.ts` |
 | racine | `main.ts` (composition) et `theme.ts` (tokens de DA) | — |
 
@@ -121,7 +122,9 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/account/mount.tsx` | Monte l'îlot de compte dans `#account-root` | non |
 | `apps/web/src/account/model.ts` | Parcours ↔ URL, messages de retour, refus rattachés à leur champ, indication de longueur | oui |
 | `apps/web/src/net/auth.ts` | Appels d'authentification et traduction des refus | non (sauf `authMessage()`, `redirectMessage()`) |
-| `apps/web/profil/index.html` | Page de profil, troisième entrée Vite | — |
+| `apps/web/src/i18n/current.ts` | La langue courante et son dictionnaire, sans DOM | oui |
+| `apps/web/src/i18n/browser.ts` | Choix de langue (stockage, cookie, `<html lang>`) et remplissage du HTML statique (`data-i18n`) | non |
+| `apps/web/profile/index.html` | Page de profil, troisième entrée Vite | — |
 | `apps/web/src/profile/main.tsx` | Point d'entrée du profil : monte `App` | non |
 | `apps/web/src/profile/App.tsx` | Compte, sécurité, sessions, suppression, parties et replay de son point de vue | non |
 | `apps/web/src/profile/api.ts` | Appels `/api/me/*` et routes de compte de Better Auth | non |
@@ -440,8 +443,8 @@ C'est par eux que passe un mot de passe solide, et l'ancien écran — un formul
 on masquait des champs selon un onglet — ne leur permettait pas de distinguer une connexion
 d'une inscription. Les règles :
 
-- **un `<form>` par parcours, chacun à son URL** : `/connexion` (et `/`), `/inscription`,
-  `/mot-de-passe-oublie`, `/reinitialiser` (`ROUTE_PATHS`, `routeOf()`, `pathOf()`). On passe
+- **un `<form>` par parcours, chacun à son URL** : `/sign-in` (et `/`), `/sign-up`,
+  `/forgot-password`, `/reset-password` (`ROUTE_PATHS`, `routeOf()`, `pathOf()`). On passe
   de l'un à l'autre par `history.pushState`, sans recharger ; le Worker sert la page du jeu
   sur chacune ;
 - des `autocomplete` exacts : l'adresse en `username` (avec `type="email"`), le mot de passe
@@ -465,14 +468,14 @@ incorrect » n'est rattaché à aucun champ : le serveur ne dit pas lequel.
 
 **Google** : le bouton « Continuer avec Google » n'apparaît que si `/api/auth/me` liste
 `google` dans `providers`. `signInWithGoogle()` demande l'adresse de consentement au serveur
-et y part dans la page même. Un compte créé par ce chemin arrive sur `/profil/?bienvenue=1`,
+et y part dans la page même. Un compte créé par ce chemin arrive sur `/profile/?welcome=1`,
 pour voir et changer le pseudo dérivé de son nom Google ; une erreur revient sur
-`/connexion?error=…`.
+`/sign-in?error=…`.
 
 ### Les retours par l'URL
 
-Le serveur ne parle au retour d'un lien ou de Google qu'en paramètres d'URL : `?verifiee=1`
-(adresse confirmée), `?supprime=1` (compte supprimé), `?error=…` (lien expiré, liaison
+Le serveur ne parle au retour d'un lien ou de Google qu'en paramètres d'URL : `?verified=1`
+(adresse confirmée), `?deleted=1` (compte supprimé), `?error=…` (lien expiré, liaison
 refusée…), `?token=…` (réinitialisation). `main.ts` lit le parcours (`routeOf()`) et le
 message (`arrivalNotice()`) **avant** de retirer ces paramètres (`cleanedSearch()`,
 `history.replaceState`) : le jeton de réinitialisation ne doit rester ni dans la barre
@@ -524,15 +527,15 @@ d'avance suffirait à capter le futur compte Google de son propriétaire.
 
 ## `profile/` — la page de profil
 
-Une **page à part**, `apps/web/profil/index.html`, servie sous `/profil/`, en React sur
+Une **page à part**, `apps/web/profile/index.html`, servie sous `/profile/`, en React sur
 `@occulis/ui` comme le back-office, sans PixiJS ni classe propre. Elle charge `/api/me` ;
-un 401 affiche un lien vers `/connexion`.
+un 401 affiche un lien vers `/sign-in`.
 
 | Vue | Fragment | Contenu |
 |---|---|---|
-| Compte | `#/` (et `#securite`, l'ancre des courriers et de `/.well-known/change-password`) | Compte (pseudo, adresse), bilan, connexion et sécurité (mot de passe, Google), sessions, zone sensible |
-| Parties | `#/parties?offset=` | Ses parties, son camp, l'adversaire, le résultat de son point de vue |
-| Partie | `#/parties/<id>` | Le replay **de son point de vue** |
+| Compte | `#/` (et `#security`, l'ancre des courriers et de `/.well-known/change-password`) | Compte (pseudo, adresse), bilan, connexion et sécurité (mot de passe, Google), sessions, zone sensible |
+| Parties | `#/matches?offset=` | Ses parties, son camp, l'adversaire, le résultat de son point de vue |
+| Partie | `#/matches/<id>` | Le replay **de son point de vue** |
 
 - **Tout est en lecture d'abord** (`SettingRow`) : chaque réglage montre sa valeur et un
   bouton (« Modifier », « Changer », « Définir »), qui déplie son éditeur dans la ligne
@@ -543,7 +546,7 @@ un 401 affiche un lien vers `/connexion`.
   l'adresse, pour que le gestionnaire mette à jour la bonne entrée. Un compte Google sans
   mot de passe reçoit à la place **Définir**, qui envoie le lien de réinitialisation après
   confirmation.
-- **Google** : lier (`linkGoogle()`, retour sur `?lie=google#securite`) ou retirer ; retirer
+- **Google** : lier (`linkGoogle()`, retour sur `?linked=google#security`) ou retirer ; retirer
   est grisé quand Google est la seule méthode de connexion (`canUnlink()`).
 - **Sessions** : la liste de `/api/me/sessions`, l'appareil courant marqué, chaque autre
   fermable, ou toutes d'un geste.
@@ -670,7 +673,37 @@ de `core`.
 
 ---
 
+## `i18n/` — la langue
+
+**Aucun texte affiché n'existe en français seul** : tous vivent dans `@occulis/i18n`
+(`packages/i18n`), en anglais — la langue par défaut et la langue source — et en français.
+Le dictionnaire français est typé sur la forme de l'anglais (`Messages`) : une clé oubliée,
+ajoutée ou un message dont les paramètres changent ne compile pas. Un message paramétré est
+une fonction (`m.game.outdated(4)`), jamais une chaîne à trous : pas d'interpolation à
+l'exécution, et les pluriels s'écrivent dans la fonction.
+
+- `i18n/current.ts` porte **la langue courante**, sans DOM : `messages()` rend son
+  dictionnaire, `setLocale()` la change et prévient les abonnés de `onLocaleChange()`. Les
+  modules purs (`ui/messages.ts`, `account/model.ts`, `profile/model.ts`, `admin/model.ts`,
+  `admin/replay.ts`, `net/auth.ts`) y lisent leurs phrases et restent testables — les tests
+  dont les attentes sont en français appellent `setLocale("fr")` en tête de fichier.
+- `i18n/browser.ts` choisit la langue au chargement (`initLocale()` : choix enregistré, puis
+  `navigator.languages`, puis l'anglais — `resolveLocale()`), l'enregistre au changement
+  (`chooseLocale()` : stockage local **et** cookie `occulis-locale`, que le serveur lit pour
+  ses courriers), tient `<html lang>` à jour, et remplit le HTML statique :
+  `translateDom()` donne son texte à chaque `data-i18n`, son indication à chaque
+  `data-i18n-placeholder`, son `aria-label` à chaque `data-i18n-label`.
+- Les composants React lisent la langue par `useMessages()` (`@occulis/ui`), que fixe
+  `UiRoot locale={…}`. Chaque page la passe : l'îlot de compte la reçoit en propriété
+  (`AccountAppProps.locale`), le profil et le back-office la tiennent dans un état et
+  offrent un `LocaleSwitch` dans leur barre du haut.
+- Dans la page du jeu, `#locale-switch` (en haut à gauche, hors partie) change la langue ;
+  `main.ts` réécrit alors tout ce qui est affiché — HTML statique, écran courant, identité,
+  îlot de compte. Un message déjà affiché (`notify`) garde sa langue d'origine.
+
 ## `ui/messages.ts` — tous les textes
+
+Les phrases sont dans `@occulis/i18n` (domaine `game`) ; ce module choisit laquelle dire.
 
 | Fonction | Rôle |
 |---|---|
@@ -682,7 +715,8 @@ de `core`.
 | `describeTurn()` | Ligne d'état : tour, joueur au trait, point de vue |
 | `describeTile()` | Lecture d'une case désignée au clic |
 
-`describeTile()` rend `"1,6 · hauteur 0"`, avec `· infranchissable` le cas échéant. La
+`describeTile()` rend `"1,6 · height 0"` (`"1,6 · hauteur 0"` en français), avec
+`· impassable` le cas échéant. La
 coordonnée est écrite **sans parenthèses, sous la forme qu'attend la saisie** : recopiable
 telle quelle. Elle ne rapporte **que du terrain** — le relief est public
 (`docs/implementation-notes.md` point 10), mais annoncer la pièce présente divulguerait
@@ -1018,7 +1052,7 @@ les rulesets versionnés.
 
 **Trois pages d'entrée** (`PAGES`, `build.rollupOptions.input`) : `index.html`, le jeu,
 `admin/index.html`, le back-office, et `profil/index.html`, le profil. `pnpm dev` sert les
-deux dernières sous `/admin/` et `/profil/` sans configuration de plus, et son repli SPA
+deux dernières sous `/admin/` et `/profile/` sans configuration de plus, et son repli SPA
 sert le jeu sur les URL de parcours de compte.
 
 Les maquettes d'écrans de [`docs/mockups/`](../mockups/README.md) sont exposées sous
