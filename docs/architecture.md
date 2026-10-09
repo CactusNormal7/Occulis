@@ -263,10 +263,19 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
    Supabase, un Postgres hors Cloudflare qui contredirait « tout ce qui s'agrège va en D1 ».
    Le hachage PBKDF2 du projet est conservé en le branchant sur la bibliothèque, donc aucun mot
    de passe n'a eu à être réencodé.
-10. **Connexion sociale — décidée, pas encore faite.** Google, Discord et Apple sont portés par
-    Better Auth et atterriront dans la table `accounts`, prête à les recevoir. Rien n'est
-    configuré. Reste à trancher **quels** fournisseurs, et le cas Steam, qui n'est pas de l'OAuth
-    mais un ticket Steamworks qu'aucune bibliothèque d'authentification ne couvre.
+10. **Connexion sociale — Google en place, les autres ouverts.** Google est branché (Better
+    Auth, table `accounts`) avec trois choix arrêtés par le porteur du projet :
+    - **liaison automatique** à un compte existant de même adresse — sous les deux garde-fous
+      de la bibliothèque (adresse vérifiée chez Google **et** côté Occulis), Google n'étant
+      volontairement pas « fournisseur de confiance », ce qui les lèverait ;
+    - **pseudo dérivé du nom Google**, que le joueur change ensuite depuis son profil — ce qui
+      a fait tomber la règle « seul un administrateur renomme » au profit d'un changement par
+      le joueur, une fois par 30 jours ;
+    - **proxy OAuth par la recette** pour les environnements de branche, Google n'acceptant
+      pas d'adresse de retour à joker.
+
+    Restent ouverts : Discord, Apple, et le cas Steam, qui n'est pas de l'OAuth mais un
+    ticket Steamworks qu'aucune bibliothèque d'authentification ne couvre.
 11. **Le client Electron n'est plus de même origine, et l'authentification s'en aperçoit.**
     Deux blocages connus, aucun encore traité : le cookie `SameSite=Lax` ne partira pas sur une
     requête inter-origine — il faudra soit `SameSite=None`, soit un jeton porteur rangé dans

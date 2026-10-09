@@ -16,9 +16,9 @@
     <div id="app" hidden></div>
 
     <!--
-      Les écrans hors partie. Volontairement en HTML et non dessinés dans le canevas :
-      aucun design system n'est acté (docs/design.md 8.1), et des champs natifs
+      Les écrans hors partie. En HTML et non dessinés dans le canevas : des champs natifs
       donnent gratuitement le focus, la saisie, l'autocomplétion et l'accessibilité.
+      L'écran de compte a migré sur la charte (`@occulis/ui`) ; les autres suivront.
     -->
     <!-- Visible sur tous les écrans, partie comprise : jouer sous un nom d'emprunt ne
          doit jamais passer inaperçu. -->
@@ -27,59 +27,21 @@
       <button id="stop-impersonating" type="button">Revenir à mon compte</button>
     </aside>
 
+    <!-- Le compte, en haut à droite : le lien vers le profil n'est pas un geste de jeu, il
+         n'a pas sa place parmi les entrées du menu. Montré au seul écran de menu. -->
+    <a id="account-corner" href="/profil/" aria-label="Mon profil" hidden>
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+      </svg>
+      <span id="account-corner-name"></span>
+    </a>
+
     <main id="shell">
-      <!-- Compte : connexion, inscription, mot de passe oublié. -->
+      <!-- Compte : connexion, inscription, mot de passe oublié, réinitialisation. Un îlot
+           React sur la charte (`src/account/`), un formulaire et une URL par parcours. -->
       <section id="screen-auth" class="screen" hidden>
-        <div class="panel">
-          <h1>Occulis</h1>
-          <p class="tagline">Jeu de plateau tactique 1v1, à ligne de vue et information cachée.</p>
-
-          <nav id="account-tabs" role="tablist" aria-label="Parcours de compte">
-            <button type="button" role="tab" data-mode="signin" aria-selected="true">Connexion</button>
-            <button type="button" role="tab" data-mode="register" aria-selected="false">Inscription</button>
-            <button type="button" role="tab" data-mode="forgot" aria-selected="false">Mot de passe oublié</button>
-          </nav>
-
-          <form id="account-form" autocomplete="on">
-            <label class="field" id="field-email">
-              <span>Adresse électronique</span>
-              <input id="account-email" type="email" name="email" autocomplete="email" required />
-            </label>
-            <label class="field" id="field-password">
-              <span>Mot de passe</span>
-              <input
-                id="account-password"
-                type="password"
-                name="password"
-                autocomplete="current-password"
-              />
-            </label>
-            <label class="field" id="field-handle" hidden>
-              <span>Pseudo</span>
-              <input id="account-handle" type="text" name="handle" autocomplete="nickname" />
-            </label>
-            <button id="account-submit" type="submit" class="primary">Se connecter</button>
-          </form>
-
-          <!--
-            Choix d'un nouveau mot de passe. N'apparaît qu'au retour du lien reçu par
-            courrier, qui ramène ici avec le jeton en paramètre d'URL.
-          -->
-          <form id="reset-form" autocomplete="on" hidden>
-            <label class="field">
-              <span>Nouveau mot de passe</span>
-              <input
-                id="reset-password"
-                type="password"
-                name="new-password"
-                autocomplete="new-password"
-              />
-            </label>
-            <button id="reset-submit" type="submit" class="primary">Choisir ce mot de passe</button>
-          </form>
-
-          <p id="account-status" role="status"></p>
-        </div>
+        <div id="account-root" class="panel"></div>
       </section>
 
       <!-- Menu : les trois façons d'entrer en partie. -->
@@ -118,8 +80,10 @@
           </form>
 
           <p id="menu-notice" role="status"></p>
-          <a id="menu-admin" class="quiet" href="/admin/" hidden>Back-office</a>
-          <button id="account-signout" type="button" class="quiet">Se déconnecter</button>
+          <div class="menu-links">
+            <a id="menu-admin" class="quiet" href="/admin/" hidden>Back-office</a>
+            <button id="account-signout" type="button" class="quiet">Se déconnecter</button>
+          </div>
         </div>
       </section>
 

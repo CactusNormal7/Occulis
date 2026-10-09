@@ -39,6 +39,15 @@ export default defineWorkersProject({
             // Better Auth refuse de démarrer sans secret. Sa valeur n'a pas
             // d'importance ici : aucun cookie ne survit à la fin de la suite.
             AUTH_SECRET: "PmVq7xK2sLd9RtYw4NbHj6ZcAe3Fg8Uk1QoXiMrTvBn5",
+            // Aucun appel réseau sortant depuis la suite : le contrôle des fuites a ses
+            // propres tests, sur un `fetch` simulé (`password.test.ts`).
+            PASSWORD_BREACH_CHECK: "off",
+            // Le pool lit aussi `.dev.vars` : sans ces valeurs vides, les secrets Google d'un
+            // poste de développement changeraient ce que la suite observe (`providers`).
+            GOOGLE_CLIENT_ID: "",
+            GOOGLE_CLIENT_SECRET: "",
+            OAUTH_PROXY_URL: "",
+            OAUTH_PROXY_SECRET: "",
           },
         },
       },

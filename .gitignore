@@ -18,3 +18,7 @@ ds-bundle/
 .design-sync/.cache/
 .design-sync/learnings/
 .design-sync/node_modules
+
+# Doublons créés par la synchronisation iCloud du Bureau (« fichier 2.json ») : jamais
+# des sources, toujours des copies périmées.
+* 2.*

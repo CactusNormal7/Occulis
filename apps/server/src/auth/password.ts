@@ -85,17 +85,6 @@ function parseCost(cost: string): readonly [iterations: number, passes: number] 
   return [iterations, first];
 }
 
-/** Le jeton de session lui-même : 256 bits d'aléa, jamais dérivés d'autre chose. */
-export function newSessionToken(): string {
-  return toBase64(crypto.getRandomValues(new Uint8Array(32)));
-}
-
-/** Ce qu'on range en base : seule l'empreinte du jeton, pas le jeton. */
-export async function hashToken(token: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
-  return toBase64(new Uint8Array(digest));
-}
-
 async function derive(
   password: string,
   salt: Uint8Array,
@@ -140,3 +129,41 @@ function fromBase64(value: string): Uint8Array {
   const binary = atob(value);
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
+
+/**
+ * Le mot de passe figure-t-il dans une fuite connue (Have I Been Pwned) ?
+ *
+ * Par k-anonymat : seuls les cinq premiers caractères de l'empreinte SHA-1 quittent le
+ * Worker, et la réponse — quelques centaines de suffixes, complétés de leurres par
+ * `Add-Padding` — est comparée ici. Le service n'apprend donc ni le mot de passe ni
+ * s'il était dans la liste.
+ *
+ * Écrit ici plutôt que pris au greffon `haveIBeenPwned` de Better Auth, parce que
+ * celui-ci **échoue fermé** : une panne du service rendrait toute inscription
+ * impossible. Ici, une panne rend `undefined` et l'appelant laisse passer — la longueur
+ * minimale et le hachage lent restent la vraie défense, la liste n'est qu'un filet.
+ */
+export async function breachedPassword(
+  password: string,
+  fetcher: typeof fetch = fetch,
+): Promise<boolean | undefined> {
+  try {
+    const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(password));
+    const hex = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
+    const response = await fetcher(`https://api.pwnedpasswords.com/range/${hex.slice(0, 5)}`, {
+      headers: { "Add-Padding": "true", "User-Agent": "Occulis" },
+      signal: AbortSignal.timeout(BREACH_TIMEOUT_MS),
+    });
+    if (!response.ok) return undefined;
+    const suffix = `${hex.slice(5)}:`;
+    for (const line of (await response.text()).split(/\r?\n/)) {
+      // Les leurres d'`Add-Padding` portent un compte nul : ils ne comptent pas.
+      if (line.toUpperCase().startsWith(suffix)) return Number(line.slice(suffix.length)) > 0;
+    }
+    return false;
+  } catch {
+    return undefined;
+  }
+}
+
+const BREACH_TIMEOUT_MS = 2_000;

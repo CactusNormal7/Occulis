@@ -43,14 +43,16 @@ et à la CI (`pnpm -r build`).
 | `SPACE` | Échelle de 4 en 4 (`1` = 4px … `8` = 32px) |
 | `MOTION` | Courbe et durées |
 | `cssColor(color, alpha)` | Entier → `rgb(r g b / a)` |
+| `hexColor(color, alpha, over)` | Entier → `#rrggbb`, l'alpha **précomposé** sur le fond : le format des courriers HTML du serveur, que la moitié des clients de messagerie lisent sans transparence |
 | `cssVariables()` | Nom `--occ-*` → valeur ; c'est ce que `generated/tokens.css` pose |
 | `tokensStylesheet()` | Le texte exact de `generated/tokens.css` |
 
 `apps/web/src/theme.ts` (PixiJS) importe `BACKGROUND`, `CAMP`, `INK` et `STATE` depuis
 `@occulis/ui/tokens` — un sous-chemin sans React, pour que le jeu n'embarque rien d'autre.
+Le serveur fait de même pour ses courriers (`apps/server/src/auth/mail.ts`).
 
 **La règle est mécanique.** `eslint.config.js` interdit tout littéral de couleur dans
-`apps/web/src/**` et `packages/ui/src/**`, avec une seule exception : `tokens.ts`. Les feuilles
+`apps/web/src/**`, `apps/server/src/**` et `packages/ui/src/**`, tests compris, avec une seule exception : `tokens.ts`. Les feuilles
 de style échappent à ESLint ; `tokens.test.ts` les garde à la place :
 
 - `generated/tokens.css` doit égaler `tokensStylesheet()` — le fichier ne dérive pas de sa
@@ -80,10 +82,12 @@ l'attribut `data-tip`. Toutes les animations s'éteignent sous `prefers-reduced-
 |---|---|
 | Fondations | `UiRoot` (racine : fond, encre, police), `Icon` (tracés au trait, `currentColor`) |
 | Actions | `Button` (`default`/`primary`/`danger`/`ghost`), `IconButton` (infobulle, `disabledReason`), `QuickBar` |
-| Formulaires | `TextField`, `SelectField`, `SearchField` (validé par Entrée), `InlineEdit`, `Segmented`, `ChipGroup` |
+| Formulaires | `TextField` (aide et erreur rattachées par `aria-describedby`), `PasswordField` (bouton d'affichage), `SelectField`, `SearchField` (validé par Entrée), `InlineEdit`, `Segmented`, `ChipGroup` |
+| Parcours de compte | `FormPanel` (colonne étroite, marque, titre), `FormMessage` (`error`/`success`/`info`), `Divider` (« ou »), `ProviderButton` (« Continuer avec Google », logo monochrome) |
+| Réglages | `SettingList`, `SettingRow` (libellé, valeur, précision, bouton d'édition ou geste propre), `SettingEditor` (l'éditeur déplié dans la ligne) |
 | États | `Badge` (`plain`/`strong`/`dim`/`refused`/`A`/`B`), `BadgeRow`, `Banner`, `EmptyState`, `ToastProvider` + `useToast`, `ToastStack`, `ProgressBar` |
 | Joueurs | `TileAvatar` (initiales dans une case 2:1), `Person`, `Versus` |
-| Mise en page | `Card`, `CardGrid`, `CardColumn`, `PageHead`, `BackLink`, `Hero`, `Toolbar`, `ToolbarText`, `TopBar`, `Wordmark`, `Note` |
+| Mise en page | `Card` (avec `id` d'ancre), `CardGrid`, `CardColumn`, `PageHead`, `BackLink`, `Hero`, `Toolbar`, `ToolbarText`, `TopBar`, `Wordmark`, `Note` |
 | Données | `StatTile`, `StatTileGrid`, `Stat`, `StatGrid`, `FactStrip`, `DefinitionList`, `Table`, `Pager`, `List`, `ListRow`, `MoveList` |
 | Fenêtres | `Dialog` |
 
@@ -99,6 +103,23 @@ Quelques comportements à connaître :
 - **`StatTile`** fait monter son chiffre de zéro (`animate`), sauf sous mouvement réduit.
 - **`MoveList`** sépare l'entrée montrée (`shown`, survol) de l'entrée épinglée (`pinned`,
   marquée dans la teinte de la sélection).
+- **`TextField` et `PasswordField` gardent le champ dans son libellé** : c'est ce qui les
+  associe pour les lecteurs d'écran comme pour les gestionnaires de mots de passe, sans
+  identifiant à tenir. `error` passe le champ en `aria-invalid` et l'affiche dans la teinte
+  des refus.
+- **`PasswordField`** reste de type `password` tant qu'on ne demande pas à l'afficher — c'est
+  à ce type que les gestionnaires le reconnaissent — et son bouton (`aria-pressed`) est un
+  `type="button"`, jamais un envoi. `autoComplete` est obligatoire : `current-password` ou
+  `new-password`.
+- **`FormMessage`** est un `role="alert"` pour une erreur, lue aussitôt, `status` sinon.
+- **`ProviderButton`** dessine le logo Google **en `currentColor`**, comme toute icône : la
+  couleur reste réservée à l'information de partie.
+- **`SettingRow`** montre un réglage **en lecture d'abord** ; `editing` remplace la valeur par
+  ses `children` (un `SettingEditor`) et retire le bouton. À la fermeture, le focus revient au
+  bouton qui avait ouvert l'éditeur — c'est pourquoi `Button` transmet sa référence
+  (`forwardRef`).
+- **`SettingEditor`** est un vrai `<form>` : Entrée envoie, **Échap annule**, le premier champ
+  prend le focus, et le refus du serveur s'affiche dans l'éditeur, au-dessus des boutons.
 - Toutes les props optionnelles acceptent `undefined` (`exactOptionalPropertyTypes`).
 
 ## La synchronisation vers Claude Design
@@ -111,12 +132,12 @@ catégories (`docs/<Nom>.md`), l'en-tête de conventions lu par l'agent de desig
 
 ## Tests
 
-10 tests, sous Node : `pnpm --filter @occulis/ui test`.
+16 tests, sous Node : `pnpm --filter @occulis/ui test`.
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
-| `src/tokens.test.ts` | `generated/tokens.css` identique à sa source, `styles.css` sans propriété indéfinie ni couleur en dur, conversion des couleurs |
-| `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination |
+| `src/tokens.test.ts` | `generated/tokens.css` identique à sa source, `styles.css` sans propriété indéfinie ni couleur en dur, conversion des couleurs, **alpha précomposé pour les courriers** |
+| `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition** |
 
 Le rendu visuel n'est pas testé ici : il l'est par les aperçus vérifiés sur captures lors de
 chaque synchronisation (`.design-sync/`).

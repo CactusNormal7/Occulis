@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Occulis — profil</title>
+    <!-- Le fond vient des tokens de @occulis/ui : aucune couleur écrite ici. -->
+    <style>
+      html, body { margin: 0; background: var(--occ-bg); }
+    </style>
+  </head>
+  <body>
+    <!--
+      La page de profil : une page à part, sans canevas ni moteur de jeu, comme le
+      back-office. Ce qu'elle montre et modifie est borné côté serveur au compte de la
+      session (`apps/server/src/me/routes.ts`).
+    -->
+    <div id="profil"></div>
+    <script type="module" src="/src/profile/main.tsx"></script>
+  </body>
+</html>

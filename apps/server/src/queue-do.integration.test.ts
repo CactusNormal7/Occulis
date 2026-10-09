@@ -2,7 +2,7 @@ import { SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type { QueueIntent, QueueServerMessage } from "@occulis/protocol";
 import { PROTOCOL_VERSION } from "@occulis/protocol";
-import { signUp, unique } from "./auth/auth.integration.test.js";
+import { signUp, unique } from "./test-helpers.js";
 
 /**
  * L'appariement dans workerd. Le mono-threading du Durable Object global est ce qui

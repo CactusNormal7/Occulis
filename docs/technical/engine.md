@@ -34,11 +34,14 @@ qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 | `scene/` | Le dessin | PixiJS |
 | `input/` | Les gestes sur le canevas | DOM |
 | `ui/` | Les écrans et le bandeau de partie | DOM sauf `flow.ts`, `messages.ts`, `command.ts` |
+| `account/` | L'écran de compte, îlot React sur `@occulis/ui` dans la page du jeu | React, DOM et réseau sauf `model.ts` |
+| `profile/` | La page de profil, page à part sous `/profil/`, en React sur `@occulis/ui` | React, DOM et réseau sauf `model.ts` |
 | `admin/` | Le back-office, page à part sous `/admin/`, en React sur `@occulis/ui` | React, DOM et réseau sauf `model.ts` et `replay.ts` |
 | racine | `main.ts` (composition) et `theme.ts` (tokens de DA) | — |
 
 Les modules de `view/`, `game/` et `net/session.ts` sont purs : c'est là que vivent tous
-les tests, avec `ui/flow.ts`, `ui/command.ts`, `ui/messages.ts` et `admin/model.ts`. `net/channel.ts` est la
+les tests, avec `ui/flow.ts`, `ui/command.ts`, `ui/messages.ts`, `account/model.ts`,
+`profile/model.ts` et `admin/model.ts`. `net/channel.ts` est la
 seule exception de son dossier — il ouvre le socket, et rien d'autre.
 
 ## Le pipeline, de bout en bout
@@ -48,7 +51,7 @@ par `ui/flow.ts`.
 
 ```
   ── ENTRÉE EN PARTIE ────────────────────────────────────────────────
-  ui/account.ts  ── whoAmI() ─────────────► identity
+  main.ts        ── whoAmI() ─────────────► identity  (account/ si personne)
   ui/shell.ts    ── clic sur une entrée ──► seek
         │  ui/flow.ts        ── advance() : auth → menu → waiting → game
         └─► net/queue-channel.ts ── joinQueue(intent)
@@ -114,8 +117,15 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/net/backoff.ts` | Délai avant la n-ième tentative de reconnexion | oui |
 | `apps/web/src/ui/flow.ts` | Quel écran a lieu d'être : compte, menu, attente, partie | oui |
 | `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes | non |
-| `apps/web/src/ui/account.ts` | Écran de compte : connexion, inscription, réinitialisation | non |
-| `apps/web/src/net/auth.ts` | Appels d'authentification | non |
+| `apps/web/src/account/AccountApp.tsx` | Écran de compte : connexion, inscription, oubli, réinitialisation, Google | non |
+| `apps/web/src/account/mount.tsx` | Monte l'îlot de compte dans `#account-root` | non |
+| `apps/web/src/account/model.ts` | Parcours ↔ URL, messages de retour, refus rattachés à leur champ, indication de longueur | oui |
+| `apps/web/src/net/auth.ts` | Appels d'authentification et traduction des refus | non (sauf `authMessage()`, `redirectMessage()`) |
+| `apps/web/profil/index.html` | Page de profil, troisième entrée Vite | — |
+| `apps/web/src/profile/main.tsx` | Point d'entrée du profil : monte `App` | non |
+| `apps/web/src/profile/App.tsx` | Compte, sécurité, sessions, suppression, parties et replay de son point de vue | non |
+| `apps/web/src/profile/api.ts` | Appels `/api/me/*` et routes de compte de Better Auth | non |
+| `apps/web/src/profile/model.ts` | Routes du profil, messages d'arrivée, délai de pseudo, liaison retirable, images du replay | oui |
 | `apps/web/src/scene/scene.ts` | Couches PixiJS et détection de changement | non |
 | `apps/web/src/scene/terrain.ts` | Géométrie d'une case | non |
 | `apps/web/src/scene/pieces.ts` | Silhouette d'une pièce | non |
@@ -328,7 +338,7 @@ ressemble.
 
 | Étape | Quand | Ce qu'on y voit |
 |---|---|---|
-| `auth` | Personne n'est connecté | Connexion, inscription, mot de passe oublié |
+| `auth` | Personne n'est connecté | L'îlot de compte : connexion, inscription, mot de passe oublié, réinitialisation |
 | `menu` | Connecté | Partie rapide, créer une partie, rejoindre avec un code |
 | `waiting` | Une demande est partie | Le code du salon, ou l'attente d'un adversaire |
 | `game` | Le serveur a répondu `welcome` + `view` | Le plateau et le bandeau de partie |
@@ -415,23 +425,66 @@ sens en ligne, et la bascule de point de vue est désactivée dans ce mode.
 
 ## Le compte
 
-`net/auth.ts` appelle `/api/auth/*`, `ui/account.ts` branche le formulaire. **Le jeton de
-session n'apparaît nulle part dans ce code** : il vit dans un cookie `HttpOnly`, que le
-navigateur joint seul et qu'aucun script de la page ne peut lire — un jeton lisible en
-JavaScript est un jeton exfiltrable.
+L'écran de compte est un **îlot React sur la charte** (`account/`), monté par
+`mountAccount()` dans `#account-root`, à l'intérieur de `#screen-auth` que `shell.ts` montre
+ou masque comme les autres écrans. C'est le premier écran du jeu à avoir migré sur
+`@occulis/ui` ; le menu, l'attente et la partie restent en DOM natif.
 
-Quatre parcours cohabitent dans le même formulaire, un seul visible à la fois : connexion,
-inscription, demande de réinitialisation, et choix d'un nouveau mot de passe au retour du
-lien reçu par courrier. Les trois premiers sont choisis par le joueur (les onglets, `Mode`),
-le quatrième s'impose quand l'URL porte un jeton — `resetTokenFrom()` reconnaît ce retour à
-`?reinitialiser=1&token=…`. Les champs inutiles au parcours affiché **disparaissent** au
-lieu d'être ignorés en silence : pas de mot de passe dans une demande de réinitialisation,
-pas de pseudo hors inscription. Un seul bouton d'envoi, dont l'action suit l'onglet, pour
-que la touche Entrée fasse exactement ce que le formulaire affiche.
+`net/auth.ts` appelle `/api/auth/*`. **Le jeton de session n'apparaît nulle part dans ce
+code** : il vit dans un cookie `HttpOnly`, que le navigateur joint seul et qu'aucun script de
+la page ne peut lire — un jeton lisible en JavaScript est un jeton exfiltrable.
+
+### Écrit pour les gestionnaires de mots de passe
+
+C'est par eux que passe un mot de passe solide, et l'ancien écran — un formulaire unique dont
+on masquait des champs selon un onglet — ne leur permettait pas de distinguer une connexion
+d'une inscription. Les règles :
+
+- **un `<form>` par parcours, chacun à son URL** : `/connexion` (et `/`), `/inscription`,
+  `/mot-de-passe-oublie`, `/reinitialiser` (`ROUTE_PATHS`, `routeOf()`, `pathOf()`). On passe
+  de l'un à l'autre par `history.pushState`, sans recharger ; le Worker sert la page du jeu
+  sur chacune ;
+- des `autocomplete` exacts : l'adresse en `username` (avec `type="email"`), le mot de passe
+  en `current-password` à la connexion, `new-password` ailleurs, avec `minlength`,
+  `maxlength` et `passwordrules` (lu par Safari et 1Password pour générer un mot de passe
+  conforme) ; le pseudo en `nickname`, **après** l'adresse, pour qu'il ne soit pas pris pour
+  l'identifiant ;
+- un vrai `<form method="post" action="/api/auth/…">`, intercepté en JS, puis **une
+  navigation au succès** (`history.pushState("/")`) : c'est à elle que les gestionnaires
+  reconnaissent une connexion réussie et proposent d'enregistrer ;
+- la réinitialisation porte un champ `username` prérempli avec l'adresse saisie à la demande
+  (`rememberResetEmail()`, en `sessionStorage`, propre à l'onglet) : sans lui, le
+  gestionnaire ne saurait pas à quelle entrée rattacher le nouveau mot de passe ;
+- l'adresse saisie suit d'un parcours à l'autre, et un bouton (`PasswordField`) affiche le
+  mot de passe sans jamais changer le type du champ tant qu'on ne le demande pas.
+
+Un refus du serveur s'affiche **sous le champ qu'il concerne** (`fieldOf()` : `HANDLE_*` sous
+le pseudo, `PASSWORD_*` sous le mot de passe, adresse prise sous l'adresse), qui reçoit le
+focus ; les autres en tête du formulaire (`FormMessage`). « Adresse ou mot de passe
+incorrect » n'est rattaché à aucun champ : le serveur ne dit pas lequel.
+
+**Google** : le bouton « Continuer avec Google » n'apparaît que si `/api/auth/me` liste
+`google` dans `providers`. `signInWithGoogle()` demande l'adresse de consentement au serveur
+et y part dans la page même. Un compte créé par ce chemin arrive sur `/profil/?bienvenue=1`,
+pour voir et changer le pseudo dérivé de son nom Google ; une erreur revient sur
+`/connexion?error=…`.
+
+### Les retours par l'URL
+
+Le serveur ne parle au retour d'un lien ou de Google qu'en paramètres d'URL : `?verifiee=1`
+(adresse confirmée), `?supprime=1` (compte supprimé), `?error=…` (lien expiré, liaison
+refusée…), `?token=…` (réinitialisation). `main.ts` lit le parcours (`routeOf()`) et le
+message (`arrivalNotice()`) **avant** de retirer ces paramètres (`cleanedSearch()`,
+`history.replaceState`) : le jeton de réinitialisation ne doit rester ni dans la barre
+d'adresse ni dans l'historique. Le message s'affiche dans l'îlot si personne n'est connecté,
+sous le menu sinon. Un lien expiré propose d'en redemander un (`retry`).
 
 **L'état affiché n'est jamais déduit de ce qu'on vient d'envoyer** : après chaque action,
-`whoAmI()` redemande l'identité au serveur. Lui seul sait si l'adresse est vérifiée, et
-c'est ce qui ouvre ou ferme le jeu en ligne.
+`refresh()` (`main.ts`) redemande l'identité au serveur. Lui seul sait si l'adresse est
+vérifiée, et c'est ce qui ouvre ou ferme le jeu en ligne. Connecté sur une URL de parcours,
+la page revient à `/`.
+
+### Le menu
 
 **Pendant une usurpation** (`/api/auth/me` rend `impersonating: true`), un bandeau
 `#impersonation` reste affiché au-dessus de tous les écrans, partie comprise, avec le pseudo
@@ -439,15 +492,20 @@ incarné et un bouton **Revenir à mon compte** : `stopImpersonating()` (`net/au
 session à l'administrateur, et la page repart vers `/admin/`. Jouer sous un nom d'emprunt ne
 doit jamais passer inaperçu.
 
-Un compte administrateur voit en plus, sous le menu, un lien **Back-office** vers
-`/admin/` (`#menu-admin`) : `/api/auth/me` rend `admin: true`, et `shell.setIdentity()`
-démasque le lien. Rien d'autre ne dépend de ce drapeau côté client — le serveur revérifie
-le rôle à chaque appel d'administration.
+Le **coin du compte** (`#account-corner`), en haut à droite hors du panneau, affiche le
+pseudo et mène au profil : ce n'est pas un geste de jeu, il n'a pas sa place parmi les
+entrées du menu. `shell.ts` ne le montre **qu'au menu** — en attente il ferait quitter la
+file, en partie le siège. Le menu porte en pied un lien
+**Back-office** pour les administrateurs (`#menu-admin` : `/api/auth/me` rend `admin: true`,
+et `shell.setIdentity()` démasque le lien — le serveur revérifie le rôle à chaque appel), et
+**Se déconnecter**. Tant que l'adresse n'est pas vérifiée, **Renvoyer le message de
+vérification** (`#account-resend`) l'expédie à `identity.email`, l'adresse que rend
+`/api/auth/me` — et non plus un champ du formulaire de connexion, vide une fois connecté.
 
 Les trois entrées du menu restent désactivées tant que personne n'est connecté **ou tant
 que l'adresse n'est pas vérifiée** : la file répondrait 401 dans le premier cas, 403 dans
-le second. `describeIdentity()` dit laquelle des deux raisons s'applique — sans quoi des
-boutons désactivés n'auraient aucune explication à l'écran.
+le second. `describeIdentity()` (`ui/messages.ts`) dit laquelle des deux raisons s'applique —
+sans quoi des boutons désactivés n'auraient aucune explication à l'écran.
 
 ### La traduction des refus
 
@@ -456,12 +514,49 @@ message d'une bibliothèque change sans prévenir, son code est un contrat. Deux
 restent volontairement indiscernables, parce que le serveur les rend indiscernables :
 adresse inconnue et mot de passe faux d'un côté, adresse inscrite ou non à la demande de
 réinitialisation de l'autre. Les distinguer à l'écran annulerait la précaution serveur.
+Un 429 annonce la limitation de débit, sauf `HANDLE_COOLDOWN` (le délai de pseudo).
 
-Un compte suspendu depuis le back-office reçoit `BANNED_USER` à la connexion, traduit en
-« Ce compte est suspendu. »
+`redirectMessage()` traduit les erreurs portées par l'URL : en majuscules pour les liens de
+Better Auth (`INVALID_TOKEN`), en minuscules pour l'OAuth (`account_not_linked`,
+`access_denied`…). `account_not_linked` explique la règle de liaison : un compte dont
+l'adresse n'a jamais été confirmée ne se lie pas à Google, sans quoi inscrire une adresse
+d'avance suffirait à capter le futur compte Google de son propriétaire.
 
-`authMessage()` et `resetTokenFrom()` sont les deux seules parties décidantes du module,
-et les deux seules pures — d'où leurs tests.
+## `profile/` — la page de profil
+
+Une **page à part**, `apps/web/profil/index.html`, servie sous `/profil/`, en React sur
+`@occulis/ui` comme le back-office, sans PixiJS ni classe propre. Elle charge `/api/me` ;
+un 401 affiche un lien vers `/connexion`.
+
+| Vue | Fragment | Contenu |
+|---|---|---|
+| Compte | `#/` (et `#securite`, l'ancre des courriers et de `/.well-known/change-password`) | Compte (pseudo, adresse), bilan, connexion et sécurité (mot de passe, Google), sessions, zone sensible |
+| Parties | `#/parties?offset=` | Ses parties, son camp, l'adversaire, le résultat de son point de vue |
+| Partie | `#/parties/<id>` | Le replay **de son point de vue** |
+
+- **Tout est en lecture d'abord** (`SettingRow`) : chaque réglage montre sa valeur et un
+  bouton (« Modifier », « Changer », « Définir »), qui déplie son éditeur dans la ligne
+  (`SettingEditor`). **Un seul éditeur ouvert à la fois** (`Editing`), Échap annule, le refus
+  du serveur reste dans l'éditeur, un succès le referme avec un message et relit le compte.
+  Le bouton du pseudo est grisé pendant le délai, dont la date s'affiche à sa place.
+- **Mot de passe** : l'éditeur est un vrai formulaire avec un champ `username` caché égal à
+  l'adresse, pour que le gestionnaire mette à jour la bonne entrée. Un compte Google sans
+  mot de passe reçoit à la place **Définir**, qui envoie le lien de réinitialisation après
+  confirmation.
+- **Google** : lier (`linkGoogle()`, retour sur `?lie=google#securite`) ou retirer ; retirer
+  est grisé quand Google est la seule méthode de connexion (`canUnlink()`).
+- **Sessions** : la liste de `/api/me/sessions`, l'appareil courant marqué, chaque autre
+  fermable, ou toutes d'un geste.
+- **Suppression** : une fenêtre de confirmation, puis un lien par courrier ; rien n'est
+  supprimé avant son ouverture.
+- **Replay** : `asBoardFrames()` adapte les images du serveur au plateau rejoué du
+  back-office (`admin/ReplayBoard.tsx`, réutilisé tel quel), avec la seule ligne de vue de
+  son camp et le point de vue fixé sur lui.
+- **Pendant une usurpation**, un bandeau signale la lecture seule, aucun réglage n'a de
+  bouton d'édition et chaque geste est grisé — le serveur les refuse de toute façon.
+
+Comme pour le back-office, **la page ne décide d'aucun accès** : tout ce qu'elle grise, le
+serveur le refuse (`docs/technical/server.md`, « `me/` »).
 
 ## `net/` — la session en ligne
 
@@ -817,17 +912,20 @@ n'y a rien à jouer.
 
 ## `index.html` et `ui/ui.css`
 
-Les écrans et la saisie sont **en HTML et non dessinés dans le canevas** : aucun design
-system n'est acté (`docs/design.md` 8.1), et des champs natifs donnent gratuitement le
-focus, la saisie, l'autocomplétion et l'accessibilité.
+Les écrans et la saisie sont **en HTML et non dessinés dans le canevas** : des champs natifs
+donnent gratuitement le focus, la saisie, l'autocomplétion et l'accessibilité. L'écran de
+compte est en React sur la charte ; les autres restent en DOM natif, habillés par
+`ui/ui.css`, dont les règles génériques (`button`, `form`) sont circonscrites pour ne pas
+atteindre les composants `occ-*`.
 
 | Élément | Rôle |
 |---|---|
 | `#app` | Hôte du canevas PixiJS — **masqué hors partie** |
 | `#shell` | Conteneur des écrans, transparent aux clics |
-| `#screen-auth` | Compte : onglets, champs, formulaire de réinitialisation, statut |
+| `#screen-auth` / `#account-root` | Compte : l'hôte de l'îlot React (`account/`) |
 | `#impersonation` | Bandeau de session d'emprunt, au-dessus de tous les écrans — masqué hors usurpation |
-| `#screen-menu` | Identité, partie rapide, création, entrée par code, lien du back-office (`#menu-admin`, administrateurs seuls), déconnexion |
+| `#account-corner` | Pseudo et lien vers le profil, en haut à droite — montré au seul menu |
+| `#screen-menu` | Identité, renvoi de vérification, partie rapide, création, entrée par code, lien du back-office (`#menu-admin`, administrateurs seuls), déconnexion |
 | `#screen-waiting` | Le code du salon, sa copie, l'attente et son annulation |
 | `#console` | Le bandeau de partie |
 | `#status` | Ligne d'état : tour, camp au trait, camp du joueur |
@@ -918,9 +1016,10 @@ les rulesets versionnés.
 
 ## `vite.config.ts` — le service des maquettes
 
-**Deux pages d'entrée** (`PAGES`, `build.rollupOptions.input`) : `index.html`, le jeu, et
-`admin/index.html`, le back-office. `pnpm dev` sert la seconde sous `/admin/` sans
-configuration de plus.
+**Trois pages d'entrée** (`PAGES`, `build.rollupOptions.input`) : `index.html`, le jeu,
+`admin/index.html`, le back-office, et `profil/index.html`, le profil. `pnpm dev` sert les
+deux dernières sous `/admin/` et `/profil/` sans configuration de plus, et son repli SPA
+sert le jeu sur les URL de parcours de compte.
 
 Les maquettes d'écrans de [`docs/mockups/`](../mockups/README.md) sont exposées sous
 `/mockups`. Elles restent de la documentation : le client ne les importe jamais, et elles
@@ -992,15 +1091,20 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
     `production` et ne copie rien ; seul le mode `mockups` embarque `docs/mockups/`. Les
     servir inconditionnellement mettrait la documentation de conception dans le site
     déployé, et demain dans le binaire Electron distribué.
-17. **Le back-office ne décide d'aucun accès.** Masquer un bouton n'est pas une garde :
+17. **Le back-office et le profil ne décident d'aucun accès.** Masquer un bouton n'est pas une garde :
     toute permission se vérifie côté serveur, et la page se contente d'afficher ce que les
     routes d'administration acceptent de lui rendre.
-18. **Le back-office n'a ni classe ni couleur propres.** Ce qui manque à une vue s'ajoute à
-    `@occulis/ui`, pour que la charte synchronisée vers Claude Design reste celle du produit.
+18. **Le back-office, le profil et l'îlot de compte n'ont ni classe ni couleur propres.**
+    Ce qui manque à une vue s'ajoute à `@occulis/ui`, pour que la charte synchronisée vers
+    Claude Design reste celle du produit.
+19. **Un parcours de compte = un formulaire = une URL.** Fusionner deux parcours dans un
+    formulaire, ou retirer un `autocomplete`, rend l'écran illisible aux gestionnaires de
+    mots de passe.
+20. **Le jeton de réinitialisation est retiré de l'URL dès sa lecture.**
 
 ## Tests
 
-121 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+142 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
@@ -1019,7 +1123,9 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/net/backoff.test.ts` | Croissance exponentielle, plafond, robustesse à une tentative absurde |
 | `apps/web/src/admin/model.test.ts` | Routes du back-office lues et réécrites à l'identique, fiche rangée sous sa liste, résultat nommé par le siège, coups, dates ISO et millisecondes, pagination, **durée de suspension illisible refusée plutôt que lue comme définitive**, actions rapides fermées sur soi-même, sur un administrateur et sur un compte suspendu, initiales, taux de victoire, résumé du navigateur d'une session |
 | `apps/web/src/admin/replay.test.ts` | Pièce déplacée retrouvée entre deux images et elle seule, coup écrit comme l'historique de la maquette, libellé d'image avec camp et joueur, navigation bornée, **plateau centré et contenu dans son cadre aux quatre quarts de tour** |
-| `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, compte suspendu, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut, lecture du jeton de réinitialisation dans l'URL |
+| `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, compte suspendu, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut et distinguée du délai de pseudo, retours de Google et des liens expirés, mot de passe ayant fuité |
+| `apps/web/src/account/model.test.ts` | Parcours ↔ URL dans les deux sens, connexion par défaut, jeton lu, **jeton et erreurs retirés de l'URL**, adresse confirmée, compte supprimé, lien expiré du bon type, refus de liaison Google expliqué, **refus rattaché au bon champ, jamais pour des identifiants faux**, indication de longueur |
+| `apps/web/src/profile/model.test.ts` | Routes du profil dans les deux sens, ancre de sécurité, **identifiant de partie suspect refusé**, messages d'arrivée, délai de pseudo, **dernière méthode de connexion non retirable**, résultat de son point de vue, **ligne de vue de son seul camp prêtée au plateau**, ancienneté d'une session |
 
 ## Non implémenté
 

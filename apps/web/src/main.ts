@@ -27,14 +27,15 @@ import { type MatchChannel, connectToMatch } from "./net/match-channel.js";
 import { type QueueChannel, joinQueue } from "./net/queue-channel.js";
 import { describeRejection, describeRoomFault } from "./ui/messages.js";
 import { attachShell } from "./ui/shell.js";
-import { attachAccount } from "./ui/account.js";
+import { mountAccount } from "./account/mount.js";
+import { arrivalNotice, cleanedSearch, routeOf } from "./account/model.js";
 import { START, type Seeking, type Stage, advance } from "./ui/flow.js";
 import { type Selection, resolveClick } from "./game/selection.js";
 import { Scene } from "./scene/scene.js";
 import { BACKGROUND } from "./theme.js";
 import { type GameConsole, attachConsole } from "./ui/console.js";
 import { applyPalette } from "./ui/palette.js";
-import { stopImpersonating } from "./net/auth.js";
+import { resendVerification, signOut, stopImpersonating, whoAmI, type Identity } from "./net/auth.js";
 
 /** Racine de composition : elle câble les modules, elle n'en implémente aucun. */
 async function main(): Promise<void> {
@@ -165,6 +166,10 @@ async function main(): Promise<void> {
       hud: element<HTMLElement>("console"),
       identity: element<HTMLElement>("menu-identity"),
       admin: element<HTMLElement>("menu-admin"),
+      corner: element<HTMLElement>("account-corner"),
+      cornerName: element<HTMLElement>("account-corner-name"),
+      resend: element<HTMLButtonElement>("account-resend"),
+      signOut: element<HTMLButtonElement>("account-signout"),
       impersonation: element<HTMLElement>("impersonation"),
       impersonated: element<HTMLElement>("impersonated"),
       stopImpersonating: element<HTMLButtonElement>("stop-impersonating"),
@@ -207,34 +212,55 @@ async function main(): Promise<void> {
       leave();
       void stopImpersonating().then(() => location.assign("/admin/"));
     },
+    onSignOut: () => {
+      void signOut().then(() => refresh());
+    },
+    onResend: () => {
+      shell.notify("Envoi…");
+      void resendVerification(identity.email ?? "").then((outcome) => {
+        shell.notify(outcome.ok ? `Message renvoyé à ${identity.email ?? "votre adresse"}.` : outcome.message);
+      });
+    },
   });
+
+  // Le parcours et le message de retour sont lus dans l'URL **avant** d'en retirer les
+  // paramètres : le jeton de réinitialisation ne doit pas rester dans la barre
+  // d'adresse, ni donc dans l'historique.
+  const initialRoute = routeOf(location.pathname, location.search);
+  let arrival = arrivalNotice(location.pathname, location.search);
+  const cleaned = cleanedSearch(location.search);
+  if (cleaned !== location.search) history.replaceState(null, "", `${location.pathname}${cleaned}${location.hash}`);
+
+  const renderAccount = mountAccount(element<HTMLElement>("account-root"));
+  let identity: Identity = { signedIn: false };
 
   // L'identité vient du serveur, via un cookie de session : le client ne l'annonce
   // jamais lui-même. Sans compte, la file d'attente répondrait 401.
-  attachAccount({
-    elements: {
-      form: element<HTMLFormElement>("account-form"),
-      email: element<HTMLInputElement>("account-email"),
-      password: element<HTMLInputElement>("account-password"),
-      handle: element<HTMLInputElement>("account-handle"),
-      passwordField: element<HTMLElement>("field-password"),
-      handleField: element<HTMLElement>("field-handle"),
-      submit: element<HTMLButtonElement>("account-submit"),
-      tabs: Array.from(document.querySelectorAll<HTMLButtonElement>("#account-tabs button")),
-      status: element<HTMLElement>("account-status"),
-      signOut: element<HTMLButtonElement>("account-signout"),
-      resend: element<HTMLButtonElement>("account-resend"),
-      resetForm: element<HTMLFormElement>("reset-form"),
-      resetPassword: element<HTMLInputElement>("reset-password"),
-    },
-    onIdentity: (identity) => {
-      shell.setIdentity(identity);
-      // Une déconnexion referme la partie en cours : sans session, ni la file ni le
-      // Durable Object n'accepteraient plus rien de ce client.
-      if (!identity.signedIn && stage.kind !== "auth") leave();
-      go({ kind: "identity", signedIn: identity.signedIn });
-    },
-  });
+  const refresh = async (message?: string): Promise<void> => {
+    identity = await whoAmI();
+    shell.setIdentity(identity);
+    // Une déconnexion referme la partie en cours : sans session, ni la file ni le
+    // Durable Object n'accepteraient plus rien de ce client.
+    if (!identity.signedIn && stage.kind !== "auth") leave();
+    go({ kind: "identity", signedIn: identity.signedIn });
+
+    if (identity.signedIn) {
+      // Connecté sur une URL de parcours de compte (un lien de connexion ouvert alors
+      // qu'on l'est déjà) : on revient à celle du menu.
+      if (location.pathname !== "/") history.replaceState(null, "", "/");
+      const notice = message ?? arrival?.text;
+      if (notice !== undefined) shell.notify(notice);
+      arrival = undefined;
+      return;
+    }
+    renderAccount({
+      initialRoute,
+      initialNotice: arrival,
+      providers: identity.providers ?? [],
+      onSignedIn: (text) => void refresh(text),
+    });
+  };
+  void refresh();
 
   applyPalette(document.documentElement);
   gameConsole = attachConsole({

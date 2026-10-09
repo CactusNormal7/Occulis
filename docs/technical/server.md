@@ -35,20 +35,25 @@ Trois principes, actés dans `docs/architecture.md` :
 | `apps/server/src/queue-do.ts` | `QueueDO` : la file d'attente globale et les salons privés |
 | `apps/server/src/match-setup.ts` | Création d'une partie : ligne D1, jetons de siège, init du DO |
 | `apps/server/src/seating.ts` | **Pur** — jeton de siège → camp, et autorité de tour |
-| `apps/server/src/auth/better-auth.ts` | La configuration Better Auth : hasher, schéma, débit, crochets |
+| `apps/server/src/auth/better-auth.ts` | La configuration Better Auth : hasher, schéma, débit, Google, crochets, gardes |
 | `apps/server/src/auth/routes.ts` | `/api/auth/me` et la délégation du reste à Better Auth |
-| `apps/server/src/auth/password.ts` | PBKDF2 enchaîné et comparaison à temps constant, **branchés dans Better Auth** |
-| `apps/server/src/auth/mail.ts` | Envoi des messages transactionnels par Resend |
+| `apps/server/src/auth/password.ts` | PBKDF2 enchaîné, comparaison à temps constant, **branchés dans Better Auth** ; contrôle des fuites (HIBP) |
+| `apps/server/src/auth/handle.ts` | **Pur** — règles du pseudo : normalisation, caractères, noms réservés, pseudo dérivé, pseudo anonyme |
+| `apps/server/src/auth/mail.ts` | Les courriers (HTML et texte) et leur envoi par Resend |
+| `apps/server/src/me/routes.ts` | `/api/me/*` : la page de profil — gardes, puis profil, pseudo, sessions, parties |
+| `apps/server/src/me/queries.ts` | Les requêtes D1 du profil, **toutes bornées au compte de la session** |
 | `apps/server/src/admin/routes.ts` | `/api/admin/*` : garde de rôle, puis lectures et renommage du back-office |
-| `apps/server/src/admin/queries.ts` | Les requêtes D1 du back-office : statistiques, parties, bilan d'un joueur, renommage |
-| `apps/server/src/admin/paging.ts` | **Pur** — pagination, filtres de liste et validation du pseudo |
+| `apps/server/src/admin/queries.ts` | Les requêtes D1 du back-office : statistiques, parties, bilan d'un joueur, renommage ; `replayLog()` partagé avec le profil |
+| `apps/server/src/admin/paging.ts` | **Pur** — pagination et filtres de liste |
 | `packages/protocol/src/admin.ts` | Les réponses de `/api/admin/*` — **paquet partagé** |
+| `packages/protocol/src/me.ts` | Les réponses de `/api/me/*` — **paquet partagé** |
+| `apps/server/src/test-helpers.ts` | Outils des suites d'intégration (inscription, cookie, IP distinctes) |
 | `apps/server/scripts/generate-schema.mts` | Recrache le schéma SQL attendu — hors du Worker |
 | `apps/server/src/pairing.ts` | **Pur** — la file d'attente comme structure de données |
 | `apps/server/src/rooms.ts` | **Pur** — les salons privés : table des codes, tirage, consommation |
 | `packages/protocol/src/index.ts` | Messages client/serveur et version de protocole — **paquet partagé** |
 | `apps/server/src/rulesets.ts` | Registre des rulesets par version |
-| `apps/server/src/env.d.ts` | Type des bindings : `DB`, `MATCH`, `QUEUE`, `ASSETS`, `AUTH_SECRET`, `RESEND_API_KEY` |
+| `apps/server/src/env.d.ts` | Type des bindings : `DB`, `MATCH`, `QUEUE`, `ASSETS`, `AUTH_SECRET`, `RESEND_API_KEY`, `GOOGLE_*`, `OAUTH_PROXY_*`… |
 | `apps/server/wrangler.toml` | Configuration et environnements |
 | `apps/server/migrations/*.sql` | Schéma D1 |
 
@@ -65,8 +70,17 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 
 | Route | Méthode | Traitement |
 |---|---|---|
-| `/api/auth/me` | toute | **Au projet** — le pseudo, l'état de vérification, `admin` et `impersonating`, ou `{ signedIn: false }` |
+| `/.well-known/change-password` | toute | **302** vers `/profil/#securite` — l'adresse que les gestionnaires de mots de passe ouvrent pour « changer le mot de passe » |
+| `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser` | `GET` | `pageFor()` — la page du jeu (`/`), dont l'îlot de compte lit le chemin ; liste explicite `ACCOUNT_PATHS`, pas de repli global |
+| `/profil` | `GET` | `pageFor()` — la page `/profil/` |
+| `/api/auth/me` | toute | **Au projet** — pseudo, adresse, état de vérification, `admin`, `impersonating`, `providers` ; sans session `{ signedIn: false, providers }` |
 | `/api/auth/sign-up/email` | `POST` | Better Auth — crée un compte, et son profil via le crochet |
+| `/api/auth/sign-in/social` | `POST` | Better Auth — rend l'adresse de consentement Google (`{ url }`) |
+| `/api/auth/callback/google` | `GET` | Better Auth — retour de Google : crée ou lie le compte, ouvre la session, redirige |
+| `/api/auth/link-social`, `/api/auth/unlink-account` | `POST` | Better Auth — lier ou délier Google depuis le profil ; la dernière méthode de connexion ne se délie pas |
+| `/api/auth/change-password` | `POST` | Better Auth — mot de passe actuel exigé ; **ferme toujours les autres sessions** ; avis par courrier |
+| `/api/auth/change-email` | `POST` | Better Auth — lien à l'**ancienne** adresse, puis vérification de la nouvelle |
+| `/api/auth/delete-user` puis `GET /api/auth/delete-user/callback` | | Better Auth — lien par courrier, puis suppression ; le profil est anonymisé |
 | `/api/auth/sign-in/email` | `POST` | Better Auth — ouvre une session |
 | `/api/auth/sign-out` | `POST` | Better Auth — ferme la session |
 | `/api/auth/request-password-reset` | `POST` | Better Auth — envoie le message de réinitialisation |
@@ -74,12 +88,14 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 | `/api/auth/send-verification-email` | `POST` | Better Auth — renvoie le message de vérification |
 | `/api/auth/verify-email` | `GET` | Better Auth — marque l'adresse vérifiée |
 | `/api/auth/admin/*` | `GET`/`POST` | Greffon `admin` de Better Auth — comptes, rôles, suspensions, sessions ; **403 sans le rôle `admin`** |
-| `/api/auth/update-user`, `/api/auth/admin/update-user` avec un `name` | `POST` | **400 `HANDLE_READONLY`** — le pseudo se change par `/api/admin/players/:id/handle` |
+| `/api/auth/update-user`, `/api/auth/admin/update-user` avec un `name` | `POST` | **400 `HANDLE_READONLY`** — le pseudo se change par `/api/me/handle` ou `/api/admin/players/:id/handle` |
+| routes de compte de Better Auth (`ACCOUNT_MUTATIONS`) sous usurpation | `POST` | **403 `IMPERSONATION_READONLY`** |
 | tout le reste de `/api/auth/*` | toute | `auth.handler(request)` |
 | `/api/admin/*` | `GET`/`POST` | `handleAdmin()` — **401 sans session, 403 sans le rôle `admin`**, 403 sur un `POST` d'une autre origine |
+| `/api/me`, `/api/me/*` | `GET`/`POST` | `handleMe()` — **401 sans session**, 403 sur un `POST` d'une autre origine **ou sous usurpation** |
 | `/api/matches` | `POST` | `createMatch()` — partie directe, hors file d'attente |
 | `/api/queue` | WebSocket | `joinQueue()` — **401 sans session, 403 sans adresse vérifiée** |
-| `/api/auth/*`, `/api/admin/*`, `/api/queue` sans `AUTH_SECRET` | toute | **503** — garde-fou `hasAuthSecret()`, avant toute construction de Better Auth |
+| `/api/auth/*`, `/api/admin/*`, `/api/me*`, `/api/queue` sans `AUTH_SECRET` | toute | **503** — garde-fou `hasAuthSecret()`, avant toute construction de Better Auth |
 | `/match/:id?seat=<jeton>` | WebSocket | `env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(request)` |
 | tout le reste | toute | `env.ASSETS.fetch(request)` — le client statique |
 
@@ -87,9 +103,13 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 |---|---|---|
 | `fetch()` (handler par défaut) | `apps/server/src/index.ts` | Routage |
 | `hasAuthSecret()` | `apps/server/src/index.ts` | Vrai si `AUTH_SECRET` fait au moins 32 caractères ; sinon l'authentification et la file répondent 503 |
-| `scheduled()` (handler cron) | `apps/server/src/index.ts` | Ménage nocturne : sessions, vérifications, compteurs de débit |
+| `scheduled()` (handler cron) | `apps/server/src/index.ts` | Ménage nocturne : sessions, vérifications, compteurs de débit, profils orphelins |
+| `pageFor()` | `apps/server/src/index.ts` | Chemin de parcours de compte ou `/profil` → page à servir, sinon `undefined` |
 | `buildAuth()` | `apps/server/src/auth/better-auth.ts` | Construit l'instance Better Auth autour des bindings |
-| `currentAccount()` | `apps/server/src/auth/routes.ts` | Session → `{ userId, playerId, handle, emailVerified, admin, impersonating }` |
+| `currentAccount()` | `apps/server/src/auth/routes.ts` | Session → `{ userId, playerId, handle, email, emailVerified, admin, impersonating }` |
+| `isImpersonated()` | `apps/server/src/auth/better-auth.ts` | Vrai si la session porte un `impersonatedBy` non vide |
+| `availableProviders()`, `hasGoogle()` | `apps/server/src/auth/better-auth.ts` | `["google"]` si les deux secrets Google sont posés, sinon `[]` |
+| `handleMe()` | `apps/server/src/me/routes.ts` | Gardes, puis routage de `/api/me/*` |
 | `isAdmin()` | `apps/server/src/auth/better-auth.ts` | Vrai si la colonne `role` contient `admin` (Better Auth y range plusieurs rôles séparés par des virgules) |
 | `handleAdmin()` | `apps/server/src/admin/routes.ts` | Garde de rôle, puis routage de `/api/admin/*` |
 | `handleAuth()` | `apps/server/src/auth/routes.ts` | `/api/auth/me`, puis délégation |
@@ -339,7 +359,29 @@ chaque inscription et chaque connexion en recette. D'où le test de garde de
 le corps d'une requête. Le crochet `databaseHooks.user.create.before` crée le profil
 **avant** le compte : un pseudo déjà pris doit faire échouer l'inscription entière plutôt
 que de laisser derrière lui un compte sans profil, que la file refuserait sans rien
-expliquer.
+expliquer. Il distingue deux cas par `ctx.path` (`isProviderSignUp()`) :
+
+- **formulaire** (`claimHandle()`) : le pseudo passe `checkHandle()`, et un pseudo invalide
+  ou pris fait échouer l'inscription (`HANDLE_LENGTH`, `HANDLE_CHARSET`,
+  `HANDLE_RESERVED`, `HANDLE_TAKEN`) ;
+- **retour de Google** (`/callback/:id`, `claimDerivedHandle()`) : le pseudo est **dérivé du
+  nom Google** — `handleCandidates()` le nettoie, puis essaie `nom`, `nom-2`… `nom-9`, puis
+  deux suffixes aléatoires ; un compte Google ne doit jamais échouer pour un pseudo qu'il
+  n'a pas choisi, et le joueur le change depuis son profil.
+
+Dans les deux cas, `users.name` reçoit **la même valeur normalisée** que `players.handle`.
+Si l'inscription échoue entre le profil et le compte (une course sur l'adresse), le profil
+orphelin est ramassé par le ménage nocturne.
+
+`databaseHooks.user.delete.before` **anonymise le profil** d'un compte supprimé, par le
+joueur comme par un administrateur : `players.handle` devient `anonymousHandle()`
+(`supprimé-<12 caractères de l'identifiant>`). Le profil survit, parce que les logs de
+parties le référencent et doivent rester rejouables pour l'adversaire. Le préfixe est
+réservé, donc personne ne peut se faire passer pour un compte supprimé.
+
+`databaseHooks.account.create.after` envoie un **avis par courrier** quand un fournisseur
+est ajouté à un compte existant depuis plus d'une minute (liaison automatique ou depuis le
+profil) : c'est une nouvelle porte d'entrée sur le compte.
 
 **Les noms de colonnes sont ramenés au style du projet** (`email_verified`, `created_at`,
 `user_id`…) par les blocs `fields`. Une seule échappe à la règle : `rate_limits.lastRequest`,
@@ -359,10 +401,77 @@ peut plus en ouvrir — donc plus entrer dans la file. Voir « `admin/` » plus 
 
 **Le pseudo est en lecture seule pour les routes de Better Auth.** Il vit deux fois —
 `users.name` pour la bibliothèque, `players.handle` pour le jeu, qui en tient l'unicité —
-et `/update-user` comme `/admin/update-user` n'écriraient que le premier. Un crochet
+et `/update-user` comme `/admin/update-user` n'écriraient que le premier. Le crochet
 `hooks.before` (`createAuthMiddleware`) refuse donc tout `name` sur ces deux chemins
-(400, `HANDLE_READONLY`) ; le renommage passe par `POST /api/admin/players/:id/handle`,
-qui écrit les deux tables dans le même lot.
+(400, `HANDLE_READONLY`). Le pseudo ne change que par **deux routes**, qui écrivent les
+deux tables dans le même lot : `POST /api/me/handle` (le joueur, au plus une fois par
+30 jours) et `POST /api/admin/players/:id/handle` (un administrateur).
+
+**Le crochet `hooks.before` porte trois autres gardes :**
+
+- **usurpation = lecture seule** : sur les routes de `ACCOUNT_MUTATIONS` (`/change-password`,
+  `/change-email`, `/delete-user` et son rappel, `/link-social`, `/unlink-account`,
+  `/revoke-*`, `/update-user`, `/set-password`), une session marquée `impersonatedBy` reçoit
+  403 `IMPERSONATION_READONLY`. Un administrateur qui usurpe voit ce que voit le joueur, il
+  ne change rien à son compte ;
+- **mots de passe ayant fuité** : sur `/sign-up/email`, `/change-password` et
+  `/reset-password`, le nouveau mot de passe passe `breachedPassword()` (`password.ts`) —
+  k-anonymat, seuls 5 caractères de l'empreinte SHA-1 partent chez Have I Been Pwned, avec
+  `Add-Padding`. Refus : 400 `PASSWORD_COMPROMISED`. **Échoue ouvert** : une panne du service
+  (2 s au plus) laisse passer, c'est pourquoi le greffon `haveIBeenPwned` de Better Auth,
+  qui échoue fermé, n'est pas utilisé. `PASSWORD_BREACH_CHECK=off` coupe le contrôle (tests) ;
+- **changer de mot de passe ferme toujours les autres sessions** : le crochet force
+  `revokeOtherSessions: true`, quoi que demande le client.
+
+`hooks.after` envoie l'avis « votre mot de passe a changé » après un `/change-password`
+réussi.
+
+### Google
+
+`socialProviders.google`, **activé seulement si `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`
+sont posés** (`hasGoogle()`) ; sinon `/api/auth/me` rend `providers: []` et le client
+masque le bouton. `prompt: "select_account"` : toujours proposer le choix du compte, pour
+qu'un poste partagé ne connecte pas d'office avec le compte Google d'un autre. Procédure de
+création du client dans `docs/setup.md` section 7.
+
+**Liaison automatique** (`account.accountLinking.enabled`) : se connecter avec Google sur
+une adresse qui a déjà un compte rattache Google à ce compte. Deux garde-fous de la
+bibliothèque, et c'est pour eux que Google n'est **pas** déclaré en `trustedProviders` (ce
+qui les lèverait) :
+
+- Google doit affirmer l'adresse vérifiée (`email_verified`) ;
+- le compte local doit l'être aussi (`requireLocalEmailVerified`, par défaut). Sans lui,
+  quelqu'un pourrait inscrire votre adresse avec son propre mot de passe, et récupérer
+  votre compte le jour où vous arriveriez par Google. Le retour porte alors
+  `?error=account_not_linked`, que le client explique.
+
+Un compte Google sans mot de passe en obtient un **par le lien de réinitialisation** : 
+`/reset-password` crée le compte `credential` absent (vérifié dans la 1.7.3). La preuve de
+possession de l'adresse est le courrier, ce que la seule session ne prouve pas.
+
+**Le proxy OAuth des environnements de branche** (`oauthProxyPlugin()`). Google exige des
+adresses de retour exactes, sans joker ; chaque branche a son domaine. Le greffon
+`oAuthProxy` fait revenir Google par la recette, qui renvoie le profil **chiffré** à la
+branche (`/callback/google/oauth-proxy`, charge utile valable 60 s). Il n'est branché que si
+`OAUTH_PROXY_URL` (l'URL de la recette) et `OAUTH_PROXY_SECRET` (32 caractères au moins)
+sont posés, **sur la recette et sur chaque branche** — la recette y reconnaît sa propre URL
+et ne proxifie pas ses propres connexions. Ni la production ni le local ne le portent :
+leur adresse de retour est déclarée chez Google. Le secret est **dédié** : une fuite côté
+branche ne permet pas de signer des sessions de recette, ce que permettrait le partage
+d'`AUTH_SECRET`.
+
+### Les règles du pseudo — `handle.ts`
+
+| Fonction | Rôle |
+|---|---|
+| `normalizeHandle()` | NFKC, trim, espaces internes réduits à un seul |
+| `checkHandle()` | `{ ok, handle }` ou `{ ok: false, code }` : 2 à 24 caractères (code points) ; lettres, chiffres, diacritiques, `_ . -` et espace ; **pas** de contrôle, d'invisible, de bidi (U+202E), de symbole ni d'emoji ; pas deux diacritiques empilés ; ni nom réservé (`admin`, `moderateur`, `occulis`… comparés sans casse, accents ni séparateurs), ni préfixe `supprime` |
+| `handleCandidates()` | Les pseudos à essayer pour un compte Google, tous valides |
+| `anonymousHandle()` | Le pseudo d'un profil dont le compte est supprimé |
+
+L'unicité est **insensible à la casse** : index `players_handle_nocase` (migration 0006),
+en plus de la contrainte `UNIQUE` d'origine. Les pseudos existants de plus de 24 caractères
+ne sont pas revalidés ; la règle s'applique au prochain changement.
 
 ### La session
 
@@ -382,15 +491,24 @@ refuse **pas** de démarrer dans un Worker : il ne reconnaît la production qu'�
 absent ici, et retombe en silence sur son secret par défaut, qui est public. C'est
 `hasAuthSecret()` (`index.ts`) qui ferme la porte : sans secret d'au moins 32 caractères,
 `/api/auth/*` et `/api/queue` répondent 503, le client statique et les parties restent
-servis — vérifié par un test. Le changer déconnecte tout le monde ; le changer déconnecte tout le monde ; le divulguer permet de forger n'importe
+servis — vérifié par un test. Le changer déconnecte tout le monde ; le divulguer permet de forger n'importe
 quelle session.
 
 ### La limitation de débit
 
 En base (`rate_limits`), et non en mémoire : une isolate Worker ne survit pas d'une requête
 à l'autre, un compteur mémoire ne limiterait donc rien. Cent requêtes par minute par
-défaut, et trois règles plus serrées : cinq connexions par minute, cinq inscriptions par
-heure, trois demandes de réinitialisation par heure.
+défaut, et des règles plus serrées : cinq connexions par minute, cinq inscriptions par
+heure, trois demandes de réinitialisation par heure (`/request-password-reset`), dix
+réinitialisations, cinq renvois de vérification, cinq changements d'adresse et trois
+demandes de suppression par heure, cinq changements de mot de passe par quart d'heure,
+vingt départs vers Google par minute, dix liaisons par heure.
+
+**La règle de réinitialisation a longtemps été morte** : elle portait sur
+`/forget-password`, renommée `/request-password-reset` en 1.7, et la route retombait sur
+la limite générale. Un test verrouille désormais le 429. Les routes `/api/me/*` ne passent
+pas par ce limiteur ; le seul geste qui y compte, le changement de pseudo, est borné par
+son délai de 30 jours.
 
 Le comptage se fait **par adresse IP, lue dans `CF-Connecting-IP`**, que la bordure
 Cloudflare écrase — contrairement à `X-Forwarded-For`, elle ne se falsifie donc pas pour
@@ -421,7 +539,16 @@ qu'une fois l'adresse prouvée.
 
 ### L'envoi des messages
 
-`mail.ts`, par Resend : un Worker n'a pas de socket sortant, seulement `fetch`, et
+Six courriers, chacun en **HTML et en texte** (`compose()`) : vérification, réinitialisation,
+confirmation de changement d'adresse (à l'ancienne), suppression, avis de mot de passe
+changé, avis de fournisseur lié. Le gabarit (`html()`) est fait de tableaux et de styles en
+ligne — ce que les clients de messagerie savent rendre — sans image : la marque est un
+mot-symbole en texte. Les couleurs viennent de `@occulis/ui/tokens`, **précomposées sur le
+fond** par `hexColor()` (Outlook et d'autres ignorent `rgb(… / alpha)`). Toute valeur venue
+de l'extérieur est échappée (`escapeHtml()`), lien compris. `MAIL_REPLY_TO`, s'il est posé,
+devient l'en-tête `reply_to`.
+
+Envoi par Resend : un Worker n'a pas de socket sortant, seulement `fetch`, et
 MailChannels a fermé son offre gratuite aux Workers en 2024. **Sans `RESEND_API_KEY`, les
 messages sont journalisés au lieu d'être émis**, lien compris — c'est ce qui rend les
 parcours traversables en local et en test sans compte Resend. Un échec d'envoi est
@@ -458,7 +585,7 @@ l'environnement (`docs/setup.md` section 7) ; les suivants, depuis le back-offic
 | `/api/admin/matches?player=&status=&limit=&offset=` | `GET` | `listMatches()` | `AdminMatchPage` — les parties, les plus récentes d'abord, avec les deux pseudos et le nombre de coups, et le total filtré |
 | `/api/admin/matches/:id` | `GET` | `readMatch()` | `AdminMatchDetail` — la partie, son log **rejoué**, et une image de la position par coup (`frames`) |
 | `/api/admin/players/:id` | `GET` | `readPlayer()` | `AdminPlayer` — profil, compte lié s'il existe, bilan victoires/défaites/en cours |
-| `/api/admin/players/:id/handle` | `POST` | `renamePlayer()` | `{ handle }`, ou 400 `HANDLE_LENGTH`, 422 `HANDLE_TAKEN`, 404 |
+| `/api/admin/players/:id/handle` | `POST` | `renamePlayer()` | `{ handle }`, ou 400 (`HANDLE_LENGTH`, `HANDLE_CHARSET`, `HANDLE_RESERVED` — `checkHandle()`), 422 `HANDLE_TAKEN`, 404 |
 
 Quelques points de fonctionnement :
 
@@ -472,8 +599,9 @@ Quelques points de fonctionnement :
   le ménage nocturne.
 - **`readPlayer()` rapporte le vainqueur au joueur par le siège** :
   `json_extract(outcome, '$.winner')` donne `A` ou `B`, et `player_a` joue toujours `A`.
-- **`readMatch()` rejoue le log avec `core`** (`createGame`, `startMemory`,
-  `advanceMemory`), comme `MatchDO.load()`. Deux usages : attribuer chaque coup à son camp
+- **`readMatch()` rejoue le log avec `core`** par `replayLog()` (`createGame`,
+  `startMemory`, `advanceMemory`), comme `MatchDO.load()` ; `replayLog()` prend la
+  fonction qui tire une image d'une position, ce qui le rend partagé avec le profil. Deux usages : attribuer chaque coup à son camp
   — l'`Action` sérialisée ne nomme pas son auteur — et produire les **images** du rejeu
   (`frameOf()`) : `frames[0]` est la position de départ, `frames[n + 1]` celle qui suit le
   coup `n`, chacune avec **toutes** les pièces et les cases que chaque camp voyait alors.
@@ -506,6 +634,53 @@ la session d'emprunt et rend la sienne à l'administrateur. Trois garde-fous :
 Pendant l'usurpation, **tout ce qui lit l'identité lit celle du joueur** : la file d'attente,
 les salons, et le back-office lui-même, qui se ferme (403) faute de rôle. C'est voulu — c'est
 ce qui permet de reproduire ce qu'il voit — mais tout coup joué l'est en son nom.
+
+## `me/` — la page de profil
+
+Le pendant du back-office, pour **son propre** compte. Deux familles, comme pour l'admin :
+tout ce qui touche au compte passe par Better Auth (mot de passe, adresse, Google,
+suppression — voir le tableau des routes) ; le projet ne porte que ce que la bibliothèque
+ignore, sous `/api/me/`.
+
+**Trois gardes, posées à l'entrée de `handleMe()` pour toutes les routes :**
+
+1. **l'identité vient de la session.** Aucune route ne prend d'identifiant de compte ou de
+   joueur, et **chaque requête de `me/queries.ts` reprend celui de la session dans sa
+   clause `WHERE`** : une partie, une session ou un profil d'autrui répond « introuvable »,
+   exactement comme une ligne qui n'existe pas ;
+2. **un `POST` doit venir de la même origine** (`Origin`), comme pour l'admin ;
+3. **une session d'emprunt est en lecture seule** : tout `POST` y reçoit 403
+   `IMPERSONATION_READONLY` — le même refus que `hooks.before` oppose aux routes de compte
+   de Better Auth.
+
+| Route | Méthode | Fonction | Réponse |
+|---|---|---|---|
+| `/api/me` | `GET` | `readProfileRow()` | `MeProfile` — pseudo, adresse, vérification, date d'inscription, prochain changement de pseudo, mot de passe défini ou non, fournisseurs liés et proposés, usurpation, bilan |
+| `/api/me/handle` | `POST` | `changeHandle()` | `{ handle, nextHandleChangeAt }`, ou 400 (`checkHandle()`, `HANDLE_UNCHANGED`), 422 `HANDLE_TAKEN`, 429 `HANDLE_COOLDOWN` |
+| `/api/me/sessions` | `GET` | `listSessions()` | `MeSession[]` — **sans jeton** : la session se désigne par son identifiant de ligne |
+| `/api/me/sessions/:id/revoke` | `POST` | `revokeSession()` | `{ revoked: 1 }`, ou 404 si la session n'est pas à vous |
+| `/api/me/sessions/revoke-others` | `POST` | `revokeOtherSessions()` | `{ revoked: n }` |
+| `/api/me/matches?limit=&offset=` | `GET` | `listMyMatches()` | `MeMatchPage` — vos parties, votre camp, le pseudo adverse, le résultat de votre point de vue |
+| `/api/me/matches/:id` | `GET` | `readMyMatch()` | `MeMatchDetail`, **409 `MATCH_ONGOING`** pour une partie en cours, 404 si elle n'est pas à vous |
+
+Quelques points de fonctionnement :
+
+- **Le délai de pseudo (`HANDLE_COOLDOWN_MS`, 30 jours) est vérifié dans l'écriture
+  elle-même** (`UPDATE … WHERE handle_changed_at IS NULL OR handle_changed_at <= ?`), pas
+  seulement lu avant : deux requêtes simultanées ne passent pas toutes les deux. La
+  seconde instruction du lot ne touche `users.name` que si la première a écrit le nouveau
+  pseudo. Le renommage par un administrateur ne touche pas `handle_changed_at`.
+- **Les sessions ne passent pas par `/api/auth/list-sessions`**, qui rend les jetons au
+  JavaScript de la page. `listSessions()` lit `sessions` directement et n'en sort que
+  l'identifiant, les dates, l'agent, l'IP et le marqueur d'usurpation.
+- **Le replay est vu de votre camp seulement.** `readMyMatch()` rejoue le log par
+  `replayLog()`, mais chaque image est `viewFor(state, knowledge[seat])` — exactement ce
+  que le `MatchDO` vous avait envoyé : vos pièces, les pièces adverses dans votre ligne de
+  vue, vos fantômes. Les coups adverses du log sont rendus avec `action: null` (sauf un
+  abandon) : ils nomment la pièce et sa destination, donc révéleraient des positions que
+  vous n'avez jamais vues. Une partie **en cours** est refusée : le replay resservirait la
+  vue courante hors du siège. Révéler toute la partie une fois finie serait une décision
+  de design, non tranchée.
 
 ## `@occulis/protocol` — le protocole partagé
 
@@ -661,6 +836,18 @@ Le greffon `admin`. Les cinq `ALTER TABLE` sont **générés** par `auth:schema`
 S'y ajoute une reprise : les comptes existants prennent le rôle `user`, celui que Better
 Auth donne aux nouveaux. **Aucun administrateur n'est désigné par la migration.**
 
+### `migrations/0006_handles.sql`
+
+Écrite à la main — elle ne touche que `players`, que Better Auth ignore. Elle ajoute
+`players.handle_changed_at` (millisecondes, `NULL` pour un pseudo jamais changé) et l'index
+`players_handle_nocase` (`handle COLLATE NOCASE`), qui rend l'unicité insensible à la casse.
+
+**Les pseudos qui ne diffèrent que par la casse sont départagés avant l'index**, sans quoi
+sa création échouerait et la migration bloquerait le déploiement : le plus ancien garde son
+pseudo, les autres reçoivent `-<6 caractères de leur identifiant>`, et `users.name` suit.
+C'est arrivé sur la base locale du porteur du projet (`Cactus` / `cactus`). Leur
+`handle_changed_at` reste `NULL` : ils peuvent changer de pseudo aussitôt.
+
 ## `wrangler.toml` — bindings et environnements
 
 Bindings (type dans `apps/server/src/env.d.ts`) :
@@ -671,6 +858,10 @@ Bindings (type dans `apps/server/src/env.d.ts`) :
 | `AUTH_SECRET` | `string` (secret) | Signe les cookies de session. **À provisionner par environnement** |
 | `RESEND_API_KEY` | `string` (secret) | Sans elle, les messages sont journalisés — donc aucune adresse vérifiable en déployé |
 | `MAIL_FROM` | `string` (optionnel) | Expéditeur affiché |
+| `MAIL_REPLY_TO` | `string` (optionnel) | Adresse de réponse des courriers |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `string` (secrets, optionnels) | Le client OAuth Google ; sans les deux, Google n'est pas proposé |
+| `OAUTH_PROXY_URL`, `OAUTH_PROXY_SECRET` | `string` (secrets, optionnels) | Le proxy OAuth : posés sur la recette **et** les branches, jamais en production ni en local |
+| `PASSWORD_BREACH_CHECK` | `string` (optionnel) | `off` coupe le contrôle des fuites (tests, poste hors ligne) |
 | `MATCH` | `DurableObjectNamespace` | Les parties |
 | `ASSETS` | `Fetcher` | Le client statique, servi depuis `../web/dist` |
 
@@ -697,7 +888,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 
 ## Les tests
 
-76 tests, dont 50 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
+111 tests, dont 86 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
 @occulis/server test`.
 
 | Fichier | Où | Ce qui est verrouillé |
@@ -707,11 +898,14 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `rooms.test.ts` | Node | Codes sans caractères confondables et déterministes, saisie normalisée, salon rendu à l'hôte qui revient, salon consommé une seule fois, code libre au tirage suivant |
 | `match-do.integration.test.ts` | workerd | 403 sans jeton, une vue par camp sans fuite, refus hors tour, coup appliqué + écrit au log + diffusé, clôture en base, refus de protocole |
 | `queue-do.integration.test.ts` | workerd | Deux joueurs appariés sur une même partie avec des sièges distincts, partie réellement joignable, **401 sans session et sur identité forgée dans l'URL**, salon privé apparié par son code (casse et espaces pardonnés, hôte en A), salon consommé une seule fois, refus d'un code inconnu et de son propre code |
-| `auth/password.test.ts` | workerd | **Plafond de 100 000 itérations par passe jamais dépassé**, coût effectif conforme à l'OWASP, aller-retour hachage/vérification, salage, paramétrage inscrit dans l'empreinte, lecture de la forme d'avant le chaînage, empreinte illisible rejetée sans lever |
+| `auth/password.test.ts` | workerd | **Plafond de 100 000 itérations par passe jamais dépassé**, coût effectif conforme à l'OWASP, aller-retour hachage/vérification, salage, paramétrage inscrit dans l'empreinte, lecture de la forme d'avant le chaînage, empreinte illisible rejetée sans lever ; **contrôle des fuites : seul le préfixe part**, leurres ignorés, **service en panne laissé passer** |
+| `auth/handle.test.ts` | workerd | Normalisation NFKC, longueur en code points, écritures non latines, **refus des invisibles et du bidi**, symboles, emoji et diacritiques empilés, **noms réservés sous toutes leurs formes**, pseudo dérivé (nettoyage, suffixes, repli), profil anonymisé imprenable |
+| `auth/mail.test.ts` | workerd | Lien présent en texte et en HTML, **échappé**, aucune couleur transparente ni propriété CSS, **valeur utilisateur échappée** |
 | `auth/auth.integration.test.ts` | workerd | Inscription et profil créés ensemble, session reconnue, jeton inventé refusé, attributs du cookie, **jeton lu en base insuffisant pour ouvrir une session**, mot de passe faux, **réponses indiscernables entre adresse inconnue et mot de passe faux**, adresse et pseudo uniques **sans compte orphelin**, mot de passe trop court, déconnexion, **limitation de débit**, **réinitialisation de bout en bout**, **file fermée sans adresse vérifiée** |
-| `admin/paging.test.ts` | Node | Taille de page bornée, décalage négatif refusé, valeur illisible ignorée, statut inconnu écarté, bornes du pseudo |
+| `admin/paging.test.ts` | Node | Taille de page bornée, décalage négatif refusé, valeur illisible ignorée, statut inconnu écarté |
+| `me/me.integration.test.ts` | workerd | **401 sans session**, profil du seul compte de la session, pseudo changé dans les deux tables **puis délai imposé**, **collision insensible à la casse**, nom réservé, bidi, **`POST` d'une autre origine refusé**, pseudo normalisé et réservé à l'inscription, **sessions listées sans jeton**, **révocation refusée sur la session d'un autre compte**, fermeture des autres sessions, **changement de mot de passe qui ferme les autres sessions même sans le demander**, **replay refusé en cours (409) et à un tiers (404)**, **replay où une pièce adverse n'apparaît que sur une case vue**, résultat de chaque point de vue, **usurpation : profil lisible, sept routes de compte refusées**, **suppression par le lien puis profil anonymisé**, **limite des demandes de réinitialisation**, `/.well-known/change-password` |
 | `admin/admin.integration.test.ts` | workerd | **401 anonyme et 403 joueur ordinaire, sur nos routes comme sur celles du greffon**, `admin` dans `/api/auth/me`, **`POST` d'une autre origine refusé**, **usurpation signalée par `/api/auth/me`, back-office fermé pendant, session rendue à l'arrêt**, **usurpation d'un administrateur refusée**, liste des comptes avec rôle et `playerId`, **suspension qui ferme les sessions et la connexion**, puis levée, **renommage refusé par les routes de Better Auth**, parties filtrées par joueur et paginées, log rejoué avec son camp, une image par coup où chaque camp voit ses pièces, **bilan correct quel que soit le siège**, **renommage des deux tables d'un geste, intactes sur un pseudo pris** |
-| `maintenance.integration.test.ts` | workerd | Purge des sessions périmées, des vérifications expirées et des compteurs retombés, et **format de conversion des horodatages de la migration** |
+| `maintenance.integration.test.ts` | workerd | Purge des sessions périmées, des vérifications expirées et des compteurs retombés, **des seuls profils orphelins anciens sans partie**, et **format de conversion des horodatages de la migration** |
 
 **Les tests d'intégration sont aussi le test d'hibernation** que `CLAUDE.md` réclame :
 `webSocketMessage()` et `webSocketClose()` ne sont appelés que sur un socket accepté par
@@ -727,6 +921,11 @@ rattrapée à **chaque** déconnexion ; le ménage nocturne qui ne supprimait ri
 réinitialisation, qui répondait `404` sous son ancien nom `/forget-password` — le test qui
 la couvrait comparait deux statuts égaux, et deux `404` le satisfaisaient. Il exige
 désormais `200`.
+
+Les outils communs des suites (inscription, cookie, IP distinctes) vivent dans
+`test-helpers.ts`, pas dans un fichier de test : importer un fichier de test depuis un autre
+y rattache ses `describe`, et la suite d'origine se retrouvait vide. `vitest.config.ts`
+pose `PASSWORD_BREACH_CHECK=off` : aucun appel sortant depuis la suite.
 
 `vitest.config.ts` lit les vraies migrations (`readD1Migrations`) et les applique à la base
 de test : le schéma testé ne peut pas dériver de celui qui est déployé. `isolatedStorage`
@@ -760,16 +959,29 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
 9. **Les échéances en base sont du texte ISO 8601.** Les comparer à un nombre de
    millisecondes est toujours faux et ne signale rien.
 10. **Le pseudo s'écrit dans les deux tables à la fois.** `users.name` et
-    `players.handle` ne changent que par `renamePlayer()` ; le crochet qui refuse `name`
-    sur les routes de Better Auth en est la garde.
+    `players.handle` ne changent que par `renamePlayer()` (admin) et `changeHandle()`
+    (joueur), et à la création par le crochet d'inscription ; le crochet qui refuse `name`
+    sur les routes de Better Auth en est la garde. Tout pseudo passe `checkHandle()`.
 11. **Toute route `/api/admin/*` passe par la garde de rôle de `handleAdmin()`.** Une
     route ajoutée hors de ce préfixe ne la reçoit pas.
+12. **Toute requête de `me/queries.ts` est bornée par l'identifiant de la session.** Jamais
+    par le seul identifiant venu de l'URL.
+13. **Une session d'emprunt ne modifie pas le compte.** Une route de compte ajoutée à
+    Better Auth (un greffon) doit rejoindre `ACCOUNT_MUTATIONS`, une route `/api/me/*` en
+    `POST` hérite de la garde de `handleMe()`.
+14. **Le replay joueur ne contient que la vue de son siège.** Jamais `frameOf()` (la
+    position complète du back-office), jamais le coup adverse détaillé.
+15. **Google n'est pas un `trustedProvider`.** L'y déclarer lèverait les deux garde-fous de
+    la liaison automatique, dont celui qui empêche la capture d'un compte par une adresse
+    inscrite d'avance.
 
 ## Non implémenté
 
-- **Aucun fournisseur OAuth.** La table `accounts` est prête à en recevoir et Better Auth
-  les porte ; rien n'est configuré. C'est le prochain pas décidé (`docs/architecture.md`
-  section 7).
+- **Google est le seul fournisseur.** Discord, Apple ou Steam restent ouverts
+  (`docs/architecture.md` section 7) ; un fournisseur ajouté reprend la même liaison et le
+  même pseudo dérivé.
+- **Pas de clés d'accès (passkeys)**, bien que Better Auth ait un greffon : ce serait le
+  pas suivant pour les gestionnaires de mots de passe.
 - **Aucune authentification à deux facteurs**, bien que le greffon existe — elle serait
   pourtant la bienvenue sur les comptes administrateurs.
 - **Aucun journal des actions d'administration.** Qui a suspendu ou renommé qui n'est
@@ -777,8 +989,9 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
   elle disparaît avec la session.
 - **`trustedOrigins` n'est pas configuré.** Sans lui, un client Electron — qui n'est plus
   de même origine — se verra refuser les routes qui changent l'état.
-- **Le corps de réponse de Better Auth expose `id` et `playerId`** à l'inscription et à la
-  connexion, là où `/api/auth/me` s'en garde. Ce sont les identifiants du compte qui les
+- **Le corps de réponse de Better Auth expose `id`, `playerId` et le jeton brut** à
+  l'inscription, à la connexion et au changement de mot de passe (inutilisable sans la
+  signature du cookie), là où `/api/auth/me` s'en garde. Ce sont les identifiants du compte qui les
   reçoit, mais c'est un écart à l'intention initiale des routes du projet.
 - **La signature de `sendLetter()` ignore les rebonds.** Un envoi refusé par Resend est
   journalisé, sans que personne ne l'apprenne.

@@ -34,8 +34,9 @@ export default [
     // Le code couleur est strict : toute valeur de couleur du projet vit dans
     // packages/ui/src/tokens.ts, et nulle part ailleurs — ni dans le client, ni dans les
     // composants de la charte. La règle rend la contrainte mécanique plutôt que
-    // conventionnelle ; les feuilles de style sont gardées par un test du paquet.
-    files: ["apps/web/src/**/*.{ts,tsx}", "packages/ui/src/**/*.{ts,tsx}"],
+    // conventionnelle ; les feuilles de style sont gardées par un test du paquet. Le serveur
+    // y est soumis aussi : ses courriers HTML portent des couleurs, prises aux tokens.
+    files: ["apps/web/src/**/*.{ts,tsx}", "apps/server/src/**/*.ts", "packages/ui/src/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-syntax": [
         "error",

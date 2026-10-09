@@ -87,6 +87,22 @@ export function cssColor(color: number, alpha = 1): string {
 }
 
 /**
+ * `0xRRGGBB` vers `#rrggbb`, l'alpha **précomposé** sur le fond. C'est le format des
+ * courriers : la moitié des clients de messagerie (Outlook en tête) ignorent
+ * `rgb(… / alpha)` et la transparence, et retomberaient sur leur couleur par défaut.
+ */
+export function hexColor(color: number, alpha = 1, over: number = BACKGROUND): string {
+  const channel = (shift: number): string => {
+    const top = (color >> shift) & 0xff;
+    const bottom = (over >> shift) & 0xff;
+    return Math.round(top * alpha + bottom * (1 - alpha))
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${channel(16)}${channel(8)}${channel(0)}`;
+}
+
+/**
  * Les propriétés CSS de la charte, nom → valeur. C'est ce que `generated/tokens.css`
  * pose sur `:root`, et ce que les composants lisent — jamais de valeur en dur dans
  * `styles.css`.

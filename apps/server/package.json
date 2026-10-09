@@ -13,6 +13,7 @@
   "dependencies": {
     "@occulis/core": "workspace:*",
     "@occulis/protocol": "workspace:*",
+    "@occulis/ui": "workspace:*",
     "better-auth": "^1.7.3"
   },
   "devDependencies": {

@@ -20,10 +20,12 @@ export { Banner, EmptyState, type BannerProps, type EmptyStateProps } from "./co
 export { FactStrip, DefinitionList, type Fact } from "./components/FactStrip.js";
 export {
   TextField,
+  PasswordField,
   SelectField,
   SearchField,
   InlineEdit,
   type TextFieldProps,
+  type PasswordFieldProps,
   type SelectFieldProps,
   type SearchFieldProps,
   type InlineEditProps,
@@ -41,3 +43,19 @@ export { ToastProvider, ToastStack, useToast, type ToastMessage, type ToastStack
 export { MoveList, type MoveEntry, type MoveListProps } from "./components/MoveList.js";
 export { Toolbar, ToolbarText } from "./components/Toolbar.js";
 export { Versus, type VersusProps, type VersusSide } from "./components/Versus.js";
+export {
+  FormPanel,
+  FormMessage,
+  Divider,
+  ProviderButton,
+  type FormPanelProps,
+  type FormMessageProps,
+  type ProviderButtonProps,
+} from "./components/Form.js";
+export {
+  SettingList,
+  SettingRow,
+  SettingEditor,
+  type SettingRowProps,
+  type SettingEditorProps,
+} from "./components/Setting.js";
