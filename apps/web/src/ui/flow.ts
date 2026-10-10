@@ -21,13 +21,24 @@ export type Stage =
    * vient du serveur, seul à pouvoir le garantir unique.
    */
   | { readonly kind: "waiting"; readonly seeking: Seeking; readonly code: string | undefined }
-  | { readonly kind: "game" };
+  /** File rapide : un adversaire est trouvé, la fenêtre d'acceptation est ouverte. */
+  | { readonly kind: "proposal" }
+  /** Assis, la partie se déploie : annonce de l'adversaire, puis composition de l'équipe. */
+  | { readonly kind: "deploying" }
+  | { readonly kind: "game" }
+  /** Les équipes préparées d'avance, depuis le menu. */
+  | { readonly kind: "teams" };
 
 export type FlowEvent =
   | { readonly kind: "identity"; readonly signedIn: boolean }
   | { readonly kind: "seek"; readonly seeking: Seeking }
   | { readonly kind: "hosting"; readonly code: string }
+  | { readonly kind: "proposed" }
+  /** La proposition est tombée ; `requeued` : le joueur avait accepté, il attend de nouveau. */
+  | { readonly kind: "lapsed"; readonly requeued: boolean }
+  | { readonly kind: "deploying" }
   | { readonly kind: "seated" }
+  | { readonly kind: "teams" }
   /** Retour au menu, à la demande du joueur ou après un refus de la file. */
   | { readonly kind: "menu" };
 
@@ -52,8 +63,22 @@ export function advance(stage: Stage, event: FlowEvent): Stage {
       if (stage.kind !== "waiting") return stage;
       return { kind: "waiting", seeking: stage.seeking, code: event.code };
 
+    case "proposed":
+      // Une proposition ne concerne que la file rapide ; arrivée ailleurs, elle est en retard.
+      return stage.kind === "waiting" && stage.seeking === "quick" ? { kind: "proposal" } : stage;
+
+    case "lapsed":
+      if (stage.kind !== "proposal" && stage.kind !== "waiting") return stage;
+      return event.requeued ? { kind: "waiting", seeking: "quick", code: undefined } : { kind: "menu" };
+
+    case "deploying":
+      return stage.kind === "auth" || stage.kind === "game" ? stage : { kind: "deploying" };
+
     case "seated":
       return { kind: "game" };
+
+    case "teams":
+      return stage.kind === "menu" ? { kind: "teams" } : stage;
 
     case "menu":
       return stage.kind === "auth" ? stage : { kind: "menu" };

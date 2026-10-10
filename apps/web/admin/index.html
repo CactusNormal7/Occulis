@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Occulis — back-office</title>
+    <!-- Le fond vient des tokens de @occulis/ui : aucune couleur écrite ici. -->
+    <style>
+      html, body { margin: 0; background: var(--occ-bg); }
+    </style>
+  </head>
+  <body>
+    <!--
+      Le back-office : une page à part, sans canevas ni moteur de jeu. La garde est
+      côté serveur — cette page ne fait que présenter ce que les routes d'administration
+      acceptent de lui rendre.
+    -->
+    <div id="admin"></div>
+    <script type="module" src="/src/admin/main.tsx"></script>
+  </body>
+</html>

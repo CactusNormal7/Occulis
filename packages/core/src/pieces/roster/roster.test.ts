@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Board } from "../../board.js";
 import { PieceType } from "../piece-type.js";
-import { Commander, Scout, provisionalRuleset } from "./index.js";
+import { Commander, Pawn, Scout, provisionalRuleset, provisionalRulesetV0 } from "./index.js";
 
 /**
  * Le roster est provisoire : ces vérifications portent sur des propriétés qui
@@ -20,8 +20,23 @@ describe("roster provisoire", () => {
     expect(commander.isCommander).toBe(true);
   });
 
+  it("range chaque type dans son rôle d'équipe", () => {
+    expect(new Commander().role).toBe("commander");
+    expect(new Scout().role).toBe("special");
+    expect(new Pawn().role).toBe("pawn");
+    expect(new Pawn().isCommander).toBe(false);
+  });
+
+  it("fait du pion la pièce la plus lente et la plus myope", () => {
+    const pawn = new Pawn();
+    for (const other of [new Scout(), new Commander()]) {
+      expect(pawn.movement.steps).toBeLessThan(other.movement.steps);
+      expect(pawn.vision.range).toBeLessThan(other.vision.range);
+    }
+  });
+
   it("hérite du comportement commun", () => {
-    for (const type of [new Scout(), new Commander()]) {
+    for (const type of [new Scout(), new Commander(), new Pawn()]) {
       expect(type).toBeInstanceOf(PieceType);
       expect(type.canSee(Board.flat(3, 1), { x: 0, y: 0 }, { x: 1, y: 0 })).toBe(true);
     }
@@ -40,7 +55,12 @@ describe("roster provisoire", () => {
   it("indexe chaque type par son kind", () => {
     const ruleset = provisionalRuleset();
 
-    expect(ruleset.kinds().sort()).toEqual(["commander", "scout"]);
+    expect(ruleset.kinds().sort()).toEqual(["commander", "pawn", "scout"]);
+    expect(ruleset.kindsOf("special")).toEqual(["scout"]);
+    expect(ruleset.kindsOf("pawn")).toEqual(["pawn"]);
+    expect(ruleset.team).toEqual({ commander: 1, special: 3, pawn: 4 });
+    expect(provisionalRulesetV0().kinds().sort()).toEqual(["commander", "scout"]);
+    expect(provisionalRulesetV0().team).toBeNull();
     expect(ruleset.get("scout")).toBeInstanceOf(Scout);
     expect(
       ruleset.typeOf({ id: "x", kind: "commander", owner: "A", coord: { x: 0, y: 0 } }),

@@ -2,6 +2,10 @@ import { QUEUE_SINGLETON } from "./queue-do.js";
 import { buildAuth } from "./auth/better-auth.js";
 import { currentAccount, handleAuth } from "./auth/routes.js";
 import { startMatch } from "./match-setup.js";
+import { handleAdmin } from "./admin/routes.js";
+import { handleMe } from "./me/routes.js";
+import { legacyRedirect } from "./legacy-routes.js";
+import { type Locale, localeFromCookie, resolveLocale } from "@occulis/i18n";
 
 export { MatchDO } from "./match-do.js";
 export { QueueDO } from "./queue-do.js";
@@ -21,6 +25,16 @@ export { QueueDO } from "./queue-do.js";
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    // L'adresse bien connue que les gestionnaires de mots de passe ouvrent pour
+    // « changer le mot de passe de ce site » (W3C, change-password-url).
+    if (url.pathname === "/.well-known/change-password") {
+      return Response.redirect(`${url.origin}/profile/#security`, 302);
+    }
+    const legacy = request.method === "GET" ? legacyRedirect(url) : undefined;
+    if (legacy !== undefined) return Response.redirect(legacy, 301);
+    const page = pageFor(url.pathname);
+    if (page !== undefined) return env.ASSETS.fetch(new Request(new URL(page, url.origin), request));
     // Construite par requête : les bindings n'existent que là, et l'URL de base doit
     // être celle par laquelle on est joint, sinon les liens envoyés par courrier
     // pointeraient vers un autre environnement que celui où l'inscription a eu lieu.
@@ -32,15 +46,27 @@ export default {
     // client statique et les parties, qui ne reposent que sur le jeton de siège, restent
     // servis.
     if (!hasAuthSecret(env)) {
-      if (url.pathname.startsWith("/api/auth/") || url.pathname === "/api/queue") {
-        console.error("[auth] AUTH_SECRET absent ou trop court : authentification refusée");
-        return new Response("authentification indisponible", { status: 503 });
+      if (
+        url.pathname.startsWith("/api/auth/") ||
+        url.pathname.startsWith("/api/admin/") ||
+        url.pathname === "/api/me" ||
+        url.pathname.startsWith("/api/me/") ||
+        url.pathname === "/api/queue"
+      ) {
+        console.error("[auth] AUTH_SECRET missing or too short: authentication refused");
+        return new Response("authentication unavailable", { status: 503 });
       }
     }
-    const auth = buildAuth(env, url.origin);
+    const auth = buildAuth(env, url.origin, localeOf(request));
 
-    const authenticated = await handleAuth(auth, request, url.pathname);
+    const authenticated = await handleAuth(auth, env, request, url.pathname);
     if (authenticated !== undefined) return authenticated;
+
+    const administered = await handleAdmin(auth, env, request, url);
+    if (administered !== undefined) return administered;
+
+    const own = await handleMe(auth, env, request, url);
+    if (own !== undefined) return own;
 
     if (url.pathname === "/api/matches" && request.method === "POST") {
       return createMatch(request, env);
@@ -74,11 +100,39 @@ export default {
       // Le compteur de débit se reconstruit seul : une fenêtre écoulée ne vaut plus
       // rien. On garde une journée de marge sur la plus longue fenêtre configurée.
       env.DB.prepare("DELETE FROM rate_limits WHERE lastRequest < ?").bind(Date.now() - DAY_MS),
+      // Un profil sans compte ni partie : ce que laisse une inscription qui échoue
+      // entre la création du profil et celle du compte (`databaseHooks.user.create`).
+      // Les profils créés sans compte par `POST /api/matches` ont des parties, et ceux
+      // des comptes supprimés aussi s'ils ont joué : seuls les orphelins inutiles partent.
+      env.DB.prepare(
+        `DELETE FROM players WHERE created_at < ?
+           AND NOT EXISTS (SELECT 1 FROM users WHERE users.player_id = players.id)
+           AND NOT EXISTS (SELECT 1 FROM matches WHERE matches.player_a = players.id OR matches.player_b = players.id)`,
+      ).bind(Date.now() - DAY_MS),
     ]);
   },
 } satisfies ExportedHandler<Env>;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Les parcours de compte ont chacun leur URL, pour que les gestionnaires de mots de passe
+ * les distinguent (une connexion n'est pas une inscription) ; tous sont servis par la
+ * page du jeu, dont l'îlot de compte lit le chemin. La liste est explicite : un repli
+ * global vers `index.html` ferait d'une faute de frappe une page blanche au lieu d'un 404.
+ */
+export const ACCOUNT_PATHS = ["/sign-in", "/sign-up", "/forgot-password", "/reset-password"] as const;
+
+function pageFor(pathname: string): string | undefined {
+  if ((ACCOUNT_PATHS as readonly string[]).includes(pathname)) return "/";
+  if (pathname === "/profile") return "/profile/";
+  return undefined;
+}
+
+/** La langue du joueur : son choix (cookie posé par le client), sinon celle de son navigateur. */
+function localeOf(request: Request): Locale {
+  return resolveLocale(localeFromCookie(request.headers.get("Cookie")), request.headers.get("Accept-Language"));
+}
 
 /** Le minimum que Better Auth recommande pour un secret de signature. */
 const MIN_AUTH_SECRET_LENGTH = 32;
@@ -99,14 +153,14 @@ async function joinQueue(
   url: URL,
 ): Promise<Response> {
   const account = await currentAccount(auth, request);
-  if (account === undefined) return new Response("authentification requise", { status: 401 });
+  if (account === undefined) return new Response("authentication required", { status: 401 });
 
   // L'adresse vérifiée est exigée ici, et non à la connexion : un compte reste
   // utilisable tant que le message n'est pas arrivé, mais le jeu apparié — celui qui
   // porte le classement et qu'un compte jetable viendrait polluer — ne s'ouvre qu'une
   // fois l'adresse prouvée.
   if (!account.emailVerified) {
-    return new Response("adresse non vérifiée", { status: 403 });
+    return new Response("email not verified", { status: 403 });
   }
 
   const forwarded = new URL(url);

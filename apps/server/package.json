@@ -13,7 +13,9 @@
   "dependencies": {
     "@occulis/core": "workspace:*",
     "@occulis/protocol": "workspace:*",
-    "better-auth": "^1.7.3"
+    "@occulis/ui": "workspace:*",
+    "better-auth": "^1.7.3",
+    "@occulis/i18n": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.5.41",

@@ -34,10 +34,19 @@ qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 | `scene/` | Le dessin | PixiJS |
 | `input/` | Les gestes sur le canevas | DOM |
 | `ui/` | Les écrans et le bandeau de partie | DOM sauf `flow.ts`, `messages.ts`, `command.ts` |
+| `account/` | L'écran de compte, îlot React sur `@occulis/ui` dans la page du jeu | React, DOM et réseau sauf `model.ts` |
+| `profile/` | La page de profil, page à part sous `/profile/`, en React sur `@occulis/ui` | React, DOM et réseau sauf `model.ts` |
+| `i18n/` | La langue courante (`current.ts`) et son choix dans le navigateur (`browser.ts`) | Aucune sauf `browser.ts` (DOM, stockage, cookie) |
+| `team/` | Le brouillon d'équipe (`model.ts`), le constructeur (`TeamBuilder.tsx`) et son plateau (`placement-canvas.ts`) | React, DOM sauf `model.ts` |
+| `prepare/` | Les îlots d'avant-partie : fenêtre d'acceptation et déploiement (annonce de l'adversaire comprise) | React, DOM sauf `model.ts` |
+| `teams/` | Les équipes préparées, depuis le menu | React, DOM et réseau |
+| `canvas/` | Les primitives du plateau en Canvas 2D, partagées par le rejeu et le déploiement | DOM (canevas) |
+| `admin/` | Le back-office, page à part sous `/admin/`, en React sur `@occulis/ui` | React, DOM et réseau sauf `model.ts` et `replay.ts` |
 | racine | `main.ts` (composition) et `theme.ts` (tokens de DA) | — |
 
 Les modules de `view/`, `game/` et `net/session.ts` sont purs : c'est là que vivent tous
-les tests, avec `ui/flow.ts`, `ui/command.ts` et `ui/messages.ts`. `net/channel.ts` est la
+les tests, avec `ui/flow.ts`, `ui/command.ts`, `ui/messages.ts`, `account/model.ts`,
+`profile/model.ts` et `admin/model.ts`. `net/channel.ts` est la
 seule exception de son dossier — il ouvre le socket, et rien d'autre.
 
 ## Le pipeline, de bout en bout
@@ -47,7 +56,7 @@ par `ui/flow.ts`.
 
 ```
   ── ENTRÉE EN PARTIE ────────────────────────────────────────────────
-  ui/account.ts  ── whoAmI() ─────────────► identity
+  main.ts        ── whoAmI() ─────────────► identity  (account/ si personne)
   ui/shell.ts    ── clic sur une entrée ──► seek
         │  ui/flow.ts        ── advance() : auth → menu → waiting → game
         └─► net/queue-channel.ts ── joinQueue(intent)
@@ -113,8 +122,29 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/net/backoff.ts` | Délai avant la n-ième tentative de reconnexion | oui |
 | `apps/web/src/ui/flow.ts` | Quel écran a lieu d'être : compte, menu, attente, partie | oui |
 | `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes | non |
-| `apps/web/src/ui/account.ts` | Écran de compte : connexion, inscription, réinitialisation | non |
-| `apps/web/src/net/auth.ts` | Appels d'authentification | non |
+| `apps/web/src/account/AccountApp.tsx` | Écran de compte : connexion, inscription, oubli, réinitialisation, Google | non |
+| `apps/web/src/account/mount.tsx` | Monte l'îlot de compte dans `#account-root` | non |
+| `apps/web/src/account/model.ts` | Parcours ↔ URL, messages de retour, refus rattachés à leur champ, indication de longueur | oui |
+| `apps/web/src/net/auth.ts` | Appels d'authentification et traduction des refus | non (sauf `authMessage()`, `redirectMessage()`) |
+| `apps/web/src/i18n/current.ts` | La langue courante et son dictionnaire, sans DOM | oui |
+| `apps/web/src/i18n/browser.ts` | Choix de langue (stockage, cookie, `<html lang>`) et remplissage du HTML statique (`data-i18n`) | non |
+| `apps/web/src/team/model.ts` | Le brouillon d'une équipe : emplacements, clic sur une case, échange, remplissage ; verdict délégué à `validateTeam()` | oui |
+| `apps/web/src/team/TeamBuilder.tsx` | Le constructeur d'équipe : emplacements, plateau, actions | non |
+| `apps/web/src/team/placement-canvas.ts` | Le plateau de placement en Canvas 2D : zones, pièces posées, survol, clic | non |
+| `apps/web/src/canvas/paint.ts` | Relief, cases et pièces en Canvas 2D, avec la géométrie du jeu | non |
+| `apps/web/src/prepare/model.ts` | Temps restant, envoi automatique, presets jouables, équipe préchargée | oui |
+| `apps/web/src/prepare/MatchFound.tsx` | La fenêtre « partie trouvée » | non |
+| `apps/web/src/prepare/Deployment.tsx` | L'écran de déploiement : annonce de l'adversaire, compte à rebours, constructeur, verrou | non |
+| `apps/web/src/prepare/Plates.tsx` | La plaque d'un joueur depuis sa `PlayerCard` | non |
+| `apps/web/src/prepare/clock.ts` | `useRemaining()`, le seul minuteur des écrans d'avant-partie | non |
+| `apps/web/src/prepare/mount.tsx` | Monte les deux îlots dans `#match-found-root` et `#deploy-root` | non |
+| `apps/web/src/teams/TeamsApp.tsx` | La liste des équipes préparées et leur éditeur | non |
+| `apps/web/src/teams/mount.tsx` | Monte l'îlot dans `#teams-root` | non |
+| `apps/web/profile/index.html` | Page de profil, troisième entrée Vite | — |
+| `apps/web/src/profile/main.tsx` | Point d'entrée du profil : monte `App` | non |
+| `apps/web/src/profile/App.tsx` | Compte, sécurité, sessions, suppression, parties et replay de son point de vue | non |
+| `apps/web/src/profile/api.ts` | Appels `/api/me/*` et routes de compte de Better Auth | non |
+| `apps/web/src/profile/model.ts` | Routes du profil, messages d'arrivée, délai de pseudo, liaison retirable, images du replay | oui |
 | `apps/web/src/scene/scene.ts` | Couches PixiJS et détection de changement | non |
 | `apps/web/src/scene/terrain.ts` | Géométrie d'une case | non |
 | `apps/web/src/scene/pieces.ts` | Silhouette d'une pièce | non |
@@ -125,6 +155,19 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/ui/palette.ts` | Passe le code couleur au CSS | non |
 | `apps/web/src/ui/console.ts` | Bandeau de partie : saisie de coups et comptes rendus | non |
 | `apps/web/src/ui/ui.css` | Mise en page des écrans — **aucune couleur en dur** | — |
+| `apps/web/admin/index.html` | Page du back-office, seconde entrée Vite | — |
+| `apps/web/src/admin/main.tsx` | Point d'entrée du back-office : monte `App` | non |
+| `apps/web/src/admin/App.tsx` | Racine : garde d'affichage, barre du haut, aiguillage des vues | non |
+| `apps/web/src/admin/views.tsx` | Vue d'ensemble, comptes, fiche, profil, liste des parties | non |
+| `apps/web/src/admin/MatchDetail.tsx` | Détail d'une partie et son rejeu | non |
+| `apps/web/src/admin/ReplayBoard.tsx` | Le canevas du rejeu, en composant React | non |
+| `apps/web/src/admin/actions.tsx` | Actions rapides d'un compte et leurs fenêtres | non |
+| `apps/web/src/admin/shared.tsx` | Pastilles d'état, résultat, table des parties | non |
+| `apps/web/src/admin/hooks.ts` | `useRoute()` et `useLoad()` | non |
+| `apps/web/src/admin/model.ts` | Routes du back-office et mise en mots des données | oui |
+| `apps/web/src/admin/api.ts` | Appels `/api/admin/*` et `/api/auth/admin/*` | non |
+| `apps/web/src/admin/replay.ts` | Rejeu : coups lus entre deux images, libellés, cadrage du plateau | oui |
+| `apps/web/src/admin/replay-canvas.ts` | Rejeu : le plateau dessiné en Canvas 2D, avec la géométrie du jeu | non |
 
 ---
 
@@ -309,15 +352,22 @@ Il n'existe **aucune partie locale**. À l'arrivée sur la page, le canevas est 
 c'est le formulaire de compte qui occupe l'écran ; le jeu commence quand le serveur assied
 le joueur, jamais avant (`docs/design.md` section 2).
 
-`flow.ts` est **pur** : il dit lequel des quatre écrans a lieu d'être, pas à quoi il
-ressemble.
+`flow.ts` est **pur** : il dit quel écran a lieu d'être, pas à quoi il ressemble.
 
 | Étape | Quand | Ce qu'on y voit |
 |---|---|---|
-| `auth` | Personne n'est connecté | Connexion, inscription, mot de passe oublié |
-| `menu` | Connecté | Partie rapide, créer une partie, rejoindre avec un code |
+| `auth` | Personne n'est connecté | L'îlot de compte : connexion, inscription, mot de passe oublié, réinitialisation |
+| `menu` | Connecté | Partie rapide, créer une partie, rejoindre avec un code, **équipes** |
+| `teams` | Entrée « Équipes » du menu | L'îlot des équipes préparées (`teams/`) |
 | `waiting` | Une demande est partie | Le code du salon, ou l'attente d'un adversaire |
+| `proposal` | File rapide : `proposal` reçu | La fenêtre « partie trouvée » par-dessus l'attente (`prepare/MatchFound.tsx`) |
+| `deploying` | Assis, `deployment` reçu | L'annonce de l'adversaire et le constructeur d'équipe (`prepare/Deployment.tsx`) |
 | `game` | Le serveur a répondu `welcome` + `view` | Le plateau et le bandeau de partie |
+
+Les transitions ajoutées : `proposed` n'ouvre la fenêtre que depuis une attente **rapide** ;
+`lapsed` remet en attente qui avait accepté (`requeued`), au menu les autres ; `deploying`
+vient de l'attente ou de la fenêtre, jamais d'une partie commencée (une reconnexion qui
+réannoncerait le déploiement n'en fait pas sortir) ; `teams` ne s'ouvre que depuis le menu.
 
 `advance(stage, event)` encode trois précautions qui ne se voient pas sur le schéma :
 
@@ -401,28 +451,87 @@ sens en ligne, et la bascule de point de vue est désactivée dans ce mode.
 
 ## Le compte
 
-`net/auth.ts` appelle `/api/auth/*`, `ui/account.ts` branche le formulaire. **Le jeton de
-session n'apparaît nulle part dans ce code** : il vit dans un cookie `HttpOnly`, que le
-navigateur joint seul et qu'aucun script de la page ne peut lire — un jeton lisible en
-JavaScript est un jeton exfiltrable.
+L'écran de compte est un **îlot React sur la charte** (`account/`), monté par
+`mountAccount()` dans `#account-root`, à l'intérieur de `#screen-auth` que `shell.ts` montre
+ou masque comme les autres écrans. C'est le premier écran du jeu à avoir migré sur
+`@occulis/ui` ; le menu, l'attente et la partie restent en DOM natif.
 
-Quatre parcours cohabitent dans le même formulaire, un seul visible à la fois : connexion,
-inscription, demande de réinitialisation, et choix d'un nouveau mot de passe au retour du
-lien reçu par courrier. Les trois premiers sont choisis par le joueur (les onglets, `Mode`),
-le quatrième s'impose quand l'URL porte un jeton — `resetTokenFrom()` reconnaît ce retour à
-`?reinitialiser=1&token=…`. Les champs inutiles au parcours affiché **disparaissent** au
-lieu d'être ignorés en silence : pas de mot de passe dans une demande de réinitialisation,
-pas de pseudo hors inscription. Un seul bouton d'envoi, dont l'action suit l'onglet, pour
-que la touche Entrée fasse exactement ce que le formulaire affiche.
+`net/auth.ts` appelle `/api/auth/*`. **Le jeton de session n'apparaît nulle part dans ce
+code** : il vit dans un cookie `HttpOnly`, que le navigateur joint seul et qu'aucun script de
+la page ne peut lire — un jeton lisible en JavaScript est un jeton exfiltrable.
+
+### Écrit pour les gestionnaires de mots de passe
+
+C'est par eux que passe un mot de passe solide, et l'ancien écran — un formulaire unique dont
+on masquait des champs selon un onglet — ne leur permettait pas de distinguer une connexion
+d'une inscription. Les règles :
+
+- **un `<form>` par parcours, chacun à son URL** : `/sign-in` (et `/`), `/sign-up`,
+  `/forgot-password`, `/reset-password` (`ROUTE_PATHS`, `routeOf()`, `pathOf()`). On passe
+  de l'un à l'autre par `history.pushState`, sans recharger ; le Worker sert la page du jeu
+  sur chacune ;
+- des `autocomplete` exacts : l'adresse en `username` (avec `type="email"`), le mot de passe
+  en `current-password` à la connexion, `new-password` ailleurs, avec `minlength`,
+  `maxlength` et `passwordrules` (lu par Safari et 1Password pour générer un mot de passe
+  conforme) ; le pseudo en `nickname`, **après** l'adresse, pour qu'il ne soit pas pris pour
+  l'identifiant ;
+- un vrai `<form method="post" action="/api/auth/…">`, intercepté en JS, puis **une
+  navigation au succès** (`history.pushState("/")`) : c'est à elle que les gestionnaires
+  reconnaissent une connexion réussie et proposent d'enregistrer ;
+- la réinitialisation porte un champ `username` prérempli avec l'adresse saisie à la demande
+  (`rememberResetEmail()`, en `sessionStorage`, propre à l'onglet) : sans lui, le
+  gestionnaire ne saurait pas à quelle entrée rattacher le nouveau mot de passe ;
+- l'adresse saisie suit d'un parcours à l'autre, et un bouton (`PasswordField`) affiche le
+  mot de passe sans jamais changer le type du champ tant qu'on ne le demande pas.
+
+Un refus du serveur s'affiche **sous le champ qu'il concerne** (`fieldOf()` : `HANDLE_*` sous
+le pseudo, `PASSWORD_*` sous le mot de passe, adresse prise sous l'adresse), qui reçoit le
+focus ; les autres en tête du formulaire (`FormMessage`). « Adresse ou mot de passe
+incorrect » n'est rattaché à aucun champ : le serveur ne dit pas lequel.
+
+**Google** : le bouton « Continuer avec Google » n'apparaît que si `/api/auth/me` liste
+`google` dans `providers`. `signInWithGoogle()` demande l'adresse de consentement au serveur
+et y part dans la page même. Un compte créé par ce chemin arrive sur `/profile/?welcome=1`,
+pour voir et changer le pseudo dérivé de son nom Google ; une erreur revient sur
+`/sign-in?error=…`.
+
+### Les retours par l'URL
+
+Le serveur ne parle au retour d'un lien ou de Google qu'en paramètres d'URL : `?verified=1`
+(adresse confirmée), `?deleted=1` (compte supprimé), `?error=…` (lien expiré, liaison
+refusée…), `?token=…` (réinitialisation). `main.ts` lit le parcours (`routeOf()`) et le
+message (`arrivalNotice()`) **avant** de retirer ces paramètres (`cleanedSearch()`,
+`history.replaceState`) : le jeton de réinitialisation ne doit rester ni dans la barre
+d'adresse ni dans l'historique. Le message s'affiche dans l'îlot si personne n'est connecté,
+sous le menu sinon. Un lien expiré propose d'en redemander un (`retry`).
 
 **L'état affiché n'est jamais déduit de ce qu'on vient d'envoyer** : après chaque action,
-`whoAmI()` redemande l'identité au serveur. Lui seul sait si l'adresse est vérifiée, et
-c'est ce qui ouvre ou ferme le jeu en ligne.
+`refresh()` (`main.ts`) redemande l'identité au serveur. Lui seul sait si l'adresse est
+vérifiée, et c'est ce qui ouvre ou ferme le jeu en ligne. Connecté sur une URL de parcours,
+la page revient à `/`.
+
+### Le menu
+
+**Pendant une usurpation** (`/api/auth/me` rend `impersonating: true`), un bandeau
+`#impersonation` reste affiché au-dessus de tous les écrans, partie comprise, avec le pseudo
+incarné et un bouton **Revenir à mon compte** : `stopImpersonating()` (`net/auth.ts`) rend sa
+session à l'administrateur, et la page repart vers `/admin/`. Jouer sous un nom d'emprunt ne
+doit jamais passer inaperçu.
+
+Le **coin du compte** (`#account-corner`), en haut à droite hors du panneau, affiche le
+pseudo et mène au profil : ce n'est pas un geste de jeu, il n'a pas sa place parmi les
+entrées du menu. `shell.ts` ne le montre **qu'au menu** — en attente il ferait quitter la
+file, en partie le siège. Le menu porte en pied un lien
+**Back-office** pour les administrateurs (`#menu-admin` : `/api/auth/me` rend `admin: true`,
+et `shell.setIdentity()` démasque le lien — le serveur revérifie le rôle à chaque appel), et
+**Se déconnecter**. Tant que l'adresse n'est pas vérifiée, **Renvoyer le message de
+vérification** (`#account-resend`) l'expédie à `identity.email`, l'adresse que rend
+`/api/auth/me` — et non plus un champ du formulaire de connexion, vide une fois connecté.
 
 Les trois entrées du menu restent désactivées tant que personne n'est connecté **ou tant
 que l'adresse n'est pas vérifiée** : la file répondrait 401 dans le premier cas, 403 dans
-le second. `describeIdentity()` dit laquelle des deux raisons s'applique — sans quoi des
-boutons désactivés n'auraient aucune explication à l'écran.
+le second. `describeIdentity()` (`ui/messages.ts`) dit laquelle des deux raisons s'applique —
+sans quoi des boutons désactivés n'auraient aucune explication à l'écran.
 
 ### La traduction des refus
 
@@ -431,9 +540,49 @@ message d'une bibliothèque change sans prévenir, son code est un contrat. Deux
 restent volontairement indiscernables, parce que le serveur les rend indiscernables :
 adresse inconnue et mot de passe faux d'un côté, adresse inscrite ou non à la demande de
 réinitialisation de l'autre. Les distinguer à l'écran annulerait la précaution serveur.
+Un 429 annonce la limitation de débit, sauf `HANDLE_COOLDOWN` (le délai de pseudo).
 
-`authMessage()` et `resetTokenFrom()` sont les deux seules parties décidantes du module,
-et les deux seules pures — d'où leurs tests.
+`redirectMessage()` traduit les erreurs portées par l'URL : en majuscules pour les liens de
+Better Auth (`INVALID_TOKEN`), en minuscules pour l'OAuth (`account_not_linked`,
+`access_denied`…). `account_not_linked` explique la règle de liaison : un compte dont
+l'adresse n'a jamais été confirmée ne se lie pas à Google, sans quoi inscrire une adresse
+d'avance suffirait à capter le futur compte Google de son propriétaire.
+
+## `profile/` — la page de profil
+
+Une **page à part**, `apps/web/profile/index.html`, servie sous `/profile/`, en React sur
+`@occulis/ui` comme le back-office, sans PixiJS ni classe propre. Elle charge `/api/me` ;
+un 401 affiche un lien vers `/sign-in`.
+
+| Vue | Fragment | Contenu |
+|---|---|---|
+| Compte | `#/` (et `#security`, l'ancre des courriers et de `/.well-known/change-password`) | Compte (pseudo, adresse), bilan, connexion et sécurité (mot de passe, Google), sessions, zone sensible |
+| Parties | `#/matches?offset=` | Ses parties, son camp, l'adversaire, le résultat de son point de vue |
+| Partie | `#/matches/<id>` | Le replay **de son point de vue** |
+
+- **Tout est en lecture d'abord** (`SettingRow`) : chaque réglage montre sa valeur et un
+  bouton (« Modifier », « Changer », « Définir »), qui déplie son éditeur dans la ligne
+  (`SettingEditor`). **Un seul éditeur ouvert à la fois** (`Editing`), Échap annule, le refus
+  du serveur reste dans l'éditeur, un succès le referme avec un message et relit le compte.
+  Le bouton du pseudo est grisé pendant le délai, dont la date s'affiche à sa place.
+- **Mot de passe** : l'éditeur est un vrai formulaire avec un champ `username` caché égal à
+  l'adresse, pour que le gestionnaire mette à jour la bonne entrée. Un compte Google sans
+  mot de passe reçoit à la place **Définir**, qui envoie le lien de réinitialisation après
+  confirmation.
+- **Google** : lier (`linkGoogle()`, retour sur `?linked=google#security`) ou retirer ; retirer
+  est grisé quand Google est la seule méthode de connexion (`canUnlink()`).
+- **Sessions** : la liste de `/api/me/sessions`, l'appareil courant marqué, chaque autre
+  fermable, ou toutes d'un geste.
+- **Suppression** : une fenêtre de confirmation, puis un lien par courrier ; rien n'est
+  supprimé avant son ouverture.
+- **Replay** : `asBoardFrames()` adapte les images du serveur au plateau rejoué du
+  back-office (`admin/ReplayBoard.tsx`, réutilisé tel quel), avec la seule ligne de vue de
+  son camp et le point de vue fixé sur lui.
+- **Pendant une usurpation**, un bandeau signale la lecture seule, aucun réglage n'a de
+  bouton d'édition et chaque geste est grisé — le serveur les refuse de toute façon.
+
+Comme pour le back-office, **la page ne décide d'aucun accès** : tout ce qu'elle grise, le
+serveur le refuse (`docs/technical/server.md`, « `me/` »).
 
 ## `net/` — la session en ligne
 
@@ -441,8 +590,8 @@ et les deux seules pures — d'où leurs tests.
 |---|---|
 | `session.ts` | **Pur.** Réduit `QueueServerMessage` et `ServerMessage` en un état affichable |
 | `backoff.ts` | **Pur.** Délai exponentiel borné avant la n-ième reconnexion |
-| `queue-channel.ts` | Ouvre le canal de la file — appariement, salon privé, entrée par code |
-| `match-channel.ts` | Ouvre le canal d'une partie et traduit l'état de session en appels |
+| `queue-channel.ts` | Ouvre le canal de la file — appariement, salon privé, entrée par code ; `accept()` / `decline()` répondent à la proposition en cours |
+| `match-channel.ts` | Ouvre le canal d'une partie et traduit l'état de session en appels ; `deploy()` envoie l'équipe |
 | `channel.ts` | Le WebSocket lui-même et sa reconnexion |
 
 **Une coupure n'est pas une fin de partie.** Le temps de réflexion est illimité
@@ -471,6 +620,17 @@ celui de la partie) et sur `room-fault` (ce code n'amènera jamais d'adversaire)
 Le `hello` étant renvoyé à chaque reconnexion, un hôte qui perd son socket **retrouve le
 code de son salon** plutôt qu'un nouveau : c'est le serveur qui le garantit, mais c'est le
 renvoi de l'intention qui le déclenche.
+
+**La file rapide passe par une proposition.** `session.ts` en tient deux phases de plus :
+`proposed` (identifiant, temps restant, qui a accepté) et `lapsed` (`requeued`).
+`queue-channel.ts` rend `onProposal` à chaque proposition et acceptation, `onLapsed` à la
+chute — et se referme si le joueur est sorti de la file.
+
+**Le déploiement est une phase de la session assise** : `deployment` en garde l'annonce
+(`DeploymentState`), `deployment-update` y met à jour les verrous, et la première `view`
+l'efface. `match-channel.ts` rend `onDeployment` tant qu'aucune vue n'est arrivée — à
+l'annonce, à chaque verrou, et à chaque reconnexion, le serveur réannonçant la phase au
+`hello`.
 
 Les URL sont **relatives** : le client est servi par le Worker lui-même, donc de même
 origine (`docs/architecture.md` section 4). Seule la future distribution Electron demandera
@@ -547,7 +707,104 @@ de `core`.
 
 ---
 
+## `i18n/` — la langue
+
+**Aucun texte affiché n'existe en français seul** : tous vivent dans `@occulis/i18n`
+(`packages/i18n`), en anglais — la langue par défaut et la langue source — et en français.
+Le dictionnaire français est typé sur la forme de l'anglais (`Messages`) : une clé oubliée,
+ajoutée ou un message dont les paramètres changent ne compile pas. Un message paramétré est
+une fonction (`m.game.outdated(4)`), jamais une chaîne à trous : pas d'interpolation à
+l'exécution, et les pluriels s'écrivent dans la fonction.
+
+- `i18n/current.ts` porte **la langue courante**, sans DOM : `messages()` rend son
+  dictionnaire, `setLocale()` la change et prévient les abonnés de `onLocaleChange()`. Les
+  modules purs (`ui/messages.ts`, `account/model.ts`, `profile/model.ts`, `admin/model.ts`,
+  `admin/replay.ts`, `net/auth.ts`) y lisent leurs phrases et restent testables — les tests
+  dont les attentes sont en français appellent `setLocale("fr")` en tête de fichier.
+- `i18n/browser.ts` choisit la langue au chargement (`initLocale()` : choix enregistré, puis
+  `navigator.languages`, puis l'anglais — `resolveLocale()`), l'enregistre au changement
+  (`chooseLocale()` : stockage local **et** cookie `occulis-locale`, que le serveur lit pour
+  ses courriers), tient `<html lang>` à jour, et remplit le HTML statique :
+  `translateDom()` donne son texte à chaque `data-i18n`, son indication à chaque
+  `data-i18n-placeholder`, son `aria-label` à chaque `data-i18n-label`.
+- Les composants React lisent la langue par `useMessages()` (`@occulis/ui`), que fixe
+  `UiRoot locale={…}`. Chaque page la passe : l'îlot de compte la reçoit en propriété
+  (`AccountAppProps.locale`), le profil et le back-office la tiennent dans un état et
+  offrent un `LocaleSwitch` dans leur barre du haut.
+- Dans la page du jeu, `#locale-switch` (en haut à gauche, hors partie) change la langue ;
+  `main.ts` réécrit alors tout ce qui est affiché — HTML statique, écran courant, identité,
+  îlot de compte. Un message déjà affiché (`notify`) garde sa langue d'origine.
+
+## `team/` — le constructeur d'équipe
+
+`team/model.ts` est **pur** : un `TeamDraft` est la liste des emplacements fixés par la
+composition du ruleset (`emptyDraft()` : maîtresse, trois à capacité, quatre pions, la
+maîtresse en main), chacun avec son type et sa case, et l'emplacement « en main ».
+
+| Fonction | Rôle |
+|---|---|
+| `emptyDraft()`, `fromEntries()` | Un brouillon vide, ou rempli depuis une équipe (preset, équipe de la carte) — chaque entrée prend le premier emplacement libre de son rôle |
+| `clickTile()` | Le clic sur une case : prendre une pièce posée ; poser la pièce en main sur une case de la zone, **en échangeant** avec celle qui s'y trouvait ; puis prendre en main le prochain emplacement vide |
+| `select()`, `setKind()`, `remove()`, `clear()`, `autoFill()` | Choisir un emplacement, changer de type **dans son rôle seulement**, reprendre, tout retirer, poser le reste sur les cases libres |
+| `toEntries()`, `isComplete()`, `placedCount()` | Ce qui part au serveur, et où l'on en est |
+| `verdict()` | `validateTeam()` de `core` sur le brouillon — **la validité n'est jamais redéduite ici**, comme `game/selection.ts` ne redéduit pas la légalité |
+
+`TeamBuilder.tsx` montre le brouillon : la liste des emplacements (`ChoiceList`, le type
+d'une pièce à capacité au choix parmi ceux de son rôle), et le plateau. Il ne tient aucun
+état — `draft` et `onChange` viennent de l'appelant, le déploiement ou les équipes.
+
+`placement-canvas.ts` dessine le plateau en Canvas 2D, comme le rejeu et avec les
+primitives de `canvas/paint.ts` : la page n'a pas encore de partie à confier à PixiJS, et
+le même plateau sert hors partie. La zone du joueur est dans la teinte de son camp, celle
+d'en face en pointillé dans la sienne, la pièce en main dans la teinte de la sélection — de
+l'information de partie, donc en couleur. Les pièces portent **l'initiale de leur type**,
+le seul endroit où elles se distinguent. Le camp B voit la carte retournée d'un demi-tour,
+pour que sa zone se présente comme celle du camp A. Le clic passe par `tileAt()`
+(`view/picking.ts`), ramené dans l'espace de la projection.
+
+## `prepare/` — de l'appariement au premier tour
+
+- **`MatchFound.tsx`** : la fenêtre « partie trouvée », un `Dialog` **non refermable**
+  (`dismissible={false}`) — ne pas répondre revient à refuser. Accepter la laisse ouverte
+  sur l'attente de l'autre ; « Refuser » envoie `decline`. Un compte à rebours
+  (`CountdownRing`) et un titre d'onglet clignotant signalent la partie à qui fait autre
+  chose.
+- **`Deployment.tsx`** : l'annonce (`Reveal`, deux `PlayerPlate` : pseudo, Elo, bilan, faits
+  exhibés par leur nom) entre en scène puis se range en bandeau au bout de 2,6 s ; dessous,
+  le constructeur d'équipe, le compte à rebours, le choix d'un preset et **Verrouiller**.
+  L'équipe préchargée est le preset par défaut s'il est jouable ici, sinon celle de la
+  carte (`initialTeam()`) — remplacée à l'arrivée des presets tant que le joueur n'a touché
+  à rien. **Juste avant l'échéance** (`AUTO_SEND_MS`, 1,5 s), un brouillon complet et
+  valide part de lui-même (`shouldAutoSend()`). Un refus du serveur s'affiche et rend la
+  main.
+- **Le temps** : le serveur envoie un temps restant et non une échéance ;
+  `remainingAt()` le décompte depuis l'arrivée du message sur l'horloge du client
+  (`performance.now()`), et `useRemaining()` le réévalue quatre fois par seconde. Les
+  durées totales de `constants.ts` ne servent qu'à proportionner les anneaux : les
+  échéances restent tenues par le serveur.
+
+`main.ts` tient les propriétés des trois îlots (`found`, `deploying`, `teamsOpen`) et les
+rend toutes par `showIslands()`, après chaque message comme après un changement de langue.
+
+## `teams/` — les équipes préparées
+
+L'entrée **Équipes** du menu ouvre l'îlot : la liste (par défaut, caduque, dupliquer,
+supprimer après confirmation, choisir celle par défaut) et l'éditeur, qui reprend
+`TeamBuilder` **dans la zone du camp A** de la carte courante — un preset s'y écrit, et se
+transpose au camp tenu au déploiement (`presetTeam()`). Les appels passent par
+`profile/api.ts` (`/api/me/presets`), les mêmes que lit le déploiement. Le serveur valide
+chaque équipe ; un preset que de nouvelles règles rendent caduc reste listé, grisé.
+
+## `canvas/paint.ts` — le plateau en Canvas 2D
+
+Les primitives communes au rejeu (`admin/replay-canvas.ts`) et au placement :
+`terrainDrawables()` (le relief avec l'atténuation en profondeur du jeu, et un crochet pour
+peindre une zone ou un survol **dans l'ordre du peintre**), `drawPiece()` (la silhouette de
+`scene/pieces.ts`), `strokeQuad()`, `fillQuad()`.
+
 ## `ui/messages.ts` — tous les textes
+
+Les phrases sont dans `@occulis/i18n` (domaine `game`) ; ce module choisit laquelle dire.
 
 | Fonction | Rôle |
 |---|---|
@@ -558,8 +815,11 @@ de `core`.
 | `describeOutcome()` | Fin de partie |
 | `describeTurn()` | Ligne d'état : tour, joueur au trait, point de vue |
 | `describeTile()` | Lecture d'une case désignée au clic |
+| `describeRejection()` | Un refus du serveur : règle de coup, d'équipe, siège ou phase |
+| `describeTeamError()` | Pourquoi une équipe n'est pas déployable |
 
-`describeTile()` rend `"1,6 · hauteur 0"`, avec `· infranchissable` le cas échéant. La
+`describeTile()` rend `"1,6 · height 0"` (`"1,6 · hauteur 0"` en français), avec
+`· impassable` le cas échéant. La
 coordonnée est écrite **sans parenthèses, sous la forme qu'attend la saisie** : recopiable
 telle quelle. Elle ne rapporte **que du terrain** — le relief est public
 (`docs/implementation-notes.md` point 10), mais annoncer la pièce présente divulguerait
@@ -570,8 +830,9 @@ une position hors LOS. Un test le verrouille.
 ## `ui/palette.ts` et `ui/console.ts`
 
 `applyPalette()` convertit les tokens entiers de `theme.ts` en propriétés personnalisées
-CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--panel`, `--accepted`,
-`--refused`), posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
+CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--panel`, `--accepted`, `--refused`)
+pour les écrans du jeu ; la conversion est `cssColor()` de `@occulis/ui/tokens`. Le back-office
+n'en dépend pas : il lit les `--occ-*` de la feuille de `@occulis/ui`, posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
 `ui.css`.**
 
 `ui/console.ts` porte le bandeau affiché **pendant une partie**, et rien d'autre : le
@@ -718,7 +979,10 @@ correspondance `kind` → forme appartient donc à ce module. Le roster n'étant
 
 ## `theme.ts` — le code couleur
 
-Code couleur acté dans `docs/design.md` section 8.1, **provisoire** :
+Code couleur acté dans `docs/design.md` section 8.1, **provisoire**. Les **valeurs** de couleur
+(`BACKGROUND`, camps, états) viennent de `@occulis/ui/tokens`, seule source du projet
+(`docs/technical/ui.md`) ; `theme.ts` les reprend et y ajoute ce qui n'appartient qu'au rendu
+PixiJS — métriques, alphas, épaisseurs :
 
 > Le blanc porte la géométrie, la couleur porte l'état de jeu.
 
@@ -742,10 +1006,11 @@ cette seule valeur.
 
 ### La règle est mécanique, pas conventionnelle
 
-`eslint.config.js` interdit tout littéral de couleur dans `apps/web/src/**/*.ts`, avec une
-exception unique pour `theme.ts`. Deux sélecteurs `no-restricted-syntax` couvrent
-`0xffffff` (par le `raw`) et `"#ffffff"` (par la valeur). Le CSS échappe à ESLint : c'est
-`ui/palette.ts` qui l'y soumet en pratique.
+`eslint.config.js` interdit tout littéral de couleur dans `apps/web/src/**` et
+`packages/ui/src/**` (`.ts` et `.tsx`), avec une exception unique : `packages/ui/src/tokens.ts`.
+Deux sélecteurs `no-restricted-syntax` couvrent `0xffffff` (par le `raw`) et `"#ffffff"` (par
+la valeur). Le CSS échappe à ESLint : `ui/palette.ts` y soumet les écrans du jeu, et les tests
+de `@occulis/ui` gardent sa feuille.
 
 ---
 
@@ -784,16 +1049,20 @@ n'y a rien à jouer.
 
 ## `index.html` et `ui/ui.css`
 
-Les écrans et la saisie sont **en HTML et non dessinés dans le canevas** : aucun design
-system n'est acté (`docs/design.md` 8.1), et des champs natifs donnent gratuitement le
-focus, la saisie, l'autocomplétion et l'accessibilité.
+Les écrans et la saisie sont **en HTML et non dessinés dans le canevas** : des champs natifs
+donnent gratuitement le focus, la saisie, l'autocomplétion et l'accessibilité. L'écran de
+compte est en React sur la charte ; les autres restent en DOM natif, habillés par
+`ui/ui.css`, dont les règles génériques (`button`, `form`) sont circonscrites pour ne pas
+atteindre les composants `occ-*`.
 
 | Élément | Rôle |
 |---|---|
 | `#app` | Hôte du canevas PixiJS — **masqué hors partie** |
 | `#shell` | Conteneur des écrans, transparent aux clics |
-| `#screen-auth` | Compte : onglets, champs, formulaire de réinitialisation, statut |
-| `#screen-menu` | Identité, partie rapide, création, entrée par code, déconnexion |
+| `#screen-auth` / `#account-root` | Compte : l'hôte de l'îlot React (`account/`) |
+| `#impersonation` | Bandeau de session d'emprunt, au-dessus de tous les écrans — masqué hors usurpation |
+| `#account-corner` | Pseudo et lien vers le profil, en haut à droite — montré au seul menu |
+| `#screen-menu` | Identité, renvoi de vérification, partie rapide, création, entrée par code, lien du back-office (`#menu-admin`, administrateurs seuls), déconnexion |
 | `#screen-waiting` | Le code du salon, sa copie, l'attente et son annulation |
 | `#console` | Le bandeau de partie |
 | `#status` | Ligne d'état : tour, camp au trait, camp du joueur |
@@ -809,7 +1078,85 @@ l'emporteraient sinon sur l'attribut, et un écran masqué resterait visible.
 
 ---
 
+## `admin/` — le back-office
+
+Une **page à part**, `apps/web/admin/index.html`, servie sous `/admin/`, **en React sur les
+composants de `@occulis/ui`** (`docs/technical/ui.md`). Elle ne charge ni PixiJS ni le moteur
+de jeu, et le jeu n'embarque rien d'elle. Elle n'a **ni classe ni feuille propres** : tout ce
+qui manquait à une vue (`Toolbar`, `Versus`…) a été ajouté à la charte, pas à la page.
+
+**La garde réelle est côté serveur.** `App` interroge `whoAmI()` et n'affiche rien à qui n'est
+pas connecté ou pas administrateur, mais ce n'est qu'une politesse : chaque appel d'`api.ts`
+est revérifié par `handleAdmin()` ou par le greffon Better Auth (`docs/technical/server.md`,
+« `admin/` »). Pendant une usurpation, la page n'affiche que le bouton de retour.
+
+**Le routage tient dans le fragment** (`#/users/<id>`, `#/matches?status=ongoing`…) : la page
+reste un seul fichier statique, et une fiche se partage par son lien. `parseRoute()` et
+`routeHash()` (`model.ts`) sont inverses l'un de l'autre, ce que les tests vérifient ;
+`useRoute()` (`hooks.ts`) suit `hashchange`. `App` rend la vue sous une clé égale à la route,
+ce qui rejoue l'animation d'entrée (`occ-enter`) à chaque navigation.
+
+**Les données passent par `useLoad(key, load)`** : une réponse arrivée après un changement de
+`key` est jetée — une navigation rapide n'affiche jamais la vue d'avant — et `reload()` relit
+depuis le serveur après chaque geste, pour que l'écran montre ce que la base contient et non ce
+qu'on vient d'envoyer.
+
+| Route | Vue (`views.tsx`, `MatchDetail.tsx`) | Contenu |
+|---|---|---|
+| `#/` | `Overview` | Les huit compteurs de `/api/admin/stats`, les dernières parties, les derniers inscrits |
+| `#/users?q=&offset=` | `UserList` | Recherche (par adresse si la saisie contient `@`, par pseudo sinon), table paginée avec les **actions rapides** de chaque compte, création en fenêtre modale |
+| `#/users/<id>` | `UserDetail` | `Hero` (insigne, pastilles, actions rapides), bandeau de suspension ; en deux colonnes : profil de jeu et dernières parties, puis édition (pseudo, adresse, mot de passe) et sessions |
+| `#/players/<id>` | `PlayerDetail` | Profil de jeu — y compris ceux **sans compte**, créés par `POST /api/matches` — et tout son historique |
+| `#/matches?status=&offset=` | `MatchList` | Toutes, en cours ou terminées (`Segmented` en liens), paginées |
+| `#/matches/<id>` | `MatchDetail` | `Versus`, `FactStrip` ; la liste des coups, et sous elle **le plateau rejoué** |
+
+**Les actions rapides** (`QuickActions`, `actions.tsx`) sont une rangée d'`IconButton`, la même
+dans la liste et sur la fiche : vérification de l'adresse, rôle, suspension ou levée,
+usurpation, fermeture des sessions, suppression. `quickActions()` (`model.ts`, pur et testé)
+dit lesquelles sont fermées et pourquoi — `disabledReason` met la raison dans l'infobulle. Sont
+fermés : se suspendre, se supprimer, s'usurper ou se retirer soi-même le rôle (le seul moyen de
+s'enfermer dehors), usurper un administrateur ou un compte suspendu. Les gestes lourds passent
+par un `Dialog` : suspension (durées en `ChipGroup`, `banDuration()` refuse une valeur
+illisible plutôt que de la lire comme définitive), suppression (le pseudo est à retaper),
+usurpation, nomination, création d'un compte. Un `Dialog` ne se ferme que si le serveur a
+accepté ; sur un refus il reste ouvert et le message s'affiche. `useAct()` annonce chaque
+résultat par `useToast()` et relit la vue ; `useGo()` change de route en gardant le message.
+
+**Le pseudo se change par `/api/admin/players/:id/handle`**, jamais par `update-user` : le
+serveur refuse ce dernier, qui n'écrirait qu'une des deux tables portant le pseudo.
+
+**L'usurpation** ouvre une session au nom du joueur et renvoie sur le jeu (`/`), où le bandeau
+`#impersonation` permet de revenir.
+
+### Le rejeu d'une partie
+
+`Replay` (`MatchDetail.tsx`) montre la `MoveList` — numéro, camp, `2,4 → 3,4`, chaque ligne
+dans la couleur du camp, comme l'historique de la maquette de partie — et sous elle une
+`Toolbar` (lecture, libellé de l'image, point de vue, rotation) puis le plateau. **Survoler** un
+coup montre la position qui le suit ; **cliquer** l'épingle, et le plateau y revient quand la
+souris quitte la liste. Les flèches du clavier parcourent la partie, la lecture la déroule. Le
+point de vue **tout / vue de A / vue de B** estompe les cases hors de la ligne de vue du camp
+choisi et passe en fantôme (`PIECES.alphaGhost`) les pièces adverses qu'il ne voyait pas.
+
+`ReplayBoard` enveloppe le canevas impératif de `replay-canvas.ts` : React ne lui transmet que
+l'image, le point de vue et le nombre de quarts de tour ; le dessin et ses animations restent
+hors du cycle de rendu, et `destroy()` cesse d'observer le canevas au démontage. Le plateau est
+dessiné en **Canvas 2D**, pas en PixiJS, mais avec la géométrie du jeu à l'identique —
+`view/iso.ts` pour la projection et l'ordre du peintre (relief et pièces dans une seule
+liste), `view/camera.ts` pour le quart de tour amorti, `view/animation.ts` pour le glissement
+des pièces, `theme.ts` pour les métriques et les couleurs — et la carte vient du registre de
+`core` (`boardForScenario`). Le dernier coup est marqué : départ en pointillé, trajet dans la
+couleur du camp, arrivée dans la teinte de la sélection. `fitScale()` (`replay.ts`) calcule une
+échelle qui tient **aux quatre quarts de tour**, pour que le plateau ne change pas de taille en
+tournant. Les positions viennent du serveur (`frames`) : le client ne rejoue rien, il n'a pas
+les rulesets versionnés.
+
 ## `vite.config.ts` — le service des maquettes
+
+**Trois pages d'entrée** (`PAGES`, `build.rollupOptions.input`) : `index.html`, le jeu,
+`admin/index.html`, le back-office, et `profil/index.html`, le profil. `pnpm dev` sert les
+deux dernières sous `/admin/` et `/profile/` sans configuration de plus, et son repli SPA
+sert le jeu sur les URL de parcours de compte.
 
 Les maquettes d'écrans de [`docs/mockups/`](../mockups/README.md) sont exposées sous
 `/mockups`. Elles restent de la documentation : le client ne les importe jamais, et elles
@@ -881,10 +1228,20 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
     `production` et ne copie rien ; seul le mode `mockups` embarque `docs/mockups/`. Les
     servir inconditionnellement mettrait la documentation de conception dans le site
     déployé, et demain dans le binaire Electron distribué.
+17. **Le back-office et le profil ne décident d'aucun accès.** Masquer un bouton n'est pas une garde :
+    toute permission se vérifie côté serveur, et la page se contente d'afficher ce que les
+    routes d'administration acceptent de lui rendre.
+18. **Le back-office, le profil et l'îlot de compte n'ont ni classe ni couleur propres.**
+    Ce qui manque à une vue s'ajoute à `@occulis/ui`, pour que la charte synchronisée vers
+    Claude Design reste celle du produit.
+19. **Un parcours de compte = un formulaire = une URL.** Fusionner deux parcours dans un
+    formulaire, ou retirer un `autocomplete`, rend l'écran illisible aux gestionnaires de
+    mots de passe.
+20. **Le jeton de réinitialisation est retiré de l'URL dès sa lecture.**
 
 ## Tests
 
-90 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+163 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
@@ -892,16 +1249,22 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/view/camera.test.ts` | Le point sous le curseur reste immobile au zoom, bornes d'échelle, convergence exacte de l'aimantation |
 | `apps/web/src/view/picking.test.ts` | Chaque case retrouvée depuis son centre à plusieurs angles et échelles, priorité au relief au premier plan, désignation par la falaise |
 | `apps/web/src/view/animation.test.ts` | Hauteurs relevées au départ, durée croissante mais bornée, interpolation conjointe position/hauteur, progression monotone, terminaison |
-| `apps/web/src/ui/flow.test.ts` | Départ sur le formulaire, menu ouvert à la connexion, retour au formulaire à la déconnexion **même en partie**, identité reconfirmée sans effet, code affiché dans l'attente, `hosting` en retard ignoré |
+| `apps/web/src/ui/flow.test.ts` | Départ sur le formulaire, menu ouvert à la connexion, retour au formulaire à la déconnexion **même en partie**, identité reconfirmée sans effet, code affiché dans l'attente, `hosting` en retard ignoré, **fenêtre d'acceptation ouverte depuis la seule attente rapide**, retour en attente ou au menu à sa chute, déploiement avant la partie et jamais après, équipes depuis le menu |
 | `apps/web/src/game/selection.test.ts` | **Toute destination affichée est applicable par `core`**, exclusion des cases occupées, frappe sur place, machine à états complète de `resolveClick` |
 | `apps/web/src/ui/command.test.ts` | Grammaire complète et résolution coordonnée → pièce |
 | `apps/web/src/ui/messages.test.ts` | `describeTile()`, dont l'absence de fuite d'information sur les pièces |
 | `apps/web/src/game/hypothesis.test.ts` | L'hypothèse ne contient que le visible et reporte la fin de partie annoncée par la vue |
 | `apps/web/src/game/online-match.test.ts` | **`play()` n'écrit rien** — ni position, ni trait —, n'envoie pas un coup refusé localement, laisse rejouer après un refus, et n'avance qu'à réception de la vue |
 | `apps/web/src/game/movement-diff.test.ts` | Le déplacement lu entre deux vues, y compris celui de l'adversaire ; une pièce qui entre ou sort de la LOS n'est pas animée |
-| `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, code de salon retenu, code refusé sans siège, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré |
+| `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, code de salon retenu, code refusé sans siège, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré, **déploiement annoncé puis verrous suivis, effacé à la première vue**, proposition ouverte, acceptations suivies, chute rapportée |
 | `apps/web/src/net/backoff.test.ts` | Croissance exponentielle, plafond, robustesse à une tentative absurde |
-| `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut, lecture du jeton de réinitialisation dans l'URL |
+| `apps/web/src/admin/model.test.ts` | Routes du back-office lues et réécrites à l'identique, fiche rangée sous sa liste, résultat nommé par le siège, coups, dates ISO et millisecondes, pagination, **durée de suspension illisible refusée plutôt que lue comme définitive**, actions rapides fermées sur soi-même, sur un administrateur et sur un compte suspendu, initiales, taux de victoire, résumé du navigateur d'une session |
+| `apps/web/src/admin/replay.test.ts` | Pièce déplacée retrouvée entre deux images et elle seule, coup écrit comme l'historique de la maquette, libellé d'image avec camp et joueur, navigation bornée, **plateau centré et contenu dans son cadre aux quatre quarts de tour** |
+| `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, compte suspendu, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut et distinguée du délai de pseudo, retours de Google et des liens expirés, mot de passe ayant fuité |
+| `apps/web/src/account/model.test.ts` | Parcours ↔ URL dans les deux sens, connexion par défaut, jeton lu, **jeton et erreurs retirés de l'URL**, adresse confirmée, compte supprimé, lien expiré du bon type, refus de liaison Google expliqué, **refus rattaché au bon champ, jamais pour des identifiants faux**, indication de longueur, **anciens noms de paramètres encore reconnus** |
+| `apps/web/src/team/model.test.ts` | Emplacements de la composition, pose dans la zone seulement, **reprise puis échange de deux pièces**, type changé dans son rôle seulement, brouillon rempli depuis une équipe et rendu à l'identique, **verdict de la règle de `core`**, remplissage, retrait |
+| `apps/web/src/prepare/model.test.ts` | Décompte sur l'horloge du client, **envoi automatique d'un seul brouillon valide juste avant l'échéance**, preset par défaut transposé au camp tenu, repli sur l'équipe de la carte |
+| `apps/web/src/profile/model.test.ts` | Routes du profil dans les deux sens, ancre de sécurité, **identifiant de partie suspect refusé**, messages d'arrivée, délai de pseudo, **dernière méthode de connexion non retirable**, résultat de son point de vue, **ligne de vue de son seul camp prêtée au plateau**, ancienneté d'une session |
 
 ## Non implémenté
 

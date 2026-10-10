@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  breachedPassword,
   MIN_PASSWORD_LENGTH,
   PBKDF2_PARAMETERS,
   hashPassword,
@@ -83,5 +84,34 @@ describe("hashPassword / verifyPassword", () => {
 
   it("exige un mot de passe d'au moins dix caractères", () => {
     expect(MIN_PASSWORD_LENGTH).toBe(10);
+  });
+});
+
+describe("mots de passe ayant fuité", () => {
+  // SHA-1("password") = 5BAA61E4C9B93F3F0682250B6CF8331B7EE68FD8
+  const range = (body: string, status = 200): typeof fetch =>
+    (async (input: RequestInfo | URL) => {
+      expect(String(input)).toBe("https://api.pwnedpasswords.com/range/5BAA6");
+      return new Response(body, { status });
+    }) as typeof fetch;
+
+  it("n'envoie que le préfixe et reconnaît le suffixe", async () => {
+    expect(await breachedPassword("password", range("0018A45C4D1DEF81644B54AB7F969B88D65:1\r\n1E4C9B93F3F0682250B6CF8331B7EE68FD8:9545824"))).toBe(true);
+  });
+
+  it("ignore les leurres à compte nul", async () => {
+    expect(await breachedPassword("password", range("1E4C9B93F3F0682250B6CF8331B7EE68FD8:0"))).toBe(false);
+  });
+
+  it("rend faux quand le suffixe est absent", async () => {
+    expect(await breachedPassword("password", range("0018A45C4D1DEF81644B54AB7F969B88D65:3"))).toBe(false);
+  });
+
+  it("ne tranche pas quand le service est indisponible", async () => {
+    expect(await breachedPassword("password", range("", 503))).toBeUndefined();
+    const failing = (async () => {
+      throw new Error("réseau");
+    }) as typeof fetch;
+    expect(await breachedPassword("password", failing)).toBeUndefined();
   });
 });

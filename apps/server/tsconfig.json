@@ -6,6 +6,11 @@
       "@cloudflare/vitest-pool-workers"
     ],
     "noEmit": true,
+    // Hérité de la base, sans objet ici puisque rien n'est émis — et nuisible : le type
+    // inféré de `buildAuth` cite les types internes de zod, qu'aucune déclaration ne
+    // saurait nommer depuis ce paquet (TS2742) dès qu'un greffon y entre.
+    "declaration": false,
+    "declarationMap": false,
     "moduleResolution": "bundler",
     "module": "esnext"
   },

@@ -1,0 +1,75 @@
+{
+  "projectId": "2ecb397f-2003-4c45-aaef-5a5842d2265a",
+  "pkg": "@occulis/ui",
+  "globalName": "OcculisUI",
+  "shape": "package",
+  "buildCmd": "pnpm --filter @occulis/ui build",
+  "cssEntry": "dist/styles.css",
+  "provider": {
+    "component": "UiRoot"
+  },
+  "dtsPropsFor": {
+    "Button": "/** `default` : au trait discret. `primary` : la confirmation, trait franc. `danger` : le geste destructeur, teinte des refus. `ghost` : sans cadre, pour « Annuler ». Aucun bouton n'est plein. */\n  variant?: \"default\" | \"primary\" | \"danger\" | \"ghost\";\n  size?: \"sm\" | \"md\";\n  /** Une icône avant le libellé. */\n  icon?: \"eye\" | \"mail\" | \"shield\" | \"ban\" | \"unban\" | \"impersonate\" | \"logout\" | \"trash\" | \"key\" | \"pencil\" | \"plus\" | \"close\" | \"search\" | \"copy\" | \"previous\" | \"next\" | \"first\" | \"last\" | \"play\" | \"pause\" | \"rotateLeft\" | \"rotateRight\" | \"cube\";\n  type?: \"button\" | \"submit\" | \"reset\";\n  disabled?: boolean;\n  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;\n  title?: string;\n  className?: string;\n  children?: React.ReactNode;",
+    "IconButton": "icon: \"eye\" | \"mail\" | \"shield\" | \"ban\" | \"unban\" | \"impersonate\" | \"logout\" | \"trash\" | \"key\" | \"pencil\" | \"plus\" | \"close\" | \"search\" | \"copy\" | \"previous\" | \"next\" | \"first\" | \"last\" | \"play\" | \"pause\" | \"rotateLeft\" | \"rotateRight\" | \"cube\";\n  /** Le libellé accessible, montré en infobulle au survol. Obligatoire : une icône seule ne dit rien. */\n  label: string;\n  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;\n  /** Le geste est destructeur : la teinte des refus au survol. */\n  danger?: boolean;\n  /** Rend le bouton inactif et remplace l'infobulle par la raison. Préférer ceci à `disabled` seul. */\n  disabledReason?: string;\n  disabled?: boolean;\n  /** Ancre l'infobulle à droite quand le bouton touche le bord droit d'un conteneur. */\n  tipAlign?: \"center\" | \"end\";\n  type?: \"button\" | \"submit\";\n  className?: string;",
+    "TextField": "/** Le libellé, au-dessus du champ, en minuscules estompées. */\n  label: string;\n  /** Une précision sous le champ. */\n  hint?: React.ReactNode;\n  type?: \"text\" | \"email\" | \"password\" | \"search\" | \"number\";\n  value?: string;\n  defaultValue?: string;\n  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;\n  placeholder?: string;\n  name?: string;\n  autoComplete?: string;\n  required?: boolean;\n  disabled?: boolean;\n  className?: string;",
+    "SelectField": "label: string;\n  options: readonly { value: string; label: string }[];\n  value?: string;\n  defaultValue?: string;\n  onChange?: (event: React.ChangeEvent<HTMLSelectElement>) => void;\n  name?: string;\n  disabled?: boolean;\n  className?: string;",
+    "Icon": "/** Le nom de l'icône. */\n  name: \"eye\" | \"mail\" | \"shield\" | \"ban\" | \"unban\" | \"impersonate\" | \"logout\" | \"trash\" | \"key\" | \"pencil\" | \"plus\" | \"close\" | \"search\" | \"copy\" | \"previous\" | \"next\" | \"first\" | \"last\" | \"play\" | \"pause\" | \"rotateLeft\" | \"rotateRight\" | \"cube\";\n  /** Côté en pixels. 16 par défaut, la taille des boutons à icône. */\n  size?: number;\n  className?: string;"
+  },
+  "overrides": {
+    "Dialog": {
+      "cardMode": "single",
+      "viewport": "720x520"
+    },
+    "TopBar": {
+      "cardMode": "column"
+    },
+    "Table": {
+      "cardMode": "column"
+    },
+    "StatTileGrid": {
+      "cardMode": "column"
+    },
+    "FactStrip": {
+      "cardMode": "column"
+    },
+    "Toolbar": {
+      "cardMode": "column"
+    },
+    "ToolbarText": {
+      "cardMode": "column"
+    },
+    "CardGrid": {
+      "cardMode": "column"
+    },
+    "CardColumn": {
+      "cardMode": "column"
+    },
+    "PageHead": {
+      "cardMode": "column"
+    },
+    "MoveList": {
+      "cardMode": "column"
+    },
+    "Banner": {
+      "cardMode": "column"
+    },
+    "Versus": {
+      "cardMode": "column"
+    },
+    "Hero": {
+      "cardMode": "column"
+    },
+    "Icon": {
+      "cardMode": "column"
+    },
+    "InlineEdit": {
+      "cardMode": "column"
+    },
+    "ToastStack": {
+      "cardMode": "single",
+      "viewport": "640x220"
+    }
+  },
+  "docsDir": "../../.design-sync/docs",
+  "readmeHeader": ".design-sync/conventions.md"
+}

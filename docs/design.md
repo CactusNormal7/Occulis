@@ -10,7 +10,7 @@ Nom du projet : Occulis (voir section 8 — nom retenu avec réserve documentée
 
 ## 2. Piliers de design (non négociables, validés)
 
-- Compétitif 1v1 direct, pas de leaderboard, pas de local multiplayer.
+- Compétitif 1v1 direct, pas de leaderboard, pas de local multiplayer. (Un Elo existe — départ 1200, K = 32, parties de la file rapide seulement — pour situer un adversaire à l'annonce de la partie ; aucun classement n'en est tiré.)
 - Info et calcul plutôt que réflexes : tour par tour alterné, temps de réflexion illimité pour l'instant. Ce n'est PAS un jeu en temps réel malgré une confusion de vocabulaire en cours de discussion (voir section 6, itération sur le tour).
 - Peu de règles, profondeur émergente — esprit échecs plutôt que tactics-RPG à kits de pouvoirs complexes. Chaque ajout de mécanique doit être pesé contre ce principe.
 - Différenciation des pièces par capacité/mouvement, jamais par robustesse (pas de PV).
@@ -95,7 +95,8 @@ Un seul déplacement/action par pièce par tour reste la règle de base actée, 
 
 - Phase de déploiement : chaque joueur place ses pièces sur des cases prédéfinies avant le début de la partie.
 - Le déploiement suit la règle générale de LOS : si les zones de déploiement des deux joueurs n'ont pas de ligne de vue mutuelle au départ (probable par design de carte), le déploiement est de facto caché à l'adversaire — pas de mécanique de dissimulation dédiée, ça découle naturellement du système de LOS/FOW déjà en place.
-- Point ouvert : les cases de déploiement sont-elles fixes et uniques (zéro décision, comme aux échecs), ou un choix parmi plusieurs emplacements possibles au sein d'une zone (vraie micro-décision stratégique) ? Non tranché.
+- **Tranché (porteur du projet) : un choix libre au sein d'une zone.** Chaque carte définit une zone de déploiement par camp ; chaque joueur y pose librement ses pièces, dans un temps limité (90 s — à l'échéance, son placement s'il est complet, sinon celui par défaut de la carte). Le déploiement des deux joueurs est simultané et caché par la seule LOS.
+- **Composition d'équipe (porteur du projet) :** une pièce maîtresse, trois pièces à capacité, quatre pièces de base (« pions »). Les quotas sont portés par le ruleset, donc versionnés par partie. Les types de pièces eux-mêmes restent à définir (point ouvert 12) : il n'existe aujourd'hui qu'une pièce à capacité, l'éclaireur, que l'on peut donc prendre trois fois.
 - Point ouvert, à noter pour le level design futur : chaque carte doit décider consciemment si les zones de déploiement des deux joueurs ont LOS mutuelle ou non — c'est un paramètre de conception de carte, pas une règle générale.
 - Roi (pièce maîtresse) : gardé simple pour l'instant (mouvement/règles standards, pas de spécificité), avec possibilité d'évolution plus tard.
 - Fin de partie : abandon possible, et égalité/nulle prévue "de la même manière qu'aux échecs, plus aucun coup possible sans attaque à part entière" — interprété comme un pat classique (aucun coup légal du tout, ni déplacement ni attaque). Point explicitement reporté par le porteur du projet : aucune décision prise sur une éventuelle règle anti-blocage/anti-répétition (équivalent de la règle des 50 coups aux échecs), pour éviter des parties qui tournent en rond sans jamais qu'aucune pièce maîtresse ne soit menacée.
@@ -161,7 +162,8 @@ ne soit pas la seule trace d'une décision de DA.
   partie (camps, et plus tard sélection, coups légaux, menace). Conséquence directe : un
   trait coloré signifie toujours quelque chose. La contrainte est verrouillée
   mécaniquement — une règle ESLint interdit toute valeur de couleur hors de
-  `apps/web/src/theme.ts`, seul détenteur du code couleur.
+  `packages/ui/src/tokens.ts`, seul détenteur du code couleur, que le rendu PixiJS
+  (`apps/web/src/theme.ts`) et la charte d'interface (`@occulis/ui`) partagent.
 - **Rendu filaire par défaut, sans remplissage.** Les faces des cases ne sont pas remplies ;
   seule la case survolée reçoit un aplat blanc de faible opacité. En l'absence de surfaces
   opaques, le volume est restitué par une atténuation des traits en profondeur. Le
@@ -220,7 +222,7 @@ Historique de la recherche de nom : plusieurs pistes explorées et écartées co
 2. Une attaque à distance déclarée consomme-t-elle tout le tour de la pièce, ou est-elle combinable avec un déplacement le même tour ?
 3. LOS au moment de la déclaration vs au moment de la résolution d'une attaque à distance différée.
 4. ~~Règle anti-blocage/anti-répétition~~ — tranché en section 7.2 : triple répétition **et** compteur de coups sans capture, les deux automatiques. Seul le seuil du compteur reste à calibrer, ce qui suppose un roster. **Suspendu à l'implémentation** avec 7.1.
-5. Cases de déploiement : setup unique et fixe, ou choix parmi plusieurs emplacements ?
+5. ~~Cases de déploiement : setup unique et fixe, ou choix parmi plusieurs emplacements ?~~ — tranché en section 7 : choix libre dans une zone par camp, définie par la carte.
 
 ### Verticalité / hauteur
 
@@ -236,7 +238,7 @@ Historique de la recherche de nom : plusieurs pistes explorées et écartées co
 
 ### Cadre général
 
-12. Aucun roster concret de pièces n'a encore été esquissé — seul le principe directeur (différenciation par capacité/mouvement, pas par robustesse) a été acté.
+12. Aucun roster concret de pièces n'a encore été esquissé — seul le principe directeur (différenciation par capacité/mouvement, pas par robustesse) a été acté. **Partiellement tranché** : la composition d'une équipe (1 pièce maîtresse, 3 pièces à capacité, 4 pions) est actée ; les types de pièces à capacité, et les chiffres de toutes, ne le sont pas.
 13. **Rouvert — fin de partie.** L'échec et mat (7.1) et les nulles (7.2) sont retirés du moteur, et la capture (3.1) avec eux : seul l'abandon termine une partie aujourd'hui. Reste à décider dans quel ordre les remettre, et sous quelle forme la règle de mat doit revenir pour rester jouable avec de vraies portées de pièces — c'est-à-dire, très probablement, une fois un roster esquissé (point 12).
 
 Document généré à partir d'une session de brainstorming critique. Objectif : servir de point de reprise fidèle pour la suite du développement (design detaillé, puis implémentation) sans perdre le fil des décisions déjà prises ni revalider des pistes déjà explorées et écartées.

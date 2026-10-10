@@ -1,8 +1,9 @@
-import { SELF } from "cloudflare:test";
+import { SELF, env, runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type { QueueIntent, QueueServerMessage } from "@occulis/protocol";
 import { PROTOCOL_VERSION } from "@occulis/protocol";
-import { signUp, unique } from "./auth/auth.integration.test.js";
+import { signUp, unique } from "./test-helpers.js";
+import { ACCEPT_MS } from "./proposals.js";
 
 /**
  * L'appariement dans workerd. Le mono-threading du Durable Object global est ce qui
@@ -49,7 +50,14 @@ async function connect(cookie: string) {
     socket.send(JSON.stringify({ kind: "hello", protocol: PROTOCOL_VERSION, intent }));
   };
 
-  return { socket, hello, awaiting };
+  /** Répond à la proposition reçue. */
+  const answer = async (kind: "accept" | "decline"): Promise<void> => {
+    const proposal = await awaiting("proposal");
+    if (proposal.kind !== "proposal") throw new Error("aucune proposition");
+    socket.send(JSON.stringify({ kind, proposalId: proposal.proposalId }));
+  };
+
+  return { socket, hello, awaiting, answer };
 }
 
 describe("QueueDO dans workerd", () => {
@@ -58,6 +66,16 @@ describe("QueueDO dans workerd", () => {
     const boris = await connect(await signUp(unique("boris")));
     anne.hello({ kind: "quick" });
     boris.hello({ kind: "quick" });
+
+    // Rien n'est créé avant que les deux aient accepté.
+    const proposal = await anne.awaiting("proposal");
+    if (proposal.kind !== "proposal") throw new Error("aucune proposition");
+    expect(proposal.remainingMs).toBeGreaterThan(0);
+    expect(proposal.remainingMs).toBeLessThanOrEqual(ACCEPT_MS);
+    await anne.answer("accept");
+    const update = await boris.awaiting("proposal-update");
+    expect(update.kind === "proposal-update" && update.accepted).toEqual({ self: false, opponent: true });
+    await boris.answer("accept");
 
     const [forAnne, forBoris] = await Promise.all([
       anne.awaiting("matched"),
@@ -77,6 +95,66 @@ describe("QueueDO dans workerd", () => {
     expect(joined.status).toBe(101);
     joined.webSocket?.accept();
     joined.webSocket?.close();
+
+    anne.socket.close();
+    boris.socket.close();
+  });
+
+  it("remet en tête de file qui avait accepté, et sort qui a refusé", async () => {
+    const anne = await connect(await signUp(unique("anne")));
+    const boris = await connect(await signUp(unique("boris")));
+    anne.hello({ kind: "quick" });
+    boris.hello({ kind: "quick" });
+
+    await anne.answer("accept");
+    await boris.answer("decline");
+
+    const [forAnne, forBoris] = await Promise.all([anne.awaiting("proposal-lapsed"), boris.awaiting("proposal-lapsed")]);
+    expect(forAnne).toEqual({ kind: "proposal-lapsed", requeued: true });
+    expect(forBoris).toEqual({ kind: "proposal-lapsed", requeued: false });
+
+    // Anne attend de nouveau, en tête : le prochain venu lui est proposé.
+    const carla = await connect(await signUp(unique("carla")));
+    carla.hello({ kind: "quick" });
+    expect((await carla.awaiting("proposal")).kind).toBe("proposal");
+
+    anne.socket.close();
+    boris.socket.close();
+    carla.socket.close();
+  });
+
+  it("fait tomber une proposition quand une connexion se ferme", async () => {
+    const anne = await connect(await signUp(unique("anne")));
+    const boris = await connect(await signUp(unique("boris")));
+    anne.hello({ kind: "quick" });
+    boris.hello({ kind: "quick" });
+
+    await anne.answer("accept");
+    await boris.awaiting("proposal");
+    boris.socket.close();
+
+    expect(await anne.awaiting("proposal-lapsed")).toEqual({ kind: "proposal-lapsed", requeued: true });
+    anne.socket.close();
+  });
+
+  it("sort de la file, à l'échéance, qui n'a pas répondu", async () => {
+    const anne = await connect(await signUp(unique("anne")));
+    const boris = await connect(await signUp(unique("boris")));
+    anne.hello({ kind: "quick" });
+    boris.hello({ kind: "quick" });
+    await anne.answer("accept");
+    await boris.awaiting("proposal");
+
+    // Le temps ne s'avance pas dans workerd : on avance l'échéance elle-même.
+    const queue = env.QUEUE.get(env.QUEUE.idFromName("global"));
+    await runInDurableObject(queue, async (_instance, state) => {
+      const proposals = (await state.storage.get<{ deadline: number }[]>("proposals")) ?? [];
+      await state.storage.put("proposals", proposals.map((proposal) => ({ ...proposal, deadline: 0 })));
+    });
+    expect(await runDurableObjectAlarm(queue)).toBe(true);
+
+    expect(await anne.awaiting("proposal-lapsed")).toEqual({ kind: "proposal-lapsed", requeued: true });
+    expect(await boris.awaiting("proposal-lapsed")).toEqual({ kind: "proposal-lapsed", requeued: false });
 
     anne.socket.close();
     boris.socket.close();

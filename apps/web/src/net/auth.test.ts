@@ -1,8 +1,13 @@
+import { setLocale } from "../i18n/current.js";
 import { describe, expect, it } from "vitest";
-import { authMessage, resetTokenFrom } from "./auth.js";
+import { authMessage, redirectMessage } from "./auth.js";
+
+// Les phrases attendues ici sont les françaises ; la forme des deux dictionnaires est
+// éprouvée par `@occulis/i18n`, et l'anglais y reste la langue par défaut.
+setLocale("fr");
 
 /**
- * Les deux seules parties décidantes de `net/auth.ts` : le reste n'est que des appels
+ * Les seules parties décidantes de `net/auth.ts` : le reste n'est que des appels
  * `fetch`. Elles sont pures, donc éprouvables sans serveur.
  */
 describe("traduction des refus", () => {
@@ -15,7 +20,11 @@ describe("traduction des refus", () => {
   it("dit la même chose pour une adresse inconnue et un mot de passe faux", () => {
     // Le serveur ne les distingue pas ; l'interface ne doit pas les distinguer non plus.
     const message = authMessage(401, { code: "INVALID_EMAIL_OR_PASSWORD" });
-    expect(message).toBe("Identifiants invalides.");
+    expect(message).toBe("Adresse ou mot de passe incorrect.");
+  });
+
+  it("annonce un compte suspendu par le back-office", () => {
+    expect(authMessage(403, { code: "BANNED_USER" })).toBe("Ce compte est suspendu.");
   });
 
   it("annonce la limitation de débit sur le statut, qui n'a pas de code", () => {
@@ -29,14 +38,18 @@ describe("traduction des refus", () => {
   });
 });
 
-describe("jeton de réinitialisation dans l'URL", () => {
-  it("le lit quand le lien du courrier ramène ici", () => {
-    expect(resetTokenFrom("?reinitialiser=1&token=abc123")).toBe("abc123");
+describe("refus portés par une redirection", () => {
+  it("explique les retours de Google et des liens expirés", () => {
+    expect(redirectMessage("access_denied")).toBe("Connexion Google annulée.");
+    expect(redirectMessage("INVALID_TOKEN")).toContain("plus valable");
+    expect(redirectMessage("jamais-vu")).toContain("Réessayez");
   });
 
-  it("ignore un jeton sans le drapeau, et un drapeau sans jeton", () => {
-    expect(resetTokenFrom("?token=abc123")).toBeUndefined();
-    expect(resetTokenFrom("?reinitialiser=1")).toBeUndefined();
-    expect(resetTokenFrom("")).toBeUndefined();
+  it("distingue le délai de pseudo de la limitation de débit", () => {
+    expect(authMessage(429, { code: "HANDLE_COOLDOWN" })).toContain("une fois par mois");
+  });
+
+  it("annonce un mot de passe ayant fuité", () => {
+    expect(authMessage(400, { code: "PASSWORD_COMPROMISED" })).toContain("fuites");
   });
 });

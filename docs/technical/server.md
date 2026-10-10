@@ -31,20 +31,37 @@ Trois principes, actés dans `docs/architecture.md` :
 | Fichier | Rôle |
 |---|---|
 | `apps/server/src/index.ts` | Worker : routage et service du client |
+| `apps/server/src/legacy-routes.ts` | **Pur** — anciennes adresses françaises → leur équivalent anglais |
 | `apps/server/src/match-do.ts` | `MatchDO` : le Durable Object de partie |
 | `apps/server/src/queue-do.ts` | `QueueDO` : la file d'attente globale et les salons privés |
-| `apps/server/src/match-setup.ts` | Création d'une partie : ligne D1, jetons de siège, init du DO |
+| `apps/server/src/match-setup.ts` | Création d'une partie : ligne D1, jetons de siège, cartes des joueurs, init du DO |
+| `apps/server/src/cards.ts` | La carte d'un joueur (`PlayerCard`) : pseudo, Elo, bilan, faits exhibés |
+| `apps/server/src/rating.ts` | **Pur** — l'Elo : espérance de gain et variations (K = 32) |
+| `apps/server/src/feats/catalog.ts` | **Pur** — le catalogue des faits d'armes, leur déblocage et ce qui s'en exhibe |
+| `apps/server/src/feats/stats.ts` | Les statistiques d'un joueur depuis ses parties (`statsFrom()` pur, `readPlayerStats()` en D1) |
+| `apps/server/src/me/presets.ts` | Les équipes préparées (`team_presets`), **bornées au joueur de la session** |
+| `apps/server/src/me/feats.ts` | Les faits d'armes du joueur et leur exhibition |
 | `apps/server/src/seating.ts` | **Pur** — jeton de siège → camp, et autorité de tour |
-| `apps/server/src/auth/better-auth.ts` | La configuration Better Auth : hasher, schéma, débit, crochets |
+| `apps/server/src/auth/better-auth.ts` | La configuration Better Auth : hasher, schéma, débit, Google, crochets, gardes |
 | `apps/server/src/auth/routes.ts` | `/api/auth/me` et la délégation du reste à Better Auth |
-| `apps/server/src/auth/password.ts` | PBKDF2 enchaîné et comparaison à temps constant, **branchés dans Better Auth** |
-| `apps/server/src/auth/mail.ts` | Envoi des messages transactionnels par Resend |
+| `apps/server/src/auth/password.ts` | PBKDF2 enchaîné, comparaison à temps constant, **branchés dans Better Auth** ; contrôle des fuites (HIBP) |
+| `apps/server/src/auth/handle.ts` | **Pur** — règles du pseudo : normalisation, caractères, noms réservés, pseudo dérivé, pseudo anonyme |
+| `apps/server/src/auth/mail.ts` | Les courriers (HTML et texte), dans la langue de la requête, et leur envoi par Resend |
+| `apps/server/src/me/routes.ts` | `/api/me/*` : la page de profil — gardes, puis profil, pseudo, sessions, parties |
+| `apps/server/src/me/queries.ts` | Les requêtes D1 du profil, **toutes bornées au compte de la session** |
+| `apps/server/src/admin/routes.ts` | `/api/admin/*` : garde de rôle, puis lectures et renommage du back-office |
+| `apps/server/src/admin/queries.ts` | Les requêtes D1 du back-office : statistiques, parties, bilan d'un joueur, renommage ; `replayLog()` partagé avec le profil |
+| `apps/server/src/admin/paging.ts` | **Pur** — pagination et filtres de liste |
+| `packages/protocol/src/admin.ts` | Les réponses de `/api/admin/*` — **paquet partagé** |
+| `packages/protocol/src/me.ts` | Les réponses de `/api/me/*` — **paquet partagé** |
+| `apps/server/src/test-helpers.ts` | Outils des suites d'intégration (inscription, cookie, IP distinctes) |
 | `apps/server/scripts/generate-schema.mts` | Recrache le schéma SQL attendu — hors du Worker |
 | `apps/server/src/pairing.ts` | **Pur** — la file d'attente comme structure de données |
 | `apps/server/src/rooms.ts` | **Pur** — les salons privés : table des codes, tirage, consommation |
+| `apps/server/src/proposals.ts` | **Pur** — la fenêtre d'acceptation de la file rapide |
 | `packages/protocol/src/index.ts` | Messages client/serveur et version de protocole — **paquet partagé** |
-| `apps/server/src/rulesets.ts` | Registre des rulesets par version |
-| `apps/server/src/env.d.ts` | Type des bindings : `DB`, `MATCH`, `QUEUE`, `ASSETS`, `AUTH_SECRET`, `RESEND_API_KEY` |
+| `apps/server/src/rulesets.ts` | Réexpose le registre des rulesets, qui vit dans `@occulis/core` |
+| `apps/server/src/env.d.ts` | Type des bindings : `DB`, `MATCH`, `QUEUE`, `ASSETS`, `AUTH_SECRET`, `RESEND_API_KEY`, `GOOGLE_*`, `OAUTH_PROXY_*`… |
 | `apps/server/wrangler.toml` | Configuration et environnements |
 | `apps/server/migrations/*.sql` | Schéma D1 |
 
@@ -61,18 +78,33 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 
 | Route | Méthode | Traitement |
 |---|---|---|
-| `/api/auth/me` | toute | **Au projet** — le pseudo et l'état de vérification, ou `{ signedIn: false }` |
+| `/.well-known/change-password` | toute | **302** vers `/profile/#security` — l'adresse que les gestionnaires de mots de passe ouvrent pour « changer le mot de passe » |
+| `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser`, `/profil(/)`, ou tout chemin portant `?verifiee`, `?supprime`, `?lie`, `?bienvenue` | `GET` | **301** vers l'équivalent anglais (`legacyRedirect()`), requête conservée — des courriers déjà envoyés portent ces adresses. **Exception : `/` est servi par les assets statiques avant le Worker**, donc `/?verifiee=1` n'est jamais redirigé ; c'est le client qui reconnaît encore ces anciens paramètres (`account/model.ts`) |
+| `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password` | `GET` | `pageFor()` — la page du jeu (`/`), dont l'îlot de compte lit le chemin ; liste explicite `ACCOUNT_PATHS`, pas de repli global |
+| `/profile` | `GET` | `pageFor()` — la page `/profile/` |
+| `/api/auth/me` | toute | **Au projet** — pseudo, adresse, état de vérification, `admin`, `impersonating`, `providers` ; sans session `{ signedIn: false, providers }` |
 | `/api/auth/sign-up/email` | `POST` | Better Auth — crée un compte, et son profil via le crochet |
+| `/api/auth/sign-in/social` | `POST` | Better Auth — rend l'adresse de consentement Google (`{ url }`) |
+| `/api/auth/callback/google` | `GET` | Better Auth — retour de Google : crée ou lie le compte, ouvre la session, redirige |
+| `/api/auth/link-social`, `/api/auth/unlink-account` | `POST` | Better Auth — lier ou délier Google depuis le profil ; la dernière méthode de connexion ne se délie pas |
+| `/api/auth/change-password` | `POST` | Better Auth — mot de passe actuel exigé ; **ferme toujours les autres sessions** ; avis par courrier |
+| `/api/auth/change-email` | `POST` | Better Auth — lien à l'**ancienne** adresse, puis vérification de la nouvelle |
+| `/api/auth/delete-user` puis `GET /api/auth/delete-user/callback` | | Better Auth — lien par courrier, puis suppression ; le profil est anonymisé |
 | `/api/auth/sign-in/email` | `POST` | Better Auth — ouvre une session |
 | `/api/auth/sign-out` | `POST` | Better Auth — ferme la session |
 | `/api/auth/request-password-reset` | `POST` | Better Auth — envoie le message de réinitialisation |
 | `/api/auth/reset-password` | `POST` | Better Auth — consomme le jeton et change le mot de passe |
 | `/api/auth/send-verification-email` | `POST` | Better Auth — renvoie le message de vérification |
 | `/api/auth/verify-email` | `GET` | Better Auth — marque l'adresse vérifiée |
+| `/api/auth/admin/*` | `GET`/`POST` | Greffon `admin` de Better Auth — comptes, rôles, suspensions, sessions ; **403 sans le rôle `admin`** |
+| `/api/auth/update-user`, `/api/auth/admin/update-user` avec un `name` | `POST` | **400 `HANDLE_READONLY`** — le pseudo se change par `/api/me/handle` ou `/api/admin/players/:id/handle` |
+| routes de compte de Better Auth (`ACCOUNT_MUTATIONS`) sous usurpation | `POST` | **403 `IMPERSONATION_READONLY`** |
 | tout le reste de `/api/auth/*` | toute | `auth.handler(request)` |
+| `/api/admin/*` | `GET`/`POST` | `handleAdmin()` — **401 sans session, 403 sans le rôle `admin`**, 403 sur un `POST` d'une autre origine |
+| `/api/me`, `/api/me/*` | `GET`/`POST` | `handleMe()` — **401 sans session**, 403 sur un `POST` d'une autre origine **ou sous usurpation** |
 | `/api/matches` | `POST` | `createMatch()` — partie directe, hors file d'attente |
 | `/api/queue` | WebSocket | `joinQueue()` — **401 sans session, 403 sans adresse vérifiée** |
-| `/api/auth/*`, `/api/queue` sans `AUTH_SECRET` | toute | **503** — garde-fou `hasAuthSecret()`, avant toute construction de Better Auth |
+| `/api/auth/*`, `/api/admin/*`, `/api/me*`, `/api/queue` sans `AUTH_SECRET` | toute | **503** — garde-fou `hasAuthSecret()`, avant toute construction de Better Auth |
 | `/match/:id?seat=<jeton>` | WebSocket | `env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(request)` |
 | tout le reste | toute | `env.ASSETS.fetch(request)` — le client statique |
 
@@ -80,13 +112,22 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 |---|---|---|
 | `fetch()` (handler par défaut) | `apps/server/src/index.ts` | Routage |
 | `hasAuthSecret()` | `apps/server/src/index.ts` | Vrai si `AUTH_SECRET` fait au moins 32 caractères ; sinon l'authentification et la file répondent 503 |
-| `scheduled()` (handler cron) | `apps/server/src/index.ts` | Ménage nocturne : sessions, vérifications, compteurs de débit |
-| `buildAuth()` | `apps/server/src/auth/better-auth.ts` | Construit l'instance Better Auth autour des bindings |
-| `currentAccount()` | `apps/server/src/auth/routes.ts` | Session → `{ userId, playerId, handle, emailVerified }` |
+| `scheduled()` (handler cron) | `apps/server/src/index.ts` | Ménage nocturne : sessions, vérifications, compteurs de débit, profils orphelins |
+| `pageFor()` | `apps/server/src/index.ts` | Chemin de parcours de compte ou `/profile` → page à servir, sinon `undefined` |
+| `legacyRedirect()` | `apps/server/src/legacy-routes.ts` | Ancienne adresse → nouvelle (chemin et paramètres renommés), sinon `undefined` |
+| `localeOf()` | `apps/server/src/index.ts` | La langue d'une requête : cookie `occulis-locale`, sinon `Accept-Language`, sinon l'anglais (`resolveLocale()` de `@occulis/i18n`) |
+| `buildAuth()` | `apps/server/src/auth/better-auth.ts` | Construit l'instance Better Auth autour des bindings et de la langue de la requête |
+| `currentAccount()` | `apps/server/src/auth/routes.ts` | Session → `{ userId, playerId, handle, email, emailVerified, admin, impersonating }` |
+| `isImpersonated()` | `apps/server/src/auth/better-auth.ts` | Vrai si la session porte un `impersonatedBy` non vide |
+| `availableProviders()`, `hasGoogle()` | `apps/server/src/auth/better-auth.ts` | `["google"]` si les deux secrets Google sont posés, sinon `[]` |
+| `handleMe()` | `apps/server/src/me/routes.ts` | Gardes, puis routage de `/api/me/*` |
+| `isAdmin()` | `apps/server/src/auth/better-auth.ts` | Vrai si la colonne `role` contient `admin` (Better Auth y range plusieurs rôles séparés par des virgules) |
+| `handleAdmin()` | `apps/server/src/admin/routes.ts` | Garde de rôle, puis routage de `/api/admin/*` |
 | `handleAuth()` | `apps/server/src/auth/routes.ts` | `/api/auth/me`, puis délégation |
 | `sendLetter()` | `apps/server/src/auth/mail.ts` | Resend, ou journalisation sans clé |
 | `createMatch()` | `apps/server/src/index.ts` | Lit `playerA`/`playerB`, délègue à `startMatch()` |
-| `startMatch()` | `apps/server/src/match-setup.ts` | Identifiant, jetons de siège, ligne `matches`, `POST /init` |
+| `startMatch()` | `apps/server/src/match-setup.ts` | Identifiant, jetons de siège, cartes des joueurs, ligne `matches` (avec `rated`), `POST /init` ; `{ rated }` vaut vrai pour la file rapide seule |
+| `readPlayerCard()` | `apps/server/src/cards.ts` | Profil de jeu → `PlayerCard`, lue une fois à la création de la partie |
 
 **`idFromName(matchId)`** est le point clé : deux joueurs de la même partie atteignent
 forcément la même instance de DO, sans annuaire ni coordination.
@@ -117,9 +158,15 @@ l'API sont **de même origine**, une URL relative suffit.
 
 | Méthode | Visibilité | Rôle |
 |---|---|---|
-| `fetch()` | publique | `/init` ; sinon négociation WebSocket |
-| `webSocketMessage()` | publique | Aiguille `hello` et `action` |
-| `play()` | privée | Applique une action, journalise, rediffuse |
+| `fetch()` | publique | `/init` (et, sur une carte à déploiement, l'échéance et son alarme) ; sinon négociation WebSocket |
+| `webSocketMessage()` | publique | Aiguille `hello`, `deploy` et `action` |
+| `alarm()` | publique | L'échéance du déploiement : pose l'équipe par défaut de qui n'a rien verrouillé, et ouvre la partie |
+| `deploy()` | privée | Lit, valide et verrouille une équipe ; ouvre la partie quand les deux le sont |
+| `start()` | privée | `deployTeams()`, écrit les pièces de départ (DO **et** `matches.setup`), retire l'alarme, diffuse les vues |
+| `sendDeployment()` | privée | Le message `deployment` d'un camp : sa zone, celle d'en face, son équipe par défaut, le temps restant, les verrous, les deux cartes |
+| `deploying()` | privée | Vrai sur une carte à déploiement tant que les pièces ne sont pas posées |
+| `play()` | privée | Refuse pendant le déploiement ; sinon applique une action, journalise, rediffuse |
+| `recordOutcome()` | privée | Clôt la partie ; **classée**, fait varier l'Elo des deux joueurs dans le même lot |
 | `appendToLog()` | privée | `INSERT` dans `match_actions` |
 | `broadcastViews()` | privée | Envoie à chaque joueur son `viewFor()` |
 | `send()` | privée | Sérialise un `ServerMessage` |
@@ -144,6 +191,31 @@ incompatible avec l'hibernation.
 
 `fetch()` refuse une requête sans `?player=A|B` (400) ou sans en-tête
 `Upgrade: websocket` (426).
+
+### Le déploiement
+
+Sur une carte qui en prévoit un (`Scenario.deployment`, `ridge-1`), la partie commence par
+**poser les équipes**. `/init` fixe l'échéance (`DEPLOYMENT_MS`, 90 s) et pose une
+**alarme** deux secondes après (`DEPLOYMENT_GRACE_MS`, le temps au dernier envoi du client
+d'arriver) : une alarme et non un minuteur, parce qu'elle survit à l'hibernation.
+
+- À chaque `hello` pendant la phase, le joueur reçoit `welcome` puis `deployment` (et non
+  une vue) : sa zone, la zone d'en face — elle fait partie de la carte, publique —, son
+  équipe par défaut, le **temps restant** (et non l'échéance : l'horloge du client n'est pas
+  celle du serveur), les verrous, sa carte et celle de l'adversaire, et si la partie est
+  classée.
+- `deploy` : `parseTeam()` lit la forme (`malformed-team` sinon), `validateTeam()` les
+  règles (une `TeamError`). Une équipe acceptée est **verrouillée** — une seconde reçoit
+  `already-locked` — et chaque camp reçoit `deployment-update` avec les verrous **de son
+  point de vue**. Aucune pièce d'en face ne transite : on sait seulement qu'elle est posée.
+- Les deux verrouillées, ou l'alarme sonnée (l'équipe par défaut de la carte pour qui n'a
+  rien envoyé) : `start()` assemble la position (`deployTeams()`), l'écrit dans le stockage
+  du DO **et** dans `matches.setup`, retire l'alarme et diffuse les premières vues.
+- Un coup pendant la phase, ou une équipe après, reçoit `wrong-phase`. Un joueur
+  déconnecté n'arrête rien : l'échéance pose son équipe.
+
+Le placement adverse reste caché par la seule LOS : les zones de `ridge-1` n'ont pas de vue
+mutuelle, donc la première vue de chacun ne contient que ses propres pièces.
 
 ### Le siège : à qui parle-t-on ?
 
@@ -178,12 +250,19 @@ webSocketMessage  ──►  play(action, player, ws)
                          ├─ advanceMemory(live, action) @occulis/core
                          │     └─ échec ──► send({ kind: "rejected", error })  ← à l'émetteur seul
                          ├─ appendToLog(action, seq)    INSERT dans match_actions
-                         ├─ recordOutcome()             si la partie s'achève : UPDATE matches
+                         ├─ recordOutcome()             si la partie s'achève : UPDATE matches (+ Elo si classée)
                          └─ broadcastViews()            un viewFor() par joueur
 ```
 
 L'ordre compte : **le log est écrit avant la diffusion**. Un client ne voit donc jamais un
 état que la source de vérité ignore.
+
+**L'Elo** (`rating.ts`) ne bouge qu'à la clôture d'une partie **classée** — la file rapide ;
+un salon privé ou `POST /api/matches` ne l'est pas (`MatchConfig.rated`). `recordOutcome()`
+relit les deux Elo à ce moment-là, calcule des variations opposées (K = 32, départ 1200) et
+écrit d'un même lot la clôture, `rating_change_a/b` et les deux `players.elo` (par
+incrément) : un Elo qui bougerait sans que la partie soit close, ou l'inverse, ne se
+rattraperait jamais. Aucun classement n'en est tiré (pilier « pas de leaderboard »).
 
 `seq` est l'index du coup dans `state.history` **avant** application : la première action
 porte `seq = 0`. Il ne dépend donc plus de `turn` — deux notions qui coïncident aujourd'hui
@@ -196,8 +275,9 @@ garantit.
 Si `this.live` est en cache, elle le renvoie. Sinon :
 
 1. `config()` relit la `MatchConfig` du stockage du DO.
-2. `scenarioFor()` et `rulesetFor()` reconstruisent le plateau, les pièces et les règles
-   **de la version figée à la création**.
+2. `scenarioFor()` et `rulesetFor()` reconstruisent le plateau et les règles **de la
+   version figée à la création** ; les pièces de départ sont celles du déploiement
+   (stockage du DO, `setup`), ou celles de la carte si elle n'en a pas.
 3. `createGame()` reconstruit l'état initial.
 4. Toutes les lignes de `match_actions` sont relues `ORDER BY seq ASC` et passées à
    `replayMemory()` (`@occulis/core`), qui rejoue la position **et** fait avancer la
@@ -207,7 +287,7 @@ Si `this.live` est en cache, elle le renvoie. Sinon :
 positions traversées, pas seulement de la dernière. L'écrire ici, c'était une seconde
 occasion de diverger de la règle.
 
-Un rejeu qui échoue lève `Log corrompu pour <matchId> au coup <seq>` — volontairement fatal :
+Un rejeu qui échoue lève `Corrupted log for <matchId> at move <seq>` — volontairement fatal :
 poursuivre sur un état divergent serait pire.
 
 **Cette méthode n'est correcte que parce que `packages/core` est strictement
@@ -227,7 +307,7 @@ Elle porte **trois** façons d'entrer en partie, annoncées dans le `hello` :
 
 | Intention | Ce que le serveur répond | Ce qu'il fait |
 |---|---|---|
-| `{ kind: "quick" }` | `waiting`, puis `matched` | Met en file, puis apparie les deux plus anciennes attentes |
+| `{ kind: "quick" }` | `waiting`, puis `proposal`, puis `matched` ou `proposal-lapsed` | Met en file, puis propose une partie aux deux plus anciennes attentes ; ne la crée que si les deux acceptent |
 | `{ kind: "host" }` | `hosting` avec un code | Ouvre un salon privé sous un code libre |
 | `{ kind: "join", code }` | `matched`, ou `room-fault` | Consomme le salon désigné et crée la partie |
 
@@ -239,7 +319,38 @@ efface donc la précédente (`forget()`), file d'attente **et** salons.
 
 L'appariement et l'entrée par code aboutissent au même `seat()` : une partie créée par
 `startMatch()`, un jeton par camp, et un `matched` envoyé à chacun. Dans un salon,
-**l'hôte tient le camp A et l'arrivant le camp B**.
+**l'hôte tient le camp A et l'arrivant le camp B**. La file rapide crée une partie
+**classée**, un salon une partie qui ne l'est pas.
+
+### La fenêtre d'acceptation — `proposals.ts`
+
+La file rapide n'assied plus directement : `tryPair()` crée une **proposition**
+(`propose()`, 15 s, `ACCEPT_MS`) et envoie `proposal` (avec le temps restant) aux deux
+joueurs, sortis de la file. Les deux répondent `accept` ou `decline` ; chaque acceptation
+est annoncée (`proposal-update`, du point de vue de chacun).
+
+- **Les deux acceptent** : la proposition est réglée (`settle()`) et `seat()` crée la partie.
+- **Un refus, une connexion fermée ou une nouvelle intention** (`withdraw()`), **ou
+  l'échéance** (`expire()`, par l'alarme du DO) : la proposition tombe. Qui avait accepté
+  est **remis en tête de file** (`requeueFront()`) et reçoit `proposal-lapsed` avec
+  `requeued: true` ; les autres en sortent (`requeued: false`). Aucune pénalité.
+- Un joueur déjà sous proposition qui se remet en file depuis un autre onglet quitte sa
+  proposition : il n'attend qu'à un endroit.
+
+L'échéance est tenue par une **alarme** recalée à chaque changement sur la plus proche
+(`nextDeadline()`) : elle survit à l'hibernation, ce qu'un minuteur ne ferait pas. Les
+propositions vivent dans le stockage du DO, sous `"proposals"`, à côté de `"queue"` et
+`"rooms"`.
+
+| Fonction | Emplacement | Rôle |
+|---|---|---|
+| `propose()` | `apps/server/src/proposals.ts` | Une proposition à échéance de 15 s |
+| `accept()` | `apps/server/src/proposals.ts` | Enregistre une acceptation ; ignore une connexion étrangère ou une proposition inconnue |
+| `isSettled()` / `settle()` | `apps/server/src/proposals.ts` | Acceptée des deux côtés / retirée pour créer la partie |
+| `withdraw()` | `apps/server/src/proposals.ts` | Un refus ou une disparition : la proposition tombe, avec qui revient et qui sort |
+| `expire()` | `apps/server/src/proposals.ts` | Les propositions échues tombent ; qui n'avait pas accepté sort |
+| `nextDeadline()` | `apps/server/src/proposals.ts` | L'échéance la plus proche, pour l'alarme |
+| `requeueFront()` | `apps/server/src/pairing.ts` | Remet des attentes en tête de file, sans doublon du même joueur |
 
 | Fonction | Emplacement | Rôle |
 |---|---|---|
@@ -330,15 +441,119 @@ chaque inscription et chaque connexion en recette. D'où le test de garde de
 le corps d'une requête. Le crochet `databaseHooks.user.create.before` crée le profil
 **avant** le compte : un pseudo déjà pris doit faire échouer l'inscription entière plutôt
 que de laisser derrière lui un compte sans profil, que la file refuserait sans rien
-expliquer.
+expliquer. Il distingue deux cas par `ctx.path` (`isProviderSignUp()`) :
+
+- **formulaire** (`claimHandle()`) : le pseudo passe `checkHandle()`, et un pseudo invalide
+  ou pris fait échouer l'inscription (`HANDLE_LENGTH`, `HANDLE_CHARSET`,
+  `HANDLE_RESERVED`, `HANDLE_TAKEN`) ;
+- **retour de Google** (`/callback/:id`, `claimDerivedHandle()`) : le pseudo est **dérivé du
+  nom Google** — `handleCandidates()` le nettoie, puis essaie `nom`, `nom-2`… `nom-9`, puis
+  deux suffixes aléatoires ; un compte Google ne doit jamais échouer pour un pseudo qu'il
+  n'a pas choisi, et le joueur le change depuis son profil.
+
+Dans les deux cas, `users.name` reçoit **la même valeur normalisée** que `players.handle`.
+Si l'inscription échoue entre le profil et le compte (une course sur l'adresse), le profil
+orphelin est ramassé par le ménage nocturne.
+
+`databaseHooks.user.delete.before` **anonymise le profil** d'un compte supprimé, par le
+joueur comme par un administrateur : `players.handle` devient `anonymousHandle()`
+(`supprimé-<12 caractères de l'identifiant>`). Le profil survit, parce que les logs de
+parties le référencent et doivent rester rejouables pour l'adversaire. Le préfixe est
+réservé, donc personne ne peut se faire passer pour un compte supprimé.
+
+`databaseHooks.account.create.after` envoie un **avis par courrier** quand un fournisseur
+est ajouté à un compte existant depuis plus d'une minute (liaison automatique ou depuis le
+profil) : c'est une nouvelle porte d'entrée sur le compte.
 
 **Les noms de colonnes sont ramenés au style du projet** (`email_verified`, `created_at`,
 `user_id`…) par les blocs `fields`. Une seule échappe à la règle : `rate_limits.lastRequest`,
 que la bibliothèque n'expose pas au renommage.
 
 **Le schéma n'est jamais écrit à la main.** `pnpm --filter @occulis/server auth:schema`
-recrache le DDL attendu ; il est recopié tel quel dans une migration. Le rejouer à chaque
-greffon ajouté (OAuth, 2FA) ou champ supplémentaire.
+rejoue d'abord les migrations existantes dans une base en mémoire, puis recrache **le
+delta** attendu (`ALTER TABLE …`, rien si le schéma est à jour) ; il est recopié tel quel
+dans une nouvelle migration. Le rejouer à chaque greffon ajouté (OAuth, 2FA) ou champ
+supplémentaire.
+
+**Le greffon `admin` est branché** (`plugins: [admin(…)]`) : il ajoute `role`, `banned`,
+`ban_reason` et `ban_expires` à `users`, `impersonated_by` à `sessions`, et les routes
+`/api/auth/admin/*`. Ses noms de champs sont ramenés au style du projet par son option
+`schema`, comme pour les tables. Un compte suspendu voit ses sessions révoquées et ne
+peut plus en ouvrir — donc plus entrer dans la file. Voir « `admin/` » plus bas.
+
+**Le pseudo est en lecture seule pour les routes de Better Auth.** Il vit deux fois —
+`users.name` pour la bibliothèque, `players.handle` pour le jeu, qui en tient l'unicité —
+et `/update-user` comme `/admin/update-user` n'écriraient que le premier. Le crochet
+`hooks.before` (`createAuthMiddleware`) refuse donc tout `name` sur ces deux chemins
+(400, `HANDLE_READONLY`). Le pseudo ne change que par **deux routes**, qui écrivent les
+deux tables dans le même lot : `POST /api/me/handle` (le joueur, au plus une fois par
+30 jours) et `POST /api/admin/players/:id/handle` (un administrateur).
+
+**Le crochet `hooks.before` porte trois autres gardes :**
+
+- **usurpation = lecture seule** : sur les routes de `ACCOUNT_MUTATIONS` (`/change-password`,
+  `/change-email`, `/delete-user` et son rappel, `/link-social`, `/unlink-account`,
+  `/revoke-*`, `/update-user`, `/set-password`), une session marquée `impersonatedBy` reçoit
+  403 `IMPERSONATION_READONLY`. Un administrateur qui usurpe voit ce que voit le joueur, il
+  ne change rien à son compte ;
+- **mots de passe ayant fuité** : sur `/sign-up/email`, `/change-password` et
+  `/reset-password`, le nouveau mot de passe passe `breachedPassword()` (`password.ts`) —
+  k-anonymat, seuls 5 caractères de l'empreinte SHA-1 partent chez Have I Been Pwned, avec
+  `Add-Padding`. Refus : 400 `PASSWORD_COMPROMISED`. **Échoue ouvert** : une panne du service
+  (2 s au plus) laisse passer, c'est pourquoi le greffon `haveIBeenPwned` de Better Auth,
+  qui échoue fermé, n'est pas utilisé. `PASSWORD_BREACH_CHECK=off` coupe le contrôle (tests) ;
+- **changer de mot de passe ferme toujours les autres sessions** : le crochet force
+  `revokeOtherSessions: true`, quoi que demande le client.
+
+`hooks.after` envoie l'avis « votre mot de passe a changé » après un `/change-password`
+réussi.
+
+### Google
+
+`socialProviders.google`, **activé seulement si `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`
+sont posés** (`hasGoogle()`) ; sinon `/api/auth/me` rend `providers: []` et le client
+masque le bouton. `prompt: "select_account"` : toujours proposer le choix du compte, pour
+qu'un poste partagé ne connecte pas d'office avec le compte Google d'un autre. Procédure de
+création du client dans `docs/setup.md` section 7.
+
+**Liaison automatique** (`account.accountLinking.enabled`) : se connecter avec Google sur
+une adresse qui a déjà un compte rattache Google à ce compte. Deux garde-fous de la
+bibliothèque, et c'est pour eux que Google n'est **pas** déclaré en `trustedProviders` (ce
+qui les lèverait) :
+
+- Google doit affirmer l'adresse vérifiée (`email_verified`) ;
+- le compte local doit l'être aussi (`requireLocalEmailVerified`, par défaut). Sans lui,
+  quelqu'un pourrait inscrire votre adresse avec son propre mot de passe, et récupérer
+  votre compte le jour où vous arriveriez par Google. Le retour porte alors
+  `?error=account_not_linked`, que le client explique.
+
+Un compte Google sans mot de passe en obtient un **par le lien de réinitialisation** : 
+`/reset-password` crée le compte `credential` absent (vérifié dans la 1.7.3). La preuve de
+possession de l'adresse est le courrier, ce que la seule session ne prouve pas.
+
+**Le proxy OAuth des environnements de branche** (`oauthProxyPlugin()`). Google exige des
+adresses de retour exactes, sans joker ; chaque branche a son domaine. Le greffon
+`oAuthProxy` fait revenir Google par la recette, qui renvoie le profil **chiffré** à la
+branche (`/callback/google/oauth-proxy`, charge utile valable 60 s). Il n'est branché que si
+`OAUTH_PROXY_URL` (l'URL de la recette) et `OAUTH_PROXY_SECRET` (32 caractères au moins)
+sont posés, **sur la recette et sur chaque branche** — la recette y reconnaît sa propre URL
+et ne proxifie pas ses propres connexions. Ni la production ni le local ne le portent :
+leur adresse de retour est déclarée chez Google. Le secret est **dédié** : une fuite côté
+branche ne permet pas de signer des sessions de recette, ce que permettrait le partage
+d'`AUTH_SECRET`.
+
+### Les règles du pseudo — `handle.ts`
+
+| Fonction | Rôle |
+|---|---|
+| `normalizeHandle()` | NFKC, trim, espaces internes réduits à un seul |
+| `checkHandle()` | `{ ok, handle }` ou `{ ok: false, code }` : 2 à 24 caractères (code points) ; lettres, chiffres, diacritiques, `_ . -` et espace ; **pas** de contrôle, d'invisible, de bidi (U+202E), de symbole ni d'emoji ; pas deux diacritiques empilés ; ni nom réservé (`admin`, `moderateur`, `occulis`… comparés sans casse, accents ni séparateurs), ni préfixe `deleted` ou `supprime` (l'ancien, que portent encore des profils en base) |
+| `handleCandidates()` | Les pseudos à essayer pour un compte Google, tous valides ; `player` si rien ne reste du nom |
+| `anonymousHandle()` | Le pseudo d'un profil dont le compte est supprimé : `deleted-<12 caractères de l'identifiant>` |
+
+L'unicité est **insensible à la casse** : index `players_handle_nocase` (migration 0006),
+en plus de la contrainte `UNIQUE` d'origine. Les pseudos existants de plus de 24 caractères
+ne sont pas revalidés ; la règle s'applique au prochain changement.
 
 ### La session
 
@@ -358,15 +573,24 @@ refuse **pas** de démarrer dans un Worker : il ne reconnaît la production qu'�
 absent ici, et retombe en silence sur son secret par défaut, qui est public. C'est
 `hasAuthSecret()` (`index.ts`) qui ferme la porte : sans secret d'au moins 32 caractères,
 `/api/auth/*` et `/api/queue` répondent 503, le client statique et les parties restent
-servis — vérifié par un test. Le changer déconnecte tout le monde ; le changer déconnecte tout le monde ; le divulguer permet de forger n'importe
+servis — vérifié par un test. Le changer déconnecte tout le monde ; le divulguer permet de forger n'importe
 quelle session.
 
 ### La limitation de débit
 
 En base (`rate_limits`), et non en mémoire : une isolate Worker ne survit pas d'une requête
 à l'autre, un compteur mémoire ne limiterait donc rien. Cent requêtes par minute par
-défaut, et trois règles plus serrées : cinq connexions par minute, cinq inscriptions par
-heure, trois demandes de réinitialisation par heure.
+défaut, et des règles plus serrées : cinq connexions par minute, cinq inscriptions par
+heure, trois demandes de réinitialisation par heure (`/request-password-reset`), dix
+réinitialisations, cinq renvois de vérification, cinq changements d'adresse et trois
+demandes de suppression par heure, cinq changements de mot de passe par quart d'heure,
+vingt départs vers Google par minute, dix liaisons par heure.
+
+**La règle de réinitialisation a longtemps été morte** : elle portait sur
+`/forget-password`, renommée `/request-password-reset` en 1.7, et la route retombait sur
+la limite générale. Un test verrouille désormais le 429. Les routes `/api/me/*` ne passent
+pas par ce limiteur ; le seul geste qui y compte, le changement de pseudo, est borné par
+son délai de 30 jours.
 
 Le comptage se fait **par adresse IP, lue dans `CF-Connecting-IP`**, que la bordure
 Cloudflare écrase — contrairement à `X-Forwarded-For`, elle ne se falsifie donc pas pour
@@ -397,7 +621,21 @@ qu'une fois l'adresse prouvée.
 
 ### L'envoi des messages
 
-`mail.ts`, par Resend : un Worker n'a pas de socket sortant, seulement `fetch`, et
+Six courriers, chacun en **HTML et en texte** (`compose()`), **dans la langue de la requête
+qui les déclenche** : `buildAuth()` reçoit celle de `localeOf()`, et chaque fonction de
+courrier la prend en premier paramètre (`verificationLetter(locale, to, url)`…) ; les
+textes sont ceux du domaine `mail` de `@occulis/i18n`. L'instance étant construite par
+requête, un courrier ne peut pas partir dans la langue d'un autre joueur. Les courriers :
+vérification, réinitialisation,
+confirmation de changement d'adresse (à l'ancienne), suppression, avis de mot de passe
+changé, avis de fournisseur lié. Le gabarit (`html()`) est fait de tableaux et de styles en
+ligne — ce que les clients de messagerie savent rendre — sans image : la marque est un
+mot-symbole en texte. Les couleurs viennent de `@occulis/ui/tokens`, **précomposées sur le
+fond** par `hexColor()` (Outlook et d'autres ignorent `rgb(… / alpha)`). Toute valeur venue
+de l'extérieur est échappée (`escapeHtml()`), lien compris. `MAIL_REPLY_TO`, s'il est posé,
+devient l'en-tête `reply_to`.
+
+Envoi par Resend : un Worker n'a pas de socket sortant, seulement `fetch`, et
 MailChannels a fermé son offre gratuite aux Workers en 2024. **Sans `RESEND_API_KEY`, les
 messages sont journalisés au lieu d'être émis**, lien compris — c'est ce qui rend les
 parcours traversables en local et en test sans compte Resend. Un échec d'envoi est
@@ -410,6 +648,144 @@ visible par `wrangler tail --env <env>`.
 privés passent tous deux par `/api/queue`, qui exige une adresse vérifiée. Sans message
 reçu, aucun joueur ne peut entrer en partie.
 
+## `admin/` — le back-office
+
+Le back-office se partage en deux familles de routes, selon qui possède la donnée :
+
+| Préfixe | Porté par | Couvre |
+|---|---|---|
+| `/api/auth/admin/*` | Greffon `admin` de Better Auth | Le **compte** : liste et recherche, fiche, création, adresse et vérification, rôle, suspension (motif, durée), mot de passe, sessions, suppression, **usurpation** |
+| `/api/admin/*` | `admin/routes.ts`, le projet | Ce que Better Auth ignore : **statistiques**, **parties**, **bilan d'un joueur**, et le **pseudo**, qui vit dans les deux mondes |
+
+**La garde de rôle est faite côté serveur, à chaque appel.** `handleAdmin()` résout la
+session depuis le cookie et exige `isAdmin(user.role)` avant toute route ; le greffon
+porte son propre contrôle, indépendant. Le lien du menu et la vérification faite par la
+page `/admin/` ne sont qu'une politesse d'affichage. Un `POST` sur `/api/admin/*` doit en
+plus venir de la même origine (`Origin`), comme Better Auth l'exige pour ses routes.
+
+Le premier administrateur se nomme à la main, par une requête sur la base de
+l'environnement (`docs/setup.md` section 7) ; les suivants, depuis le back-office.
+
+| Route | Méthode | Fonction | Réponse |
+|---|---|---|---|
+| `/api/admin/stats` | `GET` | `readStats()` | `AdminStats` — comptes, vérifiés, suspendus, admins, profils, parties, en cours, coups, et les deux compteurs sur 7 jours |
+| `/api/admin/matches?player=&status=&limit=&offset=` | `GET` | `listMatches()` | `AdminMatchPage` — les parties, les plus récentes d'abord, avec les deux pseudos et le nombre de coups, et le total filtré |
+| `/api/admin/matches/:id` | `GET` | `readMatch()` | `AdminMatchDetail` — la partie, son log **rejoué**, et une image de la position par coup (`frames`) |
+| `/api/admin/players/:id` | `GET` | `readPlayer()` | `AdminPlayer` — profil, compte lié s'il existe, bilan victoires/défaites/en cours |
+| `/api/admin/players/:id/handle` | `POST` | `renamePlayer()` | `{ handle }`, ou 400 (`HANDLE_LENGTH`, `HANDLE_CHARSET`, `HANDLE_RESERVED` — `checkHandle()`), 422 `HANDLE_TAKEN`, 404 |
+
+Quelques points de fonctionnement :
+
+- **`parsePage()` borne la taille de page à 100** (25 par défaut) : une page démesurée
+  ferait lire toute la table à chaque appel. `parseMatchFilter()` n'accepte que les
+  statuts `ongoing` et `finished`.
+- **`listMatches()` partage son filtre** (`MATCH_FILTER`, paramètres `?1`/`?2`) entre la
+  page et le décompte, pour que la pagination ne mente pas.
+- **`readStats()` compare chaque seuil dans le format de sa colonne** : texte ISO pour
+  `users.created_at`, millisecondes pour `matches.started_at` — le piège déjà décrit pour
+  le ménage nocturne.
+- **`readPlayer()` rapporte le vainqueur au joueur par le siège** :
+  `json_extract(outcome, '$.winner')` donne `A` ou `B`, et `player_a` joue toujours `A`.
+- **`readMatch()` rejoue le log avec `core`** par `replayLog()` (`createGame`,
+  `startMemory`, `advanceMemory`), comme `MatchDO.load()` ; `replayLog()` prend la
+  fonction qui tire une image d'une position, ce qui le rend partagé avec le profil. Deux usages : attribuer chaque coup à son camp
+  — l'`Action` sérialisée ne nomme pas son auteur — et produire les **images** du rejeu
+  (`frameOf()`) : `frames[0]` est la position de départ, `frames[n + 1]` celle qui suit le
+  coup `n`, chacune avec **toutes** les pièces et les cases que chaque camp voyait alors.
+  Passer par la mémoire de brouillard plutôt que par `replay` seul est ce qui donne ces
+  lignes de vue. Si le rejeu échoue — log corrompu, ruleset retiré du registre — le log est
+  rendu quand même, les images s'arrêtent au coup fautif, le camp passe à `null`, et
+  `replayError` dit pourquoi.
+- **Ces images sont exactement ce que le serveur refuse à un joueur** : la position
+  complète, pièces hors LOS comprises. Elles ne sortent que derrière la garde de rôle, et
+  un administrateur qui joue une partie en cours pourrait s'en servir — c'est une
+  confiance accordée au rôle, pas une garantie du protocole.
+- **`renamePlayer()` écrit `players.handle` et `users.name` dans un même `batch`**, que D1
+  exécute en transaction : un pseudo pris laisse les deux tables intactes.
+
+### L'usurpation
+
+`POST /api/auth/admin/impersonate-user` ouvre une session **au nom du joueur** : le cookie
+de session est remplacé par celui d'une session neuve, marquée `impersonated_by` avec
+l'identifiant de l'administrateur, et la session de ce dernier est mise de côté dans un
+cookie signé (`occulis.admin_session`). `POST /api/auth/admin/stop-impersonating` supprime
+la session d'emprunt et rend la sienne à l'administrateur. Trois garde-fous :
+
+- **une heure au plus** (`impersonationSessionDuration`) : une session d'emprunt oubliée
+  tombe d'elle-même ;
+- **jamais un autre administrateur** — réglage par défaut du greffon, verrouillé par un
+  test ;
+- **toujours visible** : `currentAccount()` lit `session.impersonatedBy`, `/api/auth/me`
+  le rend en `impersonating`, et le client affiche un bandeau sur tous ses écrans.
+
+Pendant l'usurpation, **tout ce qui lit l'identité lit celle du joueur** : la file d'attente,
+les salons, et le back-office lui-même, qui se ferme (403) faute de rôle. C'est voulu — c'est
+ce qui permet de reproduire ce qu'il voit — mais tout coup joué l'est en son nom.
+
+## `me/` — la page de profil
+
+Le pendant du back-office, pour **son propre** compte. Deux familles, comme pour l'admin :
+tout ce qui touche au compte passe par Better Auth (mot de passe, adresse, Google,
+suppression — voir le tableau des routes) ; le projet ne porte que ce que la bibliothèque
+ignore, sous `/api/me/`.
+
+**Trois gardes, posées à l'entrée de `handleMe()` pour toutes les routes :**
+
+1. **l'identité vient de la session.** Aucune route ne prend d'identifiant de compte ou de
+   joueur, et **chaque requête de `me/queries.ts` reprend celui de la session dans sa
+   clause `WHERE`** : une partie, une session ou un profil d'autrui répond « introuvable »,
+   exactement comme une ligne qui n'existe pas ;
+2. **un `POST` doit venir de la même origine** (`Origin`), comme pour l'admin ;
+3. **une session d'emprunt est en lecture seule** : tout `POST` y reçoit 403
+   `IMPERSONATION_READONLY` — le même refus que `hooks.before` oppose aux routes de compte
+   de Better Auth.
+
+| Route | Méthode | Fonction | Réponse |
+|---|---|---|---|
+| `/api/me` | `GET` | `readProfileRow()` | `MeProfile` — pseudo, adresse, vérification, date d'inscription, prochain changement de pseudo, mot de passe défini ou non, fournisseurs liés et proposés, usurpation, bilan, **Elo** |
+| `/api/me/feats` | `GET` | `readMyFeats()` | `MeFeats` — le catalogue, chaque fait débloqué ou non, et ceux exhibés |
+| `/api/me/showcase` | `POST` | `setShowcase()` | `{ showcase }`, ou **400 `SHOWCASE_INVALID`** : fait inconnu, non débloqué, en double, ou plus de trois |
+| `/api/me/presets` | `GET` | `listPresets()` | `TeamPresetList` — vos équipes, la carte et le ruleset courants, la limite (10) |
+| `/api/me/presets` | `POST` | `createPreset()` | `TeamPreset` ; 400 `PRESET_NAME` / `PRESET_TEAM`, **409 `PRESET_LIMIT`** ; la première devient celle par défaut |
+| `/api/me/presets/:id` | `PUT` | `updatePreset()` | `TeamPreset` renommé et/ou d'équipe remplacée — rattaché alors à la carte et au ruleset courants ; 404 si elle n'est pas à vous |
+| `/api/me/presets/:id` | `DELETE` | `deletePreset()` | `{ deleted: 1 }` ; supprimer celle par défaut en désigne une autre (la plus récente) |
+| `/api/me/presets/:id/default` | `POST` | `setDefaultPreset()` | `{ isDefault: true }` — une seule par défaut |
+| `/api/me/handle` | `POST` | `changeHandle()` | `{ handle, nextHandleChangeAt }`, ou 400 (`checkHandle()`, `HANDLE_UNCHANGED`), 422 `HANDLE_TAKEN`, 429 `HANDLE_COOLDOWN` |
+| `/api/me/sessions` | `GET` | `listSessions()` | `MeSession[]` — **sans jeton** : la session se désigne par son identifiant de ligne |
+| `/api/me/sessions/:id/revoke` | `POST` | `revokeSession()` | `{ revoked: 1 }`, ou 404 si la session n'est pas à vous |
+| `/api/me/sessions/revoke-others` | `POST` | `revokeOtherSessions()` | `{ revoked: n }` |
+| `/api/me/matches?limit=&offset=` | `GET` | `listMyMatches()` | `MeMatchPage` — vos parties, votre camp, le pseudo adverse, le résultat de votre point de vue |
+| `/api/me/matches/:id` | `GET` | `readMyMatch()` | `MeMatchDetail`, **409 `MATCH_ONGOING`** pour une partie en cours, 404 si elle n'est pas à vous |
+
+Quelques points de fonctionnement :
+
+- **Le délai de pseudo (`HANDLE_COOLDOWN_MS`, 30 jours) est vérifié dans l'écriture
+  elle-même** (`UPDATE … WHERE handle_changed_at IS NULL OR handle_changed_at <= ?`), pas
+  seulement lu avant : deux requêtes simultanées ne passent pas toutes les deux. La
+  seconde instruction du lot ne touche `users.name` que si la première a écrit le nouveau
+  pseudo. Le renommage par un administrateur ne touche pas `handle_changed_at`.
+- **Les faits d'armes ne sont jamais stockés débloqués** : `feats/catalog.ts` les recalcule
+  depuis les parties terminées (`statsFrom()` : jouées, gagnées, perdues, plus longue série,
+  dans l'ordre des fins ; Elo). Seul le choix exhibé l'est (`players.showcase`), et ce qui
+  n'est plus débloqué en est retiré à l'affichage (`shownFeats()`). Le serveur ne connaît
+  que les identifiants ; noms et descriptions vivent dans `@occulis/i18n` (domaine `feats`).
+- **Un preset s'écrit dans la zone du camp A** de sa carte ; au déploiement, le client le
+  transpose vers le camp tenu (`teamForSide()`). Sa validité est **recalculée à chaque
+  lecture** contre les règles de son ruleset et de sa carte (`isValid()`) : une équipe que
+  de nouvelles règles rendent caduque est gardée et signalée (`valid: false`), jamais
+  effacée.
+- **Les sessions ne passent pas par `/api/auth/list-sessions`**, qui rend les jetons au
+  JavaScript de la page. `listSessions()` lit `sessions` directement et n'en sort que
+  l'identifiant, les dates, l'agent, l'IP et le marqueur d'usurpation.
+- **Le replay est vu de votre camp seulement.** `readMyMatch()` rejoue le log par
+  `replayLog()`, mais chaque image est `viewFor(state, knowledge[seat])` — exactement ce
+  que le `MatchDO` vous avait envoyé : vos pièces, les pièces adverses dans votre ligne de
+  vue, vos fantômes. Les coups adverses du log sont rendus avec `action: null` (sauf un
+  abandon) : ils nomment la pièce et sa destination, donc révéleraient des positions que
+  vous n'avez jamais vues. Une partie **en cours** est refusée : le replay resservirait la
+  vue courante hors du siège. Révéler toute la partie une fois finie serait une décision
+  de design, non tranchée.
+
 ## `@occulis/protocol` — le protocole partagé
 
 Il vit dans `packages/protocol` et non dans `apps/server` : `apps/web` doit parler
@@ -418,16 +794,25 @@ ajout. Le paquet ne contient que des types et la conversion de sérialisation �
 règle de jeu (elle vit dans `@occulis/core`), aucun transport (il vit dans chaque app).
 
 ```ts
-const PROTOCOL_VERSION = 4
+const PROTOCOL_VERSION = 5
 
 type ClientMessage =
   | { kind: "hello";  protocol: number }
   | { kind: "action"; action: Action }
+  | { kind: "deploy"; team: TeamEntry[] }
 
-type Rejection = ActionError | SeatDenial
+type PhaseDenial = { code: "wrong-phase" } | { code: "already-locked" } | { code: "malformed-team" }
+type Rejection = ActionError | TeamError | SeatDenial | PhaseDenial
+
+interface PlayerCard { handle: string; elo: number; played: number; won: number; feats: string[] }
+interface Locks { self: boolean; opponent: boolean }
 
 type ServerMessage =
-  | { kind: "welcome";           player: PlayerId }
+  | { kind: "welcome";           player: PlayerId; scenario: string; rulesetVersion: string }
+  | { kind: "deployment";        zone: Coord[]; opponentZone: Coord[]; defaultTeam: TeamEntry[];
+                                 remainingMs: number; locks: Locks; self: PlayerCard;
+                                 opponent: PlayerCard; rated: boolean }
+  | { kind: "deployment-update"; locks: Locks }
   | { kind: "view";              view: WireView }
   | { kind: "rejected";          error: Rejection }
   | { kind: "protocol-mismatch"; expected: number }
@@ -437,7 +822,10 @@ type QueueIntent =
   | { kind: "host" }
   | { kind: "join"; code: string }
 
-type QueueClientMessage = { kind: "hello"; protocol: number; intent: QueueIntent }
+type QueueClientMessage =
+  | { kind: "hello"; protocol: number; intent: QueueIntent }
+  | { kind: "accept"; proposalId: string }
+  | { kind: "decline"; proposalId: string }
 
 type RoomFault = { code: "unknown" } | { code: "own" }
 
@@ -445,6 +833,9 @@ type QueueServerMessage =
   | { kind: "waiting" }
   | { kind: "hosting";           code: string }
   | { kind: "room-fault";        fault: RoomFault }
+  | { kind: "proposal";          proposalId: string; remainingMs: number }
+  | { kind: "proposal-update";   accepted: { self: boolean; opponent: boolean } }
+  | { kind: "proposal-lapsed";   requeued: boolean }
   | { kind: "matched";           matchId: string; player: PlayerId; seat: string }
   | { kind: "protocol-mismatch"; expected: number }
 ```
@@ -460,7 +851,8 @@ type QueueServerMessage =
 `Set`, et un client qui oublierait la conversion inverse afficherait un fog vide, donc
 tout le plateau.
 
-La version est passée de 3 à 4 avec le retrait de la capture et de la règle d'échec
+La version est passée de 4 à 5 avec le déploiement (`deploy`, `deployment`,
+`deployment-update`, les refus d'équipe et de phase). Elle était passée de 3 à 4 avec le retrait de la capture et de la règle d'échec
 (`docs/design.md` sections 3.1 et 7.1) : `Action` a perdu son champ `capture` et `WireView`
 son drapeau `check`. Un client resté en 3 enverrait des coups d'une forme que le serveur ne
 comprend plus — la négociation le refuse explicitement plutôt que de le laisser diverger.
@@ -486,13 +878,15 @@ plutôt que le laisser diverger en silence.
 
 | Fonction / constante | Emplacement | Rôle |
 |---|---|---|
-| `CURRENT_RULESET_VERSION` | `apps/server/src/rulesets.ts` | Version attribuée aux nouvelles parties — `"provisional-0"` |
-| `rulesetFor()` | `apps/server/src/rulesets.ts` | Version → `Ruleset` ; **lève** si inconnue |
-| `DEFAULT_SCENARIO` | `apps/server/src/scenarios.ts` | Scénario des nouvelles parties — `"demo-0"` |
-| `scenarioFor()` | `apps/server/src/scenarios.ts` | Nom → `{ board, pieces }` ; **lève** si inconnu |
+| `CURRENT_RULESET_VERSION` | `packages/core/src/rulesets/index.ts` | Version attribuée aux nouvelles parties — `"provisional-1"` |
+| `rulesetFor()` | `packages/core/src/rulesets/index.ts` | Version → `Ruleset` ; **lève** si inconnue |
+| `DEFAULT_SCENARIO` | `packages/core/src/scenarios/index.ts` | Scénario des nouvelles parties — `"ridge-1"` |
+| `scenarioFor()` | `packages/core/src/scenarios/index.ts` | Nom → `Scenario` ; **lève** si inconnu |
 
-Le registre ne définit **aucun type de pièce lui-même** : il appelle
-`provisionalRuleset()` de `@occulis/core` (`packages/core/src/pieces/roster/`). Client et
+Le registre vit désormais dans `@occulis/core` : le client doit appliquer la version de la
+partie qu'il joue (annoncée par `welcome`), donc le connaître aussi ; `apps/server/src/rulesets.ts`
+ne fait que le réexposer. Il ne définit **aucun type de pièce lui-même** : il assemble ceux
+du roster (`packages/core/src/pieces/roster/`). Client et
 serveur doivent appliquer exactement les mêmes règles, donc une seule définition — voir
 [core.md](core.md), section `pieces/`.
 
@@ -557,6 +951,34 @@ Trois choses à savoir sur cette migration :
   donc comparer une échéance à un nombre de millisecondes est **toujours faux**, sans rien
   signaler. Le ménage nocturne compare des chaînes ISO pour cette raison.
 
+### `migrations/0005_admin.sql`
+
+Le greffon `admin`. Les cinq `ALTER TABLE` sont **générés** par `auth:schema` (`role`,
+`banned`, `ban_reason`, `ban_expires` sur `users` ; `impersonated_by` sur `sessions`).
+S'y ajoute une reprise : les comptes existants prennent le rôle `user`, celui que Better
+Auth donne aux nouveaux. **Aucun administrateur n'est désigné par la migration.**
+
+### `migrations/0006_handles.sql`
+
+Écrite à la main — elle ne touche que `players`, que Better Auth ignore. Elle ajoute
+`players.handle_changed_at` (millisecondes, `NULL` pour un pseudo jamais changé) et l'index
+`players_handle_nocase` (`handle COLLATE NOCASE`), qui rend l'unicité insensible à la casse.
+
+**Les pseudos qui ne diffèrent que par la casse sont départagés avant l'index**, sans quoi
+sa création échouerait et la migration bloquerait le déploiement : le plus ancien garde son
+pseudo, les autres reçoivent `-<6 caractères de leur identifiant>`, et `users.name` suit.
+C'est arrivé sur la base locale du porteur du projet (`Cactus` / `cactus`). Leur
+`handle_changed_at` reste `NULL` : ils peuvent changer de pseudo aussitôt.
+
+### `migrations/0007_match_preparation.sql`
+
+Écrite à la main. `matches` gagne `rated` (0 par défaut, donc les parties d'avant ne sont pas
+classées), `setup` (JSON des pièces déployées, `NULL` sur une carte à position fixe — c'est
+avec elles que le log se rejoue) et `rating_change_a` / `rating_change_b`. `players` gagne
+`showcase` (JSON des faits exhibés). Nouvelle table `team_presets` (`id`, `player_id`,
+`name`, `scenario`, `ruleset_version`, `team` en JSON, `is_default`, `created_at`,
+`updated_at`), indexée par `(player_id, updated_at DESC)`.
+
 ## `wrangler.toml` — bindings et environnements
 
 Bindings (type dans `apps/server/src/env.d.ts`) :
@@ -567,6 +989,10 @@ Bindings (type dans `apps/server/src/env.d.ts`) :
 | `AUTH_SECRET` | `string` (secret) | Signe les cookies de session. **À provisionner par environnement** |
 | `RESEND_API_KEY` | `string` (secret) | Sans elle, les messages sont journalisés — donc aucune adresse vérifiable en déployé |
 | `MAIL_FROM` | `string` (optionnel) | Expéditeur affiché |
+| `MAIL_REPLY_TO` | `string` (optionnel) | Adresse de réponse des courriers |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `string` (secrets, optionnels) | Le client OAuth Google ; sans les deux, Google n'est pas proposé |
+| `OAUTH_PROXY_URL`, `OAUTH_PROXY_SECRET` | `string` (secrets, optionnels) | Le proxy OAuth : posés sur la recette **et** les branches, jamais en production ni en local |
+| `PASSWORD_BREACH_CHECK` | `string` (optionnel) | `off` coupe le contrôle des fuites (tests, poste hors ligne) |
 | `MATCH` | `DurableObjectNamespace` | Les parties |
 | `ASSETS` | `Fetcher` | Le client statique, servi depuis `../web/dist` |
 
@@ -593,7 +1019,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 
 ## Les tests
 
-50 tests, dont 29 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
+143 tests, dont 100 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
 @occulis/server test`.
 
 | Fichier | Où | Ce qui est verrouillé |
@@ -601,11 +1027,21 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `seating.test.ts` | Node | Jeton → camp, refus d'un jeton inconnu ou vide, autorité de tour |
 | `pairing.test.ts` | Node | File d'attente, remplacement d'une attente en double, appariement du plus ancien |
 | `rooms.test.ts` | Node | Codes sans caractères confondables et déterministes, saisie normalisée, salon rendu à l'hôte qui revient, salon consommé une seule fois, code libre au tirage suivant |
-| `match-do.integration.test.ts` | workerd | 403 sans jeton, une vue par camp sans fuite, refus hors tour, coup appliqué + écrit au log + diffusé, clôture en base, refus de protocole |
-| `queue-do.integration.test.ts` | workerd | Deux joueurs appariés sur une même partie avec des sièges distincts, partie réellement joignable, **401 sans session et sur identité forgée dans l'URL**, salon privé apparié par son code (casse et espaces pardonnés, hôte en A), salon consommé une seule fois, refus d'un code inconnu et de son propre code |
-| `auth/password.test.ts` | workerd | **Plafond de 100 000 itérations par passe jamais dépassé**, coût effectif conforme à l'OWASP, aller-retour hachage/vérification, salage, paramétrage inscrit dans l'empreinte, lecture de la forme d'avant le chaînage, empreinte illisible rejetée sans lever |
+| `match-do.integration.test.ts` | workerd | 403 sans jeton, **annonce du déploiement** (zones, équipe par défaut, cartes, temps restant), **coup refusé pendant le déploiement, équipe invalide ou illisible refusée**, **verrou annoncé aux deux camps et seconde équipe refusée**, **démarrage à deux équipes sans fuite de pièce adverse**, `setup` écrit en base, **échéance par l'alarme qui pose l'équipe par défaut**, refus hors tour, coup appliqué + écrit au log + diffusé, clôture en base sans Elo pour une partie privée, **Elo des deux joueurs à la fin d'une partie classée**, refus de protocole |
+| `rating.test.ts` | Node | Espérance à Elo égal, variations opposées, victoire du moins bien classé mieux payée |
+| `feats/feats.test.ts` | Node | Statistiques dans l'ordre des fins (plus longue série), aucun fait sans partie, déblocage par seuil dans l'ordre du catalogue, **exhibition limitée aux faits débloqués, sans doublon, trois au plus** |
+| `legacy-routes.test.ts` | Node | Anciennes adresses françaises → anglaises, jeton conservé, paramètres renommés, adresses actuelles intactes |
+| `me/preparation.integration.test.ts` | workerd | Elo du profil, **faits calculés depuis les parties et exhibition refusée hors déblocage**, presets créés, listés, renommés, changés de défaut et supprimés **pour le seul joueur de la session**, équipe invalide, nom vide et limite refusés |
+| `proposals.test.ts` | Node | Quinze secondes, réglée à deux acceptations seulement, acceptation étrangère ignorée, **remise en tête de qui avait accepté**, échéance, recherche par joueur, `requeueFront()` |
+| `queue-do.integration.test.ts` | workerd | **Proposition avant toute partie, acceptations annoncées**, **refus : l'un remis en file, l'autre sorti**, **connexion fermée = refus**, **échéance par l'alarme**, deux joueurs appariés sur une même partie avec des sièges distincts, partie réellement joignable, **401 sans session et sur identité forgée dans l'URL**, salon privé apparié par son code (casse et espaces pardonnés, hôte en A), salon consommé une seule fois, refus d'un code inconnu et de son propre code |
+| `auth/password.test.ts` | workerd | **Plafond de 100 000 itérations par passe jamais dépassé**, coût effectif conforme à l'OWASP, aller-retour hachage/vérification, salage, paramétrage inscrit dans l'empreinte, lecture de la forme d'avant le chaînage, empreinte illisible rejetée sans lever ; **contrôle des fuites : seul le préfixe part**, leurres ignorés, **service en panne laissé passer** |
+| `auth/handle.test.ts` | workerd | Normalisation NFKC, longueur en code points, écritures non latines, **refus des invisibles et du bidi**, symboles, emoji et diacritiques empilés, **noms réservés sous toutes leurs formes**, pseudo dérivé (nettoyage, suffixes, repli), profil anonymisé imprenable |
+| `auth/mail.test.ts` | workerd | Lien présent en texte et en HTML, **échappé**, aucune couleur transparente ni propriété CSS, **valeur utilisateur échappée** |
 | `auth/auth.integration.test.ts` | workerd | Inscription et profil créés ensemble, session reconnue, jeton inventé refusé, attributs du cookie, **jeton lu en base insuffisant pour ouvrir une session**, mot de passe faux, **réponses indiscernables entre adresse inconnue et mot de passe faux**, adresse et pseudo uniques **sans compte orphelin**, mot de passe trop court, déconnexion, **limitation de débit**, **réinitialisation de bout en bout**, **file fermée sans adresse vérifiée** |
-| `maintenance.integration.test.ts` | workerd | Purge des sessions périmées, des vérifications expirées et des compteurs retombés, et **format de conversion des horodatages de la migration** |
+| `admin/paging.test.ts` | Node | Taille de page bornée, décalage négatif refusé, valeur illisible ignorée, statut inconnu écarté |
+| `me/me.integration.test.ts` | workerd | **401 sans session**, profil du seul compte de la session, pseudo changé dans les deux tables **puis délai imposé**, **collision insensible à la casse**, nom réservé, bidi, **`POST` d'une autre origine refusé**, pseudo normalisé et réservé à l'inscription, **sessions listées sans jeton**, **révocation refusée sur la session d'un autre compte**, fermeture des autres sessions, **changement de mot de passe qui ferme les autres sessions même sans le demander**, **replay refusé en cours (409) et à un tiers (404)**, **replay où une pièce adverse n'apparaît que sur une case vue**, résultat de chaque point de vue, **usurpation : profil lisible, sept routes de compte refusées**, **suppression par le lien puis profil anonymisé**, **limite des demandes de réinitialisation**, `/.well-known/change-password` |
+| `admin/admin.integration.test.ts` | workerd | **401 anonyme et 403 joueur ordinaire, sur nos routes comme sur celles du greffon**, `admin` dans `/api/auth/me`, **`POST` d'une autre origine refusé**, **usurpation signalée par `/api/auth/me`, back-office fermé pendant, session rendue à l'arrêt**, **usurpation d'un administrateur refusée**, liste des comptes avec rôle et `playerId`, **suspension qui ferme les sessions et la connexion**, puis levée, **renommage refusé par les routes de Better Auth**, parties filtrées par joueur et paginées, log rejoué avec son camp, une image par coup où chaque camp voit ses pièces, **bilan correct quel que soit le siège**, **renommage des deux tables d'un geste, intactes sur un pseudo pris** |
+| `maintenance.integration.test.ts` | workerd | Purge des sessions périmées, des vérifications expirées et des compteurs retombés, **des seuls profils orphelins anciens sans partie**, et **format de conversion des horodatages de la migration** |
 
 **Les tests d'intégration sont aussi le test d'hibernation** que `CLAUDE.md` réclame :
 `webSocketMessage()` et `webSocketClose()` ne sont appelés que sur un socket accepté par
@@ -621,6 +1057,11 @@ rattrapée à **chaque** déconnexion ; le ménage nocturne qui ne supprimait ri
 réinitialisation, qui répondait `404` sous son ancien nom `/forget-password` — le test qui
 la couvrait comparait deux statuts égaux, et deux `404` le satisfaisaient. Il exige
 désormais `200`.
+
+Les outils communs des suites (inscription, cookie, IP distinctes) vivent dans
+`test-helpers.ts`, pas dans un fichier de test : importer un fichier de test depuis un autre
+y rattache ses `describe`, et la suite d'origine se retrouvait vide. `vitest.config.ts`
+pose `PASSWORD_BREACH_CHECK=off` : aucun appel sortant depuis la suite.
 
 `vitest.config.ts` lit les vraies migrations (`readD1Migrations`) et les applique à la base
 de test : le schéma testé ne peut pas dériver de celui qui est déployé. `isolatedStorage`
@@ -653,17 +1094,40 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
    une colonne renommée à la main casse silencieusement les requêtes de la bibliothèque.
 9. **Les échéances en base sont du texte ISO 8601.** Les comparer à un nombre de
    millisecondes est toujours faux et ne signale rien.
+10. **Le pseudo s'écrit dans les deux tables à la fois.** `users.name` et
+    `players.handle` ne changent que par `renamePlayer()` (admin) et `changeHandle()`
+    (joueur), et à la création par le crochet d'inscription ; le crochet qui refuse `name`
+    sur les routes de Better Auth en est la garde. Tout pseudo passe `checkHandle()`.
+11. **Toute route `/api/admin/*` passe par la garde de rôle de `handleAdmin()`.** Une
+    route ajoutée hors de ce préfixe ne la reçoit pas.
+12. **Toute requête de `me/queries.ts` est bornée par l'identifiant de la session.** Jamais
+    par le seul identifiant venu de l'URL.
+13. **Une session d'emprunt ne modifie pas le compte.** Une route de compte ajoutée à
+    Better Auth (un greffon) doit rejoindre `ACCOUNT_MUTATIONS`, une route `/api/me/*` en
+    `POST` hérite de la garde de `handleMe()`.
+14. **Le replay joueur ne contient que la vue de son siège.** Jamais `frameOf()` (la
+    position complète du back-office), jamais le coup adverse détaillé.
+15. **Google n'est pas un `trustedProvider`.** L'y déclarer lèverait les deux garde-fous de
+    la liaison automatique, dont celui qui empêche la capture d'un compte par une adresse
+    inscrite d'avance.
 
 ## Non implémenté
 
-- **Aucun fournisseur OAuth.** La table `accounts` est prête à en recevoir et Better Auth
-  les porte ; rien n'est configuré. C'est le prochain pas décidé (`docs/architecture.md`
-  section 7).
-- **Aucune authentification à deux facteurs**, bien que le greffon existe.
+- **Google est le seul fournisseur.** Discord, Apple ou Steam restent ouverts
+  (`docs/architecture.md` section 7) ; un fournisseur ajouté reprend la même liaison et le
+  même pseudo dérivé.
+- **Pas de clés d'accès (passkeys)**, bien que Better Auth ait un greffon : ce serait le
+  pas suivant pour les gestionnaires de mots de passe.
+- **Aucune authentification à deux facteurs**, bien que le greffon existe — elle serait
+  pourtant la bienvenue sur les comptes administrateurs.
+- **Aucun journal des actions d'administration.** Qui a suspendu ou renommé qui n'est
+  consigné nulle part. Seule l'usurpation laisse une trace, `sessions.impersonated_by`, et
+  elle disparaît avec la session.
 - **`trustedOrigins` n'est pas configuré.** Sans lui, un client Electron — qui n'est plus
   de même origine — se verra refuser les routes qui changent l'état.
-- **Le corps de réponse de Better Auth expose `id` et `playerId`** à l'inscription et à la
-  connexion, là où `/api/auth/me` s'en garde. Ce sont les identifiants du compte qui les
+- **Le corps de réponse de Better Auth expose `id`, `playerId` et le jeton brut** à
+  l'inscription, à la connexion et au changement de mot de passe (inutilisable sans la
+  signature du cookie), là où `/api/auth/me` s'en garde. Ce sont les identifiants du compte qui les
   reçoit, mais c'est un écart à l'intention initiale des routes du projet.
 - **La signature de `sendLetter()` ignore les rebonds.** Un envoi refusé par Resend est
   journalisé, sans que personne ne l'apprenne.

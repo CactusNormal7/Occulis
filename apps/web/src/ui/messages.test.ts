@@ -1,6 +1,11 @@
+import { setLocale } from "../i18n/current.js";
 import { describe, expect, it } from "vitest";
 import { Board } from "@occulis/core";
 import { describeTile } from "./messages.js";
+
+// Les phrases attendues ici sont les françaises ; la forme des deux dictionnaires est
+// éprouvée par `@occulis/i18n`, et l'anglais y reste la langue par défaut.
+setLocale("fr");
 
 const BOARD = Board.fromAscii(["003", "0~0"]);
 
