@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BackLink, Banner, Card, EmptyState, FactStrip, IconButton, MoveList, QuickBar, Segmented, Toolbar, ToolbarText, Versus, type MoveEntry } from "@occulis/ui";
+import { BackLink, Banner, Card, EmptyState, FactStrip, IconButton, MoveList, QuickBar, Segmented, Toolbar, ToolbarText, Versus, useMessages, type MoveEntry } from "@occulis/ui";
 import type { AdminMatchDetail } from "@occulis/protocol";
 import { boardForScenario } from "../game/scenario.js";
 import * as api from "./api.js";
@@ -10,10 +10,11 @@ import { clampFrame, describeEntry, frameLabel, type Perspective } from "./repla
 import { ResultBadge, whenReady } from "./shared.js";
 
 export function MatchDetail({ id }: { id: string }) {
+  const t = useMessages().admin.match;
   const { loaded } = useLoad(`match:${id}`, () => api.match(id));
   return whenReady(loaded, (m) => (
     <>
-      <BackLink href={routeHash({ view: "matches", status: null, offset: 0 })}>Parties</BackLink>
+      <BackLink href={routeHash({ view: "matches", status: null, offset: 0 })}>{t.back}</BackLink>
       <Versus
         a={{ name: m.playerA.handle, href: routeHash({ view: "player", id: m.playerA.id }) }}
         b={{ name: m.playerB.handle, href: routeHash({ view: "player", id: m.playerB.id }) }}
@@ -21,15 +22,15 @@ export function MatchDetail({ id }: { id: string }) {
       />
       <FactStrip
         facts={[
-          { label: "début", value: formatDate(m.startedAt) },
-          { label: "fin", value: formatDate(m.finishedAt) },
-          { label: "règles", value: m.rulesetVersion },
-          { label: "carte", value: m.scenario },
-          { label: "coups", value: String(m.log.length) },
-          { label: "identifiant", value: <code>{m.id}</code> },
+          { label: t.facts.start, value: formatDate(m.startedAt) },
+          { label: t.facts.end, value: formatDate(m.finishedAt) },
+          { label: t.facts.rules, value: m.rulesetVersion },
+          { label: t.facts.map, value: m.scenario },
+          { label: t.facts.moves, value: String(m.log.length) },
+          { label: t.facts.id, value: <code>{m.id}</code> },
         ]}
       />
-      {m.replayError !== null && <Banner>Rejeu interrompu — {m.replayError}</Banner>}
+      {m.replayError !== null && <Banner>{t.replayError(m.replayError)}</Banner>}
       <Replay match={m} />
     </>
   ));
@@ -41,6 +42,7 @@ export function MatchDetail({ id }: { id: string }) {
  * Les flèches du clavier parcourent la partie, la lecture la déroule.
  */
 function Replay({ match: m }: { match: AdminMatchDetail }) {
+  const t = useMessages().admin.match;
   const count = m.frames.length;
   const [pinned, setPinned] = useState(count - 1);
   const [shown, setShown] = useState(count - 1);
@@ -90,7 +92,7 @@ function Replay({ match: m }: { match: AdminMatchDetail }) {
   });
 
   const entries: MoveEntry[] = [
-    { number: "—", text: "départ" },
+    { number: "—", text: t.start },
     ...m.log.map((logged) => ({
       number: String(logged.seq + 1),
       ...(logged.player !== null ? { seat: logged.player } : {}),
@@ -100,7 +102,7 @@ function Replay({ match: m }: { match: AdminMatchDetail }) {
   ];
 
   return (
-    <Card title={`Coups (${m.log.length})`} action={<span className="occ-muted">survoler pour voir · cliquer pour épingler</span>} flush>
+    <Card title={t.moves(m.log.length)} action={<span className="occ-muted">{t.hint}</span>} flush>
       <MoveList
         entries={entries}
         shown={shown}
@@ -110,38 +112,38 @@ function Replay({ match: m }: { match: AdminMatchDetail }) {
         onLeave={() => setShown(pinned)}
       />
       {board === undefined ? (
-        <EmptyState>Carte « {m.scenario} » inconnue de ce client : le plateau ne peut pas être redessiné.</EmptyState>
+        <EmptyState>{t.unknownMap(m.scenario)}</EmptyState>
       ) : (
         <div>
           <Toolbar>
             <QuickBar>
-              <IconButton icon="first" label="Position de départ" onClick={() => go(0)} />
-              <IconButton icon="previous" label="Coup précédent (←)" onClick={() => go(pinned - 1)} />
+              <IconButton icon="first" label={t.first} onClick={() => go(0)} />
+              <IconButton icon="previous" label={t.previous} onClick={() => go(pinned - 1)} />
               <IconButton
                 icon={playing ? "pause" : "play"}
-                label={playing ? "Mettre en pause" : "Lire la partie"}
+                label={playing ? t.pause : t.play}
                 onClick={() => {
                   if (!playing && pinned >= count - 1) pin(0);
                   setPlaying(!playing);
                 }}
               />
-              <IconButton icon="next" label="Coup suivant (→)" onClick={() => go(pinned + 1)} />
-              <IconButton icon="last" label="Dernière position" onClick={() => go(count - 1)} />
+              <IconButton icon="next" label={t.next} onClick={() => go(pinned + 1)} />
+              <IconButton icon="last" label={t.last} onClick={() => go(count - 1)} />
             </QuickBar>
             <ToolbarText>{frameLabel(m, shown)}</ToolbarText>
             <Segmented<Perspective>
-              label="Point de vue"
+              label={t.perspective}
               value={perspective}
               onChange={setPerspective}
               options={[
-                { value: "all", label: "tout" },
-                { value: "A", label: `vue de ${m.playerA.handle}`, camp: "A" },
-                { value: "B", label: `vue de ${m.playerB.handle}`, camp: "B" },
+                { value: "all", label: t.everything },
+                { value: "A", label: t.viewOf(m.playerA.handle), camp: "A" },
+                { value: "B", label: t.viewOf(m.playerB.handle), camp: "B" },
               ]}
             />
             <QuickBar>
-              <IconButton icon="rotateLeft" label="Tourner d'un quart" onClick={() => setTurns(turns - 1)} />
-              <IconButton icon="rotateRight" label="Tourner d'un quart" onClick={() => setTurns(turns + 1)} />
+              <IconButton icon="rotateLeft" label={t.rotate} onClick={() => setTurns(turns - 1)} />
+              <IconButton icon="rotateRight" label={t.rotate} onClick={() => setTurns(turns + 1)} />
             </QuickBar>
           </Toolbar>
           <ReplayBoard board={board} frames={m.frames} index={shown} perspective={perspective} turns={turns} />

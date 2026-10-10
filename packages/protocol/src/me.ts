@@ -7,7 +7,7 @@
  * par coup, et jamais la position complète — le fog s'applique aussi après la partie.
  * Les horodatages sont en millisecondes.
  */
-import type { Action, Outcome, PlayerId } from "@occulis/core";
+import type { Action, Outcome, PlayerId, TeamEntry } from "@occulis/core";
 
 export interface MeProfile {
   readonly handle: string;
@@ -25,6 +25,8 @@ export interface MeProfile {
   /** Session ouverte par un administrateur : la page est alors en lecture seule. */
   readonly impersonating: boolean;
   readonly record: MeRecord;
+  /** L'Elo courant ; il ne bouge qu'avec les parties classées (file rapide). */
+  readonly elo: number;
 }
 
 export interface MeRecord {
@@ -61,6 +63,10 @@ export interface MeMatchSummary {
   readonly outcome: Outcome | null;
   readonly result: MeResult;
   readonly actions: number;
+  /** Partie classée : elle a fait (ou fera) varier l'Elo. */
+  readonly rated: boolean;
+  /** Ce que la partie a fait gagner ou perdre d'Elo à votre camp ; `null` si non classée ou en cours. */
+  readonly ratingChange: number | null;
 }
 
 export interface MeMatchPage {
@@ -93,6 +99,44 @@ export interface MeLogEntry {
    * et sa destination, donc révélerait des positions que vous n'avez jamais vues.
    */
   readonly action: Action | null;
+}
+
+/** Un fait d'armes du catalogue, et où vous en êtes. Ses textes sont côté client (`@occulis/i18n`, domaine `feats`). */
+export interface MeFeat {
+  readonly id: string;
+  readonly unlocked: boolean;
+}
+
+export interface MeFeats {
+  readonly feats: readonly MeFeat[];
+  /** Les faits exhibés, dans l'ordre choisi ; trois au plus, tous débloqués. */
+  readonly showcase: readonly string[];
+}
+
+/**
+ * Une équipe préparée d'avance, pour une carte et un ruleset. Ses cases sont celles de
+ * la zone du **camp A** : au déploiement, elles sont transposées vers la zone du camp
+ * réellement tenu (`teamForSide()` de `@occulis/core`).
+ */
+export interface TeamPreset {
+  readonly id: string;
+  readonly name: string;
+  readonly scenario: string;
+  readonly rulesetVersion: string;
+  readonly team: readonly TeamEntry[];
+  readonly isDefault: boolean;
+  /** Faux si l'équipe ne respecte plus les règles courantes : elle est gardée, pas utilisable. */
+  readonly valid: boolean;
+  readonly updatedAt: number;
+}
+
+export interface TeamPresetList {
+  readonly presets: readonly TeamPreset[];
+  /** La carte et le ruleset des nouvelles parties : ceux pour lesquels on prépare. */
+  readonly scenario: string;
+  readonly rulesetVersion: string;
+  /** Combien de presets un joueur peut garder. */
+  readonly limit: number;
 }
 
 export interface MeMatchDetail extends MeMatchSummary {

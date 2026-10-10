@@ -49,8 +49,12 @@ const RESERVED = new Set([
   "official",
 ]);
 
-/** Le préfixe des profils anonymisés à la suppression d'un compte (`anonymousHandle`). */
-const DELETED_PREFIX = "supprime";
+/**
+ * Les préfixes des profils anonymisés à la suppression d'un compte (`anonymousHandle`).
+ * `supprime` est l'ancien, d'avant le passage du nommage en anglais : des profils le
+ * portent encore en base, il reste donc réservé.
+ */
+const DELETED_PREFIXES = ["deleted", "supprime"] as const;
 
 export function normalizeHandle(raw: string): string {
   return raw.normalize("NFKC").trim().replace(/\s+/gu, " ");
@@ -63,7 +67,7 @@ export function checkHandle(raw: unknown): HandleCheck {
   if (length < MIN_HANDLE_LENGTH || length > MAX_HANDLE_LENGTH) return { ok: false, code: "HANDLE_LENGTH" };
   if (!ALLOWED.test(handle) || STACKED_MARKS.test(handle)) return { ok: false, code: "HANDLE_CHARSET" };
   const folded = fold(handle);
-  if (RESERVED.has(folded) || folded.startsWith(DELETED_PREFIX)) return { ok: false, code: "HANDLE_RESERVED" };
+  if (RESERVED.has(folded) || DELETED_PREFIXES.some((prefix) => folded.startsWith(prefix))) return { ok: false, code: "HANDLE_RESERVED" };
   return { ok: true, handle };
 }
 
@@ -76,7 +80,7 @@ function fold(handle: string): string {
     .replace(/[\s_.\-]/gu, "");
 }
 
-const FALLBACK_BASE = "joueur";
+const FALLBACK_BASE = "player";
 /** Place laissée au suffixe de désambiguïsation, pour que le pseudo final tienne. */
 const SUFFIX_ROOM = 5;
 const NUMBERED_ATTEMPTS = 8;
@@ -112,5 +116,5 @@ function handleBase(displayName: string): string {
  * se faire passer pour un compte supprimé.
  */
 export function anonymousHandle(playerId: string): string {
-  return `supprimé-${playerId.replace(/-/g, "").slice(0, 12)}`;
+  return `deleted-${playerId.replace(/-/g, "").slice(0, 12)}`;
 }

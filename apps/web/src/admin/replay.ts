@@ -1,6 +1,7 @@
 import type { Board, Coord, PlayerId } from "@occulis/core";
 import type { AdminFrame, AdminMatchDetail } from "@occulis/protocol";
 import { QUARTER_TURN, type IsoProjection, tileQuad } from "../view/iso.js";
+import { messages } from "../i18n/current.js";
 import { describeAction, seatHandle } from "./model.js";
 
 /**
@@ -52,11 +53,11 @@ export function describeEntry(match: AdminMatchDetail, seq: number): string {
  * `n + 1` suit le coup `n`.
  */
 export function frameLabel(match: AdminMatchDetail, index: number): string {
-  if (index === 0) return "position de départ";
+  if (index === 0) return messages().admin.match.frameStart;
   const entry = match.log[index - 1];
   if (entry === undefined) return "";
   const who = entry.player === null ? "?" : `${entry.player} · ${seatHandle(match, entry.player)}`;
-  return `coup ${index} / ${match.log.length} — ${who} — ${describeEntry(match, index - 1)}`;
+  return messages().admin.match.frame(index, match.log.length, who, describeEntry(match, index - 1));
 }
 
 export function clampFrame(index: number, count: number): number {

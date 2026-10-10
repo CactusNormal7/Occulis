@@ -1,3 +1,4 @@
+import { type Locale, messagesFor } from "@occulis/i18n";
 import { BACKGROUND, CAMP, FONT, INK, INK_ALPHA, hexColor } from "@occulis/ui/tokens";
 
 /**
@@ -49,92 +50,54 @@ export async function sendLetter(env: Env, letter: Letter): Promise<void> {
   // — presque toujours 403 — ne permet pas de les distinguer.
   if (!response.ok) {
     const reason = await response.text().catch(() => "");
-    console.error(`[mail] échec ${response.status} pour ${letter.to} : ${reason}`);
+    console.error(`[mail] failed ${response.status} for ${letter.to}: ${reason}`);
   }
 }
 
 const DEFAULT_SENDER = "Occulis <no-reply@0kl.fr>";
 
-export function verificationLetter(to: string, url: string): Letter {
-  return compose(to, {
-    subject: "Confirmez votre adresse — Occulis",
-    preheader: "Un clic pour ouvrir le jeu en ligne.",
-    title: "Bienvenue sur Occulis",
-    paragraphs: [
-      "Votre compte est créé. Il reste à confirmer cette adresse : c'est elle qui ouvre la file d'attente et les parties en ligne.",
-    ],
-    action: { label: "Confirmer mon adresse", url },
-    footnote: "Si vous n'êtes pas à l'origine de cette inscription, ignorez ce message : aucun compte ne sera activé.",
-  });
+export function verificationLetter(locale: Locale, to: string, url: string): Letter {
+  const m = messagesFor(locale).mail;
+  return compose(locale, to, { ...m.verification, action: { label: m.verification.action, url } });
 }
 
-export function resetLetter(to: string, url: string): Letter {
-  return compose(to, {
-    subject: "Réinitialisation de votre mot de passe — Occulis",
-    preheader: "Ce lien expire dans une heure.",
-    title: "Nouveau mot de passe",
-    paragraphs: [
-      "Une réinitialisation a été demandée pour ce compte. Choisissez un nouveau mot de passe depuis le lien ci-dessous ; il expire dans une heure.",
-      "Toutes vos sessions ouvertes seront fermées une fois le mot de passe changé.",
-    ],
-    action: { label: "Choisir un mot de passe", url },
-    footnote: "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.",
-  });
+export function resetLetter(locale: Locale, to: string, url: string): Letter {
+  const m = messagesFor(locale).mail;
+  return compose(locale, to, { ...m.reset, action: { label: m.reset.action, url } });
 }
 
 /** Envoyé à l'**ancienne** adresse : c'est elle qui doit consentir au changement. */
-export function changeEmailLetter(to: string, newEmail: string, url: string): Letter {
-  return compose(to, {
-    subject: "Changement d'adresse demandé — Occulis",
-    preheader: `Remplacer cette adresse par ${newEmail} ?`,
-    title: "Changer d'adresse",
-    paragraphs: [
-      `Une demande a été faite pour remplacer l'adresse de votre compte par ${newEmail}.`,
-      "Si vous confirmez, un second message partira vers la nouvelle adresse pour la vérifier. Rien ne change tant que les deux n'ont pas été confirmées.",
-    ],
-    action: { label: "Confirmer le changement", url },
-    footnote:
-      "Si vous n'avez rien demandé, ignorez ce message et changez votre mot de passe : quelqu'un a pu accéder à votre session.",
+export function changeEmailLetter(locale: Locale, to: string, newEmail: string, url: string): Letter {
+  const m = messagesFor(locale).mail.changeEmail;
+  return compose(locale, to, {
+    subject: m.subject,
+    preheader: m.preheader(newEmail),
+    title: m.title,
+    paragraphs: m.paragraphs(newEmail),
+    action: { label: m.action, url },
+    footnote: m.footnote,
   });
 }
 
-export function deleteAccountLetter(to: string, url: string): Letter {
-  return compose(to, {
-    subject: "Suppression de votre compte — Occulis",
-    preheader: "Confirmez pour supprimer définitivement votre compte.",
-    title: "Supprimer le compte",
-    paragraphs: [
-      "Vous avez demandé la suppression de votre compte. Une fois confirmée, elle est définitive : votre adresse, vos sessions et vos connexions sont effacées, et votre pseudo est remplacé dans l'historique des parties.",
-      "Le lien n'agit que dans le navigateur où vous êtes connecté, et expire dans 24 heures.",
-    ],
-    action: { label: "Supprimer définitivement", url },
-    footnote: "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message et changez votre mot de passe.",
-  });
+export function deleteAccountLetter(locale: Locale, to: string, url: string): Letter {
+  const m = messagesFor(locale).mail;
+  return compose(locale, to, { ...m.deleteAccount, action: { label: m.deleteAccount.action, url } });
 }
 
-export function passwordChangedLetter(to: string, securityUrl: string): Letter {
-  return compose(to, {
-    subject: "Votre mot de passe a changé — Occulis",
-    preheader: "Un avis de sécurité, rien à faire si c'était vous.",
-    title: "Mot de passe changé",
-    paragraphs: [
-      "Le mot de passe de votre compte vient d'être changé, et les autres sessions ont été fermées.",
-      "Si c'était vous, il n'y a rien à faire.",
-    ],
-    action: { label: "Voir mes sessions", url: securityUrl },
-    footnote:
-      "Si ce n'était pas vous, demandez immédiatement une réinitialisation depuis l'écran de connexion : elle fermera toutes les sessions.",
-  });
+export function passwordChangedLetter(locale: Locale, to: string, securityUrl: string): Letter {
+  const m = messagesFor(locale).mail;
+  return compose(locale, to, { ...m.passwordChanged, action: { label: m.passwordChanged.action, url: securityUrl } });
 }
 
-export function providerLinkedLetter(to: string, provider: string, securityUrl: string): Letter {
-  return compose(to, {
-    subject: `Connexion ${provider} ajoutée — Occulis`,
-    preheader: "Un avis de sécurité, rien à faire si c'était vous.",
-    title: `${provider} est lié à votre compte`,
-    paragraphs: [`Vous pouvez désormais vous connecter à Occulis avec ${provider}.`, "Si c'était vous, il n'y a rien à faire."],
-    action: { label: "Gérer mes connexions", url: securityUrl },
-    footnote: "Si ce n'était pas vous, retirez cette connexion depuis votre profil et changez votre mot de passe.",
+export function providerLinkedLetter(locale: Locale, to: string, provider: string, securityUrl: string): Letter {
+  const m = messagesFor(locale).mail.providerLinked;
+  return compose(locale, to, {
+    subject: m.subject(provider),
+    preheader: m.preheader,
+    title: m.title(provider),
+    paragraphs: m.paragraphs(provider),
+    action: { label: m.action, url: securityUrl },
+    footnote: m.footnote,
   });
 }
 
@@ -148,16 +111,16 @@ interface Content {
   readonly footnote: string;
 }
 
-function compose(to: string, content: Content): Letter {
-  return { to, subject: content.subject, text: plainText(content), html: html(content) };
+function compose(locale: Locale, to: string, content: Content): Letter {
+  return { to, subject: content.subject, text: plainText(locale, content), html: html(locale, content) };
 }
 
-function plainText(content: Content): string {
+function plainText(locale: Locale, content: Content): string {
   return [
     content.title,
     "",
     ...content.paragraphs.flatMap((paragraph) => [paragraph, ""]),
-    `${content.action.label} :`,
+    `${content.action.label}${locale === "fr" ? " :" : ":"}`,
     content.action.url,
     "",
     content.footnote,
@@ -185,7 +148,8 @@ const COLORS = {
  * **Tout ce qui vient de l'extérieur est échappé** : une adresse électronique peut
  * contenir des caractères HTML, et un lien peut porter des `&`.
  */
-function html(content: Content): string {
+function html(locale: Locale, content: Content): string {
+  const m = messagesFor(locale).mail;
   const c = COLORS;
   const font = escapeHtml(FONT.mono);
   const paragraphs = content.paragraphs
@@ -196,7 +160,7 @@ function html(content: Content): string {
     .join("");
   const url = escapeHtml(content.action.url);
   return `<!doctype html>
-<html lang="fr">
+<html lang="${locale}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -218,11 +182,11 @@ ${paragraphs}
 <a href="${url}" style="display:inline-block;padding:12px 22px;font-family:${font};font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:${c.accent};text-decoration:none;">${escapeHtml(content.action.label)}</a>
 </td></tr>
 </table>
-<p style="margin:0 0 6px;font-size:12px;color:${c.dim};">Ou copiez ce lien dans votre navigateur :</p>
+<p style="margin:0 0 6px;font-size:12px;color:${c.dim};">${escapeHtml(m.copyLink)}</p>
 <p style="margin:0;font-size:12px;line-height:1.5;word-break:break-all;"><a href="${url}" style="color:${c.soft};">${url}</a></p>
 </td></tr>
 <tr><td style="padding:24px 4px 0;font-size:12px;line-height:1.6;color:${c.dim};">${escapeHtml(content.footnote)}</td></tr>
-<tr><td style="padding:16px 4px 0;font-size:11px;color:${c.dim};">Message automatique envoyé par Occulis — inutile d'y répondre.</td></tr>
+<tr><td style="padding:16px 4px 0;font-size:11px;color:${c.dim};">${escapeHtml(m.automatic)}</td></tr>
 </table>
 </td></tr>
 </table>

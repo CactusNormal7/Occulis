@@ -7,5 +7,5 @@ import { App } from "./App.js";
  * `@occulis/ui`, qui ne charge ni PixiJS ni le moteur de jeu.
  */
 const host = document.getElementById("admin");
-if (host === null) throw new Error("élément #admin absent de admin/index.html");
+if (host === null) throw new Error("element #admin missing from admin/index.html");
 createRoot(host).render(<App />);

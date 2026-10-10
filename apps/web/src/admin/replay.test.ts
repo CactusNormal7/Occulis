@@ -1,9 +1,14 @@
+import { setLocale } from "../i18n/current.js";
 import { describe, expect, it } from "vitest";
 import { Board } from "@occulis/core";
 import type { AdminFrame, AdminMatchDetail } from "@occulis/protocol";
 import { METRICS } from "../theme.js";
 import { QUARTER_TURN, tileQuad } from "../view/iso.js";
 import { centerOffset, clampFrame, describeEntry, fitScale, frameLabel, movesBetween } from "./replay.js";
+
+// Les phrases attendues ici sont les françaises ; la forme des deux dictionnaires est
+// éprouvée par `@occulis/i18n`, et l'anglais y reste la langue par défaut.
+setLocale("fr");
 
 const piece = (id: string, owner: "A" | "B", x: number, y: number) => ({ id, kind: "scout", owner, x, y });
 const frame = (...pieces: ReturnType<typeof piece>[]): AdminFrame => ({ pieces, visible: { A: [], B: [] } });
@@ -18,6 +23,7 @@ const match: AdminMatchDetail = {
   finishedAt: 1,
   outcome: { kind: "victory", winner: "A", reason: "resignation" },
   actions: 2,
+  rated: false,
   log: [
     { seq: 0, player: "A", action: { kind: "move", pieceId: "a1", to: { x: 2, y: 1 } } },
     { seq: 1, player: "B", action: { kind: "resign" } },

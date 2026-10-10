@@ -1,4 +1,5 @@
 import type { AdminFrame, MeFrame, MeMatchSummary, MeProfile, MeResult } from "@occulis/protocol";
+import { currentLocale, messages } from "../i18n/current.js";
 import { redirectMessage } from "../net/auth.js";
 
 /**
@@ -14,19 +15,19 @@ export type ProfileRoute = { readonly view: "account" } | { readonly view: "matc
 export function parseProfileRoute(hash: string): ProfileRoute {
   const [path = "", query = ""] = hash.replace(/^#/, "").split("?");
   const parts = path.split("/").filter((part) => part.length > 0);
-  if (parts[0] === "parties") {
+  if (parts[0] === "matches") {
     if (parts[1] !== undefined && /^[\w-]+$/.test(parts[1])) return { view: "match", id: parts[1] };
     const offset = Number.parseInt(new URLSearchParams(query).get("offset") ?? "0", 10);
     return { view: "matches", offset: Number.isFinite(offset) && offset > 0 ? offset : 0 };
   }
-  // `#securite` est l'ancre que visent les courriers et `/.well-known/change-password` :
+  // `#security` est l'ancre que visent les courriers et `/.well-known/change-password` :
   // elle reste sur la vue du compte, qui défile jusqu'à la carte.
   return { view: "account" };
 }
 
 export function profileHash(route: ProfileRoute): string {
-  if (route.view === "match") return `#/parties/${route.id}`;
-  if (route.view === "matches") return route.offset > 0 ? `#/parties?offset=${route.offset}` : "#/parties";
+  if (route.view === "match") return `#/matches/${route.id}`;
+  if (route.view === "matches") return route.offset > 0 ? `#/matches?offset=${route.offset}` : "#/matches";
   return "#/";
 }
 
@@ -40,13 +41,9 @@ export function arrivalMessage(search: string): ArrivalMessage | undefined {
   const parameters = new URLSearchParams(search);
   const error = parameters.get("error");
   if (error !== null && error.length > 0) return { ok: false, text: redirectMessage(error) };
-  if (parameters.get("lie") === "google") return { ok: true, text: "Google est lié à votre compte." };
-  if (parameters.get("bienvenue") === "1") {
-    return {
-      ok: true,
-      text: "Bienvenue sur Occulis. Votre pseudo vient de votre nom Google : vous pouvez le changer ci-dessous.",
-    };
-  }
+  const m = messages().profile.arrival;
+  if (parameters.get("linked") === "google") return { ok: true, text: m.googleLinked };
+  if (parameters.get("welcome") === "1") return { ok: true, text: m.welcome };
   return undefined;
 }
 
@@ -54,7 +51,8 @@ export function arrivalMessage(search: string): ArrivalMessage | undefined {
 export function handleCooldownLabel(profile: Pick<MeProfile, "nextHandleChangeAt">, now: number): string | undefined {
   const next = profile.nextHandleChangeAt;
   if (next === null || next <= now) return undefined;
-  return `Prochain changement possible le ${new Date(next).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}.`;
+  const date = new Date(next).toLocaleDateString(currentLocale(), { day: "numeric", month: "long", year: "numeric" });
+  return messages().profile.account.cooldown(date);
 }
 
 /**
@@ -67,15 +65,10 @@ export function canUnlink(profile: Pick<MeProfile, "hasPassword" | "providers">,
   return profile.hasPassword || profile.providers.some((other) => other !== provider);
 }
 
-const RESULTS: Record<MeResult, string> = {
-  won: "victoire",
-  lost: "défaite",
-  ongoing: "en cours",
-  ended: "terminée",
-};
-
 export function describeMyResult(match: Pick<MeMatchSummary, "result" | "outcome">): string {
-  if (match.outcome?.reason === "resignation") return match.result === "won" ? "victoire par abandon" : "défaite par abandon";
+  const results = messages().profile.results;
+  if (match.outcome?.reason === "resignation") return match.result === "won" ? results.wonByResignation : results.lostByResignation;
+  const RESULTS: Record<MeResult, string> = results;
   return RESULTS[match.result];
 }
 
@@ -94,10 +87,11 @@ export function asBoardFrames(frames: readonly MeFrame[], seat: "A" | "B"): Admi
 
 /** « 2 h », « 3 j » : depuis quand une session n'a pas servi. */
 export function sinceLabel(timestamp: number, now: number): string {
+  const m = messages().profile.since;
   const minutes = Math.max(0, Math.round((now - timestamp) / 60_000));
-  if (minutes < 2) return "à l'instant";
-  if (minutes < 60) return `il y a ${minutes} min`;
+  if (minutes < 2) return m.now;
+  if (minutes < 60) return m.minutes(minutes);
   const hours = Math.round(minutes / 60);
-  if (hours < 48) return `il y a ${hours} h`;
-  return `il y a ${Math.round(hours / 24)} j`;
+  if (hours < 48) return m.hours(hours);
+  return m.days(Math.round(hours / 24));
 }

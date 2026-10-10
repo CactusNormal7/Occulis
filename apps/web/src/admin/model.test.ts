@@ -1,7 +1,8 @@
+import { setLocale } from "../i18n/current.js";
 import { describe, expect, it } from "vitest";
 import type { AdminMatchSummary } from "@occulis/protocol";
 import {
-  BAN_PRESETS,
+  banPresets,
   banDuration,
   describeAction,
   describeBan,
@@ -17,6 +18,10 @@ import {
   winRate,
   type Route,
 } from "./model.js";
+
+// Les phrases attendues ici sont les françaises ; la forme des deux dictionnaires est
+// éprouvée par `@occulis/i18n`, et l'anglais y reste la langue par défaut.
+setLocale("fr");
 
 describe("routes du back-office", () => {
   it("retombe sur la vue d'ensemble", () => {
@@ -62,6 +67,7 @@ describe("mise en mots", () => {
     finishedAt: null,
     outcome: null,
     actions: 0,
+    rated: false,
   };
 
   it("nomme le vainqueur par son siège", () => {
@@ -147,7 +153,7 @@ describe("petites mises en forme", () => {
   });
 
   it("propose des durées que `banDuration` sait lire", () => {
-    for (const preset of BAN_PRESETS) expect(banDuration(preset.days).ok).toBe(true);
+    for (const preset of banPresets()) expect(banDuration(preset.days).ok).toBe(true);
   });
 });
 

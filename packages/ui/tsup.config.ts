@@ -12,6 +12,8 @@ export default defineConfig({
   clean: true,
   sourcemap: false,
   external: ["react", "react-dom", "react/jsx-runtime"],
+  // Les textes sont embarqués : hors du dépôt, `@occulis/i18n` ne se résout pas.
+  noExternal: ["@occulis/i18n"],
   // Une seule feuille, tokens compris (`scripts/bundle-css.mjs`).
   onSuccess: "node scripts/bundle-css.mjs",
 });

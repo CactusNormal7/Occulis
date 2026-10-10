@@ -10,7 +10,7 @@ export interface CardProps {
   flush?: boolean | undefined;
   children?: ReactNode | undefined;
   className?: string | undefined;
-  /** Une ancre, pour qu'un lien mène droit à cette carte (`/profil/#securite`). */
+  /** Une ancre, pour qu'un lien mène droit à cette carte (`/profile/#security`). */
   id?: string | undefined;
 }
 

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -23,19 +23,26 @@
     <!-- Visible sur tous les écrans, partie comprise : jouer sous un nom d'emprunt ne
          doit jamais passer inaperçu. -->
     <aside id="impersonation" role="status" hidden>
-      Session d'emprunt : vous incarnez <strong id="impersonated"></strong>
-      <button id="stop-impersonating" type="button">Revenir à mon compte</button>
+      <span data-i18n="game.impersonation.text">Impersonation session: you are playing as</span>
+      <strong id="impersonated"></strong>
+      <button id="stop-impersonating" type="button" data-i18n="game.impersonation.stop">Back to my account</button>
     </aside>
 
     <!-- Le compte, en haut à droite : le lien vers le profil n'est pas un geste de jeu, il
          n'a pas sa place parmi les entrées du menu. Montré au seul écran de menu. -->
-    <a id="account-corner" href="/profil/" aria-label="Mon profil" hidden>
+    <a id="account-corner" href="/profile/" aria-label="My profile" data-i18n-label="game.myProfile" hidden>
       <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
         <circle cx="12" cy="8" r="4" />
         <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
       </svg>
       <span id="account-corner-name"></span>
     </a>
+
+    <!-- Le choix de langue, hors partie seulement : en partie, il n'y a rien à relire. -->
+    <nav id="locale-switch" aria-label="Language" data-i18n-label="ui.language" hidden>
+      <button type="button" data-locale="en" lang="en">EN</button>
+      <button type="button" data-locale="fr" lang="fr">FR</button>
+    </nav>
 
     <main id="shell">
       <!-- Compte : connexion, inscription, mot de passe oublié, réinitialisation. Un îlot
@@ -49,40 +56,48 @@
         <div class="panel">
           <h1>Occulis</h1>
           <p id="menu-identity" class="tagline"></p>
-          <button id="account-resend" type="button" hidden>
-            Renvoyer le message de vérification
+          <button id="account-resend" type="button" data-i18n="game.menu.resend" hidden>
+            Resend the verification email
           </button>
 
           <div class="choices">
             <button id="play-quick" type="button" class="primary">
-              Partie rapide
-              <small>Le premier adversaire disponible</small>
+              <span data-i18n="game.menu.quick">Quick match</span>
+              <small data-i18n="game.menu.quickHint">The first available opponent</small>
             </button>
             <button id="play-host" type="button" class="primary">
-              Créer une partie
-              <small>Un code à transmettre à votre adversaire</small>
+              <span data-i18n="game.menu.host">Create a match</span>
+              <small data-i18n="game.menu.hostHint">A code to give to your opponent</small>
             </button>
           </div>
 
           <form id="join-form" autocomplete="off">
             <label class="field">
-              <span>Rejoindre une partie</span>
+              <span data-i18n="game.menu.join">Join a match</span>
               <input
                 id="join-code"
                 type="text"
                 name="code"
                 maxlength="5"
                 placeholder="CODE"
+                data-i18n-placeholder="game.menu.codePlaceholder"
                 spellcheck="false"
               />
             </label>
-            <button id="play-join" type="submit">Rejoindre</button>
+            <button id="play-join" type="submit" data-i18n="game.menu.joinButton">Join</button>
           </form>
+
+          <!-- Les équipes préparées d'avance : ce n'est pas une entrée en partie, mais ce
+               qu'on emporte dans chacune. -->
+          <button id="menu-teams" type="button">
+            <span data-i18n="team.presets.menuEntry">Teams</span>
+            <small data-i18n="team.presets.menuHint">Prepare your line-ups</small>
+          </button>
 
           <p id="menu-notice" role="status"></p>
           <div class="menu-links">
-            <a id="menu-admin" class="quiet" href="/admin/" hidden>Back-office</a>
-            <button id="account-signout" type="button" class="quiet">Se déconnecter</button>
+            <a id="menu-admin" class="quiet" href="/admin/" data-i18n="game.menu.admin" hidden>Back office</a>
+            <button id="account-signout" type="button" class="quiet" data-i18n="game.menu.signOut">Sign out</button>
           </div>
         </div>
       </section>
@@ -92,22 +107,36 @@
         <div class="panel">
           <h1>Occulis</h1>
           <p id="waiting-code" class="code" hidden></p>
-          <button id="waiting-copy" type="button" class="quiet" hidden>Copier</button>
+          <button id="waiting-copy" type="button" class="quiet" hidden>Copy</button>
           <p id="waiting-note" role="status"></p>
-          <button id="waiting-cancel" type="button" class="quiet">Annuler</button>
+          <button id="waiting-cancel" type="button" class="quiet" data-i18n="game.waiting.cancel">Cancel</button>
         </div>
       </section>
+
+      <!-- Le déploiement : annonce de l'adversaire, puis composition et placement de
+           l'équipe. Un îlot React sur la charte (`src/prepare/`). -->
+      <section id="screen-deploy" class="screen screen--page" hidden>
+        <div id="deploy-root"></div>
+      </section>
+
+      <!-- Les équipes préparées, depuis le menu (`src/teams/`). -->
+      <section id="screen-teams" class="screen screen--page" hidden>
+        <div id="teams-root"></div>
+      </section>
     </main>
+
+    <!-- La fenêtre « partie trouvée », modale, au-dessus de l'écran d'attente. -->
+    <div id="match-found-root"></div>
 
     <!--
       Bandeau de partie : état du tour, lecture de case et saisie de coups. Le clavier
       reste seul capable d'enchaîner déplacement et capture dans le même tour.
     -->
-    <section id="console" aria-label="Partie en cours" hidden>
+    <section id="console" aria-label="Match in progress" data-i18n-label="game.console.label" hidden>
       <p id="status"></p>
       <p id="tile-readout"></p>
       <form id="command-form" autocomplete="off">
-        <label for="command-input">Coup</label>
+        <label for="command-input" data-i18n="game.console.move">Move</label>
         <input
           id="command-input"
           name="command"
@@ -118,10 +147,10 @@
       </form>
       <p id="command-log" data-state="ok"></p>
       <p id="command-help">
-        <code>1,6 2,5</code> déplace · <code>1,6 2,5 x 3,5</code> capture ·
-        <code>1,6 x 1,5</code> frappe sur place · <code>abandon</code>
+        <code>1,6 2,5</code> <span data-i18n="game.console.help.move">moves</span> ·
+        <code data-i18n="game.console.help.resign">resign</code>
       </p>
-      <button id="leave-match" type="button" class="quiet">Quitter la partie</button>
+      <button id="leave-match" type="button" class="quiet" data-i18n="game.console.leave">Leave the match</button>
     </section>
 
     <script type="module" src="/src/main.ts"></script>

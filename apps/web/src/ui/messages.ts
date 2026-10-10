@@ -1,13 +1,14 @@
-import type { ActionError, Coord, GameState, Piece, PlayerId, Tile } from "@occulis/core";
+import type { ActionError, Coord, GameState, Piece, PlayerId, TeamError, Tile } from "@occulis/core";
 import type { Rejection, RoomFault } from "@occulis/protocol";
 import type { Identity } from "../net/auth.js";
 import type { CommandFault } from "./command.js";
 import type { Seeking } from "./flow.js";
+import { messages } from "../i18n/current.js";
 
 /**
  * Textes de l'interface, regroupés hors du câblage DOM : le module qui écoute les
- * événements ne contient aucune phrase, et les formulations restent relisables
- * d'un seul coup d'œil.
+ * événements ne contient aucune phrase. Les phrases elles-mêmes vivent dans
+ * `@occulis/i18n`, dans la langue courante ; ce module choisit laquelle dire.
  */
 
 export function formatCoord(coord: Coord): string {
@@ -15,30 +16,32 @@ export function formatCoord(coord: Coord): string {
 }
 
 export function describeFault(fault: CommandFault): string {
+  const m = messages().game.fault;
   switch (fault.code) {
     case "empty":
-      return "Saisie vide.";
+      return m.empty;
     case "bad-coord":
-      return `Coordonnée illisible : « ${fault.token} ». Format attendu : x,y`;
+      return m.badCoord(fault.token);
     case "missing-destination":
-      return "Destination manquante. Exemple : 1,6 2,5";
+      return m.missingDestination;
     case "trailing":
-      return `Fin de commande inattendue : « ${fault.token} »`;
+      return m.trailing(fault.token);
     case "no-piece-here":
-      return `Aucune pièce en ${formatCoord(fault.coord)}.`;
+      return m.noPieceHere(formatCoord(fault.coord));
   }
 }
 
 export function describeActionError(error: ActionError): string {
+  const m = messages().game.actionError;
   switch (error.code) {
     case "game-over":
-      return "La partie est terminée.";
+      return m.gameOver;
     case "unknown-piece":
-      return "Pièce inconnue.";
+      return m.unknownPiece;
     case "not-your-piece":
-      return "Cette pièce n'est pas au trait.";
+      return m.notYourPiece;
     case "unreachable":
-      return `${formatCoord(error.to)} est hors de portée de cette pièce ce tour-ci.`;
+      return m.unreachable(formatCoord(error.to));
   }
 }
 
@@ -47,45 +50,73 @@ export function describeActionError(error: ActionError): string {
  * partie étant arbitrée, les deux cas sont possibles à tout moment.
  */
 export function describeRejection(rejection: Rejection): string {
+  const m = messages().game.rejection;
+  const t = messages().team.errors;
   switch (rejection.code) {
     case "unknown-seat":
-      return "Siège inconnu : cette connexion n'appartient à aucun des deux camps.";
+      return m.unknownSeat;
     case "not-your-turn":
-      return `Ce n'est pas votre tour : ${rejection.activePlayer} est au trait.`;
+      return m.notYourTurn(rejection.activePlayer);
+    case "wrong-phase":
+      return t.wrongPhase;
+    case "already-locked":
+      return t.alreadyLocked;
+    case "malformed-team":
+      return t.malformed;
+    case "no-team-rules":
+    case "unknown-kind":
+    case "wrong-count":
+    case "outside-zone":
+    case "same-tile":
+      return describeTeamError(rejection);
     default:
       return describeActionError(rejection);
   }
 }
 
+/** Pourquoi une équipe n'est pas déployable — le refus du serveur comme le verdict du brouillon. */
+export function describeTeamError(error: TeamError): string {
+  const m = messages().team;
+  switch (error.code) {
+    case "no-team-rules":
+      return m.errors.noTeamRules;
+    case "unknown-kind":
+      return m.errors.unknownKind(error.kind);
+    case "wrong-count":
+      return m.errors.wrongCount(m.roles[error.role], error.expected, error.actual);
+    case "outside-zone":
+      return m.errors.outsideZone(error.coord.x, error.coord.y);
+    case "same-tile":
+      return m.errors.sameTile(error.coord.x, error.coord.y);
+  }
+}
+
 /** Pourquoi un code de salon n'a mené à aucune partie. */
 export function describeRoomFault(fault: RoomFault): string {
+  const m = messages().game.roomFault;
   switch (fault.code) {
     case "unknown":
-      return "Aucune partie sous ce code : vérifiez la saisie, ou faites-le renvoyer.";
+      return m.unknown;
     case "own":
-      return "C'est votre propre code : transmettez-le à votre adversaire.";
+      return m.own;
   }
 }
 
 /** Ce que le joueur attend, et depuis quel menu. */
 export function describeWaiting(seeking: Seeking, code: string | undefined): string {
-  if (seeking === "quick") return "Recherche d'un adversaire…";
-  if (seeking === "join") return "Entrée dans la partie…";
-  return code === undefined
-    ? "Ouverture de la partie…"
-    : "Transmettez ce code à votre adversaire, puis attendez son arrivée.";
+  const m = messages().game.waiting;
+  if (seeking === "quick") return m.quick;
+  if (seeking === "join") return m.join;
+  return code === undefined ? m.opening : m.hosting;
 }
 
 export function describeMove(piece: Piece, to: Coord): string {
   return `${piece.owner} · ${piece.id} ${formatCoord(piece.coord)} → ${formatCoord(to)}`;
 }
 
-const VICTORY_REASONS: Record<NonNullable<GameState["outcome"]>["reason"], string> = {
-  resignation: "abandon",
-};
-
 export function describeOutcome(outcome: NonNullable<GameState["outcome"]>): string {
-  return `Victoire de ${outcome.winner} (${VICTORY_REASONS[outcome.reason]}).`;
+  const m = messages().game.outcome;
+  return m.victory(outcome.winner, m.reasons[outcome.reason]);
 }
 
 /**
@@ -93,8 +124,8 @@ export function describeOutcome(outcome: NonNullable<GameState["outcome"]>): str
  * affiché : il n'y en a qu'un — le serveur n'envoie jamais la vue d'en face.
  */
 export function describeTurn(turn: number, activePlayer: PlayerId, seat: PlayerId): string {
-  const whose = activePlayer === seat ? "à vous de jouer" : "au trait : l'adversaire";
-  return `Tour ${turn} · ${whose} · vous jouez ${seat}`;
+  const m = messages().game.turn;
+  return m.line(turn, activePlayer === seat ? m.yours : m.theirs, seat);
 }
 
 /**
@@ -105,9 +136,10 @@ export function describeTurn(turn: number, activePlayer: PlayerId, seat: PlayerI
  * alors qu'annoncer la pièce présente divulguerait une position hors LOS.
  */
 export function describeTile(tile: Tile | undefined): string {
-  if (tile === undefined) return "Hors plateau.";
-  const relief = `${tile.coord.x},${tile.coord.y} · hauteur ${tile.height}`;
-  return tile.passable ? relief : `${relief} · infranchissable`;
+  const m = messages().game.tile;
+  if (tile === undefined) return m.offBoard;
+  const relief = m.relief(tile.coord.x, tile.coord.y, tile.height);
+  return tile.passable ? relief : `${relief} · ${m.impassable}`;
 }
 
 /** Ce que le menu affiche du compte : le pseudo, et l'état de la vérification. */
@@ -116,7 +148,7 @@ export function describeIdentity(identity: Identity): string {
   if (identity.emailVerified === false) {
     // Dit pourquoi le jeu reste fermé : sans ça, les boutons désactivés n'ont
     // aucune explication à l'écran.
-    return `${identity.handle ?? ""} · adresse non vérifiée, le jeu reste fermé`;
+    return messages().game.menu.unverified(identity.handle ?? "");
   }
   return identity.handle ?? "";
 }

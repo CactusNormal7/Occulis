@@ -1,3 +1,4 @@
+import { setLocale } from "../i18n/current.js";
 import { describe, expect, it } from "vitest";
 import {
   arrivalMessage,
@@ -9,6 +10,10 @@ import {
   profileHash,
   sinceLabel,
 } from "./model.js";
+
+// Les phrases attendues ici sont les françaises ; la forme des deux dictionnaires est
+// éprouvée par `@occulis/i18n`, et l'anglais y reste la langue par défaut.
+setLocale("fr");
 
 describe("routes du profil", () => {
   it("fait l'aller-retour entre route et fragment", () => {
@@ -23,23 +28,23 @@ describe("routes du profil", () => {
   });
 
   it("garde l'ancre de sécurité sur la vue du compte", () => {
-    expect(parseProfileRoute("#securite")).toEqual({ view: "account" });
+    expect(parseProfileRoute("#security")).toEqual({ view: "account" });
     expect(parseProfileRoute("")).toEqual({ view: "account" });
   });
 
   it("refuse un identifiant de partie suspect et un décalage négatif", () => {
-    expect(parseProfileRoute("#/parties/<script>")).toEqual({ view: "matches", offset: 0 });
-    expect(parseProfileRoute("#/parties?offset=-5")).toEqual({ view: "matches", offset: 0 });
+    expect(parseProfileRoute("#/matches/<script>")).toEqual({ view: "matches", offset: 0 });
+    expect(parseProfileRoute("#/matches?offset=-5")).toEqual({ view: "matches", offset: 0 });
   });
 });
 
 describe("messages d'arrivée", () => {
   it("accueille un compte créé par Google", () => {
-    expect(arrivalMessage("?bienvenue=1")?.text).toContain("changer");
+    expect(arrivalMessage("?welcome=1")?.text).toContain("changer");
   });
 
   it("confirme une liaison et explique un refus", () => {
-    expect(arrivalMessage("?lie=google")).toEqual({ ok: true, text: "Google est lié à votre compte." });
+    expect(arrivalMessage("?linked=google")).toEqual({ ok: true, text: "Google est lié à votre compte." });
     expect(arrivalMessage("?error=email_doesn't_match")?.ok).toBe(false);
     expect(arrivalMessage("")).toBeUndefined();
   });

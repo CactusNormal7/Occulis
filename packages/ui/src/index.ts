@@ -6,6 +6,13 @@
 export * from "./tokens.js";
 export { Icon, ICON_NAMES, type IconName, type IconProps } from "./components/Icon.js";
 export { UiRoot, type UiRootProps } from "./components/UiRoot.js";
+export {
+  LocaleProvider,
+  LocaleSwitch,
+  useLocale,
+  useMessages,
+  type LocaleSwitchProps,
+} from "./components/Locale.js";
 export { Button, type ButtonProps } from "./components/Button.js";
 export { IconButton, QuickBar, type IconButtonProps, type QuickBarProps } from "./components/IconButton.js";
 export { Badge, BadgeRow, type BadgeProps } from "./components/Badge.js";
@@ -39,6 +46,9 @@ export {
 } from "./components/Segmented.js";
 export { Table, Pager, List, ListRow, type TableProps, type PagerProps, type ListRowProps } from "./components/Table.js";
 export { Dialog, Note, type DialogProps } from "./components/Dialog.js";
+export { CountdownRing, type CountdownRingProps } from "./components/Countdown.js";
+export { PlayerPlate, Reveal, type PlayerPlateProps, type RevealProps } from "./components/PlayerPlate.js";
+export { ChoiceList, ChoiceRow, type ChoiceRowProps } from "./components/Choice.js";
 export { ToastProvider, ToastStack, useToast, type ToastMessage, type ToastStackProps } from "./components/Toast.js";
 export { MoveList, type MoveEntry, type MoveListProps } from "./components/MoveList.js";
 export { Toolbar, ToolbarText } from "./components/Toolbar.js";

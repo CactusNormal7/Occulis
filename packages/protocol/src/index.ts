@@ -6,7 +6,7 @@
  * Il ne contient que des types et la conversion de sérialisation — aucune règle de
  * jeu (elle vit dans `@occulis/core`), aucun transport (il vit dans chaque app).
  */
-import type { Action, ActionError, PlayerId, PlayerView } from "@occulis/core";
+import type { Action, ActionError, Coord, PlayerId, PlayerView, TeamEntry, TeamError } from "@occulis/core";
 
 /**
  * Refus prononcé par le serveur et non par les règles : le siège qui a envoyé
@@ -23,7 +23,7 @@ export type SeatDenial =
  * doit pouvoir le refuser explicitement plutôt que le laisser diverger en silence
  * (docs/architecture.md section 1).
  */
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 
 /** `PlayerView` contient des `Set`/`Map`, que `JSON.stringify` sérialise en `{}`. */
 export interface WireView {
@@ -49,10 +49,43 @@ export function decodeView(wire: WireView): PlayerView {
 
 export type ClientMessage =
   | { readonly kind: "hello"; readonly protocol: number }
-  | { readonly kind: "action"; readonly action: Action };
+  | { readonly kind: "action"; readonly action: Action }
+  /** L'équipe du joueur, posée dans sa zone. **Définitive** : on ne se rétracte pas. */
+  | { readonly kind: "deploy"; readonly team: readonly TeamEntry[] };
 
-/** Un coup refusé l'est soit par les règles (`core`), soit par le siège (serveur). */
-export type Rejection = ActionError | SeatDenial;
+/** Refus d'un geste qui n'a pas sa place dans la phase en cours, ou qui n'a pas de forme lisible. */
+export type PhaseDenial =
+  /** Un coup avant la fin du déploiement, ou une équipe après. */
+  | { readonly code: "wrong-phase" }
+  /** Une seconde équipe : la première est verrouillée. */
+  | { readonly code: "already-locked" }
+  /** Une équipe qui n'a pas la forme d'une liste de `{ kind, coord }` (`parseTeam()`). */
+  | { readonly code: "malformed-team" };
+
+/**
+ * Un geste refusé l'est par les règles (`core` : un coup, une équipe), par le siège ou
+ * par la phase de la partie (serveur).
+ */
+export type Rejection = ActionError | TeamError | SeatDenial | PhaseDenial;
+
+/**
+ * Ce qu'un joueur montre de lui à son adversaire, à l'annonce de la partie. Rien que de
+ * public : le pseudo, l'Elo, le bilan, et les faits d'armes qu'il a choisi d'exhiber.
+ */
+export interface PlayerCard {
+  readonly handle: string;
+  readonly elo: number;
+  readonly played: number;
+  readonly won: number;
+  /** Identifiants de faits d'armes (`apps/server/src/feats/catalog.ts`), leurs textes étant côté client. */
+  readonly feats: readonly string[];
+}
+
+/** Qui a verrouillé son équipe, du point de vue du destinataire. */
+export interface Locks {
+  readonly self: boolean;
+  readonly opponent: boolean;
+}
 
 export type ServerMessage =
   /**
@@ -67,6 +100,25 @@ export type ServerMessage =
       readonly scenario: string;
       readonly rulesetVersion: string;
     }
+  /**
+   * La partie est en déploiement. Envoyé à chaque connexion tant qu'elle l'est : le client
+   * qui revient retrouve sa zone, le temps restant et l'état des verrous. `remainingMs`
+   * plutôt qu'une échéance : l'horloge du client n'est pas celle du serveur.
+   */
+  | {
+      readonly kind: "deployment";
+      readonly zone: readonly Coord[];
+      /** La zone d'en face — elle fait partie de la carte, publique ; jamais les pièces qui s'y posent. */
+      readonly opponentZone: readonly Coord[];
+      readonly defaultTeam: readonly TeamEntry[];
+      readonly remainingMs: number;
+      readonly locks: Locks;
+      readonly self: PlayerCard;
+      readonly opponent: PlayerCard;
+      readonly rated: boolean;
+    }
+  /** Un verrou a changé — le sien, ou celui d'en face. */
+  | { readonly kind: "deployment-update"; readonly locks: Locks }
   | { readonly kind: "view"; readonly view: WireView }
   | { readonly kind: "rejected"; readonly error: Rejection }
   | { readonly kind: "protocol-mismatch"; readonly expected: number };
@@ -88,11 +140,15 @@ export type QueueIntent =
   /** Entrée dans le salon privé désigné par ce code. */
   | { readonly kind: "join"; readonly code: string };
 
-export type QueueClientMessage = {
-  readonly kind: "hello";
-  readonly protocol: number;
-  readonly intent: QueueIntent;
-};
+export type QueueClientMessage =
+  | {
+      readonly kind: "hello";
+      readonly protocol: number;
+      readonly intent: QueueIntent;
+    }
+  /** Réponse à une proposition de partie (file rapide seulement). */
+  | { readonly kind: "accept"; readonly proposalId: string }
+  | { readonly kind: "decline"; readonly proposalId: string };
 
 /** Pourquoi un code de salon n'a mené à aucune partie. */
 export type RoomFault =
@@ -109,6 +165,19 @@ export type QueueServerMessage =
    */
   | { readonly kind: "hosting"; readonly code: string }
   | { readonly kind: "room-fault"; readonly fault: RoomFault }
+  /**
+   * Un adversaire est trouvé : la partie ne sera créée que si les deux acceptent avant
+   * l'échéance. `remainingMs` plutôt qu'une échéance, l'horloge du client n'étant pas celle
+   * du serveur.
+   */
+  | { readonly kind: "proposal"; readonly proposalId: string; readonly remainingMs: number }
+  /** Qui a accepté, du point de vue du destinataire. */
+  | { readonly kind: "proposal-update"; readonly accepted: { readonly self: boolean; readonly opponent: boolean } }
+  /**
+   * La proposition est tombée. `requeued` : le destinataire avait accepté, il est remis en
+   * tête de file et attend de nouveau ; sinon il est sorti de la file.
+   */
+  | { readonly kind: "proposal-lapsed"; readonly requeued: boolean }
   | {
       readonly kind: "matched";
       readonly matchId: string;

@@ -4,6 +4,8 @@ import { currentAccount, handleAuth } from "./auth/routes.js";
 import { startMatch } from "./match-setup.js";
 import { handleAdmin } from "./admin/routes.js";
 import { handleMe } from "./me/routes.js";
+import { legacyRedirect } from "./legacy-routes.js";
+import { type Locale, localeFromCookie, resolveLocale } from "@occulis/i18n";
 
 export { MatchDO } from "./match-do.js";
 export { QueueDO } from "./queue-do.js";
@@ -27,8 +29,10 @@ export default {
     // L'adresse bien connue que les gestionnaires de mots de passe ouvrent pour
     // « changer le mot de passe de ce site » (W3C, change-password-url).
     if (url.pathname === "/.well-known/change-password") {
-      return Response.redirect(`${url.origin}/profil/#securite`, 302);
+      return Response.redirect(`${url.origin}/profile/#security`, 302);
     }
+    const legacy = request.method === "GET" ? legacyRedirect(url) : undefined;
+    if (legacy !== undefined) return Response.redirect(legacy, 301);
     const page = pageFor(url.pathname);
     if (page !== undefined) return env.ASSETS.fetch(new Request(new URL(page, url.origin), request));
     // Construite par requête : les bindings n'existent que là, et l'URL de base doit
@@ -49,11 +53,11 @@ export default {
         url.pathname.startsWith("/api/me/") ||
         url.pathname === "/api/queue"
       ) {
-        console.error("[auth] AUTH_SECRET absent ou trop court : authentification refusée");
-        return new Response("authentification indisponible", { status: 503 });
+        console.error("[auth] AUTH_SECRET missing or too short: authentication refused");
+        return new Response("authentication unavailable", { status: 503 });
       }
     }
-    const auth = buildAuth(env, url.origin);
+    const auth = buildAuth(env, url.origin, localeOf(request));
 
     const authenticated = await handleAuth(auth, env, request, url.pathname);
     if (authenticated !== undefined) return authenticated;
@@ -117,12 +121,17 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * page du jeu, dont l'îlot de compte lit le chemin. La liste est explicite : un repli
  * global vers `index.html` ferait d'une faute de frappe une page blanche au lieu d'un 404.
  */
-export const ACCOUNT_PATHS = ["/connexion", "/inscription", "/mot-de-passe-oublie", "/reinitialiser"] as const;
+export const ACCOUNT_PATHS = ["/sign-in", "/sign-up", "/forgot-password", "/reset-password"] as const;
 
 function pageFor(pathname: string): string | undefined {
   if ((ACCOUNT_PATHS as readonly string[]).includes(pathname)) return "/";
-  if (pathname === "/profil") return "/profil/";
+  if (pathname === "/profile") return "/profile/";
   return undefined;
+}
+
+/** La langue du joueur : son choix (cookie posé par le client), sinon celle de son navigateur. */
+function localeOf(request: Request): Locale {
+  return resolveLocale(localeFromCookie(request.headers.get("Cookie")), request.headers.get("Accept-Language"));
 }
 
 /** Le minimum que Better Auth recommande pour un secret de signature. */
@@ -144,14 +153,14 @@ async function joinQueue(
   url: URL,
 ): Promise<Response> {
   const account = await currentAccount(auth, request);
-  if (account === undefined) return new Response("authentification requise", { status: 401 });
+  if (account === undefined) return new Response("authentication required", { status: 401 });
 
   // L'adresse vérifiée est exigée ici, et non à la connexion : un compte reste
   // utilisable tant que le message n'est pas arrivé, mais le jeu apparié — celui qui
   // porte le classement et qu'un compte jetable viendrait polluer — ne s'ouvre qu'une
   // fois l'adresse prouvée.
   if (!account.emailVerified) {
-    return new Response("adresse non vérifiée", { status: 403 });
+    return new Response("email not verified", { status: 403 });
   }
 
   const forwarded = new URL(url);

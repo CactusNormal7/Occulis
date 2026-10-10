@@ -1,3 +1,5 @@
+import { messages } from "../i18n/current.js";
+
 /**
  * Appels d'authentification. Le jeton de session n'apparaît jamais ici : il vit dans
  * un cookie `HttpOnly`, que le navigateur joint seul et que ce code ne peut pas lire.
@@ -54,7 +56,7 @@ export async function signInWithGoogle(): Promise<AuthOutcome> {
   return redirectTo("/api/auth/sign-in/social", {
     provider: "google",
     callbackURL: "/",
-    newUserCallbackURL: "/profil/?bienvenue=1",
+    newUserCallbackURL: "/profile/?welcome=1",
     errorCallbackURL: ROUTE_PATHS.signin,
   });
 }
@@ -63,8 +65,8 @@ export async function signInWithGoogle(): Promise<AuthOutcome> {
 export async function linkGoogle(): Promise<AuthOutcome> {
   return redirectTo("/api/auth/link-social", {
     provider: "google",
-    callbackURL: "/profil/?lie=google#securite",
-    errorCallbackURL: "/profil/#securite",
+    callbackURL: "/profile/?linked=google#security",
+    errorCallbackURL: "/profile/#security",
   });
 }
 
@@ -104,14 +106,14 @@ export async function resendVerification(email: string): Promise<AuthOutcome> {
  * Worker sert la page du jeu sur chacune (`ACCOUNT_PATHS`, `apps/server/src/index.ts`).
  */
 export const ROUTE_PATHS = {
-  signin: "/connexion",
-  register: "/inscription",
-  forgot: "/mot-de-passe-oublie",
-  reset: "/reinitialiser",
+  signin: "/sign-in",
+  register: "/sign-up",
+  forgot: "/forgot-password",
+  reset: "/reset-password",
 } as const;
 
 /** Où ramène le lien de vérification d'adresse, une fois l'adresse confirmée. */
-export const VERIFIED_PATH = "/?verifiee=1";
+export const VERIFIED_PATH = "/?verified=1";
 
 /**
  * La traduction des refus. Elle s'accroche au **code** et jamais à la phrase : le
@@ -121,67 +123,34 @@ export const VERIFIED_PATH = "/?verifiee=1";
  * décide quoi que ce soit.
  */
 export function authMessage(status: number, payload: { code?: string | undefined; message?: string | undefined }): string {
-  if (status === 429 && payload.code !== "HANDLE_COOLDOWN") return "Trop de tentatives. Réessayez dans quelques minutes.";
+  const m = messages().auth;
+  if (status === 429 && payload.code !== "HANDLE_COOLDOWN") return m.tooManyAttempts;
 
-  const known = MESSAGES[payload.code ?? ""];
+  const known = codeMessage(payload.code ?? "");
   if (known !== undefined) return known;
 
-  return payload.message ?? "La demande a échoué.";
+  return payload.message ?? m.failed;
 }
 
-const MESSAGES: Record<string, string> = {
-  USER_ALREADY_EXISTS: "Cette adresse est déjà utilisée.",
-  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "Cette adresse est déjà utilisée.",
-  HANDLE_TAKEN: "Ce pseudo est déjà pris.",
-  HANDLE_LENGTH: "Le pseudo doit faire entre 2 et 24 caractères.",
-  HANDLE_CHARSET: "Lettres, chiffres, espaces, points, tirets et soulignés seulement.",
-  HANDLE_RESERVED: "Ce pseudo est réservé.",
-  HANDLE_UNCHANGED: "C'est déjà votre pseudo.",
-  HANDLE_COOLDOWN: "Le pseudo ne se change qu'une fois par mois.",
-  PASSWORD_TOO_SHORT: "Le mot de passe doit faire au moins 10 caractères.",
-  PASSWORD_TOO_LONG: "Le mot de passe doit faire au plus 128 caractères.",
-  PASSWORD_COMPROMISED:
-    "Ce mot de passe figure dans des fuites de données connues. Choisissez-en un autre, de préférence généré.",
-  INVALID_PASSWORD: "Mot de passe actuel incorrect.",
-  CREDENTIAL_ACCOUNT_NOT_FOUND: "Ce compte n'a pas encore de mot de passe.",
-  VALIDATION_ERROR: "Adresse électronique invalide.",
-  INVALID_EMAIL: "Adresse électronique invalide.",
-  // Le serveur ne dit jamais lequel des deux est faux : le distinguer révélerait
-  // quelles adresses sont inscrites.
-  INVALID_EMAIL_OR_PASSWORD: "Adresse ou mot de passe incorrect.",
-  INVALID_TOKEN: "Ce lien n'est plus valable. Demandez-en un nouveau.",
-  TOKEN_EXPIRED: "Ce lien a expiré. Demandez-en un nouveau.",
-  BANNED_USER: "Ce compte est suspendu.",
-  SESSION_EXPIRED: "Votre session est trop ancienne pour cette opération. Reconnectez-vous.",
-  SESSION_NOT_FRESH: "Votre session est trop ancienne pour cette opération. Reconnectez-vous.",
-  IMPERSONATION_READONLY: "Session d'emprunt : le compte de ce joueur ne peut pas être modifié.",
-  FAILED_TO_UNLINK_LAST_ACCOUNT: "Impossible de retirer votre seule méthode de connexion.",
-  EMAIL_NOT_VERIFIED: "Confirmez d'abord votre adresse.",
-};
+function codeMessage(code: string): string | undefined {
+  const codes: Readonly<Record<string, string>> = messages().auth.codes;
+  return Object.hasOwn(codes, code) ? codes[code] : undefined;
+}
 
 /**
  * Les retours d'une redirection (vérification d'adresse, Google, réinitialisation) : le
  * serveur ne peut parler qu'en paramètre d'URL, `?error=…`. Better Auth y met des codes
  * en majuscules pour ses propres liens, en minuscules pour l'OAuth.
+ *
+ * `account_not_linked` : la liaison automatique exige une adresse déjà confirmée côté
+ * Occulis (`requireLocalEmailVerified`) — sans elle, inscrire votre adresse suffirait à
+ * capter votre futur compte Google.
  */
 export function redirectMessage(error: string): string {
-  return REDIRECT_MESSAGES[error] ?? MESSAGES[error] ?? "La connexion n'a pas abouti. Réessayez.";
+  const redirects: Readonly<Record<string, string>> = messages().auth.redirects;
+  if (Object.hasOwn(redirects, error)) return redirects[error] ?? "";
+  return codeMessage(error) ?? messages().auth.redirectFailed;
 }
-
-const REDIRECT_MESSAGES: Record<string, string> = {
-  // La liaison automatique exige une adresse déjà confirmée côté Occulis
-  // (`requireLocalEmailVerified`) : sans elle, inscrire votre adresse suffirait à
-  // capter votre futur compte Google.
-  account_not_linked:
-    "Un compte existe déjà avec cette adresse, mais elle n'a jamais été confirmée. Connectez-vous avec votre mot de passe, confirmez l'adresse, puis Google pourra y être lié.",
-  "email_doesn't_match": "Ce compte Google n'utilise pas la même adresse que votre compte Occulis.",
-  access_denied: "Connexion Google annulée.",
-  state_mismatch: "La connexion a expiré en route. Réessayez.",
-  please_restart_the_process: "La connexion a expiré en route. Réessayez.",
-  unable_to_link_account: "Ce compte Google est déjà lié à un autre compte.",
-  "account_already_linked_to_different_user": "Ce compte Google est déjà lié à un autre compte.",
-  email_not_found: "Google n'a pas transmis d'adresse électronique.",
-};
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
@@ -197,17 +166,17 @@ async function post(path: string, body: unknown): Promise<{ response: Response; 
 
 async function submit(path: string, body: unknown): Promise<AuthOutcome> {
   const result = await post(path, body);
-  if (result === undefined) return { ok: false, message: "Serveur injoignable. Vérifiez votre connexion." };
+  if (result === undefined) return { ok: false, message: messages().auth.unreachable };
   if (result.response.ok) return { ok: true };
   return failure(result.response.status, result.payload);
 }
 
 async function redirectTo(path: string, body: unknown): Promise<AuthOutcome> {
   const result = await post(path, body);
-  if (result === undefined) return { ok: false, message: "Serveur injoignable. Vérifiez votre connexion." };
+  if (result === undefined) return { ok: false, message: messages().auth.unreachable };
   if (!result.response.ok) return failure(result.response.status, result.payload);
   const url = result.payload["url"];
-  if (typeof url !== "string") return { ok: false, message: "La connexion n'a pas abouti. Réessayez." };
+  if (typeof url !== "string") return { ok: false, message: messages().auth.redirectFailed };
   location.assign(url);
   return { ok: true };
 }

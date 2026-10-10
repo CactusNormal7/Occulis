@@ -6,6 +6,9 @@ import {
   Button,
   Card,
   ChipGroup,
+  ChoiceList,
+  ChoiceRow,
+  CountdownRing,
   Dialog,
   Divider,
   FactStrip,
@@ -20,7 +23,9 @@ import {
   Pager,
   PasswordField,
   Person,
+  PlayerPlate,
   ProviderButton,
+  Reveal,
   Segmented,
   SettingEditor,
   SettingList,
@@ -79,8 +84,15 @@ describe("composants", () => {
   it("cède la place à l'état vide quand une table n'a pas de ligne", () => {
     expect(html(<Table columns={["a"]} rowCount={0} empty="Aucune partie." />)).toContain("Aucune partie.");
     expect(html(<Pager offset={25} shown={25} total={132} pageSize={25} hrefFor={(o) => `#${o}`} />)).toContain(
-      "26–50 sur 132",
+      "26–50 of 132",
     );
+  });
+
+  it("parle la langue que lui fixe UiRoot", () => {
+    const pager = <Pager offset={25} shown={25} total={132} pageSize={25} hrefFor={(o) => `#${o}`} />;
+    expect(html(<UiRoot locale="fr">{pager}</UiRoot>)).toContain("26–50 sur 132");
+    expect(html(<UiRoot locale="fr">{pager}</UiRoot>)).toContain('lang="fr"');
+    expect(html(<UiRoot>{pager}</UiRoot>)).toContain("26–50 of 132");
   });
 
   it("rend les autres briques sans lever", () => {
@@ -129,14 +141,14 @@ describe("composants", () => {
 
   it("rend les briques des parcours de compte", () => {
     const panel = html(
-      <FormPanel title="Connexion" lead="Bon retour." footer={<a href="/inscription">Créer un compte</a>}>
+      <FormPanel title="Connexion" lead="Bon retour." footer={<a href="/sign-up">Créer un compte</a>}>
         <ProviderButton provider="google" />
         <Divider>ou</Divider>
         <FormMessage tone="error">Identifiants invalides.</FormMessage>
       </FormPanel>,
     );
     expect(panel).toContain("occ-form-panel");
-    expect(panel).toContain("Continuer avec Google");
+    expect(panel).toContain("Continue with Google");
     expect(panel).toContain('role="separator"');
     expect(panel).toContain('role="alert"');
     expect(html(<FormMessage tone="success">Fait.</FormMessage>)).toContain('role="status"');
@@ -156,7 +168,7 @@ describe("composants", () => {
     );
     expect(reading).toContain("occ-settings");
     expect(reading).toContain("anne");
-    expect(reading).toContain("Modifier");
+    expect(reading).toContain("Edit");
 
     const editing = html(
       <SettingRow label="Pseudo" value="anne" onEdit={() => undefined} editing>
@@ -168,8 +180,54 @@ describe("composants", () => {
     expect(editing).toContain("occ-setting--editing");
     expect(editing).toContain("<form");
     expect(editing).toContain('role="alert"');
-    expect(editing).toContain("Annuler");
+    expect(editing).toContain("Cancel");
     // Le bouton d'édition disparaît tant que l'éditeur est ouvert.
-    expect(editing).not.toContain(">Modifier<");
+    expect(editing).not.toContain(">Edit<");
+  });
+});
+
+describe("préparation d'une partie", () => {
+  it("dessine un compte à rebours proportionnel, urgent sous cinq secondes", () => {
+    const calm = html(<CountdownRing totalMs={10_000} remainingMs={6_000} label="Temps restant">6</CountdownRing>);
+    expect(calm).toContain('role="timer"');
+    expect(calm).not.toContain("occ-countdown--urgent");
+    expect(html(<CountdownRing totalMs={10_000} remainingMs={4_000} label="t" />)).toContain("occ-countdown--urgent");
+  });
+
+  it("annonce deux joueurs, chacun dans la couleur de son camp", () => {
+    const reveal = html(
+      <Reveal
+        versus="vs"
+        self={<PlayerPlate name="anne" camp="A" tag="You" lines={["1200 Elo"]} badges={<Badge>First blood</Badge>} />}
+        opponent={<PlayerPlate name="boris" camp="B" align="end" />}
+      />,
+    );
+    expect(reveal).toContain("occ-plate--A");
+    expect(reveal).toContain("occ-plate--B occ-plate--end");
+    expect(reveal).toContain("First blood");
+    expect(html(<Reveal versus="vs" self={null} opponent={null} compact />)).toContain("occ-reveal--compact");
+  });
+
+  it("rend une ligne de choix comme un bouton marqué quand elle est choisie", () => {
+    const list = html(
+      <ChoiceList label="team">
+        <ChoiceRow selected onSelect={() => undefined}>
+          <strong>Scout</strong>
+        </ChoiceRow>
+        <ChoiceRow muted>
+          <strong>Pawn</strong>
+        </ChoiceRow>
+      </ChoiceList>,
+    );
+    expect(list).toContain('aria-pressed="true"');
+    expect(list).toContain("occ-choice--muted");
+  });
+
+  it("laisse une fenêtre sans croix quand elle attend une réponse explicite", () => {
+    const dialog = html(
+      <Dialog open title="Match found" confirmLabel="Accept" cancelLabel="Decline" dismissible={false} onConfirm={() => true} onClose={() => undefined} />,
+    );
+    expect(dialog).toContain("Decline");
+    expect(dialog).not.toContain("occ-icon-button");
   });
 });
