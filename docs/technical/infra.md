@@ -132,7 +132,7 @@ fonctions.
 | Fonction | Rôle |
 |---|---|
 | `envBlockExists()` | Le bloc `[env.X]` est-il présent |
-| `appendEnvBlock()` | Ajoute un bloc complet (route, assets, DO, D1) sur le modèle exact des blocs existants |
+| `appendEnvBlock()` | Ajoute un bloc complet (route, assets, les trois DO `MATCH` / `QUEUE` / `SOCIAL`, D1) sur le modèle exact des blocs existants |
 | `removeEnvBlock()` | Retire le bloc et tous ses sous-blocs, plus les lignes vides qui le précèdent. Inverse d'`appendEnvBlock()` |
 | `patchDatabaseId()` | Remplace `database_id` sous le bloc D1 de l'environnement visé |
 | `configuredDatabaseId()` | Lit ce `database_id`, ou `null` |
@@ -276,7 +276,7 @@ n'a rien eu à déclarer pour cela.
 | Fichier | Ce qu'il verrouille |
 |---|---|
 | `config.test.ts` | `dbName()`, `slugifyBranch()`, `envFlag()` et surtout **`isBranchEnv()`**, le prédicat qui empêche la suppression d'atteindre la production ou la recette |
-| `toml.test.ts` | Le bloc généré est complet (route, assets, DO, D1) ; `appendEnvBlock()` est idempotent ; **`removeEnvBlock()` annule exactement `appendEnvBlock()`** et ne mange pas le bloc suivant ; `patchDatabaseId()` n'écrit que sous le bloc visé |
+| `toml.test.ts` | Le bloc généré est complet (route, assets, **chacun des trois DO**, D1) ; `appendEnvBlock()` est idempotent ; **`removeEnvBlock()` annule exactement `appendEnvBlock()`** et ne mange pas le bloc suivant ; `patchDatabaseId()` n'écrit que sous le bloc visé |
 | `deploy-manifest.test.ts` | La résolution d'une cible par nom de branche **ou** par slug ; viser `main` renvoie l'entrée `production` ; `listBranchEnvNames()` fait bien l'union toml ∪ manifeste |
 
 Ces trois modules écrivent dans des fichiers dont le chemin vient de `config.ts` : les tests

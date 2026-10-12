@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Board, createGame, provisionalRuleset, startMemory, viewFor } from "@occulis/core";
 import { encodeView } from "@occulis/protocol";
-import { OFFLINE, type Session, fromMatch, fromQueue } from "./session.js";
+import { OFFLINE, type Session, fromMatch, fromQueue, watchingAt } from "./session.js";
 
 function wireView() {
   const { state, knowledge } = startMemory(
@@ -30,6 +30,8 @@ describe("fromQueue", () => {
       scenario: undefined,
       rulesetVersion: undefined,
       view: undefined,
+      spectating: false,
+      spectators: 0,
     });
   });
 
@@ -98,5 +100,20 @@ describe("fromMatch", () => {
 
   it("ignore un message de partie hors d'une partie", () => {
     expect(fromMatch(OFFLINE, { kind: "view", view: wireView() })).toBe(OFFLINE);
+  });
+
+  it("compte les amis qui regardent le joueur", () => {
+    const after = fromMatch(seated(), { kind: "spectators", count: 2 });
+    expect(after.phase.kind === "seated" && after.phase.spectators).toBe(2);
+  });
+
+  it("assied un spectateur sur le camp qu'il suit, sans jeton", () => {
+    const after = fromMatch(watchingAt("m1"), {
+      kind: "watching",
+      side: "B",
+      scenario: "duel",
+      rulesetVersion: "v1",
+    });
+    expect(after.phase).toMatchObject({ kind: "seated", seat: "", player: "B", spectating: true });
   });
 });

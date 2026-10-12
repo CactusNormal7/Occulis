@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { admin, oAuthProxy } from "better-auth/plugins";
 import { anonymousHandle, checkHandle, handleCandidates } from "./handle.js";
+import { forgetPlayer } from "../social/queries.js";
 import { MIN_PASSWORD_LENGTH, breachedPassword, hashPassword, verifyPassword } from "./password.js";
 import {
   changeEmailLetter,
@@ -264,9 +265,16 @@ export function buildAuth(env: Env, origin: string) {
               .bind(user.id)
               .first<{ player_id: string | null }>();
             if (row?.player_id) {
-              await env.DB.prepare("UPDATE players SET handle = ?, handle_changed_at = ? WHERE id = ?")
-                .bind(anonymousHandle(row.player_id), Date.now(), row.player_id)
-                .run();
+              // Ses relations partent avec lui : amis, demandes, blocages et messages
+              // ne rattachent plus personne à un profil anonymisé.
+              await env.DB.batch([
+                env.DB.prepare("UPDATE players SET handle = ?, handle_changed_at = ? WHERE id = ?").bind(
+                  anonymousHandle(row.player_id),
+                  Date.now(),
+                  row.player_id,
+                ),
+                ...forgetPlayer(env.DB, row.player_id),
+              ]);
             }
           },
         },

@@ -23,7 +23,7 @@ export type SeatDenial =
  * doit pouvoir le refuser explicitement plutôt que le laisser diverger en silence
  * (docs/architecture.md section 1).
  */
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 
 /** `PlayerView` contient des `Set`/`Map`, que `JSON.stringify` sérialise en `{}`. */
 export interface WireView {
@@ -67,7 +67,19 @@ export type ServerMessage =
       readonly scenario: string;
       readonly rulesetVersion: string;
     }
+  /**
+   * Le pendant de `welcome` pour un spectateur : il suit **un** camp, celui de son ami,
+   * et ne reçoit que la vue de ce camp, coups légaux retirés.
+   */
+  | {
+      readonly kind: "watching";
+      readonly side: PlayerId;
+      readonly scenario: string;
+      readonly rulesetVersion: string;
+    }
   | { readonly kind: "view"; readonly view: WireView }
+  /** Combien d'amis regardent ce camp — envoyé au joueur, jamais au camp d'en face. */
+  | { readonly kind: "spectators"; readonly count: number }
   | { readonly kind: "rejected"; readonly error: Rejection }
   | { readonly kind: "protocol-mismatch"; readonly expected: number };
 
@@ -120,3 +132,4 @@ export type QueueServerMessage =
 
 export type * from "./admin.js";
 export type * from "./me.js";
+export type * from "./social.js";

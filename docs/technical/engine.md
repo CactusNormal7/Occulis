@@ -579,6 +579,11 @@ Le découpage a une raison : la lecture des messages est la partie qui mérite d
 elle n'a besoin d'aucun socket. `session.ts` ne décide de rien non plus — le client ne
 connaît son camp qu'à réception de `welcome`, et la position que par les vues reçues.
 
+Un **spectateur** (un ami qui regarde, voir [server.md](server.md), « Les spectateurs »)
+part de `watchingAt(matchId)` : la phase `seated` porte `spectating: true` et un jeton vide,
+et c'est `watching { side }` qui joue le rôle de `welcome`. Côté joueur, `spectators
+{ count }` met à jour `spectators`, le nombre d'amis qui le regardent.
+
 **`welcome` et la première `view` ne sont pas ordonnés.** Le serveur rediffuse les vues aux
 deux joueurs à chaque `hello` : un client peut donc recevoir une vue avant son propre
 `welcome`. `match-channel.ts` attend d'avoir camp, carte **et** vue avant de construire la
@@ -1119,7 +1124,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/game/hypothesis.test.ts` | L'hypothèse ne contient que le visible et reporte la fin de partie annoncée par la vue |
 | `apps/web/src/game/online-match.test.ts` | **`play()` n'écrit rien** — ni position, ni trait —, n'envoie pas un coup refusé localement, laisse rejouer après un refus, et n'avance qu'à réception de la vue |
 | `apps/web/src/game/movement-diff.test.ts` | Le déplacement lu entre deux vues, y compris celui de l'adversaire ; une pièce qui entre ou sort de la LOS n'est pas animée |
-| `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, code de salon retenu, code refusé sans siège, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré |
+| `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, code de salon retenu, code refusé sans siège, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré, compteur de spectateurs, spectateur assis sur le camp suivi sans jeton |
 | `apps/web/src/net/backoff.test.ts` | Croissance exponentielle, plafond, robustesse à une tentative absurde |
 | `apps/web/src/admin/model.test.ts` | Routes du back-office lues et réécrites à l'identique, fiche rangée sous sa liste, résultat nommé par le siège, coups, dates ISO et millisecondes, pagination, **durée de suspension illisible refusée plutôt que lue comme définitive**, actions rapides fermées sur soi-même, sur un administrateur et sur un compte suspendu, initiales, taux de victoire, résumé du navigateur d'une session |
 | `apps/web/src/admin/replay.test.ts` | Pièce déplacée retrouvée entre deux images et elle seule, coup écrit comme l'historique de la maquette, libellé d'image avec camp et joueur, navigation bornée, **plateau centré et contenu dans son cadre aux quatre quarts de tour** |

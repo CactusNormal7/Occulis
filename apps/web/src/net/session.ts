@@ -32,6 +32,13 @@ export type Phase =
       readonly scenario: string | undefined;
       readonly rulesetVersion: string | undefined;
       readonly view: PlayerView | undefined;
+      /**
+       * Vrai pour un ami qui regarde : il suit un camp sans y être assis, ne reçoit que
+       * la vue de ce camp, et ne joue rien.
+       */
+      readonly spectating: boolean;
+      /** Combien d'amis regardent le camp du joueur ; toujours 0 pour un spectateur. */
+      readonly spectators: number;
     }
   /** Le serveur parle une autre version : ce client est trop vieux ou trop neuf. */
   | { readonly kind: "outdated"; readonly expected: number };
@@ -58,9 +65,17 @@ export function seatedAt(matchId: string, seat: string): Session {
       scenario: undefined,
       rulesetVersion: undefined,
       view: undefined,
+      spectating: false,
+      spectators: 0,
     },
     rejection: undefined,
   };
+}
+
+/** Une session de spectateur, avant le `watching` qui confirme le camp suivi. */
+export function watchingAt(matchId: string): Session {
+  const seated = seatedAt(matchId, "");
+  return { ...seated, phase: { ...seated.phase, spectating: true } as Phase };
 }
 
 export function fromQueue(session: Session, message: QueueServerMessage): Session {
@@ -81,6 +96,8 @@ export function fromQueue(session: Session, message: QueueServerMessage): Sessio
           scenario: undefined,
           rulesetVersion: undefined,
           view: undefined,
+          spectating: false,
+          spectators: 0,
         },
         rejection: undefined,
       };
@@ -110,8 +127,20 @@ export function fromMatch(session: Session, message: ServerMessage): Session {
         },
         rejection: undefined,
       };
+    case "watching":
+      return {
+        phase: {
+          ...phase,
+          player: message.side,
+          scenario: message.scenario,
+          rulesetVersion: message.rulesetVersion,
+        },
+        rejection: undefined,
+      };
     case "view":
       return { phase: { ...phase, view: decodeView(message.view) }, rejection: undefined };
+    case "spectators":
+      return { phase: { ...phase, spectators: message.count }, rejection: undefined };
     case "rejected":
       return { phase, rejection: message.error };
   }

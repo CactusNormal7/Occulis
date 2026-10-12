@@ -25,6 +25,8 @@ export interface MeProfile {
   /** Session ouverte par un administrateur : la page est alors en lecture seule. */
   readonly impersonating: boolean;
   readonly record: MeRecord;
+  /** Ses amis peuvent regarder ses parties en cours, de son point de vue. */
+  readonly allowSpectators: boolean;
 }
 
 export interface MeRecord {
@@ -54,6 +56,8 @@ export interface MeMatchSummary {
   /** Le camp que vous teniez. */
   readonly seat: PlayerId;
   readonly opponent: string;
+  /** Identifiant de joueur de l'adversaire : de quoi l'ajouter en ami. */
+  readonly opponentId: string;
   readonly scenario: string;
   readonly rulesetVersion: string;
   readonly startedAt: number;

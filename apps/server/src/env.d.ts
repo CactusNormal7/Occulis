@@ -2,6 +2,8 @@ interface Env {
   readonly DB: D1Database;
   readonly MATCH: DurableObjectNamespace;
   readonly QUEUE: DurableObjectNamespace;
+  /** Un canal social par joueur : présence, poussées, défis (`social-do.ts`). */
+  readonly SOCIAL: DurableObjectNamespace;
   readonly ASSETS: Fetcher;
 
   /**
