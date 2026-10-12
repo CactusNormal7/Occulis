@@ -9,6 +9,7 @@ import {
   parseProfileRoute,
   profileHash,
   sinceLabel,
+  tabOf,
 } from "./model.js";
 
 // Les phrases attendues ici sont les françaises ; la forme des deux dictionnaires est
@@ -22,6 +23,11 @@ describe("routes du profil", () => {
       { view: "matches", offset: 0 },
       { view: "matches", offset: 25 },
       { view: "match", id: "abc-123" },
+      { view: "friends" },
+      { view: "friend", id: "p-1", offset: 0 },
+      { view: "friend", id: "p-1", offset: 20 },
+      { view: "friendMatch", id: "p-1", matchId: "m-2" },
+      { view: "chat", id: "p-1" },
     ] as const) {
       expect(parseProfileRoute(profileHash(route))).toEqual(route);
     }
@@ -30,6 +36,16 @@ describe("routes du profil", () => {
   it("garde l'ancre de sécurité sur la vue du compte", () => {
     expect(parseProfileRoute("#security")).toEqual({ view: "account" });
     expect(parseProfileRoute("")).toEqual({ view: "account" });
+  });
+
+  it("range chaque vue sous son onglet", () => {
+    expect(tabOf({ view: "match", id: "x" })).toBe("matches");
+    expect(tabOf({ view: "chat", id: "x" })).toBe("friends");
+    expect(tabOf({ view: "account" })).toBe("account");
+  });
+
+  it("ramène un identifiant d'ami suspect à la liste", () => {
+    expect(parseProfileRoute("#/friends/<script>")).toEqual({ view: "friends" });
   });
 
   it("refuse un identifiant de partie suspect et un décalage négatif", () => {

@@ -19,6 +19,8 @@ import {
   Icon,
   IconButton,
   InlineEdit,
+  MessageComposer,
+  MessageThread,
   MoveList,
   Pager,
   PasswordField,
@@ -229,5 +231,21 @@ describe("préparation d'une partie", () => {
     );
     expect(dialog).toContain("Decline");
     expect(dialog).not.toContain("occ-icon-button");
+  });
+
+  it("aligne ses propres messages à part dans un fil, et échappe leur texte", () => {
+    const thread = html(
+      <MessageThread
+        messages={[
+          { id: "1", body: "<b>salut</b>", mine: false, meta: "10:02" },
+          { id: "2", body: "bonjour", mine: true },
+        ]}
+      />,
+    );
+    expect(thread).toContain('role="log"');
+    expect(thread.match(/occ-thread__message--mine/g)).toHaveLength(1);
+    expect(thread).toContain("&lt;b&gt;salut");
+    expect(html(<MessageThread messages={[]} empty="Rien encore." />)).toContain("Rien encore.");
+    expect(html(<MessageComposer onSend={async () => true} maxLength={500} />)).toContain('maxLength="500"');
   });
 });

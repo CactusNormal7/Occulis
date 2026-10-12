@@ -5,6 +5,7 @@ import {
   type MatchMemory,
   type Piece,
   type PlayerId,
+  type PlayerView,
   type Scenario,
   type TeamEntry,
   advanceMemory,
@@ -22,11 +23,25 @@ import {
   type Locks,
   type PlayerCard,
   type ServerMessage,
+  type WireView,
   encodeView,
 } from "@occulis/protocol";
 import { ratingChanges } from "./rating.js";
 import { rulesetFor } from "./rulesets.js";
 import { type Seats, denyOutOfTurn, seatFor } from "./seating.js";
+
+/** Le tag d'un spectateur : distinct des tags de siège `A` / `B`, donc jamais un joueur. */
+function watchTag(side: PlayerId): string {
+  return `watch:${side}`;
+}
+
+/**
+ * La vue d'un camp telle qu'un spectateur la reçoit : identique à celle du joueur —
+ * il ne voit rien que son ami ne voie — moins les coups légaux, qui ne le concernent pas.
+ */
+function spectatorView(view: PlayerView): WireView {
+  return encodeView({ ...view, legalActions: [] });
+}
 
 export interface MatchConfig {
   readonly matchId: string;
@@ -89,6 +104,21 @@ export class MatchDO extends DurableObject<Env> {
     }
 
     const config = await this.config();
+
+    // Chemin atteint seulement par le Worker, qui a vérifié l'amitié et le réglage du
+    // joueur suivi : la route publique `/match/:id` ne transmet que son propre chemin.
+    if (url.pathname === "/watch") {
+      const side = url.searchParams.get("side");
+      if (side !== "A" && side !== "B") return new Response("unknown side", { status: 400 });
+      if (request.headers.get("Upgrade") !== "websocket") {
+        return new Response("expected websocket", { status: 426 });
+      }
+      const pair = new WebSocketPair();
+      this.ctx.acceptWebSocket(pair[1], [watchTag(side)]);
+      this.announceSpectators(side);
+      return new Response(null, { status: 101, webSocket: pair[0] });
+    }
+
     const player = seatFor(config.seats, url.searchParams.get("seat"));
     if (player === undefined) return new Response("unknown seat", { status: 403 });
     if (request.headers.get("Upgrade") !== "websocket") {
@@ -107,6 +137,11 @@ export class MatchDO extends DurableObject<Env> {
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
     if (typeof raw !== "string") return;
     const message = JSON.parse(raw) as ClientMessage;
+    const watched = this.watchedBy(ws);
+    if (watched !== undefined) {
+      await this.greetSpectator(ws, watched, message);
+      return;
+    }
     const player = this.playerOf(ws);
     if (player === undefined) return;
 
@@ -123,6 +158,7 @@ export class MatchDO extends DurableObject<Env> {
         scenario: config.scenario,
         rulesetVersion: config.rulesetVersion,
       });
+      this.send(ws, { kind: "spectators", count: this.ctx.getWebSockets(watchTag(player)).length });
       if (await this.deploying()) await this.sendDeployment(ws, player);
       else await this.broadcastViews();
       return;
@@ -146,9 +182,49 @@ export class MatchDO extends DurableObject<Env> {
    *
    * Une déconnexion n'interrompt pas la partie : le temps de réflexion est illimité
    * (docs/design.md section 2), et le joueur retrouve sa position en se reconnectant.
-   * Pendant le déploiement non plus : l'échéance posera l'équipe par défaut.
+   * Pendant le déploiement non plus : l'échéance posera l'équipe par défaut. Seul le
+   * départ d'un spectateur se signale, au camp qu'il regardait.
    */
-  async webSocketClose(): Promise<void> {}
+  async webSocketClose(ws: WebSocket): Promise<void> {
+    const watched = this.watchedBy(ws);
+    if (watched !== undefined) this.announceSpectators(watched, ws);
+  }
+
+  /**
+   * Un spectateur ne joue pas : tout ce qu'il envoie hors `hello` est refusé, et il ne
+   * reçoit que la vue du camp qu'il suit.
+   */
+  private async greetSpectator(ws: WebSocket, side: PlayerId, message: ClientMessage): Promise<void> {
+    if (message.kind !== "hello") {
+      this.send(ws, { kind: "rejected", error: { code: "unknown-seat" } });
+      return;
+    }
+    if (message.protocol !== PROTOCOL_VERSION) {
+      this.send(ws, { kind: "protocol-mismatch", expected: PROTOCOL_VERSION });
+      ws.close(4001, "protocol-mismatch");
+      return;
+    }
+    const config = await this.config();
+    this.send(ws, { kind: "watching", side, scenario: config.scenario, rulesetVersion: config.rulesetVersion });
+    // Pendant le déploiement, aucune position n'existe encore — et la zone de l'ami
+    // trahirait ses choix : le spectateur attend la première vue, que `start` diffusera.
+    if (await this.deploying()) return;
+    const live = await this.load();
+    this.send(ws, { kind: "view", view: spectatorView(viewFor(live.state, live.knowledge[side])) });
+  }
+
+  /** Dit au joueur combien d'amis le regardent ; `leaving` est le socket qui se ferme. */
+  private announceSpectators(side: PlayerId, leaving?: WebSocket): void {
+    const count = this.ctx.getWebSockets(watchTag(side)).filter((socket) => socket !== leaving).length;
+    for (const socket of this.ctx.getWebSockets(side)) this.send(socket, { kind: "spectators", count });
+  }
+
+  private watchedBy(ws: WebSocket): PlayerId | undefined {
+    const tag = this.ctx.getTags(ws)[0];
+    if (tag === watchTag("A")) return "A";
+    if (tag === watchTag("B")) return "B";
+    return undefined;
+  }
 
   /** L'échéance du déploiement : qui n'a rien verrouillé reçoit l'équipe par défaut de la carte. */
   async alarm(): Promise<void> {
@@ -308,15 +384,24 @@ export class MatchDO extends DurableObject<Env> {
   private async broadcastViews(): Promise<void> {
     const live = await this.load();
     for (const player of ["A", "B"] as const) {
-      const view = encodeView(viewFor(live.state, live.knowledge[player]));
+      const seen = viewFor(live.state, live.knowledge[player]);
+      const view = encodeView(seen);
       for (const socket of this.ctx.getWebSockets(player)) {
         this.send(socket, { kind: "view", view });
+      }
+      const watched = spectatorView(seen);
+      for (const socket of this.ctx.getWebSockets(watchTag(player))) {
+        this.send(socket, { kind: "view", view: watched });
       }
     }
   }
 
   private send(ws: WebSocket, message: ServerMessage): void {
-    ws.send(JSON.stringify(message));
+    try {
+      ws.send(JSON.stringify(message));
+    } catch {
+      // Un socket en train de se fermer : rien à lui dire.
+    }
   }
 
   private async config(): Promise<MatchConfig> {

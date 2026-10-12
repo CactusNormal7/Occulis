@@ -6,6 +6,9 @@ export const ui = {
   showPassword: "Show password",
   hidePassword: "Hide password",
   search: "Search…",
+  messagePlaceholder: "Write a message…",
+  send: "Send",
+  noMessages: "No messages.",
   empty: "Nothing to show.",
   pager: {
     none: "no results",

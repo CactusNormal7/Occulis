@@ -31,6 +31,9 @@ export const game: Messages["game"] = {
     join: "Entrée dans la partie…",
     opening: "Ouverture de la partie…",
     hosting: "Transmettez ce code à votre adversaire, puis attendez son arrivée.",
+    challenge: (friend) => `Défi envoyé à ${friend}. En attente de sa réponse…`,
+    watch: (friend) => `Ouverture de la partie de ${friend}…`,
+    someone: "votre ami",
   },
   roomFault: {
     unknown: "Aucune partie sous ce code : vérifiez la saisie, ou faites-le renvoyer.",
@@ -47,6 +50,7 @@ export const game: Messages["game"] = {
     },
     leave: "Quitter la partie",
     pending: "Coup déjà envoyé : réponse du serveur en attente.",
+    spectating: "Vous regardez cette partie : aucun coup à jouer.",
     resigned: "Abandon.",
     sent: (summary) => `${summary} — envoyé.`,
   },
@@ -75,6 +79,10 @@ export const game: Messages["game"] = {
     line: (turn, whose, seat) => `Tour ${turn} · ${whose} · vous jouez ${seat}`,
     yours: "à vous de jouer",
     theirs: "au trait : l'adversaire",
+    watchers: (count) => (count === 1 ? " · 1 ami vous regarde" : ` · ${count} amis vous regardent`),
+    watching: (turn, whose, friend, side) => `Tour ${turn} · ${whose} · vous regardez ${friend} (${side})`,
+    friendToMove: (friend) => `au trait : ${friend}`,
+    opponentToMove: "au trait : son adversaire",
   },
   tile: {
     offBoard: "Hors plateau.",

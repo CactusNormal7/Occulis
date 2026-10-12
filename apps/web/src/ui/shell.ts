@@ -1,5 +1,5 @@
 import type { Identity } from "../net/auth.js";
-import type { Seeking, Stage } from "./flow.js";
+import type { QueueSeeking, Stage } from "./flow.js";
 import { describeIdentity, describeWaiting } from "./messages.js";
 import { messages } from "../i18n/current.js";
 
@@ -56,7 +56,7 @@ export interface ShellElements {
 export interface ShellOptions {
   readonly elements: ShellElements;
   /** Le joueur demande une partie ; `code` n'accompagne que « rejoindre ». */
-  readonly onSeek: (seeking: Seeking, code?: string) => void;
+  readonly onSeek: (seeking: QueueSeeking, code?: string) => void;
   /** Retour au menu : annulation d'une attente, ou sortie d'une partie. */
   readonly onCancel: () => void;
   /** L'administrateur quitte l'identité d'emprunt. */
@@ -135,7 +135,7 @@ export function attachShell(options: ShellOptions): Shell {
     }
     if (stage.kind !== "waiting") return;
 
-    e.waitingNote.textContent = describeWaiting(stage.seeking, stage.code);
+    e.waitingNote.textContent = describeWaiting(stage.seeking, stage.code, stage.friend);
     const showCode = stage.code !== undefined;
     e.waitingCode.hidden = !showCode;
     // Le presse-papiers n'existe pas hors contexte sécurisé : proposer le bouton

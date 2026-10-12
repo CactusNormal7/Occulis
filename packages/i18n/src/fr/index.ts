@@ -7,7 +7,8 @@ import { game } from "./game.js";
 import { mail } from "./mail.js";
 import { prepare } from "./prepare.js";
 import { profile } from "./profile.js";
+import { social } from "./social.js";
 import { team } from "./team.js";
 import { ui } from "./ui.js";
 
-export const fr: Messages = { ui, game, auth, account, profile, admin, mail, team, feats, prepare };
+export const fr: Messages = { ui, game, auth, account, profile, admin, mail, team, feats, prepare, social };

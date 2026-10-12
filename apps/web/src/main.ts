@@ -23,13 +23,18 @@ import { tileAt } from "./view/picking.js";
 import { attachControls } from "./input/controls.js";
 import { OnlineMatch } from "./game/online-match.js";
 import { boardForScenario } from "./game/scenario.js";
-import { type MatchChannel, connectToMatch } from "./net/match-channel.js";
+import { type MatchChannel, type MatchHandlers, connectToMatch, watchMatch } from "./net/match-channel.js";
+import { type SocialChannel, openSocial } from "./net/social-channel.js";
+import * as friends from "./social/api.js";
+import { EMPTY_SOCIAL, type SocialState, challenged, receive, withOverview } from "./social/model.js";
+import { attachFriendsPanel } from "./ui/friends-panel.js";
+import type { SocialServerMessage } from "@occulis/protocol";
 import { type QueueChannel, joinQueue } from "./net/queue-channel.js";
 import { describeRejection, describeRoomFault } from "./ui/messages.js";
 import { attachShell } from "./ui/shell.js";
 import { mountAccount } from "./account/mount.js";
 import { arrivalNotice, cleanedSearch, routeOf } from "./account/model.js";
-import { START, type Seeking, type Stage, advance } from "./ui/flow.js";
+import { START, type QueueSeeking, type Stage, advance } from "./ui/flow.js";
 import { type Selection, resolveClick } from "./game/selection.js";
 import { Scene } from "./scene/scene.js";
 import { BACKGROUND } from "./theme.js";
@@ -67,6 +72,14 @@ async function main(): Promise<void> {
   let channel: MatchChannel | undefined;
   let queue: QueueChannel | undefined;
   let stage: Stage = START;
+  let social: SocialChannel | undefined;
+  let socialState: SocialState = EMPTY_SOCIAL;
+  /** L'ami défié, tant que sa réponse est attendue. */
+  let challengedFriend: string | undefined;
+  /** Le pseudo de l'ami regardé : présent, on est spectateur. */
+  let watching: string | undefined;
+  let spectators = 0;
+  let watchDeadline: ReturnType<typeof setTimeout> | undefined;
 
   const viewport = (): Coord => ({ x: app.screen.width, y: app.screen.height });
   let camera: Camera = createCamera({ x: 0, y: 0 }, viewport());
@@ -128,6 +141,11 @@ async function main(): Promise<void> {
     queue = undefined;
     channel?.close();
     channel = undefined;
+    if (challengedFriend !== undefined) void friends.withdrawChallenge(challengedFriend);
+    challengedFriend = undefined;
+    watching = undefined;
+    spectators = 0;
+    clearTimeout(watchDeadline);
     match = undefined;
     pending = false;
     selection = undefined;
@@ -140,31 +158,39 @@ async function main(): Promise<void> {
     go({ kind: "menu" });
   };
 
-  const sit = (matchId: string, seat: string): void => {
+  /**
+   * Les gestionnaires d'une partie, assis ou spectateur. Un spectateur ne reçoit ni
+   * annonce de déploiement ni coups légaux : seule la vue du camp qu'il suit.
+   */
+  const handlersFor = (spectating: boolean): MatchHandlers => {
     let presets: readonly TeamPreset[] = [];
     let lastRemaining: number | undefined;
     // Les équipes préparées se chargent pendant l'annonce ; l'écran les reprend à l'arrivée.
-    void loadPresets().then((outcome) => {
-      if (!outcome.ok) return;
-      presets = outcome.value.presets;
-      if (deploying !== undefined) {
-        deploying = { ...deploying, presets };
-        showIslands();
-      }
-    });
-    channel = connectToMatch(matchId, seat, {
+    if (!spectating) {
+      void loadPresets().then((outcome) => {
+        if (!outcome.ok) return;
+        presets = outcome.value.presets;
+        if (deploying !== undefined) {
+          deploying = { ...deploying, presets };
+          showIslands();
+        }
+      });
+    }
+    return {
       onSeated: ({ player, scenario, rulesetVersion, view }) => {
+        clearTimeout(watchDeadline);
         match = new OnlineMatch(
           boardForScenario(scenario),
           rulesetFor(rulesetVersion),
           player,
-          (action) => channel?.submit(action),
+          // Un spectateur n'envoie rien : le serveur refuserait de toute façon.
+          (action) => (spectating ? undefined : channel?.submit(action)),
           view,
         );
         camera = createCamera(pivotOf(match.board), viewport());
         deploying = undefined;
         showIslands();
-        go({ kind: "seated" });
+        go({ kind: "seated", spectating });
         adopt();
       },
       onDeployment: ({ player, scenario, rulesetVersion, deployment }) => {
@@ -208,11 +234,95 @@ async function main(): Promise<void> {
         gameConsole.report(messages().game.outdated(expected), false);
       },
       onStatus: (state) => {
-        if (state === "reconnecting") {
+        if (state === "reconnecting" && match !== undefined) {
           gameConsole.report(messages().game.reconnecting, false);
         }
       },
-    });
+      onSpectators: (count) => {
+        spectators = count;
+        gameConsole.refresh();
+      },
+      // Accepté par le serveur : la première vue peut attendre la fin du déploiement.
+      onWatching: () => clearTimeout(watchDeadline),
+    };
+  };
+
+  const sit = (matchId: string, seat: string): void => {
+    queue?.close();
+    queue = undefined;
+    challengedFriend = undefined;
+    channel = connectToMatch(matchId, seat, handlersFor(false));
+  };
+
+  /**
+   * Regarder la partie d'un ami. Un refus du serveur ne se voit qu'à l'absence de vue —
+   * le socket est refusé avant d'exister — d'où l'échéance.
+   */
+  const watch = (friend: string, matchId: string, side: "A" | "B"): void => {
+    shell.notify("");
+    watching = friend;
+    go({ kind: "seek", seeking: "watch", friend });
+    channel = watchMatch(matchId, side, handlersFor(true));
+    watchDeadline = setTimeout(() => {
+      if (match !== undefined) return;
+      leave();
+      shell.notify(messages().social.menu.cannotWatch(friend));
+    }, WATCH_TIMEOUT_MS);
+  };
+
+  const renderFriends = (): void => {
+    friendsPanel.render(socialState, identity.signedIn && identity.emailVerified !== false);
+  };
+
+  const reloadFriends = async (): Promise<void> => {
+    const outcome = await friends.overview();
+    if (!outcome.ok) return;
+    socialState = withOverview(socialState, outcome.value);
+    renderFriends();
+  };
+
+  const onSocial = (message: SocialServerMessage): void => {
+    if (message.kind === "matched") {
+      // Un défi accepté : on s'assied, d'où que l'on vienne — sauf d'une partie déjà en
+      // cours, que rien ne doit interrompre.
+      if (stage.kind === "game") return;
+      sit(message.matchId, message.seat);
+      return;
+    }
+    if (
+      message.kind === "challenge-cancelled" &&
+      message.to === challengedFriend &&
+      stage.kind === "waiting" &&
+      stage.seeking === "challenge"
+    ) {
+      const name = stage.friend ?? messages().social.menu.yourFriend;
+      challengedFriend = undefined;
+      go({ kind: "menu" });
+      shell.notify(messages().social.menu.declinedChallenge(name));
+    }
+    if (message.kind === "challenge" && stage.kind === "menu") {
+      shell.notify(messages().social.menu.challengesYou(message.challenge.from.handle));
+    }
+    const update = receive(socialState, message);
+    socialState = update.state;
+    renderFriends();
+    if (update.stale) void reloadFriends();
+  };
+
+  /** Le canal social suit l'identité : ouvert à un compte vérifié, refermé sinon. */
+  const syncSocial = (): void => {
+    const wanted = identity.signedIn && identity.emailVerified !== false;
+    if (wanted && social === undefined) {
+      social = openSocial("game", onSocial, (status) => {
+        if (status === "open") void reloadFriends();
+      });
+    }
+    if (!wanted && social !== undefined) {
+      social.close();
+      social = undefined;
+      socialState = EMPTY_SOCIAL;
+      renderFriends();
+    }
   };
 
   const shell = attachShell({
@@ -320,6 +430,38 @@ async function main(): Promise<void> {
   const cleaned = cleanedSearch(location.search);
   if (cleaned !== location.search) history.replaceState(null, "", `${location.pathname}${cleaned}${location.hash}`);
 
+  const friendsPanel = attachFriendsPanel({
+    elements: {
+      root: element<HTMLElement>("menu-friends"),
+      challenges: element<HTMLElement>("friends-challenges"),
+      list: element<HTMLElement>("friends-list"),
+      empty: element<HTMLElement>("friends-empty"),
+    },
+    onChallenge: (friend) => {
+      shell.notify("");
+      void friends.challenge(friend.id).then((outcome) => {
+        if (!outcome.ok) {
+          shell.notify(outcome.message);
+          return;
+        }
+        challengedFriend = friend.id;
+        socialState = challenged(socialState, friend.id);
+        go({ kind: "seek", seeking: "challenge", friend: friend.handle });
+      });
+    },
+    onWatch: (friend, live) => watch(friend.handle, live.id, live.side),
+    onAccept: (challenge) => {
+      shell.notify("");
+      void friends.acceptChallenge(challenge.from.id).then((outcome) => {
+        // En cas de succès, `matched` arrive par le canal social et assied le joueur.
+        if (!outcome.ok) shell.notify(outcome.message);
+      });
+    },
+    onDecline: (challenge) => {
+      void friends.declineChallenge(challenge.from.id);
+    },
+  });
+
   const renderAccount = mountAccount(element<HTMLElement>("account-root"));
 
   /**
@@ -357,6 +499,7 @@ async function main(): Promise<void> {
   const refresh = async (message?: string): Promise<void> => {
     identity = await whoAmI();
     shell.setIdentity(identity);
+    syncSocial();
     // Une déconnexion referme la partie en cours : sans session, ni la file ni le
     // Durable Object n'accepteraient plus rien de ce client.
     if (!identity.signedIn && stage.kind !== "auth") leave();
@@ -414,10 +557,13 @@ async function main(): Promise<void> {
       log: element<HTMLElement>("command-log"),
       status: element<HTMLElement>("status"),
       readout: element<HTMLElement>("tile-readout"),
+      help: element<HTMLElement>("command-help"),
     },
     match: () => match,
     play,
     pending: () => pending,
+    watching: () => watching,
+    spectators: () => spectators,
   });
 
   shell.render(stage);
@@ -471,8 +617,11 @@ async function main(): Promise<void> {
   });
 }
 
+/** Au-delà, une partie qui n'a envoyé aucune vue au spectateur lui est refusée. */
+const WATCH_TIMEOUT_MS = 6000;
+
 /** L'entrée de menu choisie, dans la forme que la file d'attente attend. */
-function intentOf(seeking: Seeking, code: string | undefined): QueueIntent {
+function intentOf(seeking: QueueSeeking, code: string | undefined): QueueIntent {
   if (seeking === "join") return { kind: "join", code: code ?? "" };
   if (seeking === "host") return { kind: "host" };
   return { kind: "quick" };

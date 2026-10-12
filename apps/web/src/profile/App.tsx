@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
-  BackLink,
   Badge,
   Banner,
   Button,
@@ -11,7 +10,6 @@ import {
   ChoiceRow,
   Dialog,
   EmptyState,
-  FactStrip,
   Hero,
   IconButton,
   List,
@@ -20,44 +18,38 @@ import {
   Pager,
   PasswordField,
   ProgressBar,
-  QuickBar,
   SettingEditor,
   SettingList,
   SettingRow,
-  Stat,
-  StatGrid,
-  Table,
   TextField,
   TileAvatar,
   ToastProvider,
-  Toolbar,
-  ToolbarText,
   TopBar,
   LocaleSwitch,
   UiRoot,
   useMessages,
   useToast,
 } from "@occulis/ui";
-import type { MeMatchDetail, MeMatchSummary, MeProfile, MeSession } from "@occulis/protocol";
-import { boardForScenario } from "../game/scenario.js";
+import type { MeProfile, MeSession } from "@occulis/protocol";
 import { linkGoogle, stopImpersonating } from "../net/auth.js";
 import { useLoad, type Loaded } from "../admin/hooks.js";
-import { ReplayBoard } from "../admin/ReplayBoard.js";
-import { clampFrame } from "../admin/replay.js";
-import { formatDate, shortAgent, winRate } from "../admin/model.js";
+import { formatDate, shortAgent } from "../admin/model.js";
 import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH, passwordHint } from "../account/model.js";
 import { chooseLocale, initLocale } from "../i18n/browser.js";
 import { ROUTE_PATHS } from "../net/auth.js";
 import * as api from "./api.js";
+import * as friends from "../social/api.js";
+import { unreadTotal } from "../social/model.js";
+import { ChatView, FriendMatchReplay, FriendView, FriendsView, SocialProvider, useSocial } from "./Friends.js";
+import { MatchReplayView, MatchTable, RecordCard } from "./parts.js";
 import {
   arrivalMessage,
-  asBoardFrames,
   canUnlink,
-  describeMyResult,
   handleCooldownLabel,
   parseProfileRoute,
   profileHash,
   sinceLabel,
+  tabOf,
   type ProfileRoute,
 } from "./model.js";
 
@@ -89,13 +81,25 @@ export function App() {
 }
 
 function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
-  const m = useMessages().profile;
-  const route = useProfileRoute();
   const { loaded, reload } = useLoad("profile", api.profile);
-  const signedIn = loaded.state === "ready";
-
   return (
     <ToastProvider>
+      <SocialProvider enabled={loaded.state === "ready" && loaded.value.emailVerified}>
+        <Frame localeSwitch={localeSwitch} loaded={loaded} reload={reload} />
+      </SocialProvider>
+    </ToastProvider>
+  );
+}
+
+function Frame({ localeSwitch, loaded, reload }: { localeSwitch: ReactNode; loaded: Loaded<MeProfile>; reload: () => void }) {
+  const all = useMessages();
+  const m = all.profile;
+  const route = useProfileRoute();
+  const signedIn = loaded.state === "ready";
+  const unread = unreadTotal(useSocial().state);
+
+  return (
+    <>
       <ProgressBar active={loaded.state === "loading"} />
       <TopBar
         section={m.section}
@@ -104,7 +108,12 @@ function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
           signedIn
             ? [
                 { href: profileHash({ view: "account" }), label: m.tabs.account, current: route.view === "account" },
-                { href: profileHash({ view: "matches", offset: 0 }), label: m.tabs.matches, current: route.view !== "account" },
+                { href: profileHash({ view: "matches", offset: 0 }), label: m.tabs.matches, current: tabOf(route) === "matches" },
+                {
+                  href: profileHash({ view: "friends" }),
+                  label: unread > 0 ? all.social.tabUnread(unread) : all.social.tab,
+                  current: tabOf(route) === "friends",
+                },
               ]
             : []
         }
@@ -119,7 +128,7 @@ function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
       <main className="occ-page">
         <Gate loaded={loaded} route={route} reload={reload} />
       </main>
-    </ToastProvider>
+    </>
   );
 }
 
@@ -155,8 +164,12 @@ function Gate({ loaded, route, reload }: { loaded: Loaded<MeProfile>; route: Pro
         </Banner>
       )}
       {route.view === "account" && <Account profile={profile} reload={reload} />}
-      {route.view === "matches" && <Matches offset={route.offset} />}
+      {route.view === "matches" && <Matches offset={route.offset} readOnly={profile.impersonating} />}
       {route.view === "match" && <MatchReplay id={route.id} />}
+      {route.view === "friends" && <FriendsView readOnly={profile.impersonating} />}
+      {route.view === "friend" && <FriendView id={route.id} offset={route.offset} readOnly={profile.impersonating} />}
+      {route.view === "friendMatch" && <FriendMatchReplay id={route.id} matchId={route.matchId} />}
+      {route.view === "chat" && <ChatView id={route.id} readOnly={profile.impersonating} />}
     </div>
   );
 }
@@ -230,8 +243,13 @@ function Account({ profile, reload }: { profile: MeProfile; reload: () => void }
               </SettingRow>
             </SettingList>
           </Card>
-          <RecordCard profile={profile} />
+          <RecordCard
+            record={profile.record}
+            elo={profile.elo}
+            action={<a href={profileHash({ view: "matches", offset: 0 })}>{m.record.history}</a>}
+          />
           <FeatsCard readOnly={readOnly} />
+          <SpectatorsCard profile={profile} readOnly={readOnly} onDone={done} />
         </CardColumn>
         <CardColumn>
           <Card title={m.security.title} id="security">
@@ -481,24 +499,6 @@ function GoogleSetting({ profile, readOnly, onDone }: { profile: MeProfile; read
   );
 }
 
-function RecordCard({ profile }: { profile: MeProfile }) {
-  const m = useMessages().profile.record;
-  const { played, won, lost, ongoing } = profile.record;
-  const rate = winRate(profile.record);
-  return (
-    <Card title={m.title} action={<a href={profileHash({ view: "matches", offset: 0 })}>{m.history}</a>}>
-      <StatGrid>
-        <Stat value={played} label={m.played} />
-        <Stat value={won} label={m.won} />
-        <Stat value={lost} label={m.lost} />
-        <Stat value={ongoing} label={m.ongoing} />
-        <Stat value={rate === null ? "—" : `${rate} %`} label={m.rate} />
-        <Stat value={profile.elo} label={m.elo} />
-      </StatGrid>
-    </Card>
-  );
-}
-
 /**
  * Les faits d'armes : ceux débloqués, et les trois au plus qu'on montre à ses adversaires
  * à l'annonce d'une partie. Le serveur refuse ce qui n'est pas débloqué ; griser n'évite
@@ -548,6 +548,37 @@ function FeatsCard({ readOnly }: { readOnly: boolean }) {
           );
         })}
       </ChoiceList>
+    </Card>
+  );
+}
+
+/** Le réglage qui ouvre ou ferme ses parties aux amis qui voudraient les regarder. */
+function SpectatorsCard({ profile, readOnly, onDone }: { profile: MeProfile; readOnly: boolean; onDone: (message: string) => void }) {
+  const m = useMessages().social.spectators;
+  const notify = useToast();
+  const [busy, setBusy] = useState(false);
+  const toggle = () => {
+    setBusy(true);
+    void friends.allowSpectators(!profile.allowSpectators).then((outcome) => {
+      setBusy(false);
+      if (!outcome.ok) notify(outcome.message, false);
+      else onDone(outcome.value.allowSpectators ? m.nowAllowed : m.nowRefused);
+    });
+  };
+  return (
+    <Card title={m.title}>
+      <SettingList>
+        <SettingRow
+          label={m.label}
+          value={profile.allowSpectators ? m.allowed : m.refused}
+          description={m.description}
+          action={
+            <Button size="sm" disabled={readOnly || busy} onClick={toggle}>
+              {profile.allowSpectators ? m.refuse : m.allow}
+            </Button>
+          }
+        />
+      </SettingList>
     </Card>
   );
 }
@@ -649,15 +680,32 @@ function DangerZone({ profile, readOnly }: { profile: MeProfile; readOnly: boole
 
 // --- Parties --------------------------------------------------------------------------
 
-function Matches({ offset }: { offset: number }) {
-  const m = useMessages().profile.matches;
+function Matches({ offset, readOnly }: { offset: number; readOnly: boolean }) {
+  const all = useMessages();
+  const m = all.profile.matches;
+  const notify = useToast();
   const { loaded } = useLoad(`matches:${offset}`, () => api.matches(offset));
   if (loaded.state === "loading") return null;
   if (loaded.state === "failed") return <EmptyState error>{loaded.message}</EmptyState>;
   const page = loaded.value;
   return (
     <Card title={m.title(page.total)}>
-      <MyMatchTable matches={page.matches} />
+      <MatchTable
+        matches={page.matches}
+        replayHref={(match) => profileHash({ view: "match", id: match.id })}
+        readOnly={readOnly}
+        onAddFriend={(match) =>
+          void friends.requestFriend(match.opponentId).then((outcome) => {
+            if (!outcome.ok) notify(outcome.message, false);
+            else
+              notify(
+                outcome.value.relation === "friend"
+                  ? all.social.toasts.friends(match.opponent)
+                  : all.social.toasts.requested(match.opponent),
+              );
+          })
+        }
+      />
       <Pager
         offset={offset}
         shown={page.matches.length}
@@ -669,117 +717,10 @@ function Matches({ offset }: { offset: number }) {
   );
 }
 
-function MyResult({ match }: { match: Pick<MeMatchSummary, "result" | "outcome" | "seat"> }) {
-  const m = useMessages().profile.results;
-  if (match.result === "ongoing") return <Badge tone="dim">{m.ongoing}</Badge>;
-  // La couleur du camp vainqueur : c'est une information de partie.
-  const winner = match.outcome?.winner;
-  return <Badge tone={winner ?? "plain"}>{describeMyResult(match)}</Badge>;
-}
-
-function MyMatchTable({ matches }: { matches: readonly MeMatchSummary[] }) {
-  const t = useMessages().profile.matches;
-  const c = t.columns;
-  return (
-    <Table columns={[c.start, c.opponent, c.side, c.result, c.elo, c.moves, ""]} rowCount={matches.length} empty={t.empty}>
-      {matches.map((m) => (
-        <tr key={m.id}>
-          <td className="occ-muted">{formatDate(m.startedAt)}</td>
-          <td>{m.opponent}</td>
-          <td>
-            <Badge tone={m.seat}>{m.seat}</Badge>
-          </td>
-          <td>
-            <MyResult match={m} />
-          </td>
-          <td className="occ-muted">{m.ratingChange !== null ? t.ratingChange(m.ratingChange) : m.rated ? "—" : t.unrated}</td>
-          <td className="occ-muted">{m.actions}</td>
-          <td className="occ-actions-cell">
-            <IconButton
-              icon="eye"
-              label={m.result === "ongoing" ? t.ongoingReplay : t.replay}
-              tipAlign="end"
-              disabled={m.result === "ongoing"}
-              onClick={() => (location.hash = profileHash({ view: "match", id: m.id }))}
-            />
-          </td>
-        </tr>
-      ))}
-    </Table>
-  );
-}
-
 function MatchReplay({ id }: { id: string }) {
   const t = useMessages().profile.matches;
   const { loaded } = useLoad(`match:${id}`, () => api.match(id));
   if (loaded.state === "loading") return null;
   if (loaded.state === "failed") return <EmptyState error>{loaded.message}</EmptyState>;
-  const m = loaded.value;
-  return (
-    <>
-      <BackLink href={profileHash({ view: "matches", offset: 0 })}>{t.back}</BackLink>
-      <Hero title={t.against(m.opponent)} badges={<MyResult match={m} />} meta={[t.side(m.seat), formatDate(m.startedAt)]} />
-      <FactStrip
-        facts={[
-          { label: t.facts.start, value: formatDate(m.startedAt) },
-          { label: t.facts.end, value: formatDate(m.finishedAt) },
-          { label: t.facts.rules, value: m.rulesetVersion },
-          { label: t.facts.map, value: m.scenario },
-          { label: t.facts.moves, value: String(m.log.length) },
-        ]}
-      />
-      {m.replayError !== null && <Banner>{t.replayError(m.replayError)}</Banner>}
-      <Replay match={m} />
-    </>
-  );
-}
-
-/**
- * Le plateau rejoué **de votre point de vue** : vos pièces, les pièces adverses que vous
- * voyiez, et rien d'autre. Les coups adverses ne sont pas détaillés, leur position
- * restant inconnue de votre camp.
- */
-function Replay({ match: m }: { match: MeMatchDetail }) {
-  const t = useMessages().profile;
-  const count = m.frames.length;
-  const [index, setIndex] = useState(count - 1);
-  const [turns, setTurns] = useState(0);
-  const frames = useMemo(() => asBoardFrames(m.frames, m.seat), [m.frames, m.seat]);
-  const board = useMemo(() => {
-    try {
-      return boardForScenario(m.scenario);
-    } catch {
-      return undefined;
-    }
-  }, [m.scenario]);
-
-  const go = (next: number) => setIndex(clampFrame(next, count));
-  const entry = index === 0 ? undefined : m.log[index - 1];
-  const label =
-    index === 0
-      ? t.replay.start
-      : t.replay.move(index, m.log.length, entry?.player === m.seat ? t.replay.you : m.opponent, entry?.action?.kind === "resign");
-
-  if (board === undefined) {
-    return <EmptyState>{t.replay.unknownMap(m.scenario)}</EmptyState>;
-  }
-  const c = t.replayControls;
-  return (
-    <Card title={t.replay.title} flush>
-      <Toolbar>
-        <QuickBar>
-          <IconButton icon="first" label={c.first} onClick={() => go(0)} />
-          <IconButton icon="previous" label={c.previous} onClick={() => go(index - 1)} />
-          <IconButton icon="next" label={c.next} onClick={() => go(index + 1)} />
-          <IconButton icon="last" label={c.last} onClick={() => go(count - 1)} />
-        </QuickBar>
-        <ToolbarText>{label}</ToolbarText>
-        <QuickBar>
-          <IconButton icon="rotateLeft" label={c.rotate} onClick={() => setTurns(turns - 1)} />
-          <IconButton icon="rotateRight" label={c.rotate} onClick={() => setTurns(turns + 1)} />
-        </QuickBar>
-      </Toolbar>
-      <ReplayBoard board={board} frames={frames} index={index} perspective={m.seat} turns={turns} />
-    </Card>
-  );
+  return <MatchReplayView match={loaded.value} back={{ href: profileHash({ view: "matches", offset: 0 }), label: t.back }} />;
 }

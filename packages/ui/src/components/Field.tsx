@@ -120,10 +120,12 @@ export interface SearchFieldProps {
   placeholder?: string | undefined;
   /** Appelé à la validation (Entrée), pas à chaque frappe. */
   onSearch: (value: string) => void;
+  /** Appelé à chaque frappe, pour proposer des résultats au fil de la saisie. */
+  onInput?: ((value: string) => void) | undefined;
 }
 
 /** Un champ de recherche, loupe à gauche, validé par Entrée. */
-export function SearchField({ defaultValue = "", placeholder: given, onSearch }: SearchFieldProps) {
+export function SearchField({ defaultValue = "", placeholder: given, onSearch, onInput }: SearchFieldProps) {
   const m = useMessages();
   const placeholder = given ?? m.ui.search;
   const [value, setValue] = useState(defaultValue);
@@ -140,7 +142,10 @@ export function SearchField({ defaultValue = "", placeholder: given, onSearch }:
         aria-label={placeholder}
         placeholder={placeholder}
         value={value}
-        onChange={(event) => setValue(event.target.value)}
+        onChange={(event) => {
+          setValue(event.target.value);
+          onInput?.(event.target.value);
+        }}
       />
     </form>
   );

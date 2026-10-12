@@ -51,6 +51,13 @@ export { PlayerPlate, Reveal, type PlayerPlateProps, type RevealProps } from "./
 export { ChoiceList, ChoiceRow, type ChoiceRowProps } from "./components/Choice.js";
 export { ToastProvider, ToastStack, useToast, type ToastMessage, type ToastStackProps } from "./components/Toast.js";
 export { MoveList, type MoveEntry, type MoveListProps } from "./components/MoveList.js";
+export {
+  MessageThread,
+  MessageComposer,
+  type ThreadMessage,
+  type MessageThreadProps,
+  type MessageComposerProps,
+} from "./components/Chat.js";
 export { Toolbar, ToolbarText } from "./components/Toolbar.js";
 export { Versus, type VersusProps, type VersusSide } from "./components/Versus.js";
 export {

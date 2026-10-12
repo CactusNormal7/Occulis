@@ -1483,6 +1483,58 @@ select.occ-input option {
   animation: occ-slide-out 0.22s ease both;
 }
 
+/* ---- Fil de messages ------------------------------------------------------------ */
+
+/* Les siens à droite, ceux de l'autre à gauche, au trait : aucun aplat, comme le reste.
+   Le trait franc distingue l'auteur, l'alignement suffit à lire l'échange. */
+.occ-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--occ-space-2);
+  max-height: 60vh;
+  padding: var(--occ-space-3) 0;
+  overflow-y: auto;
+}
+
+.occ-thread__message {
+  display: grid;
+  gap: 2px;
+  align-self: flex-start;
+  max-width: 78%;
+  padding: var(--occ-space-2) var(--occ-space-3);
+  border: 1px solid var(--occ-ink-faint);
+}
+
+.occ-thread__message p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.occ-thread__message small {
+  color: var(--occ-ink-dim);
+  font-size: var(--occ-text-xs);
+}
+
+.occ-thread__message--mine {
+  align-self: flex-end;
+  border-color: var(--occ-ink-line);
+  text-align: right;
+}
+
+.occ-composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: var(--occ-space-3);
+  margin: 0;
+}
+
+.occ-composer textarea {
+  resize: vertical;
+  font: inherit;
+}
+
 /* ---- Écran étroit --------------------------------------------------------------- */
 
 @media (max-width: 760px) {

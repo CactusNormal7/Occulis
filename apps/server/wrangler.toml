@@ -24,6 +24,11 @@ class_name = "MatchDO"
 name = "QUEUE"
 class_name = "QueueDO"
 
+# Un canal social par joueur (`idFromName(playerId)`) : présence, poussées, défis.
+[[durable_objects.bindings]]
+name = "SOCIAL"
+class_name = "SocialDO"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["MatchDO"]
@@ -31,6 +36,10 @@ new_sqlite_classes = ["MatchDO"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["QueueDO"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["SocialDO"]
 
 [[d1_databases]]
 binding = "DB"
@@ -62,6 +71,10 @@ class_name = "MatchDO"
 [[env.staging.durable_objects.bindings]]
 name = "QUEUE"
 class_name = "QueueDO"
+
+[[env.staging.durable_objects.bindings]]
+name = "SOCIAL"
+class_name = "SocialDO"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -97,6 +110,10 @@ class_name = "MatchDO"
 [[env.production.durable_objects.bindings]]
 name = "QUEUE"
 class_name = "QueueDO"
+
+[[env.production.durable_objects.bindings]]
+name = "SOCIAL"
+class_name = "SocialDO"
 
 [[env.production.d1_databases]]
 binding = "DB"

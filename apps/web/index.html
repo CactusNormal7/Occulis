@@ -95,6 +95,20 @@
           </button>
 
           <p id="menu-notice" role="status"></p>
+
+          <!-- Amis : défis reçus, présence, défier, regarder. La gestion de la liste et
+               les messages vivent dans le profil. Masqué tant que la liste n'est pas lue. -->
+          <section id="menu-friends" class="friends" data-i18n-label="social.menu.title" aria-label="Friends" hidden>
+            <h2>
+              <span data-i18n="social.menu.title">Friends</span>
+              <a class="quiet" href="/profile/#/friends" data-i18n="social.menu.manage">manage · messages</a>
+            </h2>
+            <ul id="friends-challenges" class="friend-list"></ul>
+            <ul id="friends-list" class="friend-list"></ul>
+            <p id="friends-empty" class="friends__empty" data-i18n="social.menu.empty">
+              No friends yet: add some from your profile.
+            </p>
+          </section>
           <div class="menu-links">
             <a id="menu-admin" class="quiet" href="/admin/" data-i18n="game.menu.admin" hidden>Back office</a>
             <button id="account-signout" type="button" class="quiet" data-i18n="game.menu.signOut">Sign out</button>

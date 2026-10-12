@@ -1,5 +1,6 @@
 import type { MeProfile } from "@occulis/protocol";
-import { availableProviders, isImpersonated, type Auth } from "../auth/better-auth.js";
+import { availableProviders, type Auth } from "../auth/better-auth.js";
+import { guardCaller } from "../auth/guard.js";
 import { parsePage } from "../admin/paging.js";
 import {
   changeHandle,
@@ -10,6 +11,7 @@ import {
   readProfileRow,
   revokeOtherSessions,
   revokeSession,
+  setAllowSpectators,
 } from "./queries.js";
 import { readMyFeats, setShowcase } from "./feats.js";
 import { createPreset, deletePreset, listPresets, setDefaultPreset, updatePreset } from "./presets.js";
@@ -19,33 +21,18 @@ import { createPreset, deletePreset, listPresets, setDefaultPreset, updatePreset
  * gestion du compte — mot de passe, adresse, connexions Google, suppression — passe par
  * les routes de Better Auth, qui portent leur propre contrôle (`auth/better-auth.ts`).
  *
- * Trois gardes, posées ici à l'entrée et pour toutes les routes à la fois :
- * - **l'identité vient de la session** (le cookie), jamais d'un paramètre : aucune route
- *   ne prend d'identifiant de joueur ou de compte, et chaque requête SQL est bornée par
- *   celui de la session (`me/queries.ts`) ;
- * - **une écriture doit venir de la page elle-même** : `SameSite=Lax` retient déjà le
- *   cookie d'un POST intersite, l'origine est vérifiée en plus, comme pour l'admin ;
- * - **une session d'emprunt est en lecture seule** : l'administrateur qui usurpe voit le
- *   profil, mais ne change rien au compte de quelqu'un d'autre.
+ * La garde d'entrée est `guardCaller` (`auth/guard.ts`) : identité tirée de la session,
+ * origine vérifiée pour toute écriture, session d'emprunt en lecture seule. Aucune route
+ * ne prend d'identifiant de joueur ou de compte, et chaque requête SQL est bornée par
+ * celui de la session (`me/queries.ts`).
  */
 export async function handleMe(auth: Auth, env: Env, request: Request, url: URL): Promise<Response | undefined> {
   if (url.pathname !== "/api/me" && !url.pathname.startsWith("/api/me/")) return undefined;
 
-  const writing = request.method !== "GET";
-  if (writing && request.headers.get("Origin") !== url.origin) {
-    return new Response("origin refused", { status: 403 });
-  }
-
-  const session = await auth.api.getSession({ headers: request.headers });
-  if (session === null) return new Response("authentication required", { status: 401 });
+  const caller = await guardCaller(auth, request, url);
+  if (caller instanceof Response) return caller;
+  const { session, playerId, impersonating } = caller;
   const { user } = session;
-  const playerId = typeof user.playerId === "string" ? user.playerId : "";
-  if (playerId.length === 0) return new Response("authentication required", { status: 401 });
-
-  const impersonating = isImpersonated(session.session.impersonatedBy);
-  if (writing && impersonating) {
-    return Response.json({ code: "IMPERSONATION_READONLY" }, { status: 403 });
-  }
 
   const path = url.pathname.slice("/api/me".length);
   const now = Date.now();
@@ -64,6 +51,7 @@ export async function handleMe(auth: Auth, env: Env, request: Request, url: URL)
         availableProviders: availableProviders(env),
         impersonating,
         record: row.record,
+        allowSpectators: row.allowSpectators,
         elo: row.elo,
       };
       return Response.json(profile);
@@ -89,6 +77,12 @@ export async function handleMe(auth: Auth, env: Env, request: Request, url: URL)
       const result = await changeHandle(env.DB, playerId, body.handle, now);
       if (!result.ok) return Response.json({ code: result.code }, { status: statusFor(result.code) });
       return Response.json({ handle: result.handle, nextHandleChangeAt: result.nextHandleChangeAt });
+    }
+    if (path === "/spectators") {
+      const body = (await request.json().catch(() => ({}))) as { allow?: unknown };
+      if (typeof body.allow !== "boolean") return Response.json({ code: "INVALID" }, { status: 400 });
+      await setAllowSpectators(env.DB, playerId, body.allow);
+      return Response.json({ allowSpectators: body.allow });
     }
     if (path === "/showcase") {
       const result = await setShowcase(env.DB, playerId, await request.json().catch(() => ({})));

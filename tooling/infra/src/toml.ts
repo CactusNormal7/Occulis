@@ -31,6 +31,14 @@ binding = "ASSETS"
 name = "MATCH"
 class_name = "MatchDO"
 
+[[env.${env}.durable_objects.bindings]]
+name = "QUEUE"
+class_name = "QueueDO"
+
+[[env.${env}.durable_objects.bindings]]
+name = "SOCIAL"
+class_name = "SocialDO"
+
 [[env.${env}.d1_databases]]
 binding = "DB"
 database_name = "${databaseName}"

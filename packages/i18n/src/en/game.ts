@@ -30,6 +30,9 @@ export const game = {
     join: "Joining the match…",
     opening: "Opening the match…",
     hosting: "Give this code to your opponent, then wait for them to arrive.",
+    challenge: (friend: string) => `Challenge sent to ${friend}. Waiting for their answer…`,
+    watch: (friend: string) => `Opening ${friend}'s match…`,
+    someone: "your friend",
   },
   roomFault: {
     unknown: "No match under this code: check what you typed, or ask for it again.",
@@ -46,6 +49,7 @@ export const game = {
     },
     leave: "Leave the match",
     pending: "Move already sent: waiting for the server.",
+    spectating: "You are watching this match: there is no move to play.",
     resigned: "Resignation.",
     sent: (summary: string) => `${summary} — sent.`,
   },
@@ -74,6 +78,11 @@ export const game = {
     line: (turn: number, whose: string, seat: string) => `Turn ${turn} · ${whose} · you play ${seat}`,
     yours: "your move",
     theirs: "to move: the opponent",
+    watchers: (count: number) => (count === 1 ? " · 1 friend is watching you" : ` · ${count} friends are watching you`),
+    watching: (turn: number, whose: string, friend: string, side: string) =>
+      `Turn ${turn} · ${whose} · you are watching ${friend} (${side})`,
+    friendToMove: (friend: string) => `to move: ${friend}`,
+    opponentToMove: "to move: their opponent",
   },
   tile: {
     offBoard: "Off the board.",

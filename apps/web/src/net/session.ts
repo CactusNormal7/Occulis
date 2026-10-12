@@ -44,6 +44,13 @@ export type Phase =
       readonly scenario: string | undefined;
       readonly rulesetVersion: string | undefined;
       readonly view: PlayerView | undefined;
+      /**
+       * Vrai pour un ami qui regarde : il suit un camp sans y être assis, ne reçoit que
+       * la vue de ce camp, et ne joue rien.
+       */
+      readonly spectating: boolean;
+      /** Combien d'amis regardent le camp du joueur ; toujours 0 pour un spectateur. */
+      readonly spectators: number;
       /** Présent tant que la partie se déploie ; la première vue y met fin. */
       readonly deployment: DeploymentState | undefined;
     }
@@ -72,10 +79,18 @@ export function seatedAt(matchId: string, seat: string): Session {
       scenario: undefined,
       rulesetVersion: undefined,
       view: undefined,
+      spectating: false,
+      spectators: 0,
       deployment: undefined,
     },
     rejection: undefined,
   };
+}
+
+/** Une session de spectateur, avant le `watching` qui confirme le camp suivi. */
+export function watchingAt(matchId: string): Session {
+  const seated = seatedAt(matchId, "");
+  return { ...seated, phase: { ...seated.phase, spectating: true } as Phase };
 }
 
 export function fromQueue(session: Session, message: QueueServerMessage): Session {
@@ -107,6 +122,8 @@ export function fromQueue(session: Session, message: QueueServerMessage): Sessio
           scenario: undefined,
           rulesetVersion: undefined,
           view: undefined,
+          spectating: false,
+          spectators: 0,
           deployment: undefined,
         },
         rejection: undefined,
@@ -137,6 +154,18 @@ export function fromMatch(session: Session, message: ServerMessage): Session {
         },
         rejection: undefined,
       };
+    case "watching":
+      return {
+        phase: {
+          ...phase,
+          player: message.side,
+          scenario: message.scenario,
+          rulesetVersion: message.rulesetVersion,
+        },
+        rejection: undefined,
+      };
+    case "spectators":
+      return { phase: { ...phase, spectators: message.count }, rejection: undefined };
     case "deployment": {
       const { zone, opponentZone, defaultTeam, remainingMs, locks, self, opponent, rated } = message;
       const deployment = { zone, opponentZone, defaultTeam, remainingMs, locks, self, opponent, rated };

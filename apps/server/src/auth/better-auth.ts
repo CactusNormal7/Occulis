@@ -3,6 +3,7 @@ import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from "b
 import { admin, oAuthProxy } from "better-auth/plugins";
 import { DEFAULT_LOCALE, type Locale } from "@occulis/i18n";
 import { anonymousHandle, checkHandle, handleCandidates } from "./handle.js";
+import { forgetPlayer } from "../social/queries.js";
 import { MIN_PASSWORD_LENGTH, breachedPassword, hashPassword, verifyPassword } from "./password.js";
 import {
   changeEmailLetter,
@@ -270,9 +271,16 @@ export function buildAuth(env: Env, origin: string, locale: Locale = DEFAULT_LOC
               .bind(user.id)
               .first<{ player_id: string | null }>();
             if (row?.player_id) {
-              await env.DB.prepare("UPDATE players SET handle = ?, handle_changed_at = ? WHERE id = ?")
-                .bind(anonymousHandle(row.player_id), Date.now(), row.player_id)
-                .run();
+              // Ses relations partent avec lui : amis, demandes, blocages et messages
+              // ne rattachent plus personne à un profil anonymisé.
+              await env.DB.batch([
+                env.DB.prepare("UPDATE players SET handle = ?, handle_changed_at = ? WHERE id = ?").bind(
+                  anonymousHandle(row.player_id),
+                  Date.now(),
+                  row.player_id,
+                ),
+                ...forgetPlayer(env.DB, row.player_id),
+              ]);
             }
           },
         },

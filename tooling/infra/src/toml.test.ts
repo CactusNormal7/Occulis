@@ -67,6 +67,9 @@ describe("appendEnvBlock", () => {
     expect(toml).toContain('pattern = "occulis-feature-x.0kl.fr", custom_domain = true');
     expect(toml).toContain("[env.feature-x.assets]");
     expect(toml).toContain("[[env.feature-x.durable_objects.bindings]]");
+    // Chaque Durable Object du Worker doit être lié, sinon l'environnement démarre
+    // sans file d'attente ni canal social.
+    for (const name of ["MATCH", "QUEUE", "SOCIAL"]) expect(toml).toContain(`name = "${name}"`);
     expect(toml).toContain('database_name = "occulis-feature-x"');
     // Sans base créée, l'identifiant reste un placeholder : c'est lui que
     // guardPlaceholder() attend pour refuser migrations et déploiement.

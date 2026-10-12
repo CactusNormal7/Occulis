@@ -52,6 +52,20 @@ describe("advance", () => {
     expect(advance({ kind: "auth" }, { kind: "menu" })).toEqual({ kind: "auth" });
   });
 
+  it("attend la réponse d'un ami défié en le nommant", () => {
+    expect(advance({ kind: "menu" }, { kind: "seek", seeking: "challenge", friend: "Bob" })).toEqual({
+      kind: "waiting",
+      seeking: "challenge",
+      code: undefined,
+      friend: "Bob",
+    });
+  });
+
+  it("entre en spectateur dans la partie d'un ami", () => {
+    const opening = advance({ kind: "menu" }, { kind: "seek", seeking: "watch", friend: "Bob" });
+    expect(advance(opening, { kind: "seated", spectating: true })).toEqual({ kind: "game", spectating: true });
+  });
+
   it("ouvre la fenêtre d'acceptation pendant l'attente rapide, et seulement là", () => {
     const quick = advance({ kind: "menu" }, { kind: "seek", seeking: "quick" });
     expect(advance(quick, { kind: "proposed" })).toEqual({ kind: "proposal" });

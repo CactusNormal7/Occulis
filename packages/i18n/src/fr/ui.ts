@@ -7,6 +7,9 @@ export const ui: Messages["ui"] = {
   showPassword: "Afficher le mot de passe",
   hidePassword: "Masquer le mot de passe",
   search: "Rechercher…",
+  messagePlaceholder: "Écrire un message…",
+  send: "Envoyer",
+  noMessages: "Aucun message.",
   empty: "Rien à afficher.",
   pager: {
     none: "aucun résultat",

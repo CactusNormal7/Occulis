@@ -48,6 +48,14 @@ seul exemplaire au monde, mono-threadée, avec un stockage attaché.
   « temps de réflexion illimité ».
 - **1 Durable Object global = la file de matchmaking.** Étant mono-threadé, il élimine par
   construction la course où deux joueurs sont appariés deux fois.
+- **1 Durable Object par joueur = son canal social.** Il tient les sockets de ses pages ouvertes,
+  y pousse demandes d'amis, messages et présence de ses amis, et sérialise ses défis : une
+  invitation vit dans l'instance de son auteur, donc ne s'accepte qu'une fois. La présence se lit
+  au nombre de sockets ; D1 n'en garde qu'un cache (`players.online`), pour que la liste d'amis se
+  lise en une requête plutôt qu'en un appel par ami. Les relations elles-mêmes (amitiés,
+  demandes, blocages, messages) vivent en D1, comme tout ce qui se cherche.
+- **Un spectateur est un socket de plus sur le DO de la partie**, qui ne reçoit que la vue du
+  camp qu'il suit (`docs/design.md` section 5.5) : le fog reste structurel pour lui aussi.
 
 Alternative écartée : Node + Postgres sur Fly.io. Outillage plus standard et zéro lock-in, mais
 des parties qui dorment longtemps et doivent survivre aux déploiements obligeraient à persister
@@ -74,6 +82,7 @@ pas de types avancés) est sans effet à cette échelle.
 | ------------------------------------- | --------------------------------- |
 | Partie en cours (plateau, tours, fog) | **Durable Object**                |
 | File de matchmaking                   | **Durable Object global**         |
+| Présence, poussées sociales, défis    | **Durable Object par joueur**     |
 | Comptes, sessions, pseudos            | **D1**                            |
 | Log d'actions / replays               | **D1**                            |
 | Résultats, ELO, stats, classement     | **D1**                            |

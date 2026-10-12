@@ -117,7 +117,11 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/game/scenario.ts` | Résout la carte annoncée par le serveur | oui |
 | `apps/web/src/net/session.ts` | Réduction des messages serveur en état de session | oui |
 | `apps/web/src/net/queue-channel.ts` | Le canal de la file : appariement, salon, entrée par code | non |
-| `apps/web/src/net/match-channel.ts` | Le canal d'une partie : transport + interprétation | non |
+| `apps/web/src/net/match-channel.ts` | Le canal d'une partie, assis (`connectToMatch`) ou spectateur (`watchMatch`) | non |
+| `apps/web/src/net/social-channel.ts` | Le canal social de la page (`/api/social`) | non |
+| `apps/web/src/social/model.ts` | État social : liste d'amis retouchée par les poussées, défis, non-lus, refus traduits (`social.errors`) | oui |
+| `apps/web/src/social/api.ts` | Appels des routes d'amis, partagés par le menu et le profil | non |
+| `apps/web/src/ui/friends-panel.ts` | Le panneau « Amis » du menu : défis reçus, présence, défier, regarder | non |
 | `apps/web/src/net/channel.ts` | Transport WebSocket et reconnexion | non |
 | `apps/web/src/net/backoff.ts` | Délai avant la n-ième tentative de reconnexion | oui |
 | `apps/web/src/ui/flow.ts` | Quel écran a lieu d'être : compte, menu, attente, partie | oui |
@@ -142,7 +146,9 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/teams/mount.tsx` | Monte l'îlot dans `#teams-root` | non |
 | `apps/web/profile/index.html` | Page de profil, troisième entrée Vite | — |
 | `apps/web/src/profile/main.tsx` | Point d'entrée du profil : monte `App` | non |
-| `apps/web/src/profile/App.tsx` | Compte, sécurité, sessions, suppression, parties et replay de son point de vue | non |
+| `apps/web/src/profile/App.tsx` | Compte, sécurité, spectateurs, sessions, suppression, parties et replay de son point de vue | non |
+| `apps/web/src/profile/Friends.tsx` | Onglet Amis : état social partagé (`SocialProvider`), liste, recherche, demandes, bloqués, fiche, replay d'un ami, messages | non |
+| `apps/web/src/profile/parts.tsx` | Bilan, table d'historique et replay, communs à ses parties et à celles d'un ami | non |
 | `apps/web/src/profile/api.ts` | Appels `/api/me/*` et routes de compte de Better Auth | non |
 | `apps/web/src/profile/model.ts` | Routes du profil, messages d'arrivée, délai de pseudo, liaison retirable, images du replay | oui |
 | `apps/web/src/scene/scene.ts` | Couches PixiJS et détection de changement | non |
@@ -357,17 +363,22 @@ le joueur, jamais avant (`docs/design.md` section 2).
 | Étape | Quand | Ce qu'on y voit |
 |---|---|---|
 | `auth` | Personne n'est connecté | L'îlot de compte : connexion, inscription, mot de passe oublié, réinitialisation |
-| `menu` | Connecté | Partie rapide, créer une partie, rejoindre avec un code, **équipes** |
+| `menu` | Connecté | Partie rapide, créer une partie, rejoindre avec un code, **équipes** ; le panneau « Amis » |
 | `teams` | Entrée « Équipes » du menu | L'îlot des équipes préparées (`teams/`) |
-| `waiting` | Une demande est partie | Le code du salon, ou l'attente d'un adversaire |
+| `waiting` | Une demande est partie | Le code du salon, l'attente d'un adversaire, la réponse d'un ami défié (`challenge`), ou l'ouverture de la partie d'un ami (`watch`) — `friend` le nomme |
 | `proposal` | File rapide : `proposal` reçu | La fenêtre « partie trouvée » par-dessus l'attente (`prepare/MatchFound.tsx`) |
 | `deploying` | Assis, `deployment` reçu | L'annonce de l'adversaire et le constructeur d'équipe (`prepare/Deployment.tsx`) |
-| `game` | Le serveur a répondu `welcome` + `view` | Le plateau et le bandeau de partie |
+| `game` | Le serveur a répondu `welcome` (ou `watching`) + `view` | Le plateau et le bandeau de partie ; `spectating: true` pour un ami qui regarde |
 
 Les transitions ajoutées : `proposed` n'ouvre la fenêtre que depuis une attente **rapide** ;
 `lapsed` remet en attente qui avait accepté (`requeued`), au menu les autres ; `deploying`
 vient de l'attente ou de la fenêtre, jamais d'une partie commencée (une reconnexion qui
 réannoncerait le déploiement n'en fait pas sortir) ; `teams` ne s'ouvre que depuis le menu.
+
+`Seeking` couvre les trois entrées de la file (`QueueSeeking` : `quick`, `host`, `join`) et
+les deux attentes du système d'amis (`challenge`, `watch`), qui ne passent pas par la file.
+Un défi accepté passe ensuite par `deploying` comme un salon privé ; un spectateur, lui, n'en
+voit rien et reste sur l'attente jusqu'à la première vue.
 
 `advance(stage, event)` encode trois précautions qui ne se voient pas sur le schéma :
 
@@ -533,6 +544,34 @@ que l'adresse n'est pas vérifiée** : la file répondrait 401 dans le premier c
 le second. `describeIdentity()` (`ui/messages.ts`) dit laquelle des deux raisons s'applique —
 sans quoi des boutons désactivés n'auraient aucune explication à l'écran.
 
+### Les amis
+
+Le panneau `#menu-friends` (`ui/friends-panel.ts`) liste les **défis reçus** (Accepter /
+Refuser), puis les amis avec leur présence (« en ligne », « en partie », « absent », non-lus)
+et leurs gestes : **Défier** un ami en ligne, **Regarder** chacune de ses parties en cours
+que le serveur dit `watchable`. La gestion de la liste et les messages vivent dans le
+profil, vers lequel il renvoie.
+
+`main.ts` ouvre le **canal social** (`net/social-channel.ts`, `surface=game`) dès que
+l'identité est vérifiée, relit la liste (`GET /api/friends`) à chaque (re)connexion, et
+réduit chaque poussée par `social/model.ts` — une poussée qui périme la liste
+(`friend-request`, `friend-accepted`, `friends-changed`) la fait relire.
+
+- **Défier** envoie `POST /api/friends/:id/challenge`, puis attend à l'écran `waiting`
+  (`seeking: "challenge"`). Annuler retire le défi ; un `challenge-cancelled` venu de l'ami
+  ramène au menu avec un mot.
+- **Accepter** appelle `/challenge/accept` ; c'est le message `matched` du canal social —
+  le même que celui de la file — qui assied les deux joueurs (`sit()`), sauf en pleine
+  partie.
+- **Regarder** ouvre `watchMatch(matchId, side)` : le serveur refuse avant tout socket un
+  regard non permis, donc seul le silence le signale — après `WATCH_TIMEOUT_MS` (6 s) sans
+  `watching`, le joueur revient au menu avec une explication. Une fois `watching` reçu
+  (`onWatching`), l'échéance tombe : pendant le déploiement, la première vue peut attendre
+  90 s. En spectateur, la
+  partie (`OnlineMatch`) n'envoie rien, la console cache la saisie et son aide, et la ligne
+  d'état dit qui l'on regarde (`describeWatching()`). Le joueur regardé voit « N amis vous
+  regardent » (`describeTurn()`, `onSpectators`).
+
 ### La traduction des refus
 
 `authMessage()` s'accroche au **code** renvoyé par le serveur, jamais à la phrase : le
@@ -559,6 +598,10 @@ un 401 affiche un lien vers `/sign-in`.
 | Compte | `#/` (et `#security`, l'ancre des courriers et de `/.well-known/change-password`) | Compte (pseudo, adresse), bilan, connexion et sécurité (mot de passe, Google), sessions, zone sensible |
 | Parties | `#/matches?offset=` | Ses parties, son camp, l'adversaire, le résultat de son point de vue |
 | Partie | `#/matches/<id>` | Le replay **de son point de vue** |
+| Amis | `#/friends` | Recherche par préfixe au fil de la frappe, amis (présence, non-lus), défis reçus (à relever depuis le jeu), demandes reçues et envoyées, bloqués |
+| Ami | `#/friends/<id>?offset=` | Sa fiche : présence, bilan et Elo, historique ; messages, retrait, blocage |
+| Partie d'un ami | `#/friends/<id>/matches/<matchId>` | Le replay **de son point de vue à lui** |
+| Messages | `#/friends/<id>/messages` | Le fil avec cet ami (`MessageThread`, `MessageComposer`), tenu à jour en direct |
 
 - **Tout est en lecture d'abord** (`SettingRow`) : chaque réglage montre sa valeur et un
   bouton (« Modifier », « Changer », « Définir »), qui déplie son éditeur dans la ligne
@@ -578,6 +621,11 @@ un 401 affiche un lien vers `/sign-in`.
 - **Replay** : `asBoardFrames()` adapte les images du serveur au plateau rejoué du
   back-office (`admin/ReplayBoard.tsx`, réutilisé tel quel), avec la seule ligne de vue de
   son camp et le point de vue fixé sur lui.
+- **Amis** : `SocialProvider` (`Friends.tsx`) ouvre le canal social (`surface=profile`) et
+  tient l'état social, partagé par l'onglet et le compteur de non-lus de la barre du haut.
+  Ouvrir un fil le marque lu (`/messages/read`), sauf sous usurpation. **Ajouter** un
+  adversaire se fait aussi depuis « Mes parties » (`opponentId`). Le réglage
+  **Spectateurs** (carte « Amis » du compte) ouvre ou ferme ses parties aux amis.
 - **Pendant une usurpation**, un bandeau signale la lecture seule, aucun réglage n'a de
   bouton d'édition et chaque geste est grisé — le serveur les refuse de toute façon.
 
@@ -604,6 +652,11 @@ répéter le refus.
 Le découpage a une raison : la lecture des messages est la partie qui mérite des tests, et
 elle n'a besoin d'aucun socket. `session.ts` ne décide de rien non plus — le client ne
 connaît son camp qu'à réception de `welcome`, et la position que par les vues reçues.
+
+Un **spectateur** (un ami qui regarde, voir [server.md](server.md), « Les spectateurs »)
+part de `watchingAt(matchId)` : la phase `seated` porte `spectating: true` et un jeton vide,
+et c'est `watching { side }` qui joue le rôle de `welcome`. Côté joueur, `spectators
+{ count }` met à jour `spectators`, le nombre d'amis qui le regardent.
 
 **`welcome` et la première `view` ne sont pas ordonnés.** Le serveur rediffuse les vues aux
 deux joueurs à chaque `hello` : un client peut donc recevoir une vue avant son propre
@@ -813,7 +866,8 @@ Les phrases sont dans `@occulis/i18n` (domaine `game`) ; ce module choisit laque
 | `describeActionError()` | `ActionError` de `core` → phrase |
 | `describeMove()` | Compte rendu d'un coup joué |
 | `describeOutcome()` | Fin de partie |
-| `describeTurn()` | Ligne d'état : tour, joueur au trait, point de vue |
+| `describeTurn()` | Ligne d'état : tour, joueur au trait, point de vue, amis qui regardent |
+| `describeWatching()` | Ligne d'état d'un spectateur : tour, joueur au trait, ami regardé et son camp |
 | `describeTile()` | Lecture d'une case désignée au clic |
 | `describeRejection()` | Un refus du serveur : règle de coup, d'équipe, siège ou phase |
 | `describeTeamError()` | Pourquoi une équipe n'est pas déployable |
@@ -841,10 +895,10 @@ compte et le menu ont leurs écrans (`shell.ts`).
 | Fonction | Rôle |
 |---|---|
 | `attachConsole()` | Installe le formulaire et rend un `GameConsole` |
-| `refresh()` (interne) | Réécrit la ligne d'état |
+| `refresh()` (interne) | Réécrit la ligne d'état ; cache la saisie et son aide à un spectateur (`watching()`) |
 | `showTile()` (interne) | Écrit la lecture d'une case désignée au clic |
 | `report()` (interne) | Écrit un compte rendu et son état `ok`/`ko` |
-| `playAction()` (interne) | Joue une action **et la rapporte** ; rend `true` si acceptée |
+| `playAction()` (interne) | Joue une action **et la rapporte** ; rend `true` si acceptée — refusée d'emblée à un spectateur |
 | `submit()` (interne) | Analyse la saisie, puis délègue à `playAction()` |
 
 **L'application d'une action lui est fournie (`play`), pas prise sur la partie.** C'est
@@ -1022,8 +1076,13 @@ de `@occulis/ui` gardent sa feuille.
 | `element()` | Résout un `id` du DOM ou lève |
 | `intentOf()` | L'entrée de menu choisie → l'intention que la file attend |
 | `go()` (interne) | Fait avancer `flow.ts` et réaffiche les écrans |
-| `sit()` (interne) | Ouvre le canal de la partie et construit `OnlineMatch` à `welcome` |
-| `leave()` (interne) | Referme file, canal et partie, vide la scène et rend la main au menu |
+| `handlersFor(spectating)` (interne) | Les gestionnaires d'une partie, assis ou spectateur : `OnlineMatch` à la première vue, déploiement (préréglages chargés pour un joueur seulement), refus, compteur de spectateurs, `onWatching` |
+| `sit()` (interne) | Referme la file, ouvre le canal de la partie avec `handlersFor(false)` |
+| `watch()` (interne) | Ouvre le canal de spectateur (`handlersFor(true)`) et arme l'échéance `WATCH_TIMEOUT_MS` |
+| `onSocial()` (interne) | Une poussée du canal social : `matched` assied, refus d'un défi ramène au menu, le reste passe par `social/model.ts` |
+| `syncSocial()` (interne) | Ouvre ou referme le canal social selon l'identité |
+| `reloadFriends()` (interne) | Relit `GET /api/friends` et redessine le panneau |
+| `leave()` (interne) | Referme file, canal et partie, retire un défi en attente, vide la scène et rend la main au menu |
 | `adopt()` (interne) | Une vue reçue fait autorité : efface sélection et animation |
 | `play()` (interne) | **Le seul point d'application d'une action**, clic comme clavier |
 
@@ -1062,8 +1121,9 @@ atteindre les composants `occ-*`.
 | `#screen-auth` / `#account-root` | Compte : l'hôte de l'îlot React (`account/`) |
 | `#impersonation` | Bandeau de session d'emprunt, au-dessus de tous les écrans — masqué hors usurpation |
 | `#account-corner` | Pseudo et lien vers le profil, en haut à droite — montré au seul menu |
-| `#screen-menu` | Identité, renvoi de vérification, partie rapide, création, entrée par code, lien du back-office (`#menu-admin`, administrateurs seuls), déconnexion |
-| `#screen-waiting` | Le code du salon, sa copie, l'attente et son annulation |
+| `#screen-menu` | Identité, renvoi de vérification, partie rapide, création, entrée par code, amis, lien du back-office (`#menu-admin`, administrateurs seuls), déconnexion |
+| `#menu-friends` | Le panneau « Amis » : `#friends-challenges`, `#friends-list`, `#friends-empty` — masqué tant que la liste n'est pas lue |
+| `#screen-waiting` | Le code du salon, sa copie, l'attente (adversaire, ami défié, partie d'un ami) et son annulation |
 | `#console` | Le bandeau de partie |
 | `#status` | Ligne d'état : tour, camp au trait, camp du joueur |
 | `#tile-readout` | Lecture de la case désignée au clic |
@@ -1241,7 +1301,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 
 ## Tests
 
-163 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+178 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
@@ -1249,14 +1309,15 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/view/camera.test.ts` | Le point sous le curseur reste immobile au zoom, bornes d'échelle, convergence exacte de l'aimantation |
 | `apps/web/src/view/picking.test.ts` | Chaque case retrouvée depuis son centre à plusieurs angles et échelles, priorité au relief au premier plan, désignation par la falaise |
 | `apps/web/src/view/animation.test.ts` | Hauteurs relevées au départ, durée croissante mais bornée, interpolation conjointe position/hauteur, progression monotone, terminaison |
-| `apps/web/src/ui/flow.test.ts` | Départ sur le formulaire, menu ouvert à la connexion, retour au formulaire à la déconnexion **même en partie**, identité reconfirmée sans effet, code affiché dans l'attente, `hosting` en retard ignoré, **fenêtre d'acceptation ouverte depuis la seule attente rapide**, retour en attente ou au menu à sa chute, déploiement avant la partie et jamais après, équipes depuis le menu |
+| `apps/web/src/ui/flow.test.ts` | Départ sur le formulaire, menu ouvert à la connexion, retour au formulaire à la déconnexion **même en partie**, identité reconfirmée sans effet, code affiché dans l'attente, `hosting` en retard ignoré, **fenêtre d'acceptation ouverte depuis la seule attente rapide**, retour en attente ou au menu à sa chute, déploiement avant la partie et jamais après, équipes depuis le menu, attente d'un ami défié nommée, entrée en spectateur |
+| `apps/web/src/social/model.test.ts` | Présence allumée et éteinte, inconnu ignoré, **non-lus comptés pour les messages reçus seulement**, relecture demandée sur un changement de relation, un défi reçu par ami et retiré à l'annulation, défi envoyé oublié au refus, **défis d'un ancien ami écartés à la relecture**, libellé de présence, traduction des refus |
 | `apps/web/src/game/selection.test.ts` | **Toute destination affichée est applicable par `core`**, exclusion des cases occupées, frappe sur place, machine à états complète de `resolveClick` |
 | `apps/web/src/ui/command.test.ts` | Grammaire complète et résolution coordonnée → pièce |
 | `apps/web/src/ui/messages.test.ts` | `describeTile()`, dont l'absence de fuite d'information sur les pièces |
 | `apps/web/src/game/hypothesis.test.ts` | L'hypothèse ne contient que le visible et reporte la fin de partie annoncée par la vue |
 | `apps/web/src/game/online-match.test.ts` | **`play()` n'écrit rien** — ni position, ni trait —, n'envoie pas un coup refusé localement, laisse rejouer après un refus, et n'avance qu'à réception de la vue |
 | `apps/web/src/game/movement-diff.test.ts` | Le déplacement lu entre deux vues, y compris celui de l'adversaire ; une pièce qui entre ou sort de la LOS n'est pas animée |
-| `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, code de salon retenu, code refusé sans siège, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré, **déploiement annoncé puis verrous suivis, effacé à la première vue**, proposition ouverte, acceptations suivies, chute rapportée |
+| `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, code de salon retenu, code refusé sans siège, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré, **déploiement annoncé puis verrous suivis, effacé à la première vue**, proposition ouverte, acceptations suivies, chute rapportée, compteur de spectateurs, spectateur assis sur le camp suivi sans jeton |
 | `apps/web/src/net/backoff.test.ts` | Croissance exponentielle, plafond, robustesse à une tentative absurde |
 | `apps/web/src/admin/model.test.ts` | Routes du back-office lues et réécrites à l'identique, fiche rangée sous sa liste, résultat nommé par le siège, coups, dates ISO et millisecondes, pagination, **durée de suspension illisible refusée plutôt que lue comme définitive**, actions rapides fermées sur soi-même, sur un administrateur et sur un compte suspendu, initiales, taux de victoire, résumé du navigateur d'une session |
 | `apps/web/src/admin/replay.test.ts` | Pièce déplacée retrouvée entre deux images et elle seule, coup écrit comme l'historique de la maquette, libellé d'image avec camp et joueur, navigation bornée, **plateau centré et contenu dans son cadre aux quatre quarts de tour** |
@@ -1264,7 +1325,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/account/model.test.ts` | Parcours ↔ URL dans les deux sens, connexion par défaut, jeton lu, **jeton et erreurs retirés de l'URL**, adresse confirmée, compte supprimé, lien expiré du bon type, refus de liaison Google expliqué, **refus rattaché au bon champ, jamais pour des identifiants faux**, indication de longueur, **anciens noms de paramètres encore reconnus** |
 | `apps/web/src/team/model.test.ts` | Emplacements de la composition, pose dans la zone seulement, **reprise puis échange de deux pièces**, type changé dans son rôle seulement, brouillon rempli depuis une équipe et rendu à l'identique, **verdict de la règle de `core`**, remplissage, retrait |
 | `apps/web/src/prepare/model.test.ts` | Décompte sur l'horloge du client, **envoi automatique d'un seul brouillon valide juste avant l'échéance**, preset par défaut transposé au camp tenu, repli sur l'équipe de la carte |
-| `apps/web/src/profile/model.test.ts` | Routes du profil dans les deux sens, ancre de sécurité, **identifiant de partie suspect refusé**, messages d'arrivée, délai de pseudo, **dernière méthode de connexion non retirable**, résultat de son point de vue, **ligne de vue de son seul camp prêtée au plateau**, ancienneté d'une session |
+| `apps/web/src/profile/model.test.ts` | Routes du profil dans les deux sens (amis, fiche, replay d'un ami, messages compris), onglet de chaque vue, **identifiant d'ami suspect ramené à la liste**, ancre de sécurité, **identifiant de partie suspect refusé**, messages d'arrivée, délai de pseudo, **dernière méthode de connexion non retirable**, résultat de son point de vue, **ligne de vue de son seul camp prêtée au plateau**, ancienneté d'une session |
 
 ## Non implémenté
 

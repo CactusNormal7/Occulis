@@ -103,10 +103,12 @@ export function describeRoomFault(fault: RoomFault): string {
 }
 
 /** Ce que le joueur attend, et depuis quel menu. */
-export function describeWaiting(seeking: Seeking, code: string | undefined): string {
+export function describeWaiting(seeking: Seeking, code: string | undefined, friend?: string): string {
   const m = messages().game.waiting;
   if (seeking === "quick") return m.quick;
   if (seeking === "join") return m.join;
+  if (seeking === "challenge") return m.challenge(friend ?? m.someone);
+  if (seeking === "watch") return m.watch(friend ?? m.someone);
   return code === undefined ? m.opening : m.hosting;
 }
 
@@ -123,9 +125,16 @@ export function describeOutcome(outcome: NonNullable<GameState["outcome"]>): str
  * L'état du tour. Le camp du joueur y figure toujours, et non le point de vue
  * affiché : il n'y en a qu'un — le serveur n'envoie jamais la vue d'en face.
  */
-export function describeTurn(turn: number, activePlayer: PlayerId, seat: PlayerId): string {
+export function describeTurn(turn: number, activePlayer: PlayerId, seat: PlayerId, spectators = 0): string {
   const m = messages().game.turn;
-  return m.line(turn, activePlayer === seat ? m.yours : m.theirs, seat);
+  const line = m.line(turn, activePlayer === seat ? m.yours : m.theirs, seat);
+  return spectators === 0 ? line : `${line}${m.watchers(spectators)}`;
+}
+
+/** La ligne d'état d'un spectateur : il suit un camp, il n'en joue aucun. */
+export function describeWatching(turn: number, activePlayer: PlayerId, side: PlayerId, friend: string): string {
+  const m = messages().game.turn;
+  return m.watching(turn, activePlayer === side ? m.friendToMove(friend) : m.opponentToMove, friend, side);
 }
 
 /**

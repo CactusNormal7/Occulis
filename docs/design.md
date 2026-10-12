@@ -79,6 +79,14 @@ Le plateau n'est pas un simple array de valeurs (1 = mur, 2 = pièce...), mais u
 - Nécessite une distinction technique (pour plus tard, hors scope design) entre état réel du jeu (serveur autoritaire) et état "connu" par chaque joueur (dernière position vue, à afficher en style estompé/fantôme plutôt que simplement effacée).
 - Implication straight : le serveur doit être autoritaire et ne jamais transmettre au client les données hors LOS de ce joueur (sans quoi le fog of war est contournable via les devtools navigateur).
 
+### 5.5 Spectateurs — décision du porteur du projet
+
+- Un ami peut regarder une partie en cours, **du côté de son ami et de ce côté seulement**, en direct : il reçoit exactement la vue du joueur suivi (sa LOS, ses fantômes), jamais la position complète ni la vue adverse. Ainsi un spectateur ne sait rien que le joueur ne sache déjà — il n'a aucun avantage à lui souffler.
+- Réservé aux amis, et **désactivable** par chaque joueur (réglage du profil).
+- Un joueur ne regarde jamais sa propre partie, ce qui lui montrerait la vue d'en face.
+- Écartés : la vue complète en différé, et la vue complète réservée au replay.
+- Limite assumée : un tiers ami **des deux** joueurs peut regarder chaque camp dans deux onglets et souffler la position de l'un à l'autre. La seule parade est le refus des spectateurs.
+
 ## 6. Historique des itérations sur le tour et la capture (pour ne pas revalider ce qui a été écarté)
 
 Cette section documente le cheminement, volontairement, pour éviter de reproposer des idées déjà explorées et abandonnées.
