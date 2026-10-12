@@ -362,3 +362,82 @@ a.quiet {
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* ---- Amis ------------------------------------------------------------------------ */
+
+/* Les amis sous les entrées de jeu : une ligne par ami, ses gestes à droite. Un ami absent
+   est estompé — sa présence est l'information qui compte ici. */
+.friends {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: var(--line);
+}
+
+.friends h2 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.friends h2 a {
+  padding: 2px 8px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.friend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.friend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.friend[data-online="false"] {
+  color: var(--ink-dim);
+}
+
+.friend--challenge .friend__name {
+  color: var(--accepted);
+}
+
+.friend__name {
+  flex: 1 1 auto;
+  color: inherit;
+  text-decoration: none;
+}
+
+.friend__name:hover {
+  text-decoration: underline;
+}
+
+.friend__presence {
+  color: var(--ink-soft);
+}
+
+.friend button {
+  padding: 3px 8px;
+}
+
+.friends__empty {
+  margin: 0;
+  color: var(--ink-dim);
+}

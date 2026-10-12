@@ -41,6 +41,13 @@ export { Table, Pager, List, ListRow, type TableProps, type PagerProps, type Lis
 export { Dialog, Note, type DialogProps } from "./components/Dialog.js";
 export { ToastProvider, ToastStack, useToast, type ToastMessage, type ToastStackProps } from "./components/Toast.js";
 export { MoveList, type MoveEntry, type MoveListProps } from "./components/MoveList.js";
+export {
+  MessageThread,
+  MessageComposer,
+  type ThreadMessage,
+  type MessageThreadProps,
+  type MessageComposerProps,
+} from "./components/Chat.js";
 export { Toolbar, ToolbarText } from "./components/Toolbar.js";
 export { Versus, type VersusProps, type VersusSide } from "./components/Versus.js";
 export {

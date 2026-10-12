@@ -9,25 +9,78 @@ import { redirectMessage } from "../net/auth.js";
  * (`apps/server/src/me/routes.ts`). Griser n'évite qu'un clic dans le vide.
  */
 
-export type ProfileRoute = { readonly view: "account" } | { readonly view: "matches"; readonly offset: number } | { readonly view: "match"; readonly id: string };
+export type ProfileRoute =
+  | { readonly view: "account" }
+  | { readonly view: "matches"; readonly offset: number }
+  | { readonly view: "match"; readonly id: string }
+  | { readonly view: "friends" }
+  /** La fiche d'un ami : bilan et historique, de son point de vue. */
+  | { readonly view: "friend"; readonly id: string; readonly offset: number }
+  | { readonly view: "friendMatch"; readonly id: string; readonly matchId: string }
+  | { readonly view: "chat"; readonly id: string };
+
+const ID = /^[\w-]+$/;
 
 export function parseProfileRoute(hash: string): ProfileRoute {
   const [path = "", query = ""] = hash.replace(/^#/, "").split("?");
   const parts = path.split("/").filter((part) => part.length > 0);
+  const offset = offsetOf(query);
   if (parts[0] === "parties") {
-    if (parts[1] !== undefined && /^[\w-]+$/.test(parts[1])) return { view: "match", id: parts[1] };
-    const offset = Number.parseInt(new URLSearchParams(query).get("offset") ?? "0", 10);
-    return { view: "matches", offset: Number.isFinite(offset) && offset > 0 ? offset : 0 };
+    if (parts[1] !== undefined && ID.test(parts[1])) return { view: "match", id: parts[1] };
+    return { view: "matches", offset };
+  }
+  if (parts[0] === "amis") {
+    const id = parts[1];
+    if (id === undefined || !ID.test(id)) return { view: "friends" };
+    if (parts[2] === "messages") return { view: "chat", id };
+    if (parts[2] === "parties" && parts[3] !== undefined && ID.test(parts[3])) {
+      return { view: "friendMatch", id, matchId: parts[3] };
+    }
+    return { view: "friend", id, offset };
   }
   // `#securite` est l'ancre que visent les courriers et `/.well-known/change-password` :
   // elle reste sur la vue du compte, qui défile jusqu'à la carte.
   return { view: "account" };
 }
 
+function offsetOf(query: string): number {
+  const offset = Number.parseInt(new URLSearchParams(query).get("offset") ?? "0", 10);
+  return Number.isFinite(offset) && offset > 0 ? offset : 0;
+}
+
 export function profileHash(route: ProfileRoute): string {
-  if (route.view === "match") return `#/parties/${route.id}`;
-  if (route.view === "matches") return route.offset > 0 ? `#/parties?offset=${route.offset}` : "#/parties";
-  return "#/";
+  switch (route.view) {
+    case "match":
+      return `#/parties/${route.id}`;
+    case "matches":
+      return route.offset > 0 ? `#/parties?offset=${route.offset}` : "#/parties";
+    case "friends":
+      return "#/amis";
+    case "friend":
+      return route.offset > 0 ? `#/amis/${route.id}?offset=${route.offset}` : `#/amis/${route.id}`;
+    case "friendMatch":
+      return `#/amis/${route.id}/parties/${route.matchId}`;
+    case "chat":
+      return `#/amis/${route.id}/messages`;
+    case "account":
+      return "#/";
+  }
+}
+
+/** L'onglet de la barre du haut sous lequel une vue se range. */
+export function tabOf(route: ProfileRoute): "account" | "matches" | "friends" {
+  if (route.view === "account") return "account";
+  if (route.view === "matches" || route.view === "match") return "matches";
+  return "friends";
+}
+
+/** L'heure d'un message : l'heure seule aujourd'hui, la date sinon. */
+export function messageTime(timestamp: number, now: number): string {
+  const date = new Date(timestamp);
+  const sameDay = new Date(now).toDateString() === date.toDateString();
+  return sameDay
+    ? date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+    : date.toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 export interface ArrivalMessage {

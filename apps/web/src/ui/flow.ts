@@ -8,8 +8,14 @@
  * joueur, jamais avant (docs/design.md section 2, « pas de local multiplayer »).
  */
 
-/** Ce que le joueur demande à la file : les trois entrées du menu. */
-export type Seeking = "quick" | "host" | "join";
+/**
+ * Ce que le joueur attend : les trois entrées de la file, la réponse d'un ami défié,
+ * ou l'ouverture de la partie d'un ami qu'il va regarder.
+ */
+export type Seeking = QueueSeeking | "challenge" | "watch";
+
+/** Les trois entrées du menu qui passent par la file d'attente. */
+export type QueueSeeking = "quick" | "host" | "join";
 
 export type Stage =
   /** Personne n'est connecté : le formulaire de compte occupe l'écran. */
@@ -20,14 +26,21 @@ export type Stage =
    * En attente d'un adversaire. `code` n'apparaît qu'une fois le salon ouvert : il
    * vient du serveur, seul à pouvoir le garantir unique.
    */
-  | { readonly kind: "waiting"; readonly seeking: Seeking; readonly code: string | undefined }
-  | { readonly kind: "game" };
+  | {
+      readonly kind: "waiting";
+      readonly seeking: Seeking;
+      readonly code: string | undefined;
+      /** L'ami défié ou regardé, pour le nommer pendant l'attente. */
+      readonly friend?: string | undefined;
+    }
+  /** En partie — assis à un siège, ou spectateur du camp d'un ami. */
+  | { readonly kind: "game"; readonly spectating: boolean };
 
 export type FlowEvent =
   | { readonly kind: "identity"; readonly signedIn: boolean }
-  | { readonly kind: "seek"; readonly seeking: Seeking }
+  | { readonly kind: "seek"; readonly seeking: Seeking; readonly friend?: string | undefined }
   | { readonly kind: "hosting"; readonly code: string }
-  | { readonly kind: "seated" }
+  | { readonly kind: "seated"; readonly spectating?: boolean | undefined }
   /** Retour au menu, à la demande du joueur ou après un refus de la file. */
   | { readonly kind: "menu" };
 
@@ -44,16 +57,16 @@ export function advance(stage: Stage, event: FlowEvent): Stage {
       return stage.kind === "auth" ? { kind: "menu" } : stage;
 
     case "seek":
-      return { kind: "waiting", seeking: event.seeking, code: undefined };
+      return { kind: "waiting", seeking: event.seeking, code: undefined, friend: event.friend };
 
     case "hosting":
       // Un code qui arrive hors de l'attente est un message en retard : l'afficher
       // ferait revenir en arrière un joueur déjà assis.
       if (stage.kind !== "waiting") return stage;
-      return { kind: "waiting", seeking: stage.seeking, code: event.code };
+      return { ...stage, code: event.code };
 
     case "seated":
-      return { kind: "game" };
+      return { kind: "game", spectating: event.spectating === true };
 
     case "menu":
       return stage.kind === "auth" ? stage : { kind: "menu" };

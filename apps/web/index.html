@@ -80,6 +80,17 @@
           </form>
 
           <p id="menu-notice" role="status"></p>
+
+          <!-- Amis : défis reçus, présence, défier, regarder. La gestion de la liste et
+               les messages vivent dans le profil. Masqué tant que la liste n'est pas lue. -->
+          <section id="menu-friends" class="friends" aria-label="Amis" hidden>
+            <h2>Amis <a class="quiet" href="/profil/#/amis">gérer · messages</a></h2>
+            <ul id="friends-challenges" class="friend-list"></ul>
+            <ul id="friends-list" class="friend-list"></ul>
+            <p id="friends-empty" class="friends__empty">
+              Aucun ami pour l'instant : ajoutez-en depuis votre profil.
+            </p>
+          </section>
           <div class="menu-links">
             <a id="menu-admin" class="quiet" href="/admin/" hidden>Back-office</a>
             <button id="account-signout" type="button" class="quiet">Se déconnecter</button>

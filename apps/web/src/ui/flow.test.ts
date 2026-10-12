@@ -10,7 +10,7 @@ describe("advance", () => {
   });
 
   it("ramène au formulaire dès la déconnexion, y compris en pleine partie", () => {
-    expect(advance({ kind: "game" }, { kind: "identity", signedIn: false })).toEqual({
+    expect(advance({ kind: "game", spectating: false }, { kind: "identity", signedIn: false })).toEqual({
       kind: "auth",
     });
   });
@@ -18,8 +18,9 @@ describe("advance", () => {
   it("n'arrache pas le joueur à sa partie quand l'identité est reconfirmée", () => {
     // `whoAmI` est rappelé à chaque action de compte : ce message revient donc en
     // pleine partie, et ne doit rien y changer.
-    expect(advance({ kind: "game" }, { kind: "identity", signedIn: true })).toEqual({
+    expect(advance({ kind: "game", spectating: false }, { kind: "identity", signedIn: true })).toEqual({
       kind: "game",
+      spectating: false,
     });
   });
 
@@ -37,18 +38,33 @@ describe("advance", () => {
   it("ignore un code arrivé après l'appariement", () => {
     // Message en retard : revenir à l'attente sortirait le joueur d'une partie
     // déjà commencée.
-    expect(advance({ kind: "game" }, { kind: "hosting", code: "ACDEF" })).toEqual({
+    expect(advance({ kind: "game", spectating: false }, { kind: "hosting", code: "ACDEF" })).toEqual({
       kind: "game",
+      spectating: false,
     });
   });
 
   it("passe en partie une fois assis, et revient au menu en la quittant", () => {
     const seated = advance(waiting, { kind: "seated" });
-    expect(seated).toEqual({ kind: "game" });
+    expect(seated).toEqual({ kind: "game", spectating: false });
     expect(advance(seated, { kind: "menu" })).toEqual({ kind: "menu" });
   });
 
   it("ne remonte jamais au menu sans compte", () => {
     expect(advance({ kind: "auth" }, { kind: "menu" })).toEqual({ kind: "auth" });
+  });
+
+  it("attend la réponse d'un ami défié en le nommant", () => {
+    expect(advance({ kind: "menu" }, { kind: "seek", seeking: "challenge", friend: "Bob" })).toEqual({
+      kind: "waiting",
+      seeking: "challenge",
+      code: undefined,
+      friend: "Bob",
+    });
+  });
+
+  it("entre en spectateur dans la partie d'un ami", () => {
+    const opening = advance({ kind: "menu" }, { kind: "seek", seeking: "watch", friend: "Bob" });
+    expect(advance(opening, { kind: "seated", spectating: true })).toEqual({ kind: "game", spectating: true });
   });
 });

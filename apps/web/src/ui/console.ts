@@ -8,6 +8,7 @@ import {
   describeOutcome,
   describeTile,
   describeTurn,
+  describeWatching,
 } from "./messages.js";
 
 /**
@@ -30,6 +31,8 @@ export interface ConsoleElements {
   readonly status: HTMLElement;
   /** Lecture de la case désignée au clic. */
   readonly readout: HTMLElement;
+  /** L'aide de la saisie, masquée avec elle pour un spectateur. */
+  readonly help: HTMLElement;
 }
 
 export interface ConsoleOptions {
@@ -47,6 +50,10 @@ export interface ConsoleOptions {
   readonly play: (action: Action) => Result<Action, ActionError>;
   /** Vrai tant qu'un coup envoyé attend la réponse du serveur. */
   readonly pending: () => boolean;
+  /** Le pseudo de l'ami regardé, si l'on est spectateur : on ne joue alors rien. */
+  readonly watching: () => string | undefined;
+  /** Combien d'amis regardent le joueur. */
+  readonly spectators: () => number;
 }
 
 export interface GameConsole {
@@ -66,8 +73,8 @@ export interface GameConsole {
 }
 
 export function attachConsole(options: ConsoleOptions): GameConsole {
-  const { elements, match, play, pending } = options;
-  const { form, input, log, status, readout } = elements;
+  const { elements, match, play, pending, watching, spectators } = options;
+  const { form, input, log, status, readout, help } = elements;
 
   const refresh = (): void => {
     const current = match();
@@ -75,7 +82,14 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
       status.textContent = "";
       return;
     }
-    status.textContent = describeTurn(current.state.turn, current.activePlayer, current.player);
+    const friend = watching();
+    // Un spectateur n'a aucun coup à saisir : le champ disparaît plutôt que de refuser.
+    form.hidden = friend !== undefined;
+    help.hidden = friend !== undefined;
+    status.textContent =
+      friend === undefined
+        ? describeTurn(current.state.turn, current.activePlayer, current.player, spectators())
+        : describeWatching(current.state.turn, current.activePlayer, current.player, friend);
   };
 
   const showTile = (coord: Coord | undefined): void => {
@@ -93,6 +107,10 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
   const playAction = (action: Action): boolean => {
     const current = match();
     if (current === undefined) return false;
+    if (watching() !== undefined) {
+      report("Vous regardez cette partie : aucun coup à jouer.", false);
+      return false;
+    }
 
     // Le résumé est composé avant de jouer : dans l'état suivant, la pièce
     // déplacée n'est plus à sa place de départ.

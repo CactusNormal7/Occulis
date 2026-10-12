@@ -82,7 +82,7 @@ l'attribut `data-tip`. Toutes les animations s'éteignent sous `prefers-reduced-
 |---|---|
 | Fondations | `UiRoot` (racine : fond, encre, police), `Icon` (tracés au trait, `currentColor`) |
 | Actions | `Button` (`default`/`primary`/`danger`/`ghost`), `IconButton` (infobulle, `disabledReason`), `QuickBar` |
-| Formulaires | `TextField` (aide et erreur rattachées par `aria-describedby`), `PasswordField` (bouton d'affichage), `SelectField`, `SearchField` (validé par Entrée), `InlineEdit`, `Segmented`, `ChipGroup` |
+| Formulaires | `TextField` (aide et erreur rattachées par `aria-describedby`), `PasswordField` (bouton d'affichage), `SelectField`, `SearchField` (validé par Entrée ; `onInput` à chaque frappe), `InlineEdit`, `Segmented`, `ChipGroup` |
 | Parcours de compte | `FormPanel` (colonne étroite, marque, titre), `FormMessage` (`error`/`success`/`info`), `Divider` (« ou »), `ProviderButton` (« Continuer avec Google », logo monochrome) |
 | Réglages | `SettingList`, `SettingRow` (libellé, valeur, précision, bouton d'édition ou geste propre), `SettingEditor` (l'éditeur déplié dans la ligne) |
 | États | `Badge` (`plain`/`strong`/`dim`/`refused`/`A`/`B`), `BadgeRow`, `Banner`, `EmptyState`, `ToastProvider` + `useToast`, `ToastStack`, `ProgressBar` |
@@ -90,6 +90,7 @@ l'attribut `data-tip`. Toutes les animations s'éteignent sous `prefers-reduced-
 | Mise en page | `Card` (avec `id` d'ancre), `CardGrid`, `CardColumn`, `PageHead`, `BackLink`, `Hero`, `Toolbar`, `ToolbarText`, `TopBar`, `Wordmark`, `Note` |
 | Données | `StatTile`, `StatTileGrid`, `Stat`, `StatGrid`, `FactStrip`, `DefinitionList`, `Table`, `Pager`, `List`, `ListRow`, `MoveList` |
 | Fenêtres | `Dialog` |
+| Messages | `MessageThread` (fil entre deux personnes), `MessageComposer` (champ d'écriture) |
 
 Quelques comportements à connaître :
 
@@ -120,6 +121,13 @@ Quelques comportements à connaître :
   (`forwardRef`).
 - **`SettingEditor`** est un vrai `<form>` : Entrée envoie, **Échap annule**, le premier champ
   prend le focus, et le refus du serveur s'affiche dans l'éditeur, au-dessus des boutons.
+- **`MessageThread`** aligne à droite les messages du lecteur (`mine`), au trait franc, et ceux
+  de l'autre à gauche ; aucun aplat. Il reste calé sur le dernier message à chaque arrivée, et
+  `more` porte le geste qui charge les plus anciens. C'est un `role="log"`.
+- **`MessageComposer`** : Entrée envoie, Maj+Entrée passe à la ligne ; `onSend` rend vrai pour
+  vider le champ, faux pour garder le texte d'un envoi refusé.
+- Les icônes `userPlus` et `message` servent au système d'amis ; leur liste est recopiée dans
+  `.design-sync/config.json` (`dtsPropsFor`).
 - Toutes les props optionnelles acceptent `undefined` (`exactOptionalPropertyTypes`).
 
 ## La synchronisation vers Claude Design
@@ -137,7 +145,7 @@ catégories (`docs/<Nom>.md`), l'en-tête de conventions lu par l'agent de desig
 | Fichier | Ce qui est verrouillé |
 |---|---|
 | `src/tokens.test.ts` | `generated/tokens.css` identique à sa source, `styles.css` sans propriété indéfinie ni couleur en dur, conversion des couleurs, **alpha précomposé pour les courriers** |
-| `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition** |
+| `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition**, **fil de messages : les siens marqués à part, texte échappé, état vide, longueur du champ** |
 
 Le rendu visuel n'est pas testé ici : il l'est par les aperçus vérifiés sur captures lors de
 chaque synchronisation (`.design-sync/`).

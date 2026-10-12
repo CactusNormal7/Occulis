@@ -68,9 +68,11 @@ export function describeRoomFault(fault: RoomFault): string {
 }
 
 /** Ce que le joueur attend, et depuis quel menu. */
-export function describeWaiting(seeking: Seeking, code: string | undefined): string {
+export function describeWaiting(seeking: Seeking, code: string | undefined, friend?: string): string {
   if (seeking === "quick") return "Recherche d'un adversaire…";
   if (seeking === "join") return "Entrée dans la partie…";
+  if (seeking === "challenge") return `Défi envoyé à ${friend ?? "votre ami"}. En attente de sa réponse…`;
+  if (seeking === "watch") return `Ouverture de la partie de ${friend ?? "votre ami"}…`;
   return code === undefined
     ? "Ouverture de la partie…"
     : "Transmettez ce code à votre adversaire, puis attendez son arrivée.";
@@ -92,9 +94,16 @@ export function describeOutcome(outcome: NonNullable<GameState["outcome"]>): str
  * L'état du tour. Le camp du joueur y figure toujours, et non le point de vue
  * affiché : il n'y en a qu'un — le serveur n'envoie jamais la vue d'en face.
  */
-export function describeTurn(turn: number, activePlayer: PlayerId, seat: PlayerId): string {
+export function describeTurn(turn: number, activePlayer: PlayerId, seat: PlayerId, spectators = 0): string {
   const whose = activePlayer === seat ? "à vous de jouer" : "au trait : l'adversaire";
-  return `Tour ${turn} · ${whose} · vous jouez ${seat}`;
+  const watched = spectators === 0 ? "" : ` · ${spectators} ${spectators === 1 ? "ami vous regarde" : "amis vous regardent"}`;
+  return `Tour ${turn} · ${whose} · vous jouez ${seat}${watched}`;
+}
+
+/** La ligne d'état d'un spectateur : il suit un camp, il n'en joue aucun. */
+export function describeWatching(turn: number, activePlayer: PlayerId, side: PlayerId, friend: string): string {
+  const whose = activePlayer === side ? `au trait : ${friend}` : "au trait : son adversaire";
+  return `Tour ${turn} · ${whose} · vous regardez ${friend} (${side})`;
 }
 
 /**
