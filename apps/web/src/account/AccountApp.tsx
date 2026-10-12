@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
-import { Button, Divider, FormMessage, FormPanel, PasswordField, ProviderButton, TextField, UiRoot } from "@occulis/ui";
+import type { Locale } from "@occulis/i18n";
+import { Button, Divider, FormMessage, FormPanel, PasswordField, ProviderButton, TextField, UiRoot, useMessages } from "@occulis/ui";
 import {
   register,
   requestReset,
@@ -29,7 +30,7 @@ import {
  *
  * Écrit pour les gestionnaires de mots de passe avant tout, parce que c'est par eux que
  * passe un mot de passe solide :
- * - **un formulaire par parcours, chacun à son URL** (`/connexion`, `/inscription`…) :
+ * - **un formulaire par parcours, chacun à son URL** (`/sign-in`, `/sign-up`…) :
  *   un formulaire unique dont on masquait des champs ne laissait pas distinguer une
  *   connexion d'une inscription, donc pas proposer de générer un mot de passe ;
  * - des `autocomplete` exacts (`username`, `current-password`, `new-password`) sur des
@@ -45,9 +46,10 @@ export interface AccountAppProps {
   readonly providers: readonly string[];
   /** Une session vient d'être ouverte : la page relit l'identité et passe au menu. */
   readonly onSignedIn: (message?: string) => void;
+  readonly locale: Locale;
 }
 
-export function AccountApp({ initialRoute, initialNotice, providers, onSignedIn }: AccountAppProps) {
+export function AccountApp({ initialRoute, initialNotice, providers, onSignedIn, locale }: AccountAppProps) {
   const [route, setRoute] = useState<AccountRoute>(initialRoute);
   const [notice, setNotice] = useState<Notice | undefined>(initialNotice);
   const [email, setEmail] = useState("");
@@ -78,7 +80,7 @@ export function AccountApp({ initialRoute, initialNotice, providers, onSignedIn 
   const shared = { email, setEmail, notice, setNotice, navigate, google };
 
   return (
-    <UiRoot>
+    <UiRoot locale={locale}>
       {route.kind === "signin" && <SignIn {...shared} onSuccess={signedIn} />}
       {route.kind === "register" && <Register {...shared} onSuccess={signedIn} />}
       {route.kind === "forgot" && <Forgot {...shared} />}
@@ -131,6 +133,7 @@ function useSubmission(formId: string, setNotice: (notice: Notice | undefined) =
 }
 
 function SignIn({ email, setEmail, notice, setNotice, navigate, google, onSuccess }: Shared & { onSuccess: () => void }) {
+  const m = useMessages().account;
   const { busy, run, errorFor } = useSubmission("signin-form", setNotice);
   const [password, setPassword] = useState("");
   const submit = (event: FormEvent) => {
@@ -139,17 +142,17 @@ function SignIn({ email, setEmail, notice, setNotice, navigate, google, onSucces
   };
   return (
     <FormPanel
-      title="Connexion"
-      lead="Le tactique au tour par tour, où l'on ne voit que ce que ses pièces voient."
+      title={m.signIn.title}
+      lead={m.signIn.lead}
       footer={
         <>
           <RouteLink kind="forgot" navigate={navigate}>
-            Mot de passe oublié ?
+            {m.signIn.forgot}
           </RouteLink>
           <span>
-            Pas encore de compte ?{" "}
+            {m.signIn.noAccount}{" "}
             <RouteLink kind="register" navigate={navigate}>
-              Créer un compte
+              {m.signIn.createAccount}
             </RouteLink>
           </span>
         </>
@@ -159,7 +162,7 @@ function SignIn({ email, setEmail, notice, setNotice, navigate, google, onSucces
       {google && <GoogleEntry setNotice={setNotice} />}
       <form id="signin-form" method="post" action="/api/auth/sign-in/email" onSubmit={submit}>
         <TextField
-          label="Adresse électronique"
+          label={m.email}
           id="signin-email"
           name="email"
           type="email"
@@ -174,7 +177,7 @@ function SignIn({ email, setEmail, notice, setNotice, navigate, google, onSucces
           error={errorFor("email")}
         />
         <PasswordField
-          label="Mot de passe"
+          label={m.password}
           id="signin-password"
           name="password"
           autoComplete="current-password"
@@ -184,7 +187,7 @@ function SignIn({ email, setEmail, notice, setNotice, navigate, google, onSucces
           error={errorFor("password")}
         />
         <Button type="submit" variant="primary" disabled={busy}>
-          {busy ? "Connexion…" : "Se connecter"}
+          {busy ? m.signIn.busy : m.signIn.submit}
         </Button>
       </form>
     </FormPanel>
@@ -192,6 +195,7 @@ function SignIn({ email, setEmail, notice, setNotice, navigate, google, onSucces
 }
 
 function Register({ email, setEmail, notice, setNotice, navigate, google, onSuccess }: Shared & { onSuccess: (message?: string) => void }) {
+  const m = useMessages().account;
   const { busy, run, errorFor } = useSubmission("register-form", setNotice);
   const [handle, setHandle] = useState("");
   const [password, setPassword] = useState("");
@@ -200,18 +204,18 @@ function Register({ email, setEmail, notice, setNotice, navigate, google, onSucc
     const address = email.trim();
     void run(
       () => register(address, password, handle),
-      () => onSuccess(`Compte créé. Un lien de confirmation est parti vers ${address}.`),
+      () => onSuccess(m.register.created(address)),
     );
   };
   return (
     <FormPanel
-      title="Créer un compte"
-      lead="Une adresse confirmée ouvre la file d'attente et les parties privées."
+      title={m.register.title}
+      lead={m.register.lead}
       footer={
         <span>
-          Déjà un compte ?{" "}
+          {m.register.hasAccount}{" "}
           <RouteLink kind="signin" navigate={navigate}>
-            Se connecter
+            {m.register.signIn}
           </RouteLink>
         </span>
       }
@@ -220,7 +224,7 @@ function Register({ email, setEmail, notice, setNotice, navigate, google, onSucc
       {google && <GoogleEntry setNotice={setNotice} />}
       <form id="register-form" method="post" action="/api/auth/sign-up/email" onSubmit={submit}>
         <TextField
-          label="Adresse électronique"
+          label={m.email}
           id="register-email"
           name="email"
           type="email"
@@ -235,7 +239,7 @@ function Register({ email, setEmail, notice, setNotice, navigate, google, onSucc
           error={errorFor("email")}
         />
         <TextField
-          label="Pseudo"
+          label={m.handle}
           id="register-handle"
           name="handle"
           type="text"
@@ -247,11 +251,11 @@ function Register({ email, setEmail, notice, setNotice, navigate, google, onSucc
           maxLength={24}
           value={handle}
           onChange={(event) => setHandle(event.target.value)}
-          hint="Ce que vos adversaires verront. Modifiable depuis votre profil."
+          hint={m.register.handleHint}
           error={errorFor("handle")}
         />
         <PasswordField
-          label="Mot de passe"
+          label={m.password}
           id="register-password"
           name="password"
           autoComplete="new-password"
@@ -266,7 +270,7 @@ function Register({ email, setEmail, notice, setNotice, navigate, google, onSucc
           error={errorFor("password")}
         />
         <Button type="submit" variant="primary" disabled={busy}>
-          {busy ? "Création…" : "Créer le compte"}
+          {busy ? m.register.busy : m.register.submit}
         </Button>
       </form>
     </FormPanel>
@@ -274,6 +278,7 @@ function Register({ email, setEmail, notice, setNotice, navigate, google, onSucc
 }
 
 function Forgot({ email, setEmail, notice, setNotice, navigate }: Shared) {
+  const m = useMessages().account;
   const { busy, run, errorFor } = useSubmission("forgot-form", setNotice);
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -286,25 +291,25 @@ function Forgot({ email, setEmail, notice, setNotice, navigate }: Shared) {
         // l'interface ne doit pas le laisser deviner.
         setNotice({
           tone: "success",
-          text: `Si un compte existe pour ${address}, un lien vient de partir. Il expire dans une heure.`,
+          text: m.forgot.sent(address),
         });
       },
     );
   };
   return (
     <FormPanel
-      title="Mot de passe oublié"
-      lead="Un lien pour en choisir un nouveau vous sera envoyé."
+      title={m.forgot.title}
+      lead={m.forgot.lead}
       footer={
         <RouteLink kind="signin" navigate={navigate}>
-          ← Retour à la connexion
+          {m.backToSignIn}
         </RouteLink>
       }
     >
       <NoticeLine notice={notice} navigate={navigate} />
       <form id="forgot-form" method="post" action="/api/auth/request-password-reset" onSubmit={submit}>
         <TextField
-          label="Adresse électronique"
+          label={m.email}
           id="forgot-email"
           name="email"
           type="email"
@@ -319,7 +324,7 @@ function Forgot({ email, setEmail, notice, setNotice, navigate }: Shared) {
           error={errorFor("email")}
         />
         <Button type="submit" variant="primary" disabled={busy}>
-          {busy ? "Envoi…" : "Envoyer le lien"}
+          {busy ? m.forgot.busy : m.forgot.submit}
         </Button>
       </form>
     </FormPanel>
@@ -327,15 +332,16 @@ function Forgot({ email, setEmail, notice, setNotice, navigate }: Shared) {
 }
 
 function Reset({ setEmail, notice, setNotice, navigate, token }: Shared & { token: string | undefined }) {
+  const m = useMessages().account;
   const { busy, run, errorFor } = useSubmission("reset-form", setNotice);
   const [account, setAccount] = useState(recallResetEmail);
   const [password, setPassword] = useState("");
 
   if (token === undefined) {
     return (
-      <FormPanel title="Nouveau mot de passe" footer={<RouteLink kind="signin" navigate={navigate}>← Retour à la connexion</RouteLink>}>
+      <FormPanel title={m.reset.title} footer={<RouteLink kind="signin" navigate={navigate}>{m.backToSignIn}</RouteLink>}>
         <NoticeLine
-          notice={notice ?? { tone: "error", text: "Ce lien n'est plus valable. Demandez-en un nouveau.", retry: "reset" }}
+          notice={notice ?? { tone: "error", text: m.reset.invalid, retry: "reset" }}
           navigate={navigate}
         />
       </FormPanel>
@@ -351,23 +357,23 @@ function Reset({ setEmail, notice, setNotice, navigate, token }: Shared & { toke
         setEmail(account);
         navigate("signin", {
           tone: "success",
-          text: "Mot de passe changé, et toutes les sessions ouvertes fermées. Connectez-vous avec le nouveau.",
+          text: m.reset.done,
         });
       },
     );
   };
   return (
     <FormPanel
-      title="Nouveau mot de passe"
-      lead="Il remplacera l'ancien et fermera toutes les sessions ouvertes."
-      footer={<RouteLink kind="signin" navigate={navigate}>← Retour à la connexion</RouteLink>}
+      title={m.reset.title}
+      lead={m.reset.lead}
+      footer={<RouteLink kind="signin" navigate={navigate}>{m.backToSignIn}</RouteLink>}
     >
       <NoticeLine notice={notice} navigate={navigate} />
       <form id="reset-form" method="post" action="/api/auth/reset-password" onSubmit={submit}>
         {/* Rattache le nouveau mot de passe à la bonne entrée du gestionnaire. Le
             serveur ne l'utilise pas : le jeton désigne déjà le compte. */}
         <TextField
-          label="Adresse du compte"
+          label={m.reset.accountEmail}
           id="reset-email"
           name="email"
           type="email"
@@ -378,7 +384,7 @@ function Reset({ setEmail, notice, setNotice, navigate, token }: Shared & { toke
           onChange={(event) => setAccount(event.target.value)}
         />
         <PasswordField
-          label="Nouveau mot de passe"
+          label={m.reset.newPassword}
           id="reset-password"
           name="password"
           autoComplete="new-password"
@@ -393,7 +399,7 @@ function Reset({ setEmail, notice, setNotice, navigate, token }: Shared & { toke
           error={errorFor("password")}
         />
         <Button type="submit" variant="primary" disabled={busy}>
-          {busy ? "Enregistrement…" : "Choisir ce mot de passe"}
+          {busy ? m.reset.busy : m.reset.submit}
         </Button>
       </form>
     </FormPanel>
@@ -401,6 +407,7 @@ function Reset({ setEmail, notice, setNotice, navigate, token }: Shared & { toke
 }
 
 function GoogleEntry({ setNotice }: { setNotice: (notice: Notice | undefined) => void }) {
+  const m = useMessages().account;
   const [busy, setBusy] = useState(false);
   const start = () => {
     setBusy(true);
@@ -415,23 +422,24 @@ function GoogleEntry({ setNotice }: { setNotice: (notice: Notice | undefined) =>
   return (
     <>
       <ProviderButton provider="google" onClick={start} disabled={busy} />
-      <Divider>ou</Divider>
+      <Divider>{m.or}</Divider>
     </>
   );
 }
 
 function NoticeLine({ notice, navigate }: { notice: Notice | undefined; navigate: Shared["navigate"] }) {
+  const m = useMessages().account;
   if (notice === undefined) return null;
   const action =
     notice.retry === "reset" ? (
       <Button size="sm" onClick={() => navigate("forgot")}>
-        Nouveau lien
+        {m.newLink}
       </Button>
     ) : undefined;
   return (
     <FormMessage tone={notice.tone} action={action}>
       {notice.text}
-      {notice.retry === "verification" && " Connectez-vous : le menu propose de renvoyer le message."}
+      {notice.retry === "verification" && m.verificationRetry}
     </FormMessage>
   );
 }

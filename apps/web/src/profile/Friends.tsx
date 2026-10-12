@@ -21,9 +21,10 @@ import {
   QuickBar,
   SearchField,
   TileAvatar,
+  useMessages,
   useToast,
 } from "@occulis/ui";
-import type { ChatMessage, Friend, PlayerSearchResult, SocialServerMessage } from "@occulis/protocol";
+import type { ChatMessage, Friend, PlayerSearchResult, Relation, SocialServerMessage } from "@occulis/protocol";
 import { useLoad } from "../admin/hooks.js";
 import { formatDate } from "../admin/model.js";
 import { openSocial } from "../net/social-channel.js";
@@ -69,6 +70,10 @@ export function useSocial(): SocialContext {
  */
 export function SocialProvider({ enabled, children }: { enabled: boolean; children: ReactNode }) {
   const notify = useToast();
+  const toasts = useMessages().social.toasts;
+  // Lu par le canal, ouvert une seule fois : la langue peut changer entre-temps.
+  const toastsRef = useRef(toasts);
+  toastsRef.current = toasts;
   const [state, setState] = useState<SocialState>(EMPTY_SOCIAL);
   const listeners = useRef(new Set<(message: SocialServerMessage) => void>());
 
@@ -90,9 +95,10 @@ export function SocialProvider({ enabled, children }: { enabled: boolean; childr
           return next.state;
         });
         if (stale) reload();
-        if (message.kind === "friend-request") notify(`${message.from.handle} vous demande en ami.`);
-        if (message.kind === "friend-accepted") notify(`${message.friend.handle} a accepté votre demande.`);
-        if (message.kind === "challenge") notify(`${message.challenge.from.handle} vous défie : ouvrez le jeu pour répondre.`);
+        const t = toastsRef.current;
+        if (message.kind === "friend-request") notify(t.friendRequest(message.from.handle));
+        if (message.kind === "friend-accepted") notify(t.accepted(message.friend.handle));
+        if (message.kind === "challenge") notify(t.challenged(message.challenge.from.handle));
         for (const listener of listeners.current) listener(message);
       },
       (status) => {
@@ -125,15 +131,14 @@ function useAct() {
     });
 }
 
-const READ_ONLY = "Session d'emprunt : lecture seule";
-
 // --- La liste -------------------------------------------------------------------------
 
 export function FriendsView({ readOnly }: { readOnly: boolean }) {
+  const m = useMessages().social;
   const { state } = useSocial();
   const overview = state.overview;
   if (overview === undefined) {
-    return <EmptyState>Chargement des amis… (une adresse vérifiée est nécessaire)</EmptyState>;
+    return <EmptyState>{m.loading}</EmptyState>;
   }
   return (
     <CardGrid>
@@ -143,12 +148,12 @@ export function FriendsView({ readOnly }: { readOnly: boolean }) {
       </CardColumn>
       <CardColumn>
         {state.incoming.length > 0 && (
-          <Card title="Défis reçus">
+          <Card title={m.challenges.title}>
             <List>
               {state.incoming.map((challenge) => (
-                <ListRow key={challenge.from.id} end={<a href="/">ouvrir le jeu →</a>}>
-                  <strong>{challenge.from.handle} vous défie</strong>
-                  <small>Le défi se relève depuis le menu du jeu.</small>
+                <ListRow key={challenge.from.id} end={<a href="/">{m.challenges.openGame}</a>}>
+                  <strong>{m.challenges.from(challenge.from.handle)}</strong>
+                  <small>{m.challenges.hint}</small>
                 </ListRow>
               ))}
             </List>
@@ -163,6 +168,8 @@ export function FriendsView({ readOnly }: { readOnly: boolean }) {
 
 /** Recherche par préfixe de pseudo, au fil de la frappe, à partir de deux caractères. */
 function SearchCard({ readOnly }: { readOnly: boolean }) {
+  const all = useMessages().social;
+  const m = all.search;
   const act = useAct();
   const [results, setResults] = useState<readonly PlayerSearchResult[]>([]);
   const [prefix, setPrefix] = useState("");
@@ -183,13 +190,13 @@ function SearchCard({ readOnly }: { readOnly: boolean }) {
   };
 
   return (
-    <Card title="Ajouter un ami">
-      <SearchField placeholder="Pseudo…" onInput={lookup} onSearch={lookup} />
+    <Card title={m.title}>
+      <SearchField placeholder={m.placeholder} onInput={lookup} onSearch={lookup} />
       {[...prefix].length >= 2 && (
         <List>
           {results.length === 0 && (
             <ListRow>
-              <small>Aucun joueur ne commence par « {prefix} ».</small>
+              <small>{m.none(prefix)}</small>
             </ListRow>
           )}
           {results.map((player) => (
@@ -199,11 +206,11 @@ function SearchCard({ readOnly }: { readOnly: boolean }) {
                 player.relation === "none" ? (
                   <IconButton
                     icon="userPlus"
-                    label={`Demander ${player.handle} en ami`}
+                    label={m.request(player.handle)}
                     tipAlign="end"
-                    disabledReason={readOnly ? READ_ONLY : undefined}
+                    disabledReason={readOnly ? all.readOnly : undefined}
                     onClick={() => {
-                      act(friends.requestFriend(player.id), `Demande envoyée à ${player.handle}.`);
+                      act(friends.requestFriend(player.id), all.toasts.requested(player.handle));
                       setResults((current) => current.map((p) => (p.id === player.id ? { ...p, relation: "outgoing" } : p)));
                     }}
                   />
@@ -212,14 +219,15 @@ function SearchCard({ readOnly }: { readOnly: boolean }) {
                     size="sm"
                     disabled={readOnly}
                     onClick={() => {
-                      act(friends.acceptRequest(player.id), `${player.handle} et vous êtes amis.`);
+                      act(friends.acceptRequest(player.id), all.toasts.friends(player.handle));
                       setResults((current) => current.map((p) => (p.id === player.id ? { ...p, relation: "friend" } : p)));
                     }}
                   >
-                    Accepter
+                    {m.accept}
                   </Button>
                 ) : (
-                  <Badge tone="dim">{RELATION_LABELS[player.relation]}</Badge>
+                  // « none » et « incoming » ont leur geste ci-dessus : ne restent que les relations établies.
+                  <Badge tone="dim">{all.relations[player.relation as Exclude<Relation, "none">]}</Badge>
                 )
               }
             >
@@ -232,21 +240,15 @@ function SearchCard({ readOnly }: { readOnly: boolean }) {
   );
 }
 
-const RELATION_LABELS = {
-  friend: "ami",
-  outgoing: "demande envoyée",
-  incoming: "vous a demandé",
-  blocked: "bloqué",
-  none: "",
-} as const;
-
 function FriendList({ friends: list, readOnly }: { friends: readonly Friend[]; readOnly: boolean }) {
+  const all = useMessages().social;
+  const m = all.list;
   const act = useAct();
   const [removing, setRemoving] = useState<Friend | undefined>(undefined);
   return (
-    <Card title={`Amis (${list.length})`}>
+    <Card title={m.title(list.length)}>
       {list.length === 0 ? (
-        <EmptyState>Aucun ami pour l'instant : cherchez un pseudo ci-dessus, ou ajoutez un adversaire depuis vos parties.</EmptyState>
+        <EmptyState>{m.empty}</EmptyState>
       ) : (
         <List>
           {list.map((friend) => (
@@ -256,15 +258,15 @@ function FriendList({ friends: list, readOnly }: { friends: readonly Friend[]; r
                 <QuickBar>
                   <IconButton
                     icon="message"
-                    label={friend.unread > 0 ? `${friend.unread} message(s) non lu(s)` : "Messages"}
+                    label={friend.unread > 0 ? m.unreadMessages(friend.unread) : m.messages}
                     onClick={() => (location.hash = profileHash({ view: "chat", id: friend.id }))}
                   />
                   <IconButton
                     icon="close"
-                    label="Retirer de mes amis"
+                    label={m.remove}
                     tipAlign="end"
                     danger
-                    disabledReason={readOnly ? READ_ONLY : undefined}
+                    disabledReason={readOnly ? all.readOnly : undefined}
                     onClick={() => setRemoving(friend)}
                   />
                 </QuickBar>
@@ -276,7 +278,7 @@ function FriendList({ friends: list, readOnly }: { friends: readonly Friend[]; r
                 detail={
                   <BadgeRow>
                     <Badge tone={friend.online ? "strong" : "dim"}>{presenceLabel(friend)}</Badge>
-                    {friend.unread > 0 && <Badge tone="strong">{friend.unread} non lu{friend.unread > 1 ? "s" : ""}</Badge>}
+                    {friend.unread > 0 && <Badge tone="strong">{all.unread(friend.unread)}</Badge>}
                   </BadgeRow>
                 }
               />
@@ -286,30 +288,32 @@ function FriendList({ friends: list, readOnly }: { friends: readonly Friend[]; r
       )}
       <Dialog
         open={removing !== undefined}
-        title="Retirer cet ami"
-        confirmLabel="Retirer"
+        title={m.removeTitle}
+        confirmLabel={m.removeConfirm}
         danger
         onClose={() => setRemoving(undefined)}
         onConfirm={() => {
-          if (removing !== undefined) act(friends.removeFriend(removing.id), `${removing.handle} n'est plus votre ami.`);
+          if (removing !== undefined) act(friends.removeFriend(removing.id), all.toasts.removed(removing.handle));
           return true;
         }}
       >
-        {removing?.handle} ne sera plus dans votre liste, et vos messages ne s'afficheront plus. Vous pourrez le redemander en
-        ami.
+        {m.removeText(removing?.handle ?? "")}
       </Dialog>
     </Card>
   );
 }
 
 function Requests({ readOnly }: { readOnly: boolean }) {
+  const all = useMessages().social;
+  const m = all.requests;
+  const off = readOnly ? all.readOnly : undefined;
   const act = useAct();
   const { state } = useSocial();
   const incoming = state.overview?.incoming ?? [];
   const outgoing = state.overview?.outgoing ?? [];
   if (incoming.length === 0 && outgoing.length === 0) return null;
   return (
-    <Card title="Demandes">
+    <Card title={m.title}>
       <List>
         {incoming.map((request) => (
           <ListRow
@@ -318,28 +322,28 @@ function Requests({ readOnly }: { readOnly: boolean }) {
               <QuickBar>
                 <IconButton
                   icon="check"
-                  label="Accepter"
-                  disabledReason={readOnly ? READ_ONLY : undefined}
-                  onClick={() => act(friends.acceptRequest(request.id), `${request.handle} et vous êtes amis.`)}
+                  label={m.accept}
+                  disabledReason={off}
+                  onClick={() => act(friends.acceptRequest(request.id), all.toasts.friends(request.handle))}
                 />
                 <IconButton
                   icon="close"
-                  label="Refuser"
-                  disabledReason={readOnly ? READ_ONLY : undefined}
-                  onClick={() => act(friends.declineRequest(request.id), "Demande refusée.")}
+                  label={m.decline}
+                  disabledReason={off}
+                  onClick={() => act(friends.declineRequest(request.id), all.toasts.declined)}
                 />
                 <IconButton
                   icon="ban"
-                  label="Bloquer"
+                  label={m.block}
                   tipAlign="end"
                   danger
-                  disabledReason={readOnly ? READ_ONLY : undefined}
-                  onClick={() => act(friends.block(request.id), `${request.handle} est bloqué.`)}
+                  disabledReason={off}
+                  onClick={() => act(friends.block(request.id), all.toasts.blocked(request.handle))}
                 />
               </QuickBar>
             }
           >
-            <Person name={request.handle} detail={`vous demande en ami · ${formatDate(request.createdAt)}`} />
+            <Person name={request.handle} detail={m.incoming(formatDate(request.createdAt))} />
           </ListRow>
         ))}
         {outgoing.map((request) => (
@@ -348,14 +352,14 @@ function Requests({ readOnly }: { readOnly: boolean }) {
             end={
               <IconButton
                 icon="close"
-                label="Retirer la demande"
+                label={m.withdraw}
                 tipAlign="end"
-                disabledReason={readOnly ? READ_ONLY : undefined}
-                onClick={() => act(friends.cancelRequest(request.id), "Demande retirée.")}
+                disabledReason={off}
+                onClick={() => act(friends.cancelRequest(request.id), all.toasts.withdrawn)}
               />
             }
           >
-            <Person name={request.handle} detail={`demande envoyée · ${formatDate(request.createdAt)}`} />
+            <Person name={request.handle} detail={m.outgoing(formatDate(request.createdAt))} />
           </ListRow>
         ))}
       </List>
@@ -364,11 +368,13 @@ function Requests({ readOnly }: { readOnly: boolean }) {
 }
 
 function Blocked({ readOnly }: { readOnly: boolean }) {
+  const all = useMessages().social;
+  const m = all.blocked;
   const act = useAct();
   const blocked = useSocial().state.overview?.blocked ?? [];
   if (blocked.length === 0) return null;
   return (
-    <Card title="Joueurs bloqués">
+    <Card title={m.title}>
       <List>
         {blocked.map((player) => (
           <ListRow
@@ -376,14 +382,14 @@ function Blocked({ readOnly }: { readOnly: boolean }) {
             end={
               <IconButton
                 icon="unban"
-                label="Débloquer"
+                label={m.unblock}
                 tipAlign="end"
-                disabledReason={readOnly ? READ_ONLY : undefined}
-                onClick={() => act(friends.unblock(player.id), `${player.handle} est débloqué.`)}
+                disabledReason={readOnly ? all.readOnly : undefined}
+                onClick={() => act(friends.unblock(player.id), all.toasts.unblocked(player.handle))}
               />
             }
           >
-            <Person name={player.handle} detail="ne peut ni vous trouver, ni vous écrire, ni vous défier" />
+            <Person name={player.handle} detail={m.detail} />
           </ListRow>
         ))}
       </List>
@@ -394,6 +400,9 @@ function Blocked({ readOnly }: { readOnly: boolean }) {
 // --- La fiche d'un ami ----------------------------------------------------------------
 
 export function FriendView({ id, offset, readOnly }: { id: string; offset: number; readOnly: boolean }) {
+  const all = useMessages().social;
+  const m = all.friend;
+  const off = readOnly ? all.readOnly : undefined;
   const act = useAct();
   const { state } = useSocial();
   const { loaded } = useLoad(`friend:${id}`, () => friends.friend(id));
@@ -404,7 +413,7 @@ export function FriendView({ id, offset, readOnly }: { id: string; offset: numbe
   if (loaded.state === "failed") {
     return (
       <>
-        <BackLink href={profileHash({ view: "friends" })}>Amis</BackLink>
+        <BackLink href={profileHash({ view: "friends" })}>{m.back}</BackLink>
         <EmptyState error>{loaded.message}</EmptyState>
       </>
     );
@@ -415,35 +424,37 @@ export function FriendView({ id, offset, readOnly }: { id: string; offset: numbe
   const online = live?.online ?? profile.online;
   return (
     <>
-      <BackLink href={profileHash({ view: "friends" })}>Amis</BackLink>
+      <BackLink href={profileHash({ view: "friends" })}>{m.back}</BackLink>
       <Hero
         avatar={<TileAvatar name={profile.handle} size="lg" />}
         title={profile.handle}
         badges={
           <BadgeRow>
-            <Badge tone={online ? "strong" : "dim"}>{live === undefined ? (online ? "en ligne" : "absent") : presenceLabel(live)}</Badge>
-            {!profile.allowSpectators && <Badge tone="dim">sans spectateurs</Badge>}
+            <Badge tone={online ? "strong" : "dim"}>
+              {live === undefined ? (online ? all.presence.online : all.presence.offline) : presenceLabel(live)}
+            </Badge>
+            {!profile.allowSpectators && <Badge tone="dim">{m.noSpectators}</Badge>}
           </BadgeRow>
         }
-        meta={[`ami depuis le ${formatDate(profile.since)}`]}
+        meta={[m.since(formatDate(profile.since))]}
         actions={
           <QuickBar framed>
-            <IconButton icon="message" label="Messages" onClick={() => (location.hash = profileHash({ view: "chat", id }))} />
+            <IconButton icon="message" label={all.list.messages} onClick={() => (location.hash = profileHash({ view: "chat", id }))} />
             <IconButton
               icon="close"
-              label="Retirer de mes amis"
-              disabledReason={readOnly ? READ_ONLY : undefined}
+              label={all.list.remove}
+              disabledReason={off}
               onClick={() => {
-                act(friends.removeFriend(id), `${profile.handle} n'est plus votre ami.`);
+                act(friends.removeFriend(id), all.toasts.removed(profile.handle));
                 location.hash = profileHash({ view: "friends" });
               }}
             />
             <IconButton
               icon="ban"
-              label="Bloquer"
+              label={all.requests.block}
               tipAlign="end"
               danger
-              disabledReason={readOnly ? READ_ONLY : undefined}
+              disabledReason={off}
               onClick={() => setBlocking(true)}
             />
           </QuickBar>
@@ -451,12 +462,12 @@ export function FriendView({ id, offset, readOnly }: { id: string; offset: numbe
       />
       {(live?.matches.length ?? 0) > 0 && (
         <Note>
-          {profile.handle} a {live?.matches.length} partie(s) en cours.{" "}
-          {profile.allowSpectators ? <a href="/">Regardez-les depuis le menu du jeu →</a> : "Il n'accepte pas les spectateurs."}
+          {m.live(profile.handle, live?.matches.length ?? 0)}{" "}
+          {profile.allowSpectators ? <a href="/">{m.watchFromGame}</a> : m.refusesSpectators}
         </Note>
       )}
-      <RecordCard record={profile.record} />
-      <Card title={`Parties de ${profile.handle}`}>
+      <RecordCard record={profile.record} elo={profile.elo} />
+      <Card title={m.matchesTitle(profile.handle)}>
         {page.state === "failed" && <EmptyState error>{page.message}</EmptyState>}
         {page.state === "ready" && (
           <>
@@ -473,17 +484,17 @@ export function FriendView({ id, offset, readOnly }: { id: string; offset: numbe
       </Card>
       <Dialog
         open={blocking}
-        title={`Bloquer ${profile.handle}`}
-        confirmLabel="Bloquer"
+        title={m.blockTitle(profile.handle)}
+        confirmLabel={m.blockConfirm}
         danger
         onClose={() => setBlocking(false)}
         onConfirm={() => {
-          act(friends.block(id), `${profile.handle} est bloqué.`);
+          act(friends.block(id), all.toasts.blocked(profile.handle));
           location.hash = profileHash({ view: "friends" });
           return true;
         }}
       >
-        Il ne sera plus votre ami, ne pourra plus vous trouver, vous écrire ni vous défier. Il n'en sera pas averti.
+        {m.blockText}
       </Dialog>
     </>
   );
@@ -491,16 +502,14 @@ export function FriendView({ id, offset, readOnly }: { id: string; offset: numbe
 
 export function FriendMatchReplay({ id, matchId }: { id: string; matchId: string }) {
   const { loaded } = useLoad(`friend:${id}:match:${matchId}`, () => friends.friendMatch(id, matchId));
-  const name = friendOf(useSocial().state, id)?.handle ?? "votre ami";
+  const name = friendOf(useSocial().state, id)?.handle ?? useMessages().social.friend.someone;
   if (loaded.state === "loading") return null;
   if (loaded.state === "failed") return <EmptyState error>{loaded.message}</EmptyState>;
-  const m = loaded.value;
   return (
     <MatchReplayView
-      match={m}
+      match={loaded.value}
       back={{ href: profileHash({ view: "friend", id, offset: 0 }), label: name }}
-      self={name}
-      title={`${name} contre ${m.opponent}`}
+      friend={name}
     />
   );
 }
@@ -508,6 +517,8 @@ export function FriendMatchReplay({ id, matchId }: { id: string; matchId: string
 // --- Les messages ---------------------------------------------------------------------
 
 export function ChatView({ id, readOnly }: { id: string; readOnly: boolean }) {
+  const all = useMessages().social;
+  const m = all.chat;
   const notify = useToast();
   const { state, listen, update } = useSocial();
   const friend = friendOf(state, id);
@@ -563,22 +574,22 @@ export function ChatView({ id, readOnly }: { id: string; readOnly: boolean }) {
     return true;
   };
 
-  const name = friend?.handle ?? "votre ami";
+  const name = friend?.handle ?? all.friend.someone;
   const now = Date.now();
   return (
     <>
       <BackLink href={profileHash({ view: "friend", id, offset: 0 })}>{name}</BackLink>
-      <Card title={`Messages avec ${name}`}>
+      <Card title={m.title(name)}>
         {failure !== undefined ? (
           <EmptyState error>{failure}</EmptyState>
         ) : (
           <>
             <MessageThread
-              empty="Aucun message : écrivez le premier."
+              empty={m.empty}
               more={
                 hasMore && (
                   <Button size="sm" variant="ghost" onClick={older}>
-                    messages précédents
+                    {m.older}
                   </Button>
                 )
               }
@@ -586,10 +597,16 @@ export function ChatView({ id, readOnly }: { id: string; readOnly: boolean }) {
                 id: message.id,
                 body: message.body,
                 mine: message.sender !== id,
-                meta: `${messageTime(message.createdAt, now)}${message.sender !== id && message.readAt !== null ? " · lu" : ""}`,
+                meta: `${messageTime(message.createdAt, now)}${message.sender !== id && message.readAt !== null ? ` · ${m.read}` : ""}`,
               }))}
             />
-            <MessageComposer onSend={send} disabled={readOnly} maxLength={500} placeholder={readOnly ? READ_ONLY : undefined} />
+            <MessageComposer
+              onSend={send}
+              disabled={readOnly}
+              maxLength={500}
+              placeholder={readOnly ? all.readOnly : m.placeholder}
+              sendLabel={m.send}
+            />
           </>
         )}
       </Card>

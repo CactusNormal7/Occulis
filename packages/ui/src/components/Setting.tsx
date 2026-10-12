@@ -2,6 +2,7 @@ import { useEffect, useRef, type FormEvent, type FormHTMLAttributes, type Keyboa
 import { cx } from "../cx.js";
 import { Button } from "./Button.js";
 import { FormMessage } from "./Form.js";
+import { useMessages } from "./Locale.js";
 
 /** Le conteneur des `SettingRow` : une liste de réglages, séparés d'un trait fin. */
 export function SettingList({ children }: { children: ReactNode }) {
@@ -38,13 +39,14 @@ export function SettingRow({
   label,
   value,
   description,
-  editLabel = "Modifier",
+  editLabel,
   onEdit,
   editDisabled = false,
   action,
   editing = false,
   children,
 }: SettingRowProps) {
+  const m = useMessages();
   const trigger = useRef<HTMLButtonElement>(null);
   const wasEditing = useRef(editing);
   useEffect(() => {
@@ -67,7 +69,7 @@ export function SettingRow({
       </div>
       {!editing && (action ?? (onEdit !== undefined && (
         <Button ref={trigger} size="sm" onClick={onEdit} disabled={editDisabled}>
-          {editLabel}
+          {editLabel ?? m.ui.edit}
         </Button>
       )))}
     </section>
@@ -104,6 +106,7 @@ export function SettingEditor({
   className,
   ...rest
 }: SettingEditorProps) {
+  const m = useMessages();
   const form = useRef<HTMLFormElement>(null);
   useEffect(() => {
     form.current?.querySelector<HTMLInputElement>("input:not([type=hidden]):not([hidden])")?.focus();
@@ -129,7 +132,7 @@ export function SettingEditor({
           {busy ? "…" : submitLabel}
         </Button>
         <Button size="sm" variant="ghost" onClick={onCancel}>
-          Annuler
+          {m.ui.cancel}
         </Button>
       </div>
     </form>

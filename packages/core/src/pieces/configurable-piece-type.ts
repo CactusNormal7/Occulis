@@ -1,4 +1,4 @@
-import { PieceType } from "./piece-type.js";
+import { type PieceRole, PieceType } from "./piece-type.js";
 import type { PieceKind } from "./piece.js";
 import type { MovementProfile, VisionProfile } from "./profiles.js";
 
@@ -8,6 +8,8 @@ export interface PieceProfile {
   readonly movement: MovementProfile;
   readonly vision: VisionProfile;
   readonly isCommander?: boolean;
+  /** `special` par défaut ; `isCommander: true` vaut `commander`. */
+  readonly role?: PieceRole;
 }
 
 /**
@@ -21,17 +23,17 @@ export class ConfigurablePieceType extends PieceType {
   readonly kind: PieceKind;
   readonly movement: MovementProfile;
   readonly vision: VisionProfile;
-  private readonly commander: boolean;
+  private readonly declaredRole: PieceRole;
 
   constructor(profile: PieceProfile) {
     super();
     this.kind = profile.kind;
     this.movement = profile.movement;
     this.vision = profile.vision;
-    this.commander = profile.isCommander ?? false;
+    this.declaredRole = profile.role ?? (profile.isCommander === true ? "commander" : "special");
   }
 
-  override get isCommander(): boolean {
-    return this.commander;
+  override get role(): PieceRole {
+    return this.declaredRole;
   }
 }

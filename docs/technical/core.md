@@ -31,12 +31,14 @@ coord.ts ──► board.ts ──► los.ts ──────┐
    │            │                      │
    │            └──► movement.ts ──┐   │
    ▼                               ▼   ▼
-pieces/profiles.ts ──────────► pieces/piece-type.ts ◄── pieces/roster/{scout,commander}.ts
+pieces/profiles.ts ──────────► pieces/piece-type.ts ◄── pieces/roster/{scout,commander,pawn}.ts
                                    │        ▲
 pieces/piece.ts ──────────────► state.ts    └── pieces/configurable-piece-type.ts
 pieces/ruleset.ts                  │
                                    ├──► actions.ts
                                    └──► fog.ts
+pieces/ruleset.ts ──► team.ts ──► scenarios/  (zones et équipes par défaut)
+                        └──────► rulesets/   (registre des versions)
 ```
 
 `los.ts` et `movement.ts` ne connaissent que la géométrie et les profils chiffrés
@@ -54,7 +56,10 @@ pieces/ruleset.ts                  │
 | `packages/core/src/pieces/ruleset.ts` | `Ruleset` : table `kind` → `PieceType` d'une partie |
 | `packages/core/src/pieces/roster/scout.ts` | `Scout` — **provisoire** |
 | `packages/core/src/pieces/roster/commander.ts` | `Commander` — **provisoire** |
-| `packages/core/src/pieces/roster/index.ts` | Assemble le roster : `provisionalRuleset()` |
+| `packages/core/src/pieces/roster/pawn.ts` | `Pawn` — **provisoire** |
+| `packages/core/src/pieces/roster/index.ts` | Assemble le roster : `provisionalRuleset()`, `provisionalRulesetV0()`, `PROVISIONAL_TEAM` |
+| `packages/core/src/team.ts` | Le déploiement : `TeamEntry`, `Deployment`, `validateTeam()`, `deployTeams()`, `translateTeam()`, `teamForSide()`, `parseTeam()` |
+| `packages/core/src/rulesets/index.ts` | Le registre des rulesets par version : `rulesetFor()`, `CURRENT_RULESET_VERSION` |
 | `packages/core/src/los.ts` | Raycast et ligne de vue — **géométrie seule** |
 | `packages/core/src/movement.ts` | Cases atteignables, portée de mêlée |
 | `packages/core/src/state.ts` | État de partie et accesseurs |
@@ -193,7 +198,8 @@ ruleset**, jamais une par pièce en jeu.
 | Membre | Rôle |
 |---|---|
 | `kind`, `movement`, `vision` | Abstraits : chaque type les déclare |
-| `isCommander` | Accesseur, `false` par défaut. La capture d'une pièce maîtresse met fin à la partie |
+| `role` | Accesseur : `commander`, `special` (par défaut) ou `pawn` — la place du type dans une équipe, sur laquelle portent les quotas (`TeamRules`) |
+| `isCommander` | Accesseur, dérivé de `role`. La capture d'une pièce maîtresse met fin à la partie |
 | `destinationsFrom()` | Cases atteignables en un tour ; délègue à `reachableTiles()` |
 | `canSee()` | Voit-elle `to` depuis `from` ? Portée d'abord, occultation ensuite |
 | `fieldOfView()` | Champ de vision complet, **dérivé de `canSee()`** via `collectVisible()` |
@@ -213,7 +219,8 @@ juste en dessous.
 ### `pieces/configurable-piece-type.ts` — un type sans comportement
 
 `ConfigurablePieceType extends PieceType` est un type **configuré à la construction**, à
-partir d'un `PieceProfile` (`{ kind, movement, vision, isCommander? }`). C'est ce qui
+partir d'un `PieceProfile` (`{ kind, movement, vision, isCommander?, role? }` ; `role`
+l'emporte, `isCommander: true` vaut `commander`, `special` sinon). C'est ce qui
 permet à un scénario, un test ou un futur éditeur de carte de fournir ses définitions
 **sans écrire de classe**.
 
@@ -225,10 +232,13 @@ propre fichier.
 
 | Méthode | Rôle |
 |---|---|
-| `Ruleset` (constructeur) | Indexe des `PieceType` par leur `kind` |
+| `Ruleset` (constructeur) | Indexe des `PieceType` par leur `kind`, avec la composition d'équipe (`TeamRules`) ou `null` |
+| `team` | `TeamRules` — combien de pièces de chaque rôle, **exactement** — ou `null` pour un ruleset sans déploiement |
 | `get()` | Le type ; **lève** si le `kind` est inconnu |
+| `has()` | Le `kind` est-il connu ? |
 | `typeOf()` | Raccourci de loin le plus fréquent : d'une pièce en jeu vers ses règles |
 | `kinds()` | Les types déclarés |
+| `kindsOf()` | Les types d'un rôle : ce qu'un joueur peut choisir pour un emplacement |
 
 Les règles sont **versionnées par partie et non par connexion** : un `Ruleset` est
 construit une fois au démarrage et ne change plus, ce qui suppose qu'il **ne détient aucun
@@ -241,8 +251,13 @@ construit une fois au démarrage et ne change plus, ce qui suppose qu'il **ne d�
 | Fichier | Classe | Caractéristiques, déclarées dans la classe |
 |---|---|---|
 | `roster/scout.ts` | `Scout` | 6 pas, vision 20, octile, grimpe |
-| `roster/commander.ts` | `Commander` | 3 pas, vision 14, octile, grimpe ; `isCommander` vrai |
-| `roster/index.ts` | — | `provisionalRuleset()` : `new Ruleset([new Scout(), new Commander()])` |
+| `roster/commander.ts` | `Commander` | 3 pas, vision 14, octile, grimpe ; rôle `commander` |
+| `roster/pawn.ts` | `Pawn` | 1 pas, vision 6, octile, grimpe ; rôle `pawn` |
+| `roster/index.ts` | — | `provisionalRuleset()` : maîtresse, éclaireur, pion et `PROVISIONAL_TEAM` (1 maîtresse, 3 à capacité, 4 pions) ; `provisionalRulesetV0()` : éclaireur et maîtresse sans composition, le roster des parties `provisional-0` |
+
+**La composition 1 + 3 + 4 et le profil du pion sont des décisions du porteur du projet** ;
+les types eux-mêmes restent provisoires. Les trois pièces à capacité peuvent être du même
+type — il n'en existe qu'un, l'éclaireur.
 
 **Les portées sont volontairement généreuses.** Les cartes de démonstration font au plus
 une dizaine de cases de côté : à ces portées, **seule l'occultation limite la vue**. C'est
@@ -613,7 +628,7 @@ serait contournable via les devtools.
 
 ## Tests
 
-80 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
+101 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
 
 | Fichier | Couvre |
 |---|---|
@@ -622,7 +637,10 @@ serait contournable via les devtools.
 | `packages/core/src/actions.test.ts` | Coups légaux, validation, blocage par les pièces, abandon |
 | `packages/core/src/fog.test.ts` | Visibilité, mémoire fantôme, contenu de `PlayerView` |
 | `packages/core/src/pieces/piece-type.test.ts` | Vision, mêlée et déplacement définis par le type ; dérivation de `fieldOfView` depuis `canSee` y compris redéfini ; extension par héritage. **Indépendant du roster** |
-| `packages/core/src/pieces/roster/roster.test.ts` | Propriétés du roster provisoire : différenciation par capacité, héritage du comportement commun, portée couvrant la carte de démonstration, indexation par `kind` |
+| `packages/core/src/pieces/roster/roster.test.ts` | Propriétés du roster provisoire : différenciation par capacité, rôles, pion le plus lent et le plus myope, héritage du comportement commun, portée couvrant la carte de démonstration, indexation par `kind` et par rôle, composition |
+| `packages/core/src/team.test.ts` | Quotas exacts par rôle, type inconnu, case hors zone, deux pièces sur une case, ruleset sans composition, **identifiants déterministes**, lecture d'une équipe venue de l'extérieur, transposition d'une zone à l'autre |
+| `packages/core/src/scenarios/ridge.test.ts` | `ridge-1` : zones franchissables et assez larges, symétrie centrale, **aucune ligne de vue entre les zones**, équipes par défaut valides formant une position, transposition A → B |
+| `packages/core/src/rulesets/rulesets.test.ts` | Versions anciennes chargeables, version courante avec composition, version inconnue refusée |
 
 `packages/core/src/testing.ts` fournit `definePiece()` (qui renvoie un
 `ConfigurablePieceType`), `testRuleset()` et `placePiece()`. **Il n'est pas réexporté par
@@ -632,7 +650,7 @@ client et le serveur vit dans `pieces/roster/`, pas ici.
 ## Non implémenté
 
 Tout ce qui suit est listé comme ouvert en section 10 de `docs/design.md` et **n'a
-volontairement pas été codé** : attaque à distance différée, pièges, cases de déploiement,
+volontairement pas été codé** : attaque à distance différée, pièges,
 roster de pièces définitif, téléporteurs, poussée, objets bloquant la LOS.
 
 S'y ajoutent trois règles **actées mais retirées du moteur**, sur décision explicite du
@@ -651,9 +669,18 @@ de `docs/design.md` (pistes déjà écartées) et `docs/implementation-notes.md`
 
 | Fichier | Rôle |
 |---|---|
-| `scenarios/scenario.ts` | Le type `Scenario` : un nom, une fabrique de `Board`, des pièces |
-| `scenarios/demo.ts` | La carte de démonstration, **provisoire** |
-| `scenarios/index.ts` | Le registre : `scenarioFor()` et `DEFAULT_SCENARIO` |
+| `scenarios/scenario.ts` | Le type `Scenario` : un nom, une fabrique de `Board`, des pièces fixes, et un `Deployment` optionnel |
+| `scenarios/demo.ts` | `demo-0`, la carte de démonstration à position fixe, **provisoire** — gardée pour les parties déjà jouées |
+| `scenarios/ridge.ts` | `ridge-1`, la carte des nouvelles parties, à déploiement, **provisoire** |
+| `scenarios/index.ts` | Le registre : `scenarioFor()` et `DEFAULT_SCENARIO` (`ridge-1`) |
+
+**`ridge-1`** (14 × 10) : une arête en diagonale d'un bord à l'autre, haute de 3 avec un col
+de hauteur 1 en son milieu, sépare deux zones de 4 × 4 en coins opposés. La carte est
+**symétrique par rapport à son centre**, zones et équipes par défaut comprises. L'arête
+coupe toute ligne de vue entre les deux zones — col compris, un obstacle à hauteur du
+regard bloquant (`implementation-notes.md` point 11) : le placement de chacun reste caché à
+l'autre jusqu'au premier contact, sans mécanique dédiée (`docs/design.md` section 7). Un
+test le vérifie case à case.
 
 Un scénario vit dans `core` pour la même raison que le roster
 (`implementation-notes.md` point 12) : **le client dessine la carte sur laquelle le serveur
@@ -665,3 +692,31 @@ autant : aucune carte ne l'est (`docs/design.md` point ouvert 5).
 même instance partagée. Comme le registre de rulesets, **ne jamais en retirer une entrée**
 tant qu'une partie peut la référencer : elle est figée à la création et rejouée à
 l'identique lors de la reconstruction depuis le log.
+
+## `team.ts` — le déploiement
+
+Chaque joueur compose son équipe et la pose dans **sa zone** avant le premier tour
+(`docs/design.md` section 7, point ouvert 5 tranché : un choix libre dans une zone par
+camp, définie par la carte).
+
+| Fonction | Rôle |
+|---|---|
+| `validateTeam(ruleset, zone, entries)` | `Result` : types connus, une case de la zone par pièce, quotas **exacts** de chaque rôle (`Ruleset.team`). Erreurs : `no-team-rules`, `unknown-kind`, `outside-zone`, `same-tile`, `wrong-count` |
+| `deployTeams(ruleset, deployment, teams)` | Les pièces de départ des deux camps, ou le camp fautif et son erreur. **Identifiants tirés de l'ordre des entrées** (`a-0`… `b-7`) : rien d'aléatoire, rejouer le déploiement reconstruit la même position |
+| `translateTeam(entries, from, to)` | Transpose une équipe case pour case d'une zone à l'autre (la i-ème case de `from` devient la i-ème de `to`) |
+| `teamForSide(deployment, entries, side)` | Une équipe écrite pour le camp A, posée pour `side` : c'est ainsi qu'un preset sert quel que soit le camp tenu |
+| `parseTeam(value)` | Lit la **forme** d'une équipe venue de l'extérieur (message, requête, ligne de base) : liste d'au plus 64 `{ kind, coord: { x, y } }` à coordonnées entières ; `undefined` sinon |
+
+`Deployment` (`{ zones, defaultTeams }`) est porté par la carte (`Scenario.deployment`) ;
+`defaultTeams` est l'équipe posée pour qui n'a rien validé à temps. **Les zones des deux
+camps se correspondent case pour case** (celle de B est l'image de celle de A), condition de
+`translateTeam()`. `validateTeam()` est la seule règle : le serveur l'applique à ce que le
+client envoie, le client à son brouillon, sans la redéduire.
+
+## `rulesets/` — le registre des versions
+
+`rulesetFor(version)` rend le ruleset d'une version, et lève si elle est inconnue ;
+`CURRENT_RULESET_VERSION` est celle des nouvelles parties (`provisional-1`, avec pion et
+composition). `provisional-0` reste chargeable — sans composition — pour rejouer les
+parties qui la référencent. Le registre vit dans `core` et non plus dans le serveur : le
+client doit appliquer la version de la partie qu'il joue, qu'il lit dans `welcome`.

@@ -66,6 +66,7 @@ export interface FriendProfile extends SocialPlayer {
   readonly since: number;
   readonly allowSpectators: boolean;
   readonly record: MeRecord;
+  readonly elo: number;
 }
 
 export interface ChatMessage {

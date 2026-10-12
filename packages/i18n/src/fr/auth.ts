@@ -1,0 +1,46 @@
+import type { Messages } from "../messages.js";
+
+export const auth: Messages["auth"] = {
+  tooManyAttempts: "Trop de tentatives. Réessayez dans quelques minutes.",
+  failed: "La demande a échoué.",
+  unreachable: "Serveur injoignable. Vérifiez votre connexion.",
+  redirectFailed: "La connexion n'a pas abouti. Réessayez.",
+  codes: {
+    USER_ALREADY_EXISTS: "Cette adresse est déjà utilisée.",
+    USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "Cette adresse est déjà utilisée.",
+    HANDLE_TAKEN: "Ce pseudo est déjà pris.",
+    HANDLE_LENGTH: "Le pseudo doit faire entre 2 et 24 caractères.",
+    HANDLE_CHARSET: "Lettres, chiffres, espaces, points, tirets et soulignés seulement.",
+    HANDLE_RESERVED: "Ce pseudo est réservé.",
+    HANDLE_UNCHANGED: "C'est déjà votre pseudo.",
+    HANDLE_COOLDOWN: "Le pseudo ne se change qu'une fois par mois.",
+    PASSWORD_TOO_SHORT: "Le mot de passe doit faire au moins 10 caractères.",
+    PASSWORD_TOO_LONG: "Le mot de passe doit faire au plus 128 caractères.",
+    PASSWORD_COMPROMISED:
+      "Ce mot de passe figure dans des fuites de données connues. Choisissez-en un autre, de préférence généré.",
+    INVALID_PASSWORD: "Mot de passe actuel incorrect.",
+    CREDENTIAL_ACCOUNT_NOT_FOUND: "Ce compte n'a pas encore de mot de passe.",
+    VALIDATION_ERROR: "Adresse électronique invalide.",
+    INVALID_EMAIL: "Adresse électronique invalide.",
+    INVALID_EMAIL_OR_PASSWORD: "Adresse ou mot de passe incorrect.",
+    INVALID_TOKEN: "Ce lien n'est plus valable. Demandez-en un nouveau.",
+    TOKEN_EXPIRED: "Ce lien a expiré. Demandez-en un nouveau.",
+    BANNED_USER: "Ce compte est suspendu.",
+    SESSION_EXPIRED: "Votre session est trop ancienne pour cette opération. Reconnectez-vous.",
+    SESSION_NOT_FRESH: "Votre session est trop ancienne pour cette opération. Reconnectez-vous.",
+    IMPERSONATION_READONLY: "Session d'emprunt : le compte de ce joueur ne peut pas être modifié.",
+    FAILED_TO_UNLINK_LAST_ACCOUNT: "Impossible de retirer votre seule méthode de connexion.",
+    EMAIL_NOT_VERIFIED: "Confirmez d'abord votre adresse.",
+  },
+  redirects: {
+    account_not_linked:
+      "Un compte existe déjà avec cette adresse, mais elle n'a jamais été confirmée. Connectez-vous avec votre mot de passe, confirmez l'adresse, puis Google pourra y être lié.",
+    "email_doesn't_match": "Ce compte Google n'utilise pas la même adresse que votre compte Occulis.",
+    access_denied: "Connexion Google annulée.",
+    state_mismatch: "La connexion a expiré en route. Réessayez.",
+    please_restart_the_process: "La connexion a expiré en route. Réessayez.",
+    unable_to_link_account: "Ce compte Google est déjà lié à un autre compte.",
+    account_already_linked_to_different_user: "Ce compte Google est déjà lié à un autre compte.",
+    email_not_found: "Google n'a pas transmis d'adresse électronique.",
+  },
+};

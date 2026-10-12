@@ -13,6 +13,8 @@ import {
   revokeSession,
   setAllowSpectators,
 } from "./queries.js";
+import { readMyFeats, setShowcase } from "./feats.js";
+import { createPreset, deletePreset, listPresets, setDefaultPreset, updatePreset } from "./presets.js";
 
 /**
  * Les routes de la page de profil propres au projet, sous `/api/me/`. Le reste de la
@@ -50,16 +52,19 @@ export async function handleMe(auth: Auth, env: Env, request: Request, url: URL)
         impersonating,
         record: row.record,
         allowSpectators: row.allowSpectators,
+        elo: row.elo,
       };
       return Response.json(profile);
     }
     if (path === "/sessions") return Response.json(await listSessions(env.DB, user.id, session.session.id, now));
+    if (path === "/feats") return Response.json(await readMyFeats(env.DB, playerId));
+    if (path === "/presets") return Response.json(await listPresets(env.DB, playerId));
     if (path === "/matches") return Response.json(await listMyMatches(env.DB, playerId, parsePage(url.searchParams)));
 
     const matchId = path.match(/^\/matches\/([\w-]+)$/)?.[1];
     if (matchId !== undefined) {
       const match = await readMyMatch(env.DB, playerId, matchId);
-      if (match === "unknown") return new Response("introuvable", { status: 404 });
+      if (match === "unknown") return new Response("not found", { status: 404 });
       // 409 et non 404 : la partie est bien la vôtre, elle n'est simplement pas finie.
       if (match === "ongoing") return Response.json({ code: "MATCH_ONGOING" }, { status: 409 });
       return Response.json(match);
@@ -79,17 +84,48 @@ export async function handleMe(auth: Auth, env: Env, request: Request, url: URL)
       await setAllowSpectators(env.DB, playerId, body.allow);
       return Response.json({ allowSpectators: body.allow });
     }
+    if (path === "/showcase") {
+      const result = await setShowcase(env.DB, playerId, await request.json().catch(() => ({})));
+      return result.ok ? Response.json({ showcase: result.showcase }) : Response.json({ code: result.code }, { status: 400 });
+    }
+    if (path === "/presets") {
+      const result = await createPreset(env.DB, playerId, await request.json().catch(() => ({})), now);
+      return result.ok ? Response.json(result.preset) : Response.json({ code: result.code }, { status: presetStatus(result.code) });
+    }
+    const defaultId = path.match(/^\/presets\/([\w-]+)\/default$/)?.[1];
+    if (defaultId !== undefined) {
+      return (await setDefaultPreset(env.DB, playerId, defaultId))
+        ? Response.json({ isDefault: true })
+        : Response.json({ code: "PRESET_NOT_FOUND" }, { status: 404 });
+    }
     if (path === "/sessions/revoke-others") {
       return Response.json({ revoked: await revokeOtherSessions(env.DB, user.id, session.session.id) });
     }
     const sessionId = path.match(/^\/sessions\/([\w-]+)\/revoke$/)?.[1];
     if (sessionId !== undefined) {
       const revoked = await revokeSession(env.DB, user.id, sessionId);
-      return revoked ? Response.json({ revoked: 1 }) : new Response("introuvable", { status: 404 });
+      return revoked ? Response.json({ revoked: 1 }) : new Response("not found", { status: 404 });
     }
   }
 
-  return new Response("introuvable", { status: 404 });
+  const presetId = path.match(/^\/presets\/([\w-]+)$/)?.[1];
+  if (presetId !== undefined && request.method === "PUT") {
+    const result = await updatePreset(env.DB, playerId, presetId, await request.json().catch(() => ({})), now);
+    return result.ok ? Response.json(result.preset) : Response.json({ code: result.code }, { status: presetStatus(result.code) });
+  }
+  if (presetId !== undefined && request.method === "DELETE") {
+    return (await deletePreset(env.DB, playerId, presetId))
+      ? Response.json({ deleted: 1 })
+      : Response.json({ code: "PRESET_NOT_FOUND" }, { status: 404 });
+  }
+
+  return new Response("not found", { status: 404 });
+}
+
+function presetStatus(code: string): number {
+  if (code === "PRESET_NOT_FOUND") return 404;
+  if (code === "PRESET_LIMIT") return 409;
+  return 400;
 }
 
 function statusFor(code: string): number {

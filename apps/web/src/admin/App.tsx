@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { Button, EmptyState, ProgressBar, ToastProvider, TopBar, UiRoot } from "@occulis/ui";
+import { useEffect, useState, type ReactNode } from "react";
+import { Button, EmptyState, LocaleSwitch, ProgressBar, ToastProvider, TopBar, UiRoot, useMessages } from "@occulis/ui";
+import { chooseLocale, initLocale } from "../i18n/browser.js";
 import { stopImpersonating, whoAmI, type Identity } from "../net/auth.js";
 import { useRoute } from "./hooks.js";
 import { MatchDetail } from "./MatchDetail.js";
@@ -12,6 +13,26 @@ import { MatchList, Overview, PlayerDetail, UserDetail, UserList } from "./views
  * serveur, à chaque appel (`apps/server/src/admin/routes.ts` et le greffon Better Auth).
  */
 export function App() {
+  const [locale, setLocale] = useState(initLocale);
+  return (
+    <UiRoot fullPage locale={locale}>
+      <Page
+        localeSwitch={
+          <LocaleSwitch
+            value={locale}
+            onChange={(next) => {
+              chooseLocale(next);
+              setLocale(next);
+            }}
+          />
+        }
+      />
+    </UiRoot>
+  );
+}
+
+function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
+  const m = useMessages().admin;
   const [identity, setIdentity] = useState<Identity | undefined>(undefined);
   useEffect(() => void whoAmI().then(setIdentity), []);
 
@@ -20,46 +41,46 @@ export function App() {
   const admin = identity?.signedIn === true && identity.impersonating !== true && identity.admin === true;
 
   return (
-    <UiRoot fullPage>
-      <ToastProvider>
-        <ProgressBar active={identity === undefined} />
-        <TopBar
-          section="back-office"
-          brandHref="#/"
-          tabs={
-            admin
-              ? [
-                  { href: "#/", label: "Vue d'ensemble", current: section === "overview" },
-                  { href: "#/users", label: "Comptes", current: section === "users" },
-                  { href: "#/matches", label: "Parties", current: section === "matches" },
-                ]
-              : []
-          }
-          end={
-            <>
-              {identity?.handle !== undefined && <span>{identity.handle}</span>}
-              <a href="/">retour au jeu →</a>
-            </>
-          }
-        />
-        <main className="occ-page">{identity === undefined ? null : <Gate identity={identity} route={route} />}</main>
-      </ToastProvider>
-    </UiRoot>
+    <ToastProvider>
+      <ProgressBar active={identity === undefined} />
+      <TopBar
+        section={m.section}
+        brandHref="#/"
+        tabs={
+          admin
+            ? [
+                { href: "#/", label: m.tabs.overview, current: section === "overview" },
+                { href: "#/users", label: m.tabs.accounts, current: section === "users" },
+                { href: "#/matches", label: m.tabs.matches, current: section === "matches" },
+              ]
+            : []
+        }
+        end={
+          <>
+            {localeSwitch}
+            {identity?.handle !== undefined && <span>{identity.handle}</span>}
+            <a href="/">{m.backToGame}</a>
+          </>
+        }
+      />
+      <main className="occ-page">{identity === undefined ? null : <Gate identity={identity} route={route} />}</main>
+    </ToastProvider>
   );
 }
 
 function Gate({ identity, route }: { identity: Identity; route: Route }) {
-  if (!identity.signedIn) return <EmptyState>Connectez-vous depuis le jeu, puis revenez ici.</EmptyState>;
+  const m = useMessages().admin.gate;
+  if (!identity.signedIn) return <EmptyState>{m.signIn}</EmptyState>;
   if (identity.impersonating === true) {
     // La session est celle du joueur incarné : le back-office lui est fermé, mais le
     // chemin du retour doit rester à portée.
     return (
-      <EmptyState action={<Button variant="primary" onClick={() => void stopImpersonating().then(() => location.reload())}>Revenir à mon compte</Button>}>
-        Vous incarnez {identity.handle ?? "un joueur"}.
+      <EmptyState action={<Button variant="primary" onClick={() => void stopImpersonating().then(() => location.reload())}>{m.stop}</Button>}>
+        {m.impersonating(identity.handle ?? m.aPlayer)}
       </EmptyState>
     );
   }
-  if (identity.admin !== true) return <EmptyState>Cette page est réservée aux administrateurs.</EmptyState>;
+  if (identity.admin !== true) return <EmptyState>{m.adminsOnly}</EmptyState>;
 
   // La clé rejoue l'animation d'entrée à chaque navigation.
   return (

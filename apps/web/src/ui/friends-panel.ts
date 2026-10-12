@@ -1,4 +1,5 @@
 import type { Challenge, Friend, LiveMatch } from "@occulis/protocol";
+import { messages } from "../i18n/current.js";
 import { type SocialState, presenceLabel } from "../social/model.js";
 
 /**
@@ -46,11 +47,12 @@ export function attachFriendsPanel(options: FriendsPanelOptions): FriendsPanel {
     row.className = "friend friend--challenge";
     const text = document.createElement("span");
     text.className = "friend__name";
-    text.textContent = `${challenge.from.handle} vous défie`;
+    const m = messages().social.menu;
+    text.textContent = m.challengesYou(challenge.from.handle);
     row.append(
       text,
-      button("Accepter", () => options.onAccept(challenge), !playable),
-      button("Refuser", () => options.onDecline(challenge)),
+      button(m.accept, () => options.onAccept(challenge), !playable),
+      button(m.decline, () => options.onDecline(challenge)),
     );
     return row;
   };
@@ -62,21 +64,22 @@ export function attachFriendsPanel(options: FriendsPanelOptions): FriendsPanel {
 
     const name = document.createElement("a");
     name.className = "friend__name";
-    name.href = `/profil/#/amis/${encodeURIComponent(friend.id)}`;
+    name.href = `/profile/#/friends/${encodeURIComponent(friend.id)}`;
     name.textContent = friend.handle;
 
     const presence = document.createElement("small");
     presence.className = "friend__presence";
     presence.textContent =
-      friend.unread > 0 ? `${presenceLabel(friend)} · ${friend.unread} non lu${friend.unread > 1 ? "s" : ""}` : presenceLabel(friend);
+      friend.unread > 0 ? `${presenceLabel(friend)} · ${messages().social.unread(friend.unread)}` : presenceLabel(friend);
 
     row.append(name, presence);
-    if (outgoing) row.append(button("Défi envoyé", () => undefined, true));
-    else if (friend.online) row.append(button("Défier", () => options.onChallenge(friend), !playable));
+    const m = messages().social.menu;
+    if (outgoing) row.append(button(m.challengeSent, () => undefined, true));
+    else if (friend.online) row.append(button(m.challenge, () => options.onChallenge(friend), !playable));
 
     for (const match of friend.matches) {
       if (!match.watchable) continue;
-      row.append(button(`Regarder (contre ${match.opponent})`, () => options.onWatch(friend, match)));
+      row.append(button(m.watch(match.opponent), () => options.onWatch(friend, match)));
     }
     return row;
   };

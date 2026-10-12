@@ -10,6 +10,7 @@ import type {
 } from "@occulis/protocol";
 import type { Outcome } from "../admin/api.js";
 import { authMessage } from "../net/auth.js";
+import { messages as dictionary } from "../i18n/current.js";
 import { socialMessage } from "./model.js";
 
 /**
@@ -25,11 +26,11 @@ async function call<T>(path: string, init?: RequestInit): Promise<Outcome<T>> {
   try {
     response = await fetch(path, init);
   } catch {
-    return { ok: false, message: "Serveur injoignable." };
+    return { ok: false, message: dictionary().profile.unreachable };
   }
   const payload = (await response.json().catch(() => ({}))) as T & { code?: string; message?: string };
   if (!response.ok) {
-    if (response.status === 401) return { ok: false, message: "Session expirée. Reconnectez-vous." };
+    if (response.status === 401) return { ok: false, message: dictionary().profile.sessionExpired };
     return { ok: false, message: socialMessage(payload.code) ?? authMessage(response.status, payload) };
   }
   return { ok: true, value: payload };

@@ -18,13 +18,13 @@ export interface Caller {
 export async function guardCaller(auth: Auth, request: Request, url: URL): Promise<Caller | Response> {
   const writing = request.method !== "GET";
   if (writing && request.headers.get("Origin") !== url.origin) {
-    return new Response("origine refusée", { status: 403 });
+    return new Response("origin refused", { status: 403 });
   }
 
   const session = await auth.api.getSession({ headers: request.headers });
-  if (session === null) return new Response("authentification requise", { status: 401 });
+  if (session === null) return new Response("authentication required", { status: 401 });
   const playerId = typeof session.user.playerId === "string" ? session.user.playerId : "";
-  if (playerId.length === 0) return new Response("authentification requise", { status: 401 });
+  if (playerId.length === 0) return new Response("authentication required", { status: 401 });
 
   const impersonating = isImpersonated(session.session.impersonatedBy);
   if (writing && impersonating) {

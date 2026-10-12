@@ -311,36 +311,39 @@ describe("amis : spectateur", () => {
   const watch = (matchId: string, side: string, cookie: string) =>
     SELF.fetch(`${ORIGIN}/match/${matchId}/watch?side=${side}`, { headers: { Upgrade: "websocket", Cookie: cookie } });
 
-  it("montre à un ami exactement la vue de son camp, sans coups légaux", async () => {
+  it("montre à un ami exactement la vue de son camp, sans coups légaux, et rien du déploiement", async () => {
     const anne = await someone("anne");
     const boris = await someone("boris");
     const chloe = await someone("chloe");
     await befriend(anne, chloe);
     const { matchId, seats } = await matchOf(anne, boris);
+    const hello = { kind: "hello", protocol: PROTOCOL_VERSION };
 
-    const player = await listen<ServerMessage>(`/match/${matchId}?seat=${seats.A}`, "", {
-      kind: "hello",
-      protocol: PROTOCOL_VERSION,
-    });
-    const own = await player.awaiting("view");
-    const from = player.received.length;
+    const a = await listen<ServerMessage>(`/match/${matchId}?seat=${seats.A}`, "", hello);
+    const b = await listen<ServerMessage>(`/match/${matchId}?seat=${seats.B}`, "", hello);
+    const deploymentA = await a.awaiting("deployment");
+    const deploymentB = await b.awaiting("deployment");
+    const from = a.received.length;
 
-    const spectator = await listen<ServerMessage>(`/match/${matchId}/watch?side=A`, chloe.cookie, {
-      kind: "hello",
-      protocol: PROTOCOL_VERSION,
-    });
+    // Arrivé pendant le déploiement : le camp suivi, mais ni zone ni position.
+    const spectator = await listen<ServerMessage>(`/match/${matchId}/watch?side=A`, chloe.cookie, hello);
     expect(await spectator.awaiting("watching")).toMatchObject({ side: "A" });
+    expect(await a.awaiting("spectators", from)).toEqual({ kind: "spectators", count: 1 });
+
+    a.socket.send(JSON.stringify({ kind: "deploy", team: deploymentA.defaultTeam }));
+    b.socket.send(JSON.stringify({ kind: "deploy", team: deploymentB.defaultTeam }));
+    const own = await a.awaiting("view");
     const seen = await spectator.awaiting("view");
     expect(seen.view).toEqual({ ...own.view, legalActions: [] });
     expect(own.view.legalActions.length).toBeGreaterThan(0);
-
-    expect(await player.awaiting("spectators", from)).toEqual({ kind: "spectators", count: 1 });
+    expect(spectator.received.some((message) => message.kind === "deployment")).toBe(false);
 
     spectator.socket.send(JSON.stringify({ kind: "action", action: own.view.legalActions[0] }));
     expect(await spectator.awaiting("rejected")).toMatchObject({ error: { code: "unknown-seat" } });
 
     spectator.socket.close();
-    player.socket.close();
+    a.socket.close();
+    b.socket.close();
   });
 
   it("refuse l'adversaire, un non-ami, et un joueur qui refuse les spectateurs", async () => {

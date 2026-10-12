@@ -1,0 +1,56 @@
+import type { Messages } from "../messages.js";
+
+export const account: Messages["account"] = {
+  email: "Adresse électronique",
+  password: "Mot de passe",
+  handle: "Pseudo",
+  or: "ou",
+  backToSignIn: "← Retour à la connexion",
+  signIn: {
+    title: "Connexion",
+    lead: "Le tactique au tour par tour, où l'on ne voit que ce que ses pièces voient.",
+    forgot: "Mot de passe oublié ?",
+    noAccount: "Pas encore de compte ?",
+    createAccount: "Créer un compte",
+    submit: "Se connecter",
+    busy: "Connexion…",
+  },
+  register: {
+    title: "Créer un compte",
+    lead: "Une adresse confirmée ouvre la file d'attente et les parties privées.",
+    hasAccount: "Déjà un compte ?",
+    signIn: "Se connecter",
+    handleHint: "Ce que vos adversaires verront. Modifiable depuis votre profil.",
+    submit: "Créer le compte",
+    busy: "Création…",
+    created: (email) => `Compte créé. Un lien de confirmation est parti vers ${email}.`,
+  },
+  forgot: {
+    title: "Mot de passe oublié",
+    lead: "Un lien pour en choisir un nouveau vous sera envoyé.",
+    submit: "Envoyer le lien",
+    busy: "Envoi…",
+    sent: (email) => `Si un compte existe pour ${email}, un lien vient de partir. Il expire dans une heure.`,
+  },
+  reset: {
+    title: "Nouveau mot de passe",
+    lead: "Il remplacera l'ancien et fermera toutes les sessions ouvertes.",
+    invalid: "Ce lien n'est plus valable. Demandez-en un nouveau.",
+    accountEmail: "Adresse du compte",
+    newPassword: "Nouveau mot de passe",
+    submit: "Choisir ce mot de passe",
+    busy: "Enregistrement…",
+    done: "Mot de passe changé, et toutes les sessions ouvertes fermées. Connectez-vous avec le nouveau.",
+  },
+  newLink: "Nouveau lien",
+  verificationRetry: " Connectez-vous : le menu propose de renvoyer le message.",
+  arrival: {
+    deleted: "Votre compte a été supprimé. Merci d'avoir joué.",
+    verified: "Adresse confirmée. Le jeu en ligne vous est ouvert.",
+  },
+  passwordHint: {
+    empty: (min) => `${min} caractères au moins. Un gestionnaire de mots de passe peut en générer un.`,
+    missing: (count) => `Encore ${count} caractère${count > 1 ? "s" : ""}.`,
+    enough: "Longueur suffisante.",
+  },
+};

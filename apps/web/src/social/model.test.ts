@@ -72,13 +72,14 @@ describe("état social", () => {
 
   it("dit si un ami est absent, en ligne ou en partie", () => {
     const match = { id: "m", side: "A" as const, opponent: "x", startedAt: 0, watchable: true };
-    expect(presenceLabel(friend("bob"))).toBe("absent");
-    expect(presenceLabel(friend("bob", { online: true }))).toBe("en ligne");
-    expect(presenceLabel(friend("bob", { online: true, matches: [match] }))).toBe("en partie");
+    expect(presenceLabel(friend("bob"))).toBe("offline");
+    expect(presenceLabel(friend("bob", { online: true }))).toBe("online");
+    expect(presenceLabel(friend("bob", { online: true, matches: [match] }))).toBe("in a match");
   });
 
   it("traduit les refus du serveur", () => {
-    expect(socialMessage("UNAVAILABLE")).toBe("Ce joueur n'est pas disponible.");
+    expect(socialMessage("UNAVAILABLE")).toBe("This player is not available.");
+    expect(socialMessage("toString")).toBeUndefined();
     expect(socialMessage("INCONNU")).toBeUndefined();
   });
 });

@@ -1,4 +1,4 @@
-import type { Action, PlayerId, PlayerView } from "@occulis/core";
+import type { Action, PlayerId, PlayerView, TeamEntry } from "@occulis/core";
 import {
   PROTOCOL_VERSION,
   type ClientMessage,
@@ -6,7 +6,7 @@ import {
   type ServerMessage,
 } from "@occulis/protocol";
 import { type ChannelStatus, openChannel } from "./channel.js";
-import { type Session, fromMatch, seatedAt, watchingAt } from "./session.js";
+import { type DeploymentState, type Session, fromMatch, seatedAt, watchingAt } from "./session.js";
 
 /**
  * Le canal d'une partie : il transporte, `session.ts` interprète.
@@ -16,18 +16,30 @@ import { type Session, fromMatch, seatedAt, watchingAt } from "./session.js";
  */
 export interface MatchChannel {
   submit(action: Action): void;
+  /** Envoie l'équipe posée ; le serveur la verrouille ou la refuse. */
+  deploy(team: readonly TeamEntry[]): void;
   close(): void;
 }
 
 export interface MatchHandlers {
   /** Première vue et carte annoncée : de quoi construire la partie côté client. */
   readonly onSeated: (context: SeatedContext) => void;
+  /**
+   * La partie se déploie : à l'annonce (et à chaque reconnexion), puis à chaque verrou
+   * posé. Jamais après la première vue.
+   */
+  readonly onDeployment: (context: DeploymentContext) => void;
   readonly onView: (view: PlayerView) => void;
   readonly onRejected: (rejection: Rejection) => void;
   readonly onOutdated: (expected: number) => void;
   readonly onStatus: (status: ChannelStatus) => void;
   /** Le nombre d'amis qui regardent ce joueur a changé. */
   readonly onSpectators?: (count: number) => void;
+  /**
+   * Le serveur a accepté le spectateur. La première vue peut tarder : pendant le
+   * déploiement, il n'en part aucune.
+   */
+  readonly onWatching?: () => void;
 }
 
 export interface SeatedContext {
@@ -37,6 +49,13 @@ export interface SeatedContext {
   readonly view: PlayerView;
   /** Un ami qui regarde : `player` est le camp suivi, et il ne joue rien. */
   readonly spectating: boolean;
+}
+
+export interface DeploymentContext {
+  readonly player: PlayerId;
+  readonly scenario: string;
+  readonly rulesetVersion: string;
+  readonly deployment: DeploymentState;
 }
 
 export function connectToMatch(
@@ -79,6 +98,7 @@ function connect(start: Session, path: string, handlers: MatchHandlers): MatchCh
       handlers.onRejected(session.rejection);
       return;
     }
+    if (message.kind === "watching") handlers.onWatching?.();
     if (phase.spectators !== spectators) {
       spectators = phase.spectators;
       handlers.onSpectators?.(spectators);
@@ -86,9 +106,14 @@ function connect(start: Session, path: string, handlers: MatchHandlers): MatchCh
 
     // La partie ne peut être construite qu'une fois le camp, la carte **et** une
     // première vue connus : ils arrivent en deux messages (`welcome` puis `view`).
-    const { player, scenario, rulesetVersion, view } = phase;
+    const { player, scenario, rulesetVersion, view, deployment } = phase;
     if (player === undefined || scenario === undefined || rulesetVersion === undefined) return;
-    if (view === undefined) return;
+    if (view === undefined) {
+      if (deployment !== undefined && (message.kind === "deployment" || message.kind === "deployment-update")) {
+        handlers.onDeployment({ player, scenario, rulesetVersion, deployment });
+      }
+      return;
+    }
 
     if (seated) {
       handlers.onView(view);
@@ -110,6 +135,7 @@ function connect(start: Session, path: string, handlers: MatchHandlers): MatchCh
 
   return {
     submit: (action) => channel.send({ kind: "action", action }),
+    deploy: (team) => channel.send({ kind: "deploy", team }),
     close: () => channel.close(),
   };
 }

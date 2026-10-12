@@ -1,5 +1,6 @@
 import type { Action, PlayerId } from "@occulis/core";
 import type { AdminMatchSummary } from "@occulis/protocol";
+import { messages } from "../i18n/current.js";
 
 /**
  * Ce que le back-office décide sans toucher ni au DOM ni au réseau : la route lue dans
@@ -101,19 +102,21 @@ export function seatHandle(match: AdminMatchSummary, seat: PlayerId): string {
  * partie aujourd'hui (design.md 7.1), donc une partie délaissée le reste indéfiniment.
  */
 export function describeResult(match: AdminMatchSummary): string {
-  if (match.outcome === null) return "en cours";
-  return `victoire de ${seatHandle(match, match.outcome.winner)} (abandon)`;
+  const m = messages().admin.result;
+  if (match.outcome === null) return m.ongoing;
+  return m.victory(seatHandle(match, match.outcome.winner));
 }
 
 export function describeAction(action: Action): string {
-  if (action.kind === "resign") return "abandon";
+  if (action.kind === "resign") return messages().admin.resign;
   return `${action.pieceId} → ${action.to.x},${action.to.y}`;
 }
 
-/** « 26–50 sur 132 », ou « aucun résultat ». */
+/** « 26–50 of 132 », ou « no results ». */
 export function pageLabel(offset: number, shown: number, total: number): string {
-  if (total === 0 || shown === 0) return "aucun résultat";
-  return `${offset + 1}–${offset + shown} sur ${total}`;
+  const m = messages().admin.pageLabel;
+  if (total === 0 || shown === 0) return m.none;
+  return m.range(offset + 1, offset + shown, total);
 }
 
 /**
@@ -136,34 +139,24 @@ export interface BanState {
 }
 
 export function describeBan(user: BanState): string {
-  if (user.banned !== true) return "actif";
-  const until = user.banExpires == null ? "définitivement" : `jusqu'au ${formatDate(user.banExpires)}`;
+  const m = messages().admin.ban;
+  if (user.banned !== true) return m.active;
+  const until = user.banExpires == null ? m.forever : m.until(formatDate(user.banExpires));
   const reason = user.banReason == null || user.banReason.length === 0 ? "" : ` — ${user.banReason}`;
-  return `suspendu ${until}${reason}`;
+  return m.suspended(until, reason);
 }
 
 /** Les codes de refus du greffon et des routes du projet, mis en mots. */
 export function adminMessage(status: number, payload: { code?: string; message?: string }): string {
-  const known = MESSAGES[payload.code ?? ""];
-  if (known !== undefined) return known;
-  if (status === 401) return "Session expirée. Reconnectez-vous depuis le jeu.";
-  if (status === 403) return "Action réservée aux administrateurs.";
-  if (status === 429) return "Trop de requêtes. Réessayez dans une minute.";
-  return payload.message ?? `Échec (${status}).`;
+  const m = messages().admin.errors;
+  const codes: Readonly<Record<string, string>> = m.codes;
+  const code = payload.code ?? "";
+  if (Object.hasOwn(codes, code)) return codes[code] ?? "";
+  if (status === 401) return m.sessionExpired;
+  if (status === 403) return m.adminsOnly;
+  if (status === 429) return m.tooMany;
+  return payload.message ?? m.failed(status);
 }
-
-const MESSAGES: Record<string, string> = {
-  HANDLE_TAKEN: "Ce pseudo est déjà pris.",
-  HANDLE_LENGTH: "Le pseudo doit faire entre 2 et 32 caractères.",
-  PASSWORD_TOO_SHORT: "Le mot de passe doit faire au moins 10 caractères.",
-  USER_ALREADY_EXISTS: "Cette adresse est déjà utilisée.",
-  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "Cette adresse est déjà utilisée.",
-  YOU_CANNOT_BAN_YOURSELF: "Vous ne pouvez pas vous suspendre vous-même.",
-  YOU_CANNOT_REMOVE_YOURSELF: "Vous ne pouvez pas supprimer votre propre compte.",
-  YOU_CANNOT_IMPERSONATE_ADMINS: "Un administrateur ne peut pas être usurpé.",
-  BANNED_USER: "Ce compte est suspendu.",
-  VALIDATION_ERROR: "Valeur invalide.",
-};
 
 /** Deux lettres pour l'insigne d'un compte, faute d'avatar. */
 export function initials(name: string): string {
@@ -172,12 +165,15 @@ export function initials(name: string): string {
 }
 
 /** Les durées proposées d'un clic dans la fenêtre de suspension. */
-export const BAN_PRESETS: readonly { readonly label: string; readonly days: string }[] = [
-  { label: "1 jour", days: "1" },
-  { label: "7 jours", days: "7" },
-  { label: "30 jours", days: "30" },
-  { label: "définitive", days: "" },
-];
+export function banPresets(): readonly { readonly label: string; readonly days: string }[] {
+  const m = messages().admin.ban.presets;
+  return [
+    { label: m.day, days: "1" },
+    { label: m.week, days: "7" },
+    { label: m.month, days: "30" },
+    { label: m.forever, days: "" },
+  ];
+}
 
 export type QuickActionKind = "view" | "verify" | "role" | "ban" | "impersonate" | "revoke" | "delete";
 
@@ -210,34 +206,35 @@ export function quickActions(user: QuickTarget, self: string): QuickAction[] {
   const isSelf = user.name === self;
   const admin = isAdminRole(user.role);
   const banned = user.banned === true;
+  const m = messages().admin.quick;
   const closed = (when: boolean, reason: string) => (when ? { disabled: reason } : {});
   return [
-    { kind: "view", label: "Ouvrir la fiche" },
-    { kind: "verify", label: user.emailVerified ? "Marquer l'adresse non vérifiée" : "Marquer l'adresse vérifiée" },
+    { kind: "view", label: m.view },
+    { kind: "verify", label: user.emailVerified ? m.markUnverified : m.markVerified },
     {
       kind: "role",
-      label: admin ? "Retirer le rôle administrateur" : "Nommer administrateur",
-      ...closed(isSelf && admin, "Vous ne pouvez pas retirer votre propre rôle."),
+      label: admin ? m.demote : m.promote,
+      ...closed(isSelf && admin, m.ownRole),
     },
     {
       kind: "ban",
-      label: banned ? "Lever la suspension" : "Suspendre",
+      label: banned ? m.unban : m.ban,
       danger: !banned,
-      ...closed(isSelf, "Vous ne pouvez pas vous suspendre vous-même."),
+      ...closed(isSelf, m.banSelf),
     },
     {
       kind: "impersonate",
-      label: "Se connecter en tant que ce joueur",
-      ...closed(isSelf, "C'est déjà votre compte."),
-      ...closed(!isSelf && admin, "Un administrateur ne peut pas être usurpé."),
-      ...closed(!isSelf && !admin && banned, "Un compte suspendu ne peut pas ouvrir de session."),
+      label: m.impersonate,
+      ...closed(isSelf, m.alreadyYou),
+      ...closed(!isSelf && admin, m.adminImpersonation),
+      ...closed(!isSelf && !admin && banned, m.bannedImpersonation),
     },
-    { kind: "revoke", label: "Fermer toutes les sessions" },
+    { kind: "revoke", label: m.revoke },
     {
       kind: "delete",
-      label: "Supprimer le compte",
+      label: m.delete,
       danger: true,
-      ...closed(isSelf, "Vous ne pouvez pas supprimer votre propre compte."),
+      ...closed(isSelf, m.deleteSelf),
     },
   ];
 }
@@ -250,14 +247,15 @@ export function winRate(record: { readonly won: number; readonly lost: number })
 
 /** « Chrome · Windows » plutôt que la chaîne entière, illisible dans un tableau. */
 export function shortAgent(agent: string | null | undefined): string {
-  if (agent == null || agent.length === 0) return "inconnu";
+  const m = messages().admin.agent;
+  if (agent == null || agent.length === 0) return m.unknown;
   const browser =
     [["Edg/", "Edge"], ["Firefox/", "Firefox"], ["Chrome/", "Chrome"], ["Safari/", "Safari"]].find(([token]) =>
       agent.includes(token as string),
-    )?.[1] ?? "navigateur";
+    )?.[1] ?? m.browser;
   const system =
     [["Android", "Android"], ["iPhone", "iOS"], ["iPad", "iOS"], ["Windows", "Windows"], ["Mac OS", "macOS"], ["Linux", "Linux"]].find(
       ([token]) => agent.includes(token as string),
-    )?.[1] ?? "système inconnu";
+    )?.[1] ?? m.system;
   return `${browser} · ${system}`;
 }

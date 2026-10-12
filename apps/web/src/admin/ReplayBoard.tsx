@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Board } from "@occulis/core";
 import type { AdminFrame } from "@occulis/protocol";
 import { mountReplay, type ReplayCanvas } from "./replay-canvas.js";
+import { useMessages } from "@occulis/ui";
 import type { Perspective } from "./replay.js";
 
 export interface ReplayBoardProps {
@@ -20,6 +21,7 @@ export interface ReplayBoardProps {
  * l'image, le point de vue et les quarts de tour.
  */
 export function ReplayBoard({ board, frames, index, perspective, turns }: ReplayBoardProps) {
+  const m = useMessages();
   const canvas = useRef<HTMLCanvasElement>(null);
   const replay = useRef<ReplayCanvas | null>(null);
   const turned = useRef(0);
@@ -47,5 +49,5 @@ export function ReplayBoard({ board, frames, index, perspective, turns }: Replay
     }
   }, [turns]);
 
-  return <canvas ref={canvas} aria-label="Plateau rejoué" style={{ display: "block", width: "100%", height: "clamp(320px, 58vh, 560px)" }} />;
+  return <canvas ref={canvas} aria-label={m.admin.match.board} style={{ display: "block", width: "100%", height: "clamp(320px, 58vh, 560px)" }} />;
 }

@@ -38,6 +38,8 @@ export interface AdminMatchSummary {
   readonly outcome: Outcome | null;
   /** Nombre de lignes du log, abandon compris. */
   readonly actions: number;
+  /** Partie classée (file rapide) : elle fait varier l'Elo. */
+  readonly rated: boolean;
 }
 
 export interface AdminMatchPage {

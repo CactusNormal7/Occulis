@@ -114,7 +114,7 @@ export async function handleSocial(auth: Auth, env: Env, request: Request, url: 
   }
 
   const friendPath = path.match(/^\/api\/friends\/([\w-]+)(\/.*)?$/);
-  if (friendPath === null) return new Response("introuvable", { status: 404 });
+  if (friendPath === null) return new Response("not found", { status: 404 });
   const friend = friendPath[1] ?? "";
   const rest = friendPath[2] ?? "";
 
@@ -139,7 +139,7 @@ export async function handleSocial(auth: Auth, env: Env, request: Request, url: 
     if (matchId !== undefined) {
       // Le replay **de son point de vue**, exactement celui qu'il voit lui-même.
       const match = await readMyMatch(db, friend, matchId);
-      if (match === "unknown") return new Response("introuvable", { status: 404 });
+      if (match === "unknown") return new Response("not found", { status: 404 });
       if (match === "ongoing") return Response.json({ code: "MATCH_ONGOING" }, { status: 409 });
       return Response.json(match);
     }
@@ -185,7 +185,7 @@ export async function handleSocial(auth: Auth, env: Env, request: Request, url: 
     return cancelled ? Response.json({ cancelled }) : failure("NO_CHALLENGE");
   }
 
-  return new Response("introuvable", { status: 404 });
+  return new Response("not found", { status: 404 });
 }
 
 function failure(code: string): Response {

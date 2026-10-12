@@ -3,9 +3,9 @@ import "@occulis/ui/styles.css";
 import { App } from "./App.js";
 
 /**
- * La page de profil, servie sous `/profil/` — une page à part, en React sur les
+ * La page de profil, servie sous `/profile/` — une page à part, en React sur les
  * composants de `@occulis/ui`, qui ne charge ni PixiJS ni le moteur de jeu.
  */
-const host = document.getElementById("profil");
-if (host === null) throw new Error("élément #profil absent de profil/index.html");
+const host = document.getElementById("profile");
+if (host === null) throw new Error("element #profile missing from profile/index.html");
 createRoot(host).render(<App />);

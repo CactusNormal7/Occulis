@@ -39,20 +39,22 @@ export interface ProfileRow {
   readonly providers: string[];
   readonly record: MeRecord;
   readonly allowSpectators: boolean;
+  readonly elo: number;
 }
 
 export async function readProfileRow(db: D1Database, userId: string, playerId: string): Promise<ProfileRow> {
   const [player, user, accounts, record] = await db.batch([
-    db.prepare("SELECT handle_changed_at, allow_spectators FROM players WHERE id = ?").bind(playerId),
+    db.prepare("SELECT handle_changed_at, allow_spectators, elo FROM players WHERE id = ?").bind(playerId),
     db.prepare("SELECT created_at FROM users WHERE id = ?").bind(userId),
     db.prepare("SELECT provider_id, password IS NOT NULL AS has_password FROM accounts WHERE user_id = ?").bind(userId),
     recordStatement(db, playerId),
   ]);
   const linked = (accounts?.results ?? []) as { provider_id: string; has_password: number }[];
   const createdAt = (user?.results[0] as { created_at: string } | undefined)?.created_at;
-  const own = player?.results[0] as { handle_changed_at: number | null; allow_spectators: number } | undefined;
+  const own = player?.results[0] as { handle_changed_at: number | null; allow_spectators: number; elo: number } | undefined;
   return {
     handleChangedAt: own?.handle_changed_at ?? null,
+    elo: own?.elo ?? 1200,
     createdAt: createdAt === undefined ? 0 : Date.parse(createdAt),
     hasPassword: linked.some((account) => account.provider_id === "credential" && account.has_password === 1),
     providers: linked.map((account) => account.provider_id).filter((provider) => provider !== "credential"),
@@ -262,6 +264,8 @@ function mySummary(row: MatchRow, playerId: string): MeMatchSummary {
     outcome,
     result: resultFor(outcome, row.finished_at, seat),
     actions: row.actions,
+    rated: row.rated === 1,
+    ratingChange: seat === "A" ? row.rating_change_a : row.rating_change_b,
   };
 }
 

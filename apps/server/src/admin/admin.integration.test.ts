@@ -2,6 +2,7 @@ import { SELF, env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type { AdminMatchDetail, AdminMatchPage, AdminPlayer, AdminStats } from "@occulis/protocol";
 import { PASSWORD, cookieFrom, post, signUp, unique } from "../test-helpers.js";
+import { CURRENT_RULESET_VERSION, DEFAULT_SCENARIO, deployTeams, rulesetFor, scenarioFor } from "@occulis/core";
 
 /**
  * Le back-office dans workerd. Le contrôle de rôle est la seule chose qui sépare ces
@@ -226,9 +227,13 @@ describe("back-office : parties et profils", () => {
     const c = `p-${crypto.randomUUID()}`;
     const first = await startMatch(a, b);
     await startMatch(c, b);
-    await env.DB.prepare("INSERT INTO match_actions (match_id, seq, action) VALUES (?, 0, ?)")
-      .bind(first, JSON.stringify({ kind: "resign" }))
-      .run();
+    // Le déploiement fait, comme le DO l'aurait écrit : c'est de là que le rejeu repart.
+    const deployment = scenarioFor(DEFAULT_SCENARIO).deployment;
+    const setup = deployment && deployTeams(rulesetFor(CURRENT_RULESET_VERSION), deployment, deployment.defaultTeams);
+    await env.DB.batch([
+      env.DB.prepare("UPDATE matches SET setup = ? WHERE id = ?").bind(JSON.stringify(setup?.ok ? setup.value : []), first),
+      env.DB.prepare("INSERT INTO match_actions (match_id, seq, action) VALUES (?, 0, ?)").bind(first, JSON.stringify({ kind: "resign" })),
+    ]);
 
     const page = (await (await get(`/api/admin/matches?player=${a}`, cookie)).json()) as AdminMatchPage;
     expect(page.total).toBe(1);

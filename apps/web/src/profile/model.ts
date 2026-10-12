@@ -1,4 +1,5 @@
 import type { AdminFrame, MeFrame, MeMatchSummary, MeProfile, MeResult } from "@occulis/protocol";
+import { currentLocale, messages } from "../i18n/current.js";
 import { redirectMessage } from "../net/auth.js";
 
 /**
@@ -25,20 +26,20 @@ export function parseProfileRoute(hash: string): ProfileRoute {
   const [path = "", query = ""] = hash.replace(/^#/, "").split("?");
   const parts = path.split("/").filter((part) => part.length > 0);
   const offset = offsetOf(query);
-  if (parts[0] === "parties") {
+  if (parts[0] === "matches") {
     if (parts[1] !== undefined && ID.test(parts[1])) return { view: "match", id: parts[1] };
     return { view: "matches", offset };
   }
-  if (parts[0] === "amis") {
+  if (parts[0] === "friends") {
     const id = parts[1];
     if (id === undefined || !ID.test(id)) return { view: "friends" };
     if (parts[2] === "messages") return { view: "chat", id };
-    if (parts[2] === "parties" && parts[3] !== undefined && ID.test(parts[3])) {
+    if (parts[2] === "matches" && parts[3] !== undefined && ID.test(parts[3])) {
       return { view: "friendMatch", id, matchId: parts[3] };
     }
     return { view: "friend", id, offset };
   }
-  // `#securite` est l'ancre que visent les courriers et `/.well-known/change-password` :
+  // `#security` est l'ancre que visent les courriers et `/.well-known/change-password` :
   // elle reste sur la vue du compte, qui défile jusqu'à la carte.
   return { view: "account" };
 }
@@ -51,17 +52,17 @@ function offsetOf(query: string): number {
 export function profileHash(route: ProfileRoute): string {
   switch (route.view) {
     case "match":
-      return `#/parties/${route.id}`;
+      return `#/matches/${route.id}`;
     case "matches":
-      return route.offset > 0 ? `#/parties?offset=${route.offset}` : "#/parties";
+      return route.offset > 0 ? `#/matches?offset=${route.offset}` : "#/matches";
     case "friends":
-      return "#/amis";
+      return "#/friends";
     case "friend":
-      return route.offset > 0 ? `#/amis/${route.id}?offset=${route.offset}` : `#/amis/${route.id}`;
+      return route.offset > 0 ? `#/friends/${route.id}?offset=${route.offset}` : `#/friends/${route.id}`;
     case "friendMatch":
-      return `#/amis/${route.id}/parties/${route.matchId}`;
+      return `#/friends/${route.id}/matches/${route.matchId}`;
     case "chat":
-      return `#/amis/${route.id}/messages`;
+      return `#/friends/${route.id}/messages`;
     case "account":
       return "#/";
   }
@@ -74,13 +75,14 @@ export function tabOf(route: ProfileRoute): "account" | "matches" | "friends" {
   return "friends";
 }
 
-/** L'heure d'un message : l'heure seule aujourd'hui, la date sinon. */
+/** L'heure d'un message : l'heure seule aujourd'hui, la date sinon, dans la langue choisie. */
 export function messageTime(timestamp: number, now: number): string {
   const date = new Date(timestamp);
   const sameDay = new Date(now).toDateString() === date.toDateString();
+  const locale = currentLocale();
   return sameDay
-    ? date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-    : date.toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    ? date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
+    : date.toLocaleDateString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 export interface ArrivalMessage {
@@ -93,13 +95,9 @@ export function arrivalMessage(search: string): ArrivalMessage | undefined {
   const parameters = new URLSearchParams(search);
   const error = parameters.get("error");
   if (error !== null && error.length > 0) return { ok: false, text: redirectMessage(error) };
-  if (parameters.get("lie") === "google") return { ok: true, text: "Google est lié à votre compte." };
-  if (parameters.get("bienvenue") === "1") {
-    return {
-      ok: true,
-      text: "Bienvenue sur Occulis. Votre pseudo vient de votre nom Google : vous pouvez le changer ci-dessous.",
-    };
-  }
+  const m = messages().profile.arrival;
+  if (parameters.get("linked") === "google") return { ok: true, text: m.googleLinked };
+  if (parameters.get("welcome") === "1") return { ok: true, text: m.welcome };
   return undefined;
 }
 
@@ -107,7 +105,8 @@ export function arrivalMessage(search: string): ArrivalMessage | undefined {
 export function handleCooldownLabel(profile: Pick<MeProfile, "nextHandleChangeAt">, now: number): string | undefined {
   const next = profile.nextHandleChangeAt;
   if (next === null || next <= now) return undefined;
-  return `Prochain changement possible le ${new Date(next).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}.`;
+  const date = new Date(next).toLocaleDateString(currentLocale(), { day: "numeric", month: "long", year: "numeric" });
+  return messages().profile.account.cooldown(date);
 }
 
 /**
@@ -120,15 +119,10 @@ export function canUnlink(profile: Pick<MeProfile, "hasPassword" | "providers">,
   return profile.hasPassword || profile.providers.some((other) => other !== provider);
 }
 
-const RESULTS: Record<MeResult, string> = {
-  won: "victoire",
-  lost: "défaite",
-  ongoing: "en cours",
-  ended: "terminée",
-};
-
 export function describeMyResult(match: Pick<MeMatchSummary, "result" | "outcome">): string {
-  if (match.outcome?.reason === "resignation") return match.result === "won" ? "victoire par abandon" : "défaite par abandon";
+  const results = messages().profile.results;
+  if (match.outcome?.reason === "resignation") return match.result === "won" ? results.wonByResignation : results.lostByResignation;
+  const RESULTS: Record<MeResult, string> = results;
   return RESULTS[match.result];
 }
 
@@ -147,10 +141,11 @@ export function asBoardFrames(frames: readonly MeFrame[], seat: "A" | "B"): Admi
 
 /** « 2 h », « 3 j » : depuis quand une session n'a pas servi. */
 export function sinceLabel(timestamp: number, now: number): string {
+  const m = messages().profile.since;
   const minutes = Math.max(0, Math.round((now - timestamp) / 60_000));
-  if (minutes < 2) return "à l'instant";
-  if (minutes < 60) return `il y a ${minutes} min`;
+  if (minutes < 2) return m.now;
+  if (minutes < 60) return m.minutes(minutes);
   const hours = Math.round(minutes / 60);
-  if (hours < 48) return `il y a ${hours} h`;
-  return `il y a ${Math.round(hours / 24)} j`;
+  if (hours < 48) return m.hours(hours);
+  return m.days(Math.round(hours / 24));
 }

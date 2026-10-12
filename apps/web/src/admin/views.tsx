@@ -24,6 +24,7 @@ import {
   StatTileGrid,
   Table,
   TileAvatar,
+  useMessages,
   useToast,
 } from "@occulis/ui";
 import type { AdminPlayer } from "@occulis/protocol";
@@ -44,6 +45,7 @@ const GAMES = { view: "matches", status: null, offset: 0 } as const;
 // --- Vue d'ensemble --------------------------------------------------------------------
 
 export function Overview() {
+  const t = useMessages().admin.overview;
   const { loaded } = useLoad("overview", async () => {
     const [stats, recent, newcomers] = await Promise.all([api.stats(), api.matches({ offset: 0, limit: 6 }), api.users("", 0)]);
     if (!stats.ok) return stats;
@@ -52,26 +54,26 @@ export function Overview() {
 
   return whenReady(loaded, ({ stats: s, recent, newcomers }) => (
     <>
-      <PageHead title="Vue d'ensemble" />
+      <PageHead title={t.title} />
       <StatTileGrid>
-        <StatTile value={s.users} label="comptes" detail={`+${s.signupsLastWeek} sur 7 jours`} href={routeHash(ACCOUNTS)} />
+        <StatTile value={s.users} label={t.accounts} detail={t.lastWeek(s.signupsLastWeek)} href={routeHash(ACCOUNTS)} />
         <StatTile
           value={s.verifiedUsers}
-          label="adresses vérifiées"
-          detail={`${s.users === 0 ? 0 : Math.round((s.verifiedUsers / s.users) * 100)} % des comptes`}
+          label={t.verified}
+          detail={t.ofAccounts(s.users === 0 ? 0 : Math.round((s.verifiedUsers / s.users) * 100))}
         />
-        <StatTile value={s.bannedUsers} label="suspendus" />
-        <StatTile value={s.admins} label="administrateurs" />
-        <StatTile value={s.matches} label="parties" detail={`+${s.matchesLastWeek} sur 7 jours`} href={routeHash(GAMES)} />
-        <StatTile value={s.ongoingMatches} label="en cours" href={routeHash({ view: "matches", status: "ongoing", offset: 0 })} />
-        <StatTile value={s.actions} label="coups joués" />
-        <StatTile value={s.players} label="profils de jeu" detail="dont sans compte" />
+        <StatTile value={s.bannedUsers} label={t.banned} />
+        <StatTile value={s.admins} label={t.admins} />
+        <StatTile value={s.matches} label={t.matches} detail={t.lastWeek(s.matchesLastWeek)} href={routeHash(GAMES)} />
+        <StatTile value={s.ongoingMatches} label={t.ongoing} href={routeHash({ view: "matches", status: "ongoing", offset: 0 })} />
+        <StatTile value={s.actions} label={t.moves} />
+        <StatTile value={s.players} label={t.players} detail={t.withoutAccount} />
       </StatTileGrid>
       <CardGrid>
-        <Card title="Dernières parties" action={<a href={routeHash(GAMES)}>tout voir</a>}>
+        <Card title={t.recentMatches} action={<a href={routeHash(GAMES)}>{t.seeAll}</a>}>
           {recent.ok ? <MatchTable matches={recent.value.matches} compact /> : <EmptyState error>{recent.message}</EmptyState>}
         </Card>
-        <Card title="Derniers inscrits" action={<a href={routeHash(ACCOUNTS)}>tout voir</a>}>
+        <Card title={t.newcomers} action={<a href={routeHash(ACCOUNTS)}>{t.seeAll}</a>}>
           {newcomers.ok ? (
             <List>
               {newcomers.value.users.slice(0, 6).map((user) => (
@@ -92,6 +94,7 @@ export function Overview() {
 // --- Comptes -----------------------------------------------------------------------------
 
 export function UserList({ search, offset, self }: { search: string; offset: number; self: string }) {
+  const t = useMessages().admin.users;
   const notify = useToast();
   const [creating, setCreating] = useState(false);
   const { loaded, reload } = useLoad(`users:${search}:${offset}`, () => api.users(search, offset));
@@ -99,17 +102,17 @@ export function UserList({ search, offset, self }: { search: string; offset: num
   return (
     <>
       <PageHead
-        title="Comptes"
+        title={t.title}
         count={loaded.state === "ready" ? loaded.value.total : undefined}
         tools={
           <>
             <SearchField
               defaultValue={search}
-              placeholder="Pseudo ou adresse…"
+              placeholder={t.search}
               onSearch={(value) => (location.hash = routeHash({ view: "users", search: value, offset: 0 }))}
             />
             <Button icon="plus" onClick={() => setCreating(true)}>
-              Nouveau compte
+              {t.create}
             </Button>
           </>
         }
@@ -117,9 +120,9 @@ export function UserList({ search, offset, self }: { search: string; offset: num
       {whenReady(loaded, ({ users, total }) => (
         <Card>
           <Table
-            columns={["compte", "état", "inscription", ""]}
+            columns={[t.columns.account, t.columns.state, t.columns.signup, ""]}
             rowCount={users.length}
-            empty={search.length > 0 ? `Aucun compte ne correspond à « ${search} ».` : "Aucun compte."}
+            empty={search.length > 0 ? t.noMatch(search) : t.none}
           >
             {users.map((user) => (
               <tr key={user.id}>
@@ -136,7 +139,7 @@ export function UserList({ search, offset, self }: { search: string; offset: num
                     self={self}
                     reload={reload}
                     onDeleted={() => {
-                      notify(`Compte ${user.name} supprimé.`);
+                      notify(t.deleted(user.name));
                       reload();
                     }}
                   />
@@ -159,6 +162,7 @@ export function UserList({ search, offset, self }: { search: string; offset: num
 }
 
 export function UserDetail({ id, self }: { id: string; self: string }) {
+  const t = useMessages().admin.user;
   const notify = useToast();
   const go = useGo();
   const { loaded, reload } = useLoad(`user:${id}`, async () => {
@@ -178,23 +182,23 @@ export function UserDetail({ id, self }: { id: string; self: string }) {
     const sessionList = sessions.ok ? sessions.value.sessions : [];
     return (
       <>
-        <BackLink href={routeHash(ACCOUNTS)}>Comptes</BackLink>
+        <BackLink href={routeHash(ACCOUNTS)}>{t.back}</BackLink>
         <Hero
           avatar={<TileAvatar name={user.name} size="lg" />}
           title={user.name}
           badges={<StateBadges user={user} />}
           meta={[
             user.email,
-            `inscrit le ${formatDate(user.createdAt)}`,
+            t.signedUp(formatDate(user.createdAt)),
             <>
               <code>{user.id.slice(0, 10)}…</code>
               <IconButton
                 icon="copy"
-                label="Copier l'identifiant"
+                label={t.copyId}
                 onClick={() =>
                   void navigator.clipboard.writeText(user.id).then(
-                    () => notify("Identifiant copié."),
-                    () => notify("Copie refusée par le navigateur.", false),
+                    () => notify(t.copied),
+                    () => notify(t.copyRefused, false),
                   )
                 }
               />
@@ -206,12 +210,12 @@ export function UserDetail({ id, self }: { id: string; self: string }) {
               user={user}
               self={self}
               reload={reload}
-              onDeleted={() => go(ACCOUNTS, `Compte ${user.name} supprimé. Son profil et ses parties restent.`)}
+              onDeleted={() => go(ACCOUNTS, t.deleted(user.name))}
             />
           }
         />
         {user.banned === true && (
-          <Banner action={<Button variant="danger" onClick={() => void act(api.unban(id), "Suspension levée.")}>Lever la suspension</Button>}>
+          <Banner action={<Button variant="danger" onClick={() => void act(api.unban(id), t.unbanned)}>{t.unban}</Button>}>
             {describeBan(user)}
           </Banner>
         )}
@@ -220,49 +224,49 @@ export function UserDetail({ id, self }: { id: string; self: string }) {
             {player?.ok === true ? (
               <ProfileCard player={player.value} />
             ) : (
-              <Card title="Profil de jeu">
-                <EmptyState>{player?.ok === false ? player.message : "Aucun profil lié."}</EmptyState>
+              <Card title={t.gameProfile}>
+                <EmptyState>{player?.ok === false ? player.message : t.noProfile}</EmptyState>
               </Card>
             )}
             {history?.ok === true && (
               <Card
-                title="Dernières parties"
-                action={playerId !== undefined && <a href={routeHash({ view: "player", id: playerId })}>tout l'historique ({history.value.total})</a>}
+                title={t.recentMatches}
+                action={playerId !== undefined && <a href={routeHash({ view: "player", id: playerId })}>{t.fullHistory(history.value.total)}</a>}
               >
                 <MatchTable matches={history.value.matches} compact />
               </Card>
             )}
           </CardColumn>
           <CardColumn>
-            <Card title="Modifier">
+            <Card title={t.edit}>
               {playerId !== undefined && (
                 <InlineEdit
-                  label="pseudo"
+                  label={t.handle}
                   defaultValue={user.name}
-                  action="Renommer"
-                  onSubmit={(value) => act(api.rename(playerId, value), "Pseudo changé, sur le compte et sur le profil de jeu.")}
+                  action={t.rename}
+                  onSubmit={(value) => act(api.rename(playerId, value), t.renamed)}
                 />
               )}
               <InlineEdit
-                label="adresse"
+                label={t.address}
                 type="email"
                 defaultValue={user.email}
-                action="Changer"
-                onSubmit={(value) => act(api.update(id, { email: value }), "Adresse changée.")}
+                action={t.change}
+                onSubmit={(value) => act(api.update(id, { email: value }), t.addressChanged)}
               />
               <InlineEdit
-                label="mot de passe"
+                label={t.password}
                 type="password"
-                action="Définir"
-                onSubmit={(value) => act(api.setPassword(id, value), "Mot de passe défini.")}
+                action={t.set}
+                onSubmit={(value) => act(api.setPassword(id, value), t.passwordSet)}
               />
             </Card>
             <Card
-              title={`Sessions ouvertes (${sessionList.length})`}
+              title={t.sessions(sessionList.length)}
               action={
                 sessionList.length > 0 && (
-                  <Button size="sm" icon="logout" onClick={() => void act(api.revokeSessions(id), "Sessions fermées.")}>
-                    tout fermer
+                  <Button size="sm" icon="logout" onClick={() => void act(api.revokeSessions(id), t.sessionsClosed)}>
+                    {t.closeAll}
                   </Button>
                 )
               }
@@ -270,7 +274,7 @@ export function UserDetail({ id, self }: { id: string; self: string }) {
               {!sessions.ok ? (
                 <EmptyState error>{sessions.message}</EmptyState>
               ) : sessionList.length === 0 ? (
-                <EmptyState>Aucune session ouverte.</EmptyState>
+                <EmptyState>{t.noSessions}</EmptyState>
               ) : (
                 <List>
                   {sessionList.map((session) => (
@@ -279,17 +283,14 @@ export function UserDetail({ id, self }: { id: string; self: string }) {
                       end={
                         <IconButton
                           icon="close"
-                          label="Fermer cette session"
+                          label={t.closeSession}
                           tipAlign="end"
-                          onClick={() => void act(api.revokeSession(session.token), "Session fermée.")}
+                          onClick={() => void act(api.revokeSession(session.token), t.sessionClosed)}
                         />
                       }
                     >
                       <strong>{shortAgent(session.userAgent)}</strong>
-                      <small>
-                        {session.ipAddress ?? "IP inconnue"} · ouverte le {formatDate(session.createdAt)} · expire le{" "}
-                        {formatDate(session.expiresAt)}
-                      </small>
+                      <small>{t.sessionLine(session.ipAddress ?? t.unknownIp, formatDate(session.createdAt), formatDate(session.expiresAt))}</small>
                     </ListRow>
                   ))}
                 </List>
@@ -305,23 +306,27 @@ export function UserDetail({ id, self }: { id: string; self: string }) {
 // --- Profils ------------------------------------------------------------------------------
 
 function ProfileCard({ player }: { player: AdminPlayer }) {
+  const all = useMessages().admin;
+  const t = all.profileCard;
   const { played, won, lost, ongoing } = player.record;
   const rate = winRate(player.record);
   return (
-    <Card title="Profil de jeu">
+    <Card title={all.user.gameProfile}>
       <StatGrid>
-        <Stat value={played} label="parties" />
-        <Stat value={won} label="victoires" />
-        <Stat value={lost} label="défaites" />
-        <Stat value={ongoing} label="en cours" />
-        <Stat value={rate === null ? "—" : `${rate} %`} label="taux" />
-        <Stat value={player.elo} label="ELO" />
+        <Stat value={played} label={t.played} />
+        <Stat value={won} label={t.won} />
+        <Stat value={lost} label={t.lost} />
+        <Stat value={ongoing} label={t.ongoing} />
+        <Stat value={rate === null ? "—" : `${rate} %`} label={t.rate} />
+        <Stat value={player.elo} label={t.elo} />
       </StatGrid>
     </Card>
   );
 }
 
 export function PlayerDetail({ id }: { id: string }) {
+  const all = useMessages().admin;
+  const t = all.player;
   const { loaded } = useLoad(`player:${id}`, async () => {
     const [player, history] = await Promise.all([api.player(id), api.matches({ player: id, offset: 0, limit: 100 })]);
     if (!player.ok) return player;
@@ -331,19 +336,19 @@ export function PlayerDetail({ id }: { id: string }) {
   return whenReady(loaded, ({ player: p, history }) => (
     <>
       {p.userId === null ? (
-        <BackLink href={routeHash(ACCOUNTS)}>Comptes</BackLink>
+        <BackLink href={routeHash(ACCOUNTS)}>{all.user.back}</BackLink>
       ) : (
-        <BackLink href={routeHash({ view: "user", id: p.userId })}>Fiche du compte</BackLink>
+        <BackLink href={routeHash({ view: "user", id: p.userId })}>{t.accountRecord}</BackLink>
       )}
       <Hero
         avatar={<TileAvatar name={p.handle} size="lg" />}
         title={p.handle}
-        badges={p.userId === null ? <Badge tone="dim">sans compte</Badge> : undefined}
-        meta={[`profil créé le ${formatDate(p.createdAt)}`]}
+        badges={p.userId === null ? <Badge tone="dim">{all.badges.noAccount}</Badge> : undefined}
+        meta={[t.created(formatDate(p.createdAt))]}
       />
       <ProfileCard player={p} />
       <Card
-        title="Historique"
+        title={t.history}
         action={history.ok && <span className="occ-muted">{pageLabel(0, history.value.matches.length, history.value.total)}</span>}
       >
         {history.ok ? <MatchTable matches={history.value.matches} /> : <EmptyState error>{history.message}</EmptyState>}
@@ -355,20 +360,21 @@ export function PlayerDetail({ id }: { id: string }) {
 // --- Parties ------------------------------------------------------------------------------
 
 export function MatchList({ status, offset }: { status: MatchStatus | null; offset: number }) {
+  const t = useMessages().admin.matchList;
   const { loaded } = useLoad(`matches:${status}:${offset}`, () => api.matches({ status, offset }));
   const filters: { value: "all" | MatchStatus; label: string }[] = [
-    { value: "all", label: "toutes" },
-    { value: "ongoing", label: "en cours" },
-    { value: "finished", label: "terminées" },
+    { value: "all", label: t.all },
+    { value: "ongoing", label: t.ongoing },
+    { value: "finished", label: t.finished },
   ];
   return (
     <>
       <PageHead
-        title="Parties"
+        title={t.title}
         count={loaded.state === "ready" ? loaded.value.total : undefined}
         tools={
           <Segmented
-            label="Filtrer les parties"
+            label={t.filter}
             value={status ?? "all"}
             options={filters.map((filter) => ({
               ...filter,

@@ -313,14 +313,14 @@ export async function readFriendProfile(db: D1Database, self: string, friend: st
   const [player, record] = await db.batch([
     db
       .prepare(
-        `SELECT p.id, p.handle, p.online, p.allow_spectators, f.created_at AS since
+        `SELECT p.id, p.handle, p.online, p.allow_spectators, p.elo, f.created_at AS since
          FROM friendships f JOIN players p ON p.id = ?3
          WHERE f.player_low = ?1 AND f.player_high = ?2`,
       )
       .bind(low, high, friend),
     recordStatement(db, friend),
   ]);
-  const row = player?.results[0] as Omit<FriendRow, "unread"> | undefined;
+  const row = player?.results[0] as (Omit<FriendRow, "unread"> & { elo: number }) | undefined;
   if (row === undefined) return undefined;
   return {
     id: row.id,
@@ -329,6 +329,7 @@ export async function readFriendProfile(db: D1Database, self: string, friend: st
     since: row.since,
     allowSpectators: row.allow_spectators === 1,
     record: recordOf(record?.results[0]),
+    elo: row.elo,
   };
 }
 

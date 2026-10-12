@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { cx } from "../cx.js";
 import { EmptyState } from "./Banner.js";
+import { useMessages } from "./Locale.js";
 
 export interface ThreadMessage {
   id: string;
@@ -24,14 +25,15 @@ export interface MessageThreadProps {
  * au trait, sans bulle pleine — la ligne de la DA. Le fil reste calé sur le dernier
  * message à chaque arrivée.
  */
-export function MessageThread({ messages, empty = "Aucun message.", more }: MessageThreadProps) {
+export function MessageThread({ messages, empty, more }: MessageThreadProps) {
+  const m = useMessages();
   const end = useRef<HTMLDivElement>(null);
   const last = messages[messages.length - 1]?.id;
   useEffect(() => {
     end.current?.scrollIntoView?.({ block: "nearest" });
   }, [last]);
 
-  if (messages.length === 0) return <EmptyState>{empty}</EmptyState>;
+  if (messages.length === 0) return <EmptyState>{empty ?? m.ui.noMessages}</EmptyState>;
   return (
     <div className="occ-thread" role="log" aria-live="polite">
       {more}
@@ -52,10 +54,14 @@ export interface MessageComposerProps {
   disabled?: boolean | undefined;
   placeholder?: string | undefined;
   maxLength?: number | undefined;
+  /** Le libellé du bouton d'envoi ; celui de la charte par défaut. */
+  sendLabel?: string | undefined;
 }
 
 /** Le champ d'écriture d'un fil : Entrée envoie, Maj+Entrée passe à la ligne. */
-export function MessageComposer({ onSend, disabled = false, placeholder = "Écrire un message…", maxLength }: MessageComposerProps) {
+export function MessageComposer({ onSend, disabled = false, placeholder: given, maxLength, sendLabel }: MessageComposerProps) {
+  const m = useMessages();
+  const placeholder = given ?? m.ui.messagePlaceholder;
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -93,7 +99,7 @@ export function MessageComposer({ onSend, disabled = false, placeholder = "Écri
         onKeyDown={key}
       />
       <button type="submit" className="occ-button occ-button--primary occ-button--md" disabled={disabled || busy || value.trim().length === 0}>
-        Envoyer
+        {sendLabel ?? m.ui.send}
       </button>
     </form>
   );

@@ -1,0 +1,42 @@
+/** Entre l'appariement et le premier tour : acceptation, annonce de l'adversaire, déploiement. */
+export const prepare = {
+  found: {
+    title: "Match found",
+    lead: "Accept to start the match.",
+    accept: "Accept",
+    decline: "Decline",
+    accepted: "Accepted",
+    waitingOpponent: "Waiting for your opponent…",
+    opponentAccepted: "Your opponent accepted.",
+    remaining: (seconds: number) => `${seconds} s`,
+    tabTitle: "Match found!",
+  },
+  lapsed: {
+    requeued: "Your opponent did not accept: back in the queue.",
+    dropped: "The match was not accepted: you left the queue.",
+  },
+  reveal: {
+    versus: "vs",
+    you: "You",
+    elo: (elo: number) => `${elo} Elo`,
+    record: (played: number, won: number) => `${played} played · ${won} won`,
+    newcomer: "first match",
+    rated: "Ranked",
+    unrated: "Unranked",
+  },
+  deploy: {
+    title: "Deployment",
+    lead: "Choose your pieces and place them in your zone. Your opponent cannot see your layout.",
+    lock: "Lock in",
+    locked: "Locked in",
+    waitingOpponent: "Waiting for your opponent…",
+    opponentLocked: "Your opponent is ready.",
+    opponentPending: "Your opponent is still deploying.",
+    remaining: (seconds: number) => `${seconds} s left`,
+    timeoutNote: "When time runs out, your current layout is used if complete, otherwise the default one.",
+    preset: "Team",
+    noPreset: "Current layout",
+    loadPreset: "Load",
+  },
+  remaining: "Time left",
+};

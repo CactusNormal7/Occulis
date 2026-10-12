@@ -10,6 +10,7 @@ import {
   describeTurn,
   describeWatching,
 } from "./messages.js";
+import { messages } from "../i18n/current.js";
 
 /**
  * Saisie de coups au clavier et comptes rendus de partie : le bandeau affiché
@@ -108,7 +109,7 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
     const current = match();
     if (current === undefined) return false;
     if (watching() !== undefined) {
-      report("Vous regardez cette partie : aucun coup à jouer.", false);
+      report(messages().game.console.spectating, false);
       return false;
     }
 
@@ -119,7 +120,7 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
     // Un seul coup en vol à la fois : deux clics rapides enverraient deux coups
     // pour le même tour, dont le second serait refusé sans que rien ne l'explique.
     if (pending()) {
-      report("Coup déjà envoyé : réponse du serveur en attente.", false);
+      report(messages().game.console.pending, false);
       return false;
     }
 
@@ -132,8 +133,8 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
     const summary =
       action.kind === "move" && moved !== undefined
         ? describeMove(moved, action.to)
-        : "Abandon.";
-    report(`${summary} — envoyé.`, true);
+        : messages().game.console.resigned;
+    report(messages().game.console.sent(summary), true);
     refresh();
     return true;
   };

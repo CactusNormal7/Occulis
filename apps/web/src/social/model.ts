@@ -1,4 +1,5 @@
 import type { Challenge, Friend, FriendsOverview, SocialServerMessage } from "@occulis/protocol";
+import { messages } from "../i18n/current.js";
 
 /**
  * L'état social vu d'une page — le menu du jeu comme le profil. Module pur : il réduit
@@ -114,33 +115,15 @@ function mapFriends(state: SocialState, friendId: string, change: (friend: Frien
   };
 }
 
-const SOCIAL_MESSAGES: Record<string, string> = {
-  SELF: "C'est vous.",
-  UNKNOWN_PLAYER: "Ce joueur n'existe pas.",
-  BLOCKED: "Vous avez bloqué ce joueur : débloquez-le d'abord.",
-  UNAVAILABLE: "Ce joueur n'est pas disponible.",
-  ALREADY_FRIENDS: "Vous êtes déjà amis.",
-  TOO_MANY_REQUESTS: "Trop de demandes en attente : attendez des réponses.",
-  NOT_FRIENDS: "Vous n'êtes pas (ou plus) amis.",
-  NOT_FOUND: "Cette demande n'existe plus.",
-  NO_CHALLENGE: "Ce défi n'existe plus.",
-  GAME_CLOSED: "Le jeu doit être ouvert pour défier, et votre ami l'a peut-être quitté.",
-  MESSAGE_EMPTY: "Le message est vide.",
-  MESSAGE_TOO_LONG: "Le message dépasse 500 caractères.",
-  RATE_LIMITED: "Trop de messages d'un coup : patientez une minute.",
-  EMAIL_UNVERIFIED: "Confirmez d'abord votre adresse pour retrouver vos amis.",
-  OWN_MATCH: "C'est votre propre partie.",
-  SPECTATORS_REFUSED: "Ce joueur n'accepte pas les spectateurs.",
-  MATCH_FINISHED: "Cette partie est terminée.",
-};
-
 /** Le texte d'un refus des routes d'amis ; `undefined` si le code n'est pas le leur. */
 export function socialMessage(code: string | undefined): string | undefined {
-  return code === undefined ? undefined : SOCIAL_MESSAGES[code];
+  const known: Readonly<Record<string, string>> = messages().social.errors;
+  return code === undefined || !Object.hasOwn(known, code) ? undefined : known[code];
 }
 
 /** « en ligne », « en partie », « absent » : ce que la liste dit d'un ami. */
 export function presenceLabel(friend: Friend): string {
-  if (friend.matches.length > 0 && friend.online) return "en partie";
-  return friend.online ? "en ligne" : "absent";
+  const m = messages().social.presence;
+  if (friend.matches.length > 0 && friend.online) return m.playing;
+  return friend.online ? m.online : m.offline;
 }
