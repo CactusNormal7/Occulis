@@ -60,59 +60,65 @@
             Resend the verification email
           </button>
 
-          <div class="choices">
-            <button id="play-quick" type="button" class="primary">
-              <span data-i18n="game.menu.quick">Quick match</span>
-              <small data-i18n="game.menu.quickHint">The first available opponent</small>
+          <!-- Les trois entrées en partie, une carte chacune : même forme, même poids,
+               sauf la partie rapide, le geste attendu par défaut. -->
+          <section class="menu-section" aria-labelledby="menu-play-title">
+            <h2 id="menu-play-title" class="menu-heading" data-i18n="game.menu.play">Play</h2>
+            <div class="choices">
+              <button id="play-quick" type="button" class="primary primary--lead">
+                <span data-i18n="game.menu.quick">Quick match</span>
+                <small data-i18n="game.menu.quickHint">The first available opponent</small>
+              </button>
+              <button id="play-host" type="button" class="primary">
+                <span data-i18n="game.menu.host">Create a match</span>
+                <small data-i18n="game.menu.hostHint">A code to give to your opponent</small>
+              </button>
+              <form id="join-form" class="primary" autocomplete="off">
+                <label for="join-code" data-i18n="game.menu.join">Join a match</label>
+                <div class="join-row">
+                  <input
+                    id="join-code"
+                    type="text"
+                    name="code"
+                    maxlength="5"
+                    placeholder="CODE"
+                    data-i18n-placeholder="game.menu.codePlaceholder"
+                    spellcheck="false"
+                  />
+                  <button id="play-join" type="submit" data-i18n="game.menu.joinButton">Join</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Les équipes préparées d'avance : ce n'est pas une entrée en partie, mais ce
+                 qu'on emporte dans chacune — d'où une carte en retrait, sous les trois autres. -->
+            <button id="menu-teams" type="button" class="primary primary--minor">
+              <span data-i18n="team.presets.menuEntry">Teams</span>
+              <small data-i18n="team.presets.menuHint">Prepare your line-ups</small>
             </button>
-            <button id="play-host" type="button" class="primary">
-              <span data-i18n="game.menu.host">Create a match</span>
-              <small data-i18n="game.menu.hostHint">A code to give to your opponent</small>
-            </button>
-          </div>
 
-          <form id="join-form" autocomplete="off">
-            <label class="field">
-              <span data-i18n="game.menu.join">Join a match</span>
-              <input
-                id="join-code"
-                type="text"
-                name="code"
-                maxlength="5"
-                placeholder="CODE"
-                data-i18n-placeholder="game.menu.codePlaceholder"
-                spellcheck="false"
-              />
-            </label>
-            <button id="play-join" type="submit" data-i18n="game.menu.joinButton">Join</button>
-          </form>
-
-          <!-- Les équipes préparées d'avance : ce n'est pas une entrée en partie, mais ce
-               qu'on emporte dans chacune. -->
-          <button id="menu-teams" type="button">
-            <span data-i18n="team.presets.menuEntry">Teams</span>
-            <small data-i18n="team.presets.menuHint">Prepare your line-ups</small>
-          </button>
-
-          <p id="menu-notice" role="status"></p>
+            <p id="menu-notice" role="status"></p>
+          </section>
 
           <!-- Amis : défis reçus, présence, défier, regarder. La gestion de la liste et
                les messages vivent dans le profil. Masqué tant que la liste n'est pas lue. -->
-          <section id="menu-friends" class="friends" data-i18n-label="social.menu.title" aria-label="Friends" hidden>
-            <h2>
-              <span data-i18n="social.menu.title">Friends</span>
-              <a class="quiet" href="/profile/#/friends" data-i18n="social.menu.manage">manage · messages</a>
-            </h2>
+          <section id="menu-friends" class="menu-section friends" data-i18n-label="social.menu.title" aria-label="Friends" hidden>
+            <div class="menu-section__head">
+              <h2 class="menu-heading" data-i18n="social.menu.title">Friends</h2>
+              <a class="menu-link" href="/profile/#/friends" data-i18n="social.menu.manage">Manage · messages</a>
+            </div>
             <ul id="friends-challenges" class="friend-list"></ul>
             <ul id="friends-list" class="friend-list"></ul>
             <p id="friends-empty" class="friends__empty" data-i18n="social.menu.empty">
               No friends yet: add some from your profile.
             </p>
           </section>
-          <div class="menu-links">
-            <a id="menu-admin" class="quiet" href="/admin/" data-i18n="game.menu.admin" hidden>Back office</a>
-            <button id="account-signout" type="button" class="quiet" data-i18n="game.menu.signOut">Sign out</button>
-          </div>
+          <!-- Pied de panneau : les gestes de compte, hors du jeu, en simples liens. La
+               déconnexion à droite, à l'écart de tout le reste. -->
+          <footer class="menu-links">
+            <a id="menu-admin" class="menu-link" href="/admin/" data-i18n="game.menu.admin" hidden>Back office</a>
+            <button id="account-signout" type="button" class="menu-link" data-i18n="game.menu.signOut">Sign out</button>
+          </footer>
         </div>
       </section>
 

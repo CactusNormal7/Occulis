@@ -94,7 +94,7 @@ export const social = {
   },
   menu: {
     title: "Friends",
-    manage: "manage · messages",
+    manage: "Manage · messages",
     empty: "No friends yet: add some from your profile.",
     challenge: "Challenge",
     challengeSent: "Challenge sent",

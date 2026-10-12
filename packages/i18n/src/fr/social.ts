@@ -95,7 +95,7 @@ export const social: Messages["social"] = {
   },
   menu: {
     title: "Amis",
-    manage: "gérer · messages",
+    manage: "Gérer · messages",
     empty: "Aucun ami pour l'instant : ajoutez-en depuis votre profil.",
     challenge: "Défier",
     challengeSent: "Défi envoyé",

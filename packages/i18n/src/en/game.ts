@@ -8,6 +8,7 @@ export const game = {
   myProfile: "My profile",
   menu: {
     resend: "Resend the verification email",
+    play: "Play",
     quick: "Quick match",
     quickHint: "The first available opponent",
     host: "Create a match",
