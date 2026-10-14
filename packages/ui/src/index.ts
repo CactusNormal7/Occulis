@@ -24,6 +24,7 @@ export { TopBar, Wordmark, ProgressBar, type TopBarProps, type TopBarTab, type W
 export { PageHead, BackLink, type PageHeadProps } from "./components/PageHead.js";
 export { Hero, type HeroProps } from "./components/Hero.js";
 export { Banner, EmptyState, type BannerProps, type EmptyStateProps } from "./components/Banner.js";
+export { Skeleton, type SkeletonProps } from "./components/Skeleton.js";
 export { FactStrip, DefinitionList, type Fact } from "./components/FactStrip.js";
 export {
   TextField,

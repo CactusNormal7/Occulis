@@ -164,6 +164,14 @@ l'horodatage sont figés en base à la création, puis rejoués à l'identique.
 (`docs/architecture.md` section 4). Cela a un corollaire utile : sur le web, le client et
 l'API sont **de même origine**, une URL relative suffit.
 
+**Un fichier qui existe dans `dist` est servi avant le Worker** : `/`, `/profile/`, `/admin/`
+et `/assets/*` n'entrent jamais dans `fetch()`, seuls les chemins sans fichier y arrivent (les
+parcours de compte, `/profile` sans barre, l'API). Le Worker ne peut donc pas poser d'en-tête sur
+les fichiers du client ; c'est `apps/web/public/_headers`, copié dans `dist` par Vite et lu par
+les assets de Cloudflare, qui garde un an (`immutable`) les fichiers hachés de `/assets/`. Le
+HTML garde la politique par défaut, `public, max-age=0, must-revalidate` : c'est lui qui
+désigne les fichiers du déploiement courant. Vérifié sous `wrangler dev`.
+
 ---
 
 ## `match-do.ts` — `MatchDO`

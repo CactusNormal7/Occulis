@@ -2,6 +2,10 @@ import { cp, readFile, rm } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Connect, type Plugin } from "vite";
+// Par chemin relatif et non par `@occulis/ui/critical` : Vite laisse les imports nus de sa
+// configuration à Node, qui ne sait pas lire le TypeScript du paquet ; un chemin relatif
+// est, lui, empaqueté avec la configuration.
+import { withCriticalHead } from "../../packages/ui/src/critical.js";
 
 /**
  * Les maquettes de `docs/mockups/` sont exposées sous `/mockups`.
@@ -98,6 +102,22 @@ function embedMockups(): Plugin {
 }
 
 /**
+ * Place en tête de chaque page le bloc qui décide de la première image peinte : fond,
+ * thème sombre, fondu entre pages et préchargement (`@occulis/ui/critical`). En tête
+ * plutôt qu'à la suite : il doit précéder la feuille et le script que Vite injecte, sans
+ * quoi le navigateur peindrait en blanc le temps de les charger.
+ */
+function criticalPaint(): Plugin {
+  return {
+    name: "occulis-critical-paint",
+    transformIndexHtml: {
+      order: "pre",
+      handler: (html) => withCriticalHead(html),
+    },
+  };
+}
+
+/**
  * Trois pages : le jeu, le back-office sous `/admin/` et le profil sous `/profile/`.
  * Séparées pour que les deux dernières ne chargent ni Pixi ni le moteur, et que le jeu
  * n'embarque rien d'elles.
@@ -109,6 +129,6 @@ const PAGES = {
 };
 
 export default defineConfig(({ mode }) => ({
-  plugins: [serveMockups(), ...(mode === MOCKUPS_MODE ? [embedMockups()] : [])],
+  plugins: [criticalPaint(), serveMockups(), ...(mode === MOCKUPS_MODE ? [embedMockups()] : [])],
   build: { rollupOptions: { input: PAGES } },
 }));

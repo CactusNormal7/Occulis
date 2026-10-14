@@ -1,8 +1,9 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Button, EmptyState, LocaleSwitch, ProgressBar, ToastProvider, TopBar, UiRoot, useMessages } from "@occulis/ui";
+import { useState, type ReactNode } from "react";
+import { Button, EmptyState, LocaleSwitch, ProgressBar, Skeleton, ToastProvider, TopBar, UiRoot, useMessages } from "@occulis/ui";
 import { chooseLocale, initLocale } from "../i18n/browser.js";
 import { stopImpersonating, whoAmI, type Identity } from "../net/auth.js";
 import { useRoute } from "./hooks.js";
+import { useLoad, usePending } from "../load/hooks.js";
 import { MatchDetail } from "./MatchDetail.js";
 import { routeHash, sectionOf, type Route } from "./model.js";
 import { MatchList, Overview, PlayerDetail, UserDetail, UserList } from "./views.js";
@@ -33,16 +34,19 @@ export function App() {
 
 function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
   const m = useMessages().admin;
-  const [identity, setIdentity] = useState<Identity | undefined>(undefined);
-  useEffect(() => void whoAmI().then(setIdentity), []);
+  const { loaded } = useLoad("identity", async () => ({ ok: true, value: await whoAmI() }) as const);
+  const identity = loaded.state === "ready" ? loaded.value : undefined;
+  const pending = usePending();
 
   const route = useRoute();
   const section = sectionOf(route);
-  const admin = identity?.signedIn === true && identity.impersonating !== true && identity.admin === true;
+  // Les onglets se montrent avant la réponse : le cadre ne dépend d'aucune requête, et seul
+  // un refus connu les retire. Ils ne donnent accès à rien — la garde est au serveur.
+  const admin = identity === undefined || (identity.signedIn && identity.impersonating !== true && identity.admin === true);
 
   return (
     <ToastProvider>
-      <ProgressBar active={identity === undefined} />
+      <ProgressBar active={pending} />
       <TopBar
         section={m.section}
         brandHref="#/"
@@ -63,7 +67,7 @@ function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
           </>
         }
       />
-      <main className="occ-page">{identity === undefined ? null : <Gate identity={identity} route={route} />}</main>
+      <main className="occ-page">{identity === undefined ? <Skeleton card lines={5} /> : <Gate identity={identity} route={route} />}</main>
     </ToastProvider>
   );
 }

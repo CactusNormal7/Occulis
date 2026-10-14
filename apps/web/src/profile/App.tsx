@@ -18,6 +18,7 @@ import {
   Pager,
   PasswordField,
   ProgressBar,
+  Skeleton,
   SettingEditor,
   SettingList,
   SettingRow,
@@ -32,7 +33,8 @@ import {
 } from "@occulis/ui";
 import type { MeProfile, MeSession } from "@occulis/protocol";
 import { linkGoogle, stopImpersonating } from "../net/auth.js";
-import { useLoad, type Loaded } from "../admin/hooks.js";
+import { useLoad, usePending, whenReady } from "../load/hooks.js";
+import type { Loaded } from "../load/cache.js";
 import { formatDate, shortAgent } from "../admin/model.js";
 import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH, passwordHint } from "../account/model.js";
 import { chooseLocale, initLocale } from "../i18n/browser.js";
@@ -95,12 +97,14 @@ function Frame({ localeSwitch, loaded, reload }: { localeSwitch: ReactNode; load
   const all = useMessages();
   const m = all.profile;
   const route = useProfileRoute();
-  const signedIn = loaded.state === "ready";
+  // Les onglets se montrent avant la réponse : le cadre ne dépend d'aucune requête, et seul
+  // un refus connu les retire.
+  const signedIn = loaded.state !== "failed";
   const unread = unreadTotal(useSocial().state);
 
   return (
     <>
-      <ProgressBar active={loaded.state === "loading"} />
+      <ProgressBar active={usePending()} />
       <TopBar
         section={m.section}
         brandHref="/"
@@ -144,7 +148,7 @@ function useProfileRoute(): ProfileRoute {
 
 function Gate({ loaded, route, reload }: { loaded: Loaded<MeProfile>; route: ProfileRoute; reload: () => void }) {
   const m = useMessages().profile;
-  if (loaded.state === "loading") return null;
+  if (loaded.state === "loading") return <Skeleton card lines={5} />;
   if (loaded.state === "failed") {
     return <EmptyState action={<a href={ROUTE_PATHS.signin}>{m.signIn}</a>}>{loaded.message}</EmptyState>;
   }
@@ -509,7 +513,8 @@ function FeatsCard({ readOnly }: { readOnly: boolean }) {
   const m = all.feats;
   const notify = useToast();
   const { loaded, reload } = useLoad("feats", api.feats);
-  if (loaded.state !== "ready") return null;
+  if (loaded.state === "loading") return <Skeleton card lines={4} />;
+  if (loaded.state === "failed") return <EmptyState error>{loaded.message}</EmptyState>;
   const { feats, showcase } = loaded.value;
   const full = showcase.length >= 3;
   const toggle = (id: string) => {
@@ -609,6 +614,8 @@ function Sessions({ readOnly }: { readOnly: boolean }) {
     >
       {loaded.state === "failed" ? (
         <EmptyState error>{loaded.message}</EmptyState>
+      ) : loaded.state === "loading" ? (
+        <Skeleton lines={2} />
       ) : (
         <List>
           {list.map((session) => (
@@ -685,10 +692,7 @@ function Matches({ offset, readOnly }: { offset: number; readOnly: boolean }) {
   const m = all.profile.matches;
   const notify = useToast();
   const { loaded } = useLoad(`matches:${offset}`, () => api.matches(offset));
-  if (loaded.state === "loading") return null;
-  if (loaded.state === "failed") return <EmptyState error>{loaded.message}</EmptyState>;
-  const page = loaded.value;
-  return (
+  return whenReady(loaded, (page) => (
     <Card title={m.title(page.total)}>
       <MatchTable
         matches={page.matches}
@@ -714,13 +718,13 @@ function Matches({ offset, readOnly }: { offset: number; readOnly: boolean }) {
         hrefFor={(next) => profileHash({ view: "matches", offset: next })}
       />
     </Card>
-  );
+  ));
 }
 
 function MatchReplay({ id }: { id: string }) {
   const t = useMessages().profile.matches;
   const { loaded } = useLoad(`match:${id}`, () => api.match(id));
-  if (loaded.state === "loading") return null;
-  if (loaded.state === "failed") return <EmptyState error>{loaded.message}</EmptyState>;
-  return <MatchReplayView match={loaded.value} back={{ href: profileHash({ view: "matches", offset: 0 }), label: t.back }} />;
+  return whenReady(loaded, (match) => (
+    <MatchReplayView match={match} back={{ href: profileHash({ view: "matches", offset: 0 }), label: t.back }} />
+  ));
 }

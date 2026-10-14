@@ -29,6 +29,7 @@ import {
   ProviderButton,
   Reveal,
   Segmented,
+  Skeleton,
   SettingEditor,
   SettingList,
   SettingRow,
@@ -247,5 +248,13 @@ describe("préparation d'une partie", () => {
     expect(thread).toContain("&lt;b&gt;salut");
     expect(html(<MessageThread messages={[]} empty="Rien encore." />)).toContain("Rien encore.");
     expect(html(<MessageComposer onSend={async () => true} maxLength={500} />)).toContain('maxLength="500"');
+  });
+
+  it("annonce un chargement sans texte visible, encadré à la demande", () => {
+    const lines = html(<Skeleton lines={4} />);
+    expect(lines).toContain('aria-busy="true"');
+    expect(lines.match(/occ-skeleton__line/g)).toHaveLength(4);
+    expect(lines).not.toContain("occ-skeleton--card");
+    expect(html(<Skeleton card />)).toContain("occ-skeleton--card");
   });
 });

@@ -53,6 +53,9 @@
     "Banner": {
       "cardMode": "column"
     },
+    "Skeleton": {
+      "cardMode": "column"
+    },
     "Versus": {
       "cardMode": "column"
     },

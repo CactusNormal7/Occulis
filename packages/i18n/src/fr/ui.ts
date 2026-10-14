@@ -11,6 +11,7 @@ export const ui: Messages["ui"] = {
   send: "Envoyer",
   noMessages: "Aucun message.",
   empty: "Rien à afficher.",
+  loading: "Chargement…",
   pager: {
     none: "aucun résultat",
     range: (from, to, total) => `${from}–${to} sur ${total}`,

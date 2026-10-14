@@ -15,6 +15,7 @@ import { messages } from "../i18n/current.js";
  * l'îlot React de `src/account/`, sur la charte.
  */
 export interface ShellElements {
+  readonly boot: HTMLElement;
   readonly auth: HTMLElement;
   readonly menu: HTMLElement;
   readonly waiting: HTMLElement;
@@ -118,6 +119,7 @@ export function attachShell(options: ShellOptions): Shell {
   });
 
   const render = (stage: Stage): void => {
+    e.boot.hidden = stage.kind !== "boot";
     e.auth.hidden = stage.kind !== "auth";
     e.menu.hidden = stage.kind !== "menu";
     // La fenêtre d'acceptation se pose sur l'écran d'attente, qui reste derrière elle.
