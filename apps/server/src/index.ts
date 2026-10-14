@@ -4,9 +4,17 @@ import { currentAccount, handleAuth } from "./auth/routes.js";
 import { startMatch } from "./match-setup.js";
 import { handleAdmin } from "./admin/routes.js";
 import { handleMe } from "./me/routes.js";
+import { handleSocial } from "./social/routes.js";
+import { openSocial } from "./social-do.js";
+import { MESSAGE_RETENTION_MS } from "./social/chat.js";
+import { isFriend, readWatchRow } from "./social/queries.js";
+import { decideWatch } from "./social/relations.js";
+import { legacyRedirect } from "./legacy-routes.js";
+import { type Locale, localeFromCookie, resolveLocale } from "@occulis/i18n";
 
 export { MatchDO } from "./match-do.js";
 export { QueueDO } from "./queue-do.js";
+export { SocialDO } from "./social-do.js";
 
 /**
  * Le Worker ne détient aucun état de partie : il authentifie, puis route vers le
@@ -27,8 +35,10 @@ export default {
     // L'adresse bien connue que les gestionnaires de mots de passe ouvrent pour
     // « changer le mot de passe de ce site » (W3C, change-password-url).
     if (url.pathname === "/.well-known/change-password") {
-      return Response.redirect(`${url.origin}/profil/#securite`, 302);
+      return Response.redirect(`${url.origin}/profile/#security`, 302);
     }
+    const legacy = request.method === "GET" ? legacyRedirect(url) : undefined;
+    if (legacy !== undefined) return Response.redirect(legacy, 301);
     const page = pageFor(url.pathname);
     if (page !== undefined) return env.ASSETS.fetch(new Request(new URL(page, url.origin), request));
     // Construite par requête : les bindings n'existent que là, et l'URL de base doit
@@ -47,13 +57,18 @@ export default {
         url.pathname.startsWith("/api/admin/") ||
         url.pathname === "/api/me" ||
         url.pathname.startsWith("/api/me/") ||
-        url.pathname === "/api/queue"
+        url.pathname === "/api/queue" ||
+        url.pathname === "/api/social" ||
+        url.pathname.startsWith("/api/friends") ||
+        url.pathname.startsWith("/api/blocks") ||
+        url.pathname === "/api/players/search" ||
+        /^\/match\/[\w-]+\/watch$/.test(url.pathname)
       ) {
-        console.error("[auth] AUTH_SECRET absent ou trop court : authentification refusée");
-        return new Response("authentification indisponible", { status: 503 });
+        console.error("[auth] AUTH_SECRET missing or too short: authentication refused");
+        return new Response("authentication unavailable", { status: 503 });
       }
     }
-    const auth = buildAuth(env, url.origin);
+    const auth = buildAuth(env, url.origin, localeOf(request));
 
     const authenticated = await handleAuth(auth, env, request, url.pathname);
     if (authenticated !== undefined) return authenticated;
@@ -64,11 +79,18 @@ export default {
     const own = await handleMe(auth, env, request, url);
     if (own !== undefined) return own;
 
+    const social = await handleSocial(auth, env, request, url);
+    if (social !== undefined) return social;
+
     if (url.pathname === "/api/matches" && request.method === "POST") {
       return createMatch(request, env);
     }
 
     if (url.pathname === "/api/queue") return joinQueue(request, env, auth, url);
+    if (url.pathname === "/api/social") return joinSocial(request, env, auth, url);
+
+    const watched = url.pathname.match(/^\/match\/([\w-]+)\/watch$/)?.[1];
+    if (watched !== undefined) return watchMatch(request, env, auth, url, watched);
 
     const matchId = url.pathname.match(/^\/match\/([\w-]+)$/)?.[1];
     if (matchId !== undefined) {
@@ -105,6 +127,7 @@ export default {
            AND NOT EXISTS (SELECT 1 FROM users WHERE users.player_id = players.id)
            AND NOT EXISTS (SELECT 1 FROM matches WHERE matches.player_a = players.id OR matches.player_b = players.id)`,
       ).bind(Date.now() - DAY_MS),
+      env.DB.prepare("DELETE FROM messages WHERE created_at < ?").bind(Date.now() - MESSAGE_RETENTION_MS),
     ]);
   },
 } satisfies ExportedHandler<Env>;
@@ -117,12 +140,17 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * page du jeu, dont l'îlot de compte lit le chemin. La liste est explicite : un repli
  * global vers `index.html` ferait d'une faute de frappe une page blanche au lieu d'un 404.
  */
-export const ACCOUNT_PATHS = ["/connexion", "/inscription", "/mot-de-passe-oublie", "/reinitialiser"] as const;
+export const ACCOUNT_PATHS = ["/sign-in", "/sign-up", "/forgot-password", "/reset-password"] as const;
 
 function pageFor(pathname: string): string | undefined {
   if ((ACCOUNT_PATHS as readonly string[]).includes(pathname)) return "/";
-  if (pathname === "/profil") return "/profil/";
+  if (pathname === "/profile") return "/profile/";
   return undefined;
+}
+
+/** La langue du joueur : son choix (cookie posé par le client), sinon celle de son navigateur. */
+function localeOf(request: Request): Locale {
+  return resolveLocale(localeFromCookie(request.headers.get("Cookie")), request.headers.get("Accept-Language"));
 }
 
 /** Le minimum que Better Auth recommande pour un secret de signature. */
@@ -144,14 +172,14 @@ async function joinQueue(
   url: URL,
 ): Promise<Response> {
   const account = await currentAccount(auth, request);
-  if (account === undefined) return new Response("authentification requise", { status: 401 });
+  if (account === undefined) return new Response("authentication required", { status: 401 });
 
   // L'adresse vérifiée est exigée ici, et non à la connexion : un compte reste
   // utilisable tant que le message n'est pas arrivé, mais le jeu apparié — celui qui
   // porte le classement et qu'un compte jetable viendrait polluer — ne s'ouvre qu'une
   // fois l'adresse prouvée.
   if (!account.emailVerified) {
-    return new Response("adresse non vérifiée", { status: 403 });
+    return new Response("email not verified", { status: 403 });
   }
 
   const forwarded = new URL(url);
@@ -159,6 +187,58 @@ async function joinQueue(
   return env.QUEUE.get(env.QUEUE.idFromName(QUEUE_SINGLETON)).fetch(
     new Request(forwarded, request),
   );
+}
+
+/**
+ * Le canal social du joueur de la session : présence, demandes, messages, défis
+ * (`social-do.ts`). Mêmes exigences que la file d'attente — un compte, une adresse
+ * vérifiée — et l'identité vient du cookie, jamais de la requête.
+ */
+async function joinSocial(
+  request: Request,
+  env: Env,
+  auth: ReturnType<typeof buildAuth>,
+  url: URL,
+): Promise<Response> {
+  const account = await currentAccount(auth, request);
+  if (account === undefined) return new Response("authentication required", { status: 401 });
+  if (!account.emailVerified) return new Response("email not verified", { status: 403 });
+  if (request.headers.get("Upgrade") !== "websocket") return new Response("expected websocket", { status: 426 });
+  return openSocial(env, request, account.playerId, url.searchParams.get("surface") === "game" ? "game" : "profile");
+}
+
+/**
+ * Regarder la partie d'un ami, **de son côté seulement**. Tout se décide ici, sur
+ * l'identité de la session : le Durable Object reçoit une requête que le Worker
+ * construit lui-même (`https://do/watch`), hors de portée de la route publique.
+ */
+async function watchMatch(
+  request: Request,
+  env: Env,
+  auth: ReturnType<typeof buildAuth>,
+  url: URL,
+  matchId: string,
+): Promise<Response> {
+  const account = await currentAccount(auth, request);
+  if (account === undefined) return new Response("authentication required", { status: 401 });
+  if (!account.emailVerified) return new Response("email not verified", { status: 403 });
+  const side = url.searchParams.get("side");
+  if (side !== "A" && side !== "B") return new Response("unknown side", { status: 400 });
+
+  const row = await readWatchRow(env.DB, matchId, side);
+  if (row === undefined || row.player === undefined) return new Response("not found", { status: 404 });
+  const refusal = decideWatch({
+    finished: row.finished,
+    player: row.player === account.playerId || row.opponent === account.playerId,
+    friend: await isFriend(env.DB, account.playerId, row.player),
+    allowSpectators: row.allowSpectators,
+  });
+  if (refusal !== undefined) return Response.json({ code: refusal }, { status: refusal === "MATCH_FINISHED" ? 409 : 403 });
+  if (request.headers.get("Upgrade") !== "websocket") return new Response("expected websocket", { status: 426 });
+
+  const forwarded = new URL("https://do/watch");
+  forwarded.searchParams.set("side", side);
+  return env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(new Request(forwarded, request));
 }
 
 /** Création directe d'une partie, hors file d'attente — parties privées et tests. */

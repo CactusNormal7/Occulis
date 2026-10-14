@@ -1,6 +1,7 @@
 import { useId, useState, type FormEvent, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 import { cx } from "../cx.js";
 import { Icon } from "./Icon.js";
+import { useMessages } from "./Locale.js";
 
 export interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   /** Le libellé, au-dessus du champ, en minuscules estompées. */
@@ -38,6 +39,7 @@ export interface PasswordFieldProps extends Omit<TextFieldProps, "type"> {
  * de passe le reconnaissent — et le bouton n'est jamais un `submit`.
  */
 export function PasswordField({ label, hint, error, className, ...rest }: PasswordFieldProps) {
+  const m = useMessages();
   const [shown, setShown] = useState(false);
   const described = useDescription(hint, error);
   return (
@@ -57,7 +59,7 @@ export function PasswordField({ label, hint, error, className, ...rest }: Passwo
           type="button"
           className="occ-password__toggle"
           aria-pressed={shown}
-          aria-label={shown ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+          aria-label={shown ? m.ui.hidePassword : m.ui.showPassword}
           onClick={() => setShown((value) => !value)}
         >
           <Icon name={shown ? "eyeOff" : "eye"} />
@@ -118,10 +120,14 @@ export interface SearchFieldProps {
   placeholder?: string | undefined;
   /** Appelé à la validation (Entrée), pas à chaque frappe. */
   onSearch: (value: string) => void;
+  /** Appelé à chaque frappe, pour proposer des résultats au fil de la saisie. */
+  onInput?: ((value: string) => void) | undefined;
 }
 
 /** Un champ de recherche, loupe à gauche, validé par Entrée. */
-export function SearchField({ defaultValue = "", placeholder = "Rechercher…", onSearch }: SearchFieldProps) {
+export function SearchField({ defaultValue = "", placeholder: given, onSearch, onInput }: SearchFieldProps) {
+  const m = useMessages();
+  const placeholder = given ?? m.ui.search;
   const [value, setValue] = useState(defaultValue);
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -136,7 +142,10 @@ export function SearchField({ defaultValue = "", placeholder = "Rechercher…", 
         aria-label={placeholder}
         placeholder={placeholder}
         value={value}
-        onChange={(event) => setValue(event.target.value)}
+        onChange={(event) => {
+          setValue(event.target.value);
+          onInput?.(event.target.value);
+        }}
       />
     </form>
   );

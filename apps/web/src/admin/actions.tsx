@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { ChipGroup, Dialog, IconButton, Note, QuickBar, SelectField, TextField, useToast, type IconName } from "@occulis/ui";
+import { ChipGroup, Dialog, IconButton, Note, QuickBar, SelectField, TextField, useMessages, useToast, type IconName } from "@occulis/ui";
 import * as api from "./api.js";
-import { BAN_PRESETS, banDuration, isAdminRole, quickActions, routeHash, type QuickAction, type Route } from "./model.js";
+import { banDuration, banPresets, isAdminRole, quickActions, routeHash, type QuickAction, type Route } from "./model.js";
 
 /**
  * Les actions rapides d'un compte et leurs fenêtres de confirmation, les mêmes dans la
@@ -60,6 +60,7 @@ export interface QuickActionsProps {
 }
 
 export function QuickActions({ user, self, reload, onDeleted, framed = false }: QuickActionsProps) {
+  const m = useMessages().admin.actions;
   const act = useAct(reload);
   const [open, setOpen] = useState<Open>(null);
   const close = () => setOpen(null);
@@ -71,21 +72,21 @@ export function QuickActions({ user, self, reload, onDeleted, framed = false }: 
         location.hash = routeHash({ view: "user", id: user.id });
         return;
       case "verify":
-        void act(api.update(user.id, { emailVerified: !user.emailVerified }), "Vérification modifiée.");
+        void act(api.update(user.id, { emailVerified: !user.emailVerified }), m.verificationChanged);
         return;
       case "role":
-        if (isAdminRole(user.role)) void act(api.setRole(user.id, "user"), `${user.name} n'est plus administrateur.`);
+        if (isAdminRole(user.role)) void act(api.setRole(user.id, "user"), m.demoted(user.name));
         else setOpen("promote");
         return;
       case "ban":
-        if (banned) void act(api.unban(user.id), `Suspension de ${user.name} levée.`);
+        if (banned) void act(api.unban(user.id), m.unbanned(user.name));
         else setOpen("ban");
         return;
       case "impersonate":
         setOpen("impersonate");
         return;
       case "revoke":
-        void act(api.revokeSessions(user.id), `Sessions de ${user.name} fermées.`);
+        void act(api.revokeSessions(user.id), m.revoked(user.name));
         return;
       case "delete":
         setOpen("delete");
@@ -115,12 +116,12 @@ export function QuickActions({ user, self, reload, onDeleted, framed = false }: 
       {open === "promote" && (
         <Dialog
           open
-          title={`Nommer ${user.name} administrateur`}
-          confirmLabel="Nommer administrateur"
-          onConfirm={() => act(api.setRole(user.id, "admin"), `${user.name} est administrateur.`)}
+          title={m.promoteTitle(user.name)}
+          confirmLabel={m.promote}
+          onConfirm={() => act(api.setRole(user.id, "admin"), m.promoted(user.name))}
           onClose={close}
         >
-          <Note>Il aura accès à ce back-office et à tous les comptes, le vôtre compris.</Note>
+          <Note>{m.promoteNote}</Note>
         </Dialog>
       )}
     </>
@@ -130,34 +131,36 @@ export function QuickActions({ user, self, reload, onDeleted, framed = false }: 
 type Act = ReturnType<typeof useAct>;
 
 function BanDialog({ user, act, onClose }: { user: QuickUser; act: Act; onClose: () => void }) {
+  const m = useMessages().admin.actions;
+  const presets = banPresets();
   const [reason, setReason] = useState("");
   const [days, setDays] = useState("");
   const duration = banDuration(days);
   return (
     <Dialog
       open
-      title={`Suspendre ${user.name}`}
-      confirmLabel="Suspendre"
+      title={m.banTitle(user.name)}
+      confirmLabel={m.ban}
       danger
       ready={duration.ok}
       onConfirm={() =>
-        duration.ok ? act(api.ban(user.id, reason, duration.seconds), `${user.name} est suspendu.`) : false
+        duration.ok ? act(api.ban(user.id, reason, duration.seconds), m.banned(user.name)) : false
       }
       onClose={onClose}
     >
-      <Note>Ses sessions sont fermées tout de suite, et il ne peut plus en ouvrir jusqu'à la levée.</Note>
-      <TextField label="motif (facultatif)" value={reason} onChange={(event) => setReason(event.target.value)} />
+      <Note>{m.banNote}</Note>
+      <TextField label={m.reason} value={reason} onChange={(event) => setReason(event.target.value)} />
       <ChipGroup
-        options={BAN_PRESETS.map((preset) => ({ value: preset.days, label: preset.label }))}
-        value={BAN_PRESETS.some((preset) => preset.days === days) ? days : undefined}
+        options={presets.map((preset) => ({ value: preset.days, label: preset.label }))}
+        value={presets.some((preset) => preset.days === days) ? days : undefined}
         onChange={setDays}
       />
       <TextField
-        label="durée en jours"
-        placeholder="vide : définitive"
+        label={m.days}
+        placeholder={m.daysPlaceholder}
         value={days}
         onChange={(event) => setDays(event.target.value)}
-        hint={duration.ok ? undefined : "Un nombre de jours, ou rien pour une suspension définitive."}
+        hint={duration.ok ? undefined : m.daysHint}
       />
     </Dialog>
   );
@@ -168,13 +171,14 @@ function BanDialog({ user, act, onClose }: { user: QuickUser; act: Act; onClose:
  * et ce geste-ci ne se défait pas.
  */
 function DeleteDialog({ user, onDeleted, onClose }: { user: QuickUser; onDeleted: () => void; onClose: () => void }) {
+  const m = useMessages().admin.actions;
   const notify = useToast();
   const [check, setCheck] = useState("");
   return (
     <Dialog
       open
-      title={`Supprimer ${user.name}`}
-      confirmLabel="Supprimer définitivement"
+      title={m.deleteTitle(user.name)}
+      confirmLabel={m.deleteConfirm}
       danger
       ready={check === user.name}
       onConfirm={async () => {
@@ -188,19 +192,20 @@ function DeleteDialog({ user, onDeleted, onClose }: { user: QuickUser; onDeleted
       }}
       onClose={onClose}
     >
-      <Note>Le compte et ses sessions disparaissent. Le profil de jeu et l'historique des parties restent.</Note>
-      <TextField label={`retapez « ${user.name} » pour confirmer`} value={check} onChange={(event) => setCheck(event.target.value)} />
+      <Note>{m.deleteNote}</Note>
+      <TextField label={m.retype(user.name)} value={check} onChange={(event) => setCheck(event.target.value)} />
     </Dialog>
   );
 }
 
 function ImpersonateDialog({ user, onClose }: { user: QuickUser; onClose: () => void }) {
+  const m = useMessages().admin.actions;
   const notify = useToast();
   return (
     <Dialog
       open
-      title={`Se connecter en tant que ${user.name}`}
-      confirmLabel="Incarner ce joueur"
+      title={m.impersonateTitle(user.name)}
+      confirmLabel={m.impersonateConfirm}
       onConfirm={async () => {
         const outcome = await api.impersonate(user.id);
         if (!outcome.ok) {
@@ -212,17 +217,15 @@ function ImpersonateDialog({ user, onClose }: { user: QuickUser; onClose: () => 
       }}
       onClose={onClose}
     >
-      <Note>
-        Vous passez dans le jeu sous son identité, pour une heure au plus. Votre session d'administrateur est mise de
-        côté : un bandeau permet d'y revenir à tout moment.
-      </Note>
-      <Note>Tout ce que vous ferez — file d'attente, coups, abandon — sera fait en son nom.</Note>
+      <Note>{m.impersonateNote}</Note>
+      <Note>{m.impersonateWarning}</Note>
     </Dialog>
   );
 }
 
 /** La création d'un compte, depuis la liste. */
 export function CreateUserDialog({ onClose }: { onClose: () => void }) {
+  const m = useMessages().admin.actions;
   const notify = useToast();
   const go = useGo();
   const [name, setName] = useState("");
@@ -232,8 +235,8 @@ export function CreateUserDialog({ onClose }: { onClose: () => void }) {
   return (
     <Dialog
       open
-      title="Nouveau compte"
-      confirmLabel="Créer"
+      title={m.createTitle}
+      confirmLabel={m.create}
       ready={name.trim().length >= 2 && email.includes("@") && password.length > 0}
       onConfirm={async () => {
         const result = await api.create(email, password, name, role);
@@ -241,24 +244,24 @@ export function CreateUserDialog({ onClose }: { onClose: () => void }) {
           notify(result.message, false);
           return false;
         }
-        go({ view: "user", id: result.value.user.id }, `Compte ${result.value.user.name} créé.`);
+        go({ view: "user", id: result.value.user.id }, m.created(result.value.user.name));
         return true;
       }}
       onClose={onClose}
     >
-      <TextField label="pseudo" value={name} onChange={(event) => setName(event.target.value)} />
-      <TextField label="adresse" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
-      <TextField label="mot de passe" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+      <TextField label={m.handle} value={name} onChange={(event) => setName(event.target.value)} />
+      <TextField label={m.address} type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+      <TextField label={m.password} type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
       <SelectField
-        label="rôle"
+        label={m.role}
         value={role}
         onChange={(event) => setRole(event.target.value)}
         options={[
-          { value: "user", label: "joueur" },
-          { value: "admin", label: "administrateur" },
+          { value: "user", label: m.roles.user },
+          { value: "admin", label: m.roles.admin },
         ]}
       />
-      <Note>L'adresse n'est pas vérifiée à la création : marquez-la depuis la fiche si besoin.</Note>
+      <Note>{m.createNote}</Note>
     </Dialog>
   );
 }

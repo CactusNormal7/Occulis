@@ -15,6 +15,9 @@ import {
  * (`welcome`), et ne connaît la position que par les vues que le serveur lui envoie.
  * D'où un état qui n'est qu'un accumulateur de messages, sans logique de jeu.
  */
+/** Le déploiement en cours, tel que le serveur l'annonce (message `deployment`). */
+export type DeploymentState = Omit<Extract<ServerMessage, { kind: "deployment" }>, "kind">;
+
 export type Phase =
   | { readonly kind: "offline" }
   | { readonly kind: "queued" }
@@ -22,6 +25,15 @@ export type Phase =
   | { readonly kind: "hosting"; readonly code: string }
   /** Le code saisi n'a mené à aucune partie ; rien n'a été rejoint. */
   | { readonly kind: "room-fault"; readonly fault: RoomFault }
+  /** File rapide : un adversaire est trouvé, à accepter avant l'échéance. */
+  | {
+      readonly kind: "proposed";
+      readonly proposalId: string;
+      readonly remainingMs: number;
+      readonly accepted: { readonly self: boolean; readonly opponent: boolean };
+    }
+  /** La proposition est tombée ; `requeued` : on attend de nouveau, en tête de file. */
+  | { readonly kind: "lapsed"; readonly requeued: boolean }
   | {
       readonly kind: "seated";
       readonly matchId: string;
@@ -32,6 +44,15 @@ export type Phase =
       readonly scenario: string | undefined;
       readonly rulesetVersion: string | undefined;
       readonly view: PlayerView | undefined;
+      /**
+       * Vrai pour un ami qui regarde : il suit un camp sans y être assis, ne reçoit que
+       * la vue de ce camp, et ne joue rien.
+       */
+      readonly spectating: boolean;
+      /** Combien d'amis regardent le camp du joueur ; toujours 0 pour un spectateur. */
+      readonly spectators: number;
+      /** Présent tant que la partie se déploie ; la première vue y met fin. */
+      readonly deployment: DeploymentState | undefined;
     }
   /** Le serveur parle une autre version : ce client est trop vieux ou trop neuf. */
   | { readonly kind: "outdated"; readonly expected: number };
@@ -58,9 +79,18 @@ export function seatedAt(matchId: string, seat: string): Session {
       scenario: undefined,
       rulesetVersion: undefined,
       view: undefined,
+      spectating: false,
+      spectators: 0,
+      deployment: undefined,
     },
     rejection: undefined,
   };
+}
+
+/** Une session de spectateur, avant le `watching` qui confirme le camp suivi. */
+export function watchingAt(matchId: string): Session {
+  const seated = seatedAt(matchId, "");
+  return { ...seated, phase: { ...seated.phase, spectating: true } as Phase };
 }
 
 export function fromQueue(session: Session, message: QueueServerMessage): Session {
@@ -71,6 +101,17 @@ export function fromQueue(session: Session, message: QueueServerMessage): Sessio
       return { phase: { kind: "hosting", code: message.code }, rejection: undefined };
     case "room-fault":
       return { phase: { kind: "room-fault", fault: message.fault }, rejection: undefined };
+    case "proposal":
+      return {
+        phase: { kind: "proposed", proposalId: message.proposalId, remainingMs: message.remainingMs, accepted: { self: false, opponent: false } },
+        rejection: undefined,
+      };
+    case "proposal-update":
+      return session.phase.kind === "proposed"
+        ? { phase: { ...session.phase, accepted: message.accepted }, rejection: undefined }
+        : session;
+    case "proposal-lapsed":
+      return { phase: { kind: "lapsed", requeued: message.requeued }, rejection: undefined };
     case "matched":
       return {
         phase: {
@@ -81,6 +122,9 @@ export function fromQueue(session: Session, message: QueueServerMessage): Sessio
           scenario: undefined,
           rulesetVersion: undefined,
           view: undefined,
+          spectating: false,
+          spectators: 0,
+          deployment: undefined,
         },
         rejection: undefined,
       };
@@ -110,8 +154,29 @@ export function fromMatch(session: Session, message: ServerMessage): Session {
         },
         rejection: undefined,
       };
+    case "watching":
+      return {
+        phase: {
+          ...phase,
+          player: message.side,
+          scenario: message.scenario,
+          rulesetVersion: message.rulesetVersion,
+        },
+        rejection: undefined,
+      };
+    case "spectators":
+      return { phase: { ...phase, spectators: message.count }, rejection: undefined };
+    case "deployment": {
+      const { zone, opponentZone, defaultTeam, remainingMs, locks, self, opponent, rated } = message;
+      const deployment = { zone, opponentZone, defaultTeam, remainingMs, locks, self, opponent, rated };
+      return { phase: { ...phase, deployment }, rejection: undefined };
+    }
+    case "deployment-update":
+      return phase.deployment === undefined
+        ? session
+        : { phase: { ...phase, deployment: { ...phase.deployment, locks: message.locks } }, rejection: undefined };
     case "view":
-      return { phase: { ...phase, view: decodeView(message.view) }, rejection: undefined };
+      return { phase: { ...phase, view: decodeView(message.view), deployment: undefined }, rejection: undefined };
     case "rejected":
       return { phase, rejection: message.error };
   }

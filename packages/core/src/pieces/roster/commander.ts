@@ -1,4 +1,4 @@
-import { PieceType } from "../piece-type.js";
+import { type PieceRole, PieceType } from "../piece-type.js";
 import type { PieceKind } from "../piece.js";
 import type { MovementProfile, VisionProfile } from "../profiles.js";
 
@@ -15,7 +15,7 @@ export class Commander extends PieceType {
   readonly movement: MovementProfile = { steps: 3, adjacency: "octile", canClimb: true };
   readonly vision: VisionProfile = { range: 14 };
 
-  override get isCommander(): boolean {
-    return true;
+  override get role(): PieceRole {
+    return "commander";
   }
 }

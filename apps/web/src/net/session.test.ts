@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Board, createGame, provisionalRuleset, startMemory, viewFor } from "@occulis/core";
 import { encodeView } from "@occulis/protocol";
-import { OFFLINE, type Session, fromMatch, fromQueue } from "./session.js";
+import { OFFLINE, type Session, fromMatch, fromQueue, watchingAt } from "./session.js";
 
 function wireView() {
   const { state, knowledge } = startMemory(
@@ -30,6 +30,8 @@ describe("fromQueue", () => {
       scenario: undefined,
       rulesetVersion: undefined,
       view: undefined,
+      spectating: false,
+      spectators: 0,
     });
   });
 
@@ -98,5 +100,68 @@ describe("fromMatch", () => {
 
   it("ignore un message de partie hors d'une partie", () => {
     expect(fromMatch(OFFLINE, { kind: "view", view: wireView() })).toBe(OFFLINE);
+  });
+
+  it("compte les amis qui regardent le joueur", () => {
+    const after = fromMatch(seated(), { kind: "spectators", count: 2 });
+    expect(after.phase.kind === "seated" && after.phase.spectators).toBe(2);
+  });
+
+  it("assied un spectateur sur le camp qu'il suit, sans jeton", () => {
+    const after = fromMatch(watchingAt("m1"), {
+      kind: "watching",
+      side: "B",
+      scenario: "duel",
+      rulesetVersion: "v1",
+    });
+    expect(after.phase).toMatchObject({ kind: "seated", seat: "", player: "B", spectating: true });
+  });
+});
+
+describe("fromMatch : déploiement", () => {
+  const card = { handle: "anne", elo: 1200, played: 0, won: 0, feats: [] };
+  const deployment = {
+    kind: "deployment",
+    zone: [{ x: 0, y: 0 }],
+    opponentZone: [{ x: 9, y: 9 }],
+    defaultTeam: [{ kind: "commander", coord: { x: 0, y: 0 } }],
+    remainingMs: 90_000,
+    locks: { self: false, opponent: false },
+    self: card,
+    opponent: { ...card, handle: "boris" },
+    rated: true,
+  } as const;
+
+  it("retient l'annonce du déploiement, puis chaque verrou", () => {
+    const announced = fromMatch(seated(), deployment);
+    expect(announced.phase.kind === "seated" && announced.phase.deployment?.opponent.handle).toBe("boris");
+
+    const locked = fromMatch(announced, { kind: "deployment-update", locks: { self: false, opponent: true } });
+    expect(locked.phase.kind === "seated" && locked.phase.deployment?.locks).toEqual({ self: false, opponent: true });
+  });
+
+  it("ignore un verrou sans déploiement annoncé, et clôt le déploiement à la première vue", () => {
+    const stray = fromMatch(seated(), { kind: "deployment-update", locks: { self: true, opponent: true } });
+    expect(stray).toEqual(seated());
+
+    const started = fromMatch(fromMatch(seated(), deployment), { kind: "view", view: wireView() });
+    expect(started.phase.kind === "seated" && started.phase.deployment).toBeUndefined();
+  });
+});
+
+describe("fromQueue : fenêtre d'acceptation", () => {
+  it("ouvre une proposition, suit les acceptations, et rapporte sa chute", () => {
+    const proposed = fromQueue(fromQueue(OFFLINE, { kind: "waiting" }), { kind: "proposal", proposalId: "p1", remainingMs: 15_000 });
+    expect(proposed.phase).toEqual({ kind: "proposed", proposalId: "p1", remainingMs: 15_000, accepted: { self: false, opponent: false } });
+
+    const updated = fromQueue(proposed, { kind: "proposal-update", accepted: { self: true, opponent: false } });
+    expect(updated.phase.kind === "proposed" && updated.phase.accepted).toEqual({ self: true, opponent: false });
+
+    expect(fromQueue(updated, { kind: "proposal-lapsed", requeued: true }).phase).toEqual({ kind: "lapsed", requeued: true });
+  });
+
+  it("ignore une mise à jour sans proposition ouverte", () => {
+    const waiting = fromQueue(OFFLINE, { kind: "waiting" });
+    expect(fromQueue(waiting, { kind: "proposal-update", accepted: { self: true, opponent: true } })).toBe(waiting);
   });
 });

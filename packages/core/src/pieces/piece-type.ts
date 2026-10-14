@@ -6,6 +6,13 @@ import type { MovementProfile, VisionProfile } from "./profiles.js";
 import type { PieceKind } from "./piece.js";
 
 /**
+ * La place d'un type dans une équipe : la pièce maîtresse, les pièces à capacité, les
+ * pions. C'est sur elle que portent les quotas de composition d'une équipe
+ * (`TeamRules`, `team.ts`) — un nouveau type à capacité n'a qu'à se déclarer `special`.
+ */
+export type PieceRole = "commander" | "special" | "pawn";
+
+/**
  * Un type de pièce = une classe.
  *
  * La classe de base encode les règles communes à toute pièce — déplacement au sol,
@@ -27,12 +34,17 @@ export abstract class PieceType {
   /** Portée de vision, fixée par la classe. */
   abstract readonly vision: VisionProfile;
 
+  /** `special` par défaut : un type ne se déclare maîtresse ou pion qu'explicitement. */
+  get role(): PieceRole {
+    return "special";
+  }
+
   /**
    * Pièce maîtresse à protéger : sa capture met fin à la partie. Aucune spécificité
    * de mouvement pour l'instant (docs/design.md section 7).
    */
   get isCommander(): boolean {
-    return false;
+    return this.role === "commander";
   }
 
   /**

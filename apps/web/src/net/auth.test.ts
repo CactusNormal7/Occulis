@@ -1,5 +1,10 @@
+import { setLocale } from "../i18n/current.js";
 import { describe, expect, it } from "vitest";
 import { authMessage, redirectMessage } from "./auth.js";
+
+// Les phrases attendues ici sont les françaises ; la forme des deux dictionnaires est
+// éprouvée par `@occulis/i18n`, et l'anglais y reste la langue par défaut.
+setLocale("fr");
 
 /**
  * Les seules parties décidantes de `net/auth.ts` : le reste n'est que des appels

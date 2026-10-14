@@ -1,4 +1,6 @@
-import type { MeMatchDetail, MeMatchPage, MeProfile, MeSession } from "@occulis/protocol";
+import type { TeamEntry } from "@occulis/core";
+import type { MeFeats, MeMatchDetail, MeMatchPage, MeProfile, MeSession, TeamPreset, TeamPresetList } from "@occulis/protocol";
+import { messages } from "../i18n/current.js";
 import { authMessage, ROUTE_PATHS } from "../net/auth.js";
 import type { Outcome } from "../admin/api.js";
 
@@ -21,11 +23,13 @@ async function call<T>(path: string, init?: RequestInit): Promise<Outcome<T>> {
   try {
     response = await fetch(path, init);
   } catch {
-    return { ok: false, message: "Serveur injoignable." };
+    return { ok: false, message: messages().profile.unreachable };
   }
   const payload = (await response.json().catch(() => ({}))) as T & { code?: string; message?: string };
   if (!response.ok) {
-    if (response.status === 401) return { ok: false, message: "Session expirée. Reconnectez-vous depuis le jeu." };
+    if (response.status === 401) return { ok: false, message: messages().profile.sessionExpired };
+    const presetError = payload.code === undefined ? undefined : messages().team.presets.errors[payload.code];
+    if (presetError !== undefined) return { ok: false, message: presetError };
     return { ok: false, message: authMessage(response.status, payload) };
   }
   return { ok: true, value: payload };
@@ -56,12 +60,30 @@ export const requestPasswordSetup = (email: string) =>
   send("/api/auth/request-password-reset", { email, redirectTo: ROUTE_PATHS.reset });
 
 /** Le lien part vers l'**ancienne** adresse ; rien ne change avant les deux confirmations. */
-export const changeEmail = (newEmail: string) => send("/api/auth/change-email", { newEmail, callbackURL: "/profil/" });
+export const changeEmail = (newEmail: string) => send("/api/auth/change-email", { newEmail, callbackURL: "/profile/" });
 
 export const resendVerification = (email: string) =>
-  send("/api/auth/send-verification-email", { email, callbackURL: "/profil/" });
+  send("/api/auth/send-verification-email", { email, callbackURL: "/profile/" });
 
 export const unlink = (providerId: string) => send("/api/auth/unlink-account", { providerId });
 
 /** N'efface rien : envoie le lien de confirmation, seul à pouvoir supprimer le compte. */
-export const requestDeletion = () => send("/api/auth/delete-user", { callbackURL: "/connexion?supprime=1" });
+export const requestDeletion = () => send("/api/auth/delete-user", { callbackURL: `${ROUTE_PATHS.signin}?deleted=1` });
+
+export const feats = () => call<MeFeats>("/api/me/feats");
+export const setShowcase = (ids: readonly string[]) => send<{ showcase: string[] }>("/api/me/showcase", { feats: ids });
+
+/**
+ * Les équipes préparées. Le jeu les lit aussi, au déploiement : c'est pourquoi ces appels
+ * vivent avec ceux du profil, sous `/api/me/`, et non dans un module de partie.
+ */
+export const presets = () => call<TeamPresetList>("/api/me/presets");
+export const createPreset = (name: string, team: readonly TeamEntry[]) => send<TeamPreset>("/api/me/presets", { name, team });
+export const updatePreset = (id: string, change: { readonly name?: string; readonly team?: readonly TeamEntry[] }) =>
+  call<TeamPreset>(`/api/me/presets/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(change),
+  });
+export const deletePreset = (id: string) => call<{ deleted: number }>(`/api/me/presets/${encodeURIComponent(id)}`, { method: "DELETE" });
+export const setDefaultPreset = (id: string) => send<{ isDefault: boolean }>(`/api/me/presets/${encodeURIComponent(id)}/default`, {});

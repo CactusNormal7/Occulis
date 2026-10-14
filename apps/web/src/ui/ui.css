@@ -96,6 +96,39 @@
   white-space: nowrap;
 }
 
+/* ---- Choix de langue ----------------------------------------------------------- */
+
+/* En haut à gauche, en miroir du coin du compte : un réglage d'affichage, pas un geste
+   de jeu. Montré hors partie seulement. */
+#locale-switch {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 5;
+  display: flex;
+  border: var(--line);
+  background: var(--panel);
+}
+
+#locale-switch button {
+  padding: 6px 10px;
+  border: none;
+  background: none;
+  color: var(--ink-faint);
+  font: inherit;
+  cursor: pointer;
+}
+
+#locale-switch button[aria-current="true"] {
+  color: var(--ink);
+}
+
+#locale-switch button:hover,
+#locale-switch button:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
 /* ---- Écrans hors partie ---------------------------------------------------- */
 
 /* Le conteneur couvre la page, mais ne l'intercepte pas : pendant une partie il
@@ -115,6 +148,15 @@
   width: 100%;
   max-width: 420px;
   pointer-events: auto;
+}
+
+/* Un écran pleine page, en React sur la charte (déploiement, équipes) : il prend toute la
+   place du conteneur et défile seul, la page du jeu ne défilant jamais. */
+.screen--page {
+  align-self: stretch;
+  max-width: none;
+  margin: -24px;
+  overflow-y: auto;
 }
 
 .panel {
@@ -209,6 +251,18 @@ button:not([class*="occ-"]):disabled {
 }
 
 .primary small {
+  color: var(--ink-soft);
+}
+
+/* Les équipes : une entrée du menu sans être un geste de partie, donc en retrait. */
+#menu-teams {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+}
+
+#menu-teams small {
   color: var(--ink-soft);
 }
 
@@ -361,4 +415,83 @@ a.quiet {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* ---- Amis ------------------------------------------------------------------------ */
+
+/* Les amis sous les entrées de jeu : une ligne par ami, ses gestes à droite. Un ami absent
+   est estompé — sa présence est l'information qui compte ici. */
+.friends {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: var(--line);
+}
+
+.friends h2 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.friends h2 a {
+  padding: 2px 8px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.friend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.friend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.friend[data-online="false"] {
+  color: var(--ink-dim);
+}
+
+.friend--challenge .friend__name {
+  color: var(--accepted);
+}
+
+.friend__name {
+  flex: 1 1 auto;
+  color: inherit;
+  text-decoration: none;
+}
+
+.friend__name:hover {
+  text-decoration: underline;
+}
+
+.friend__presence {
+  color: var(--ink-soft);
+}
+
+.friend button {
+  padding: 3px 8px;
+}
+
+.friends__empty {
+  margin: 0;
+  color: var(--ink-dim);
 }

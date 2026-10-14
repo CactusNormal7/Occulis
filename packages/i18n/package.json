@@ -1,0 +1,17 @@
+{
+  "name": "@occulis/i18n",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Textes affichés d'Occulis, en anglais (langue par défaut) et en français.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

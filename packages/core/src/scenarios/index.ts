@@ -1,4 +1,5 @@
 import { DEMO } from "./demo.js";
+import { RIDGE } from "./ridge.js";
 import type { Scenario } from "./scenario.js";
 
 export type { Scenario } from "./scenario.js";
@@ -9,12 +10,16 @@ export type { Scenario } from "./scenario.js";
  * depuis le log d'actions : **ne jamais en retirer un** tant qu'une partie peut le
  * référencer (docs/architecture.md section 1).
  */
-const REGISTRY = new Map<string, Scenario>([[DEMO.name, DEMO]]);
+const REGISTRY = new Map<string, Scenario>([
+  [DEMO.name, DEMO],
+  [RIDGE.name, RIDGE],
+]);
 
-export const DEFAULT_SCENARIO = DEMO.name;
+/** La carte des nouvelles parties. `demo-0`, sans déploiement, ne sert plus qu'aux parties déjà jouées. */
+export const DEFAULT_SCENARIO = RIDGE.name;
 
 export function scenarioFor(name: string): Scenario {
   const scenario = REGISTRY.get(name);
-  if (scenario === undefined) throw new Error(`Scénario introuvable : "${name}"`);
+  if (scenario === undefined) throw new Error(`Scenario not found: "${name}"`);
   return scenario;
 }

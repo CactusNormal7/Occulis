@@ -39,3 +39,12 @@ export function takePairing(queue: readonly Waiting[]): {
   if (a === undefined || b === undefined) return { pairing: undefined, rest: queue };
   return { pairing: { a, b }, rest };
 }
+
+/**
+ * Remet des attentes **en tête** de file, dans leur ordre : celles de joueurs qui avaient
+ * accepté une partie que l'autre a laissée filer. Ils n'ont pas à repartir du fond.
+ */
+export function requeueFront(queue: readonly Waiting[], entries: readonly Waiting[]): readonly Waiting[] {
+  const back = new Set(entries.map((entry) => entry.playerId));
+  return [...entries, ...queue.filter((waiting) => !back.has(waiting.playerId))];
+}

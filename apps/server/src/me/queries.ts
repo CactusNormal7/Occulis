@@ -38,42 +38,63 @@ export interface ProfileRow {
   readonly hasPassword: boolean;
   readonly providers: string[];
   readonly record: MeRecord;
+  readonly allowSpectators: boolean;
+  readonly elo: number;
 }
 
 export async function readProfileRow(db: D1Database, userId: string, playerId: string): Promise<ProfileRow> {
   const [player, user, accounts, record] = await db.batch([
-    db.prepare("SELECT handle_changed_at FROM players WHERE id = ?").bind(playerId),
+    db.prepare("SELECT handle_changed_at, allow_spectators, elo FROM players WHERE id = ?").bind(playerId),
     db.prepare("SELECT created_at FROM users WHERE id = ?").bind(userId),
     db.prepare("SELECT provider_id, password IS NOT NULL AS has_password FROM accounts WHERE user_id = ?").bind(userId),
-    // Le vainqueur est rangé par siège (`Outcome.winner`) : il se rapporte au joueur par
-    // la colonne qui occupe ce siège, comme dans `admin/queries.ts`.
-    db
-      .prepare(
-        `SELECT COUNT(*) AS played,
-                COALESCE(SUM(finished_at IS NULL), 0) AS ongoing,
-                COALESCE(SUM((player_a = ?1 AND json_extract(outcome, '$.winner') = 'A') OR
-                             (player_b = ?1 AND json_extract(outcome, '$.winner') = 'B')), 0) AS won,
-                COALESCE(SUM((player_a = ?1 AND json_extract(outcome, '$.winner') = 'B') OR
-                             (player_b = ?1 AND json_extract(outcome, '$.winner') = 'A')), 0) AS lost
-         FROM matches WHERE player_a = ?1 OR player_b = ?1`,
-      )
-      .bind(playerId),
+    recordStatement(db, playerId),
   ]);
   const linked = (accounts?.results ?? []) as { provider_id: string; has_password: number }[];
-  const counts = (record?.results[0] ?? {}) as Partial<Record<keyof MeRecord, number>>;
   const createdAt = (user?.results[0] as { created_at: string } | undefined)?.created_at;
+  const own = player?.results[0] as { handle_changed_at: number | null; allow_spectators: number; elo: number } | undefined;
   return {
-    handleChangedAt: (player?.results[0] as { handle_changed_at: number | null } | undefined)?.handle_changed_at ?? null,
+    handleChangedAt: own?.handle_changed_at ?? null,
+    elo: own?.elo ?? 1200,
     createdAt: createdAt === undefined ? 0 : Date.parse(createdAt),
     hasPassword: linked.some((account) => account.provider_id === "credential" && account.has_password === 1),
     providers: linked.map((account) => account.provider_id).filter((provider) => provider !== "credential"),
-    record: {
-      played: counts.played ?? 0,
-      won: counts.won ?? 0,
-      lost: counts.lost ?? 0,
-      ongoing: counts.ongoing ?? 0,
-    },
+    record: recordOf(record?.results[0]),
+    allowSpectators: (own?.allow_spectators ?? 1) === 1,
   };
+}
+
+/**
+ * Le bilan d'un joueur. Partagé avec la fiche d'un ami (`social/queries.ts`).
+ *
+ * Le vainqueur est rangé par siège (`Outcome.winner`) : il se rapporte au joueur par la
+ * colonne qui occupe ce siège, comme dans `admin/queries.ts`.
+ */
+export function recordStatement(db: D1Database, playerId: string): D1PreparedStatement {
+  return db
+    .prepare(
+      `SELECT COUNT(*) AS played,
+              COALESCE(SUM(finished_at IS NULL), 0) AS ongoing,
+              COALESCE(SUM((player_a = ?1 AND json_extract(outcome, '$.winner') = 'A') OR
+                           (player_b = ?1 AND json_extract(outcome, '$.winner') = 'B')), 0) AS won,
+              COALESCE(SUM((player_a = ?1 AND json_extract(outcome, '$.winner') = 'B') OR
+                           (player_b = ?1 AND json_extract(outcome, '$.winner') = 'A')), 0) AS lost
+       FROM matches WHERE player_a = ?1 OR player_b = ?1`,
+    )
+    .bind(playerId);
+}
+
+export function recordOf(row: unknown): MeRecord {
+  const counts = (row ?? {}) as Partial<Record<keyof MeRecord, number>>;
+  return {
+    played: counts.played ?? 0,
+    won: counts.won ?? 0,
+    lost: counts.lost ?? 0,
+    ongoing: counts.ongoing ?? 0,
+  };
+}
+
+export async function setAllowSpectators(db: D1Database, playerId: string, allow: boolean): Promise<void> {
+  await db.prepare("UPDATE players SET allow_spectators = ? WHERE id = ?").bind(allow ? 1 : 0, playerId).run();
 }
 
 export type HandleChange =
@@ -235,6 +256,7 @@ function mySummary(row: MatchRow, playerId: string): MeMatchSummary {
     id: row.id,
     seat,
     opponent: seat === "A" ? row.handle_b : row.handle_a,
+    opponentId: seat === "A" ? row.player_b : row.player_a,
     scenario: row.scenario,
     rulesetVersion: row.ruleset_version,
     startedAt: row.started_at,
@@ -242,6 +264,8 @@ function mySummary(row: MatchRow, playerId: string): MeMatchSummary {
     outcome,
     result: resultFor(outcome, row.finished_at, seat),
     actions: row.actions,
+    rated: row.rated === 1,
+    ratingChange: seat === "A" ? row.rating_change_a : row.rating_change_b,
   };
 }
 

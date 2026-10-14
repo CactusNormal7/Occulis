@@ -62,16 +62,20 @@ describe("pseudo dérivé d'un fournisseur d'identité", () => {
   });
 
   it("se rabat sur un nom générique quand rien ne reste ou que le nom est réservé", () => {
-    expect(handleCandidates("👑👑", random)[0]).toBe("joueur");
-    expect(handleCandidates("", random)[0]).toBe("joueur");
-    expect(handleCandidates("Admin", random)[0]).toBe("joueur");
+    expect(handleCandidates("👑👑", random)[0]).toBe("player");
+    expect(handleCandidates("", random)[0]).toBe("player");
+    expect(handleCandidates("Admin", random)[0]).toBe("player");
   });
 });
 
 describe("profil anonymisé", () => {
   it("ne peut pas être pris par un joueur", () => {
     const handle = anonymousHandle("0d6c1e7a-1234-4b2c-9f00-aa11bb22cc33");
-    expect(handle).toBe("supprimé-0d6c1e7a1234");
+    expect(handle).toBe("deleted-0d6c1e7a1234");
     expect(checkHandle(handle).ok).toBe(false);
+  });
+
+  it("garde réservé l'ancien préfixe, que portent encore des profils en base", () => {
+    expect(checkHandle("supprimé-0d6c1e7a1234").ok).toBe(false);
   });
 });

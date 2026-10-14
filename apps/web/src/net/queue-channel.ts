@@ -18,6 +18,10 @@ import { OFFLINE, type Session, fromQueue } from "./session.js";
  * `QueueDO`). Changer d'intention, c'est donc refermer ce canal et en rouvrir un.
  */
 export interface QueueChannel {
+  /** Accepte la partie proposée ; sans proposition en cours, ne fait rien. */
+  accept(): void;
+  /** La refuse : on sort de la file. */
+  decline(): void;
   close(): void;
 }
 
@@ -26,9 +30,18 @@ export interface QueueHandlers {
   readonly onHosting: (code: string) => void;
   /** Le code saisi n'a mené à aucune partie : personne n'est assis. */
   readonly onFault: (fault: RoomFault) => void;
+  /** Un adversaire est trouvé (file rapide), puis à chaque acceptation. */
+  readonly onProposal: (proposal: QueueProposal) => void;
+  /** La proposition est tombée ; `requeued` : on attend de nouveau, sinon le canal est refermé. */
+  readonly onLapsed: (requeued: boolean) => void;
   readonly onSeated: (seat: QueueSeat) => void;
   readonly onOutdated: (expected: number) => void;
   readonly onStatus: (status: ChannelStatus) => void;
+}
+
+export interface QueueProposal {
+  readonly remainingMs: number;
+  readonly accepted: { readonly self: boolean; readonly opponent: boolean };
 }
 
 export interface QueueSeat {
@@ -39,6 +52,7 @@ export interface QueueSeat {
 
 export function joinQueue(intent: QueueIntent, handlers: QueueHandlers): QueueChannel {
   let session: Session = OFFLINE;
+  let proposalId: string | undefined;
 
   const receive = (message: QueueServerMessage): void => {
     session = fromQueue(session, message);
@@ -54,6 +68,14 @@ export function joinQueue(intent: QueueIntent, handlers: QueueHandlers): QueueCh
         // un adversaire que ce code n'amènera jamais.
         channel.close();
         return handlers.onFault(phase.fault);
+      case "proposed":
+        proposalId = phase.proposalId;
+        return handlers.onProposal({ remainingMs: phase.remainingMs, accepted: phase.accepted });
+      case "lapsed":
+        proposalId = undefined;
+        // Sorti de la file : plus rien à attendre sur ce canal.
+        if (!phase.requeued) channel.close();
+        return handlers.onLapsed(phase.requeued);
       case "outdated":
         return handlers.onOutdated(phase.expected);
       case "seated":
@@ -80,5 +102,12 @@ export function joinQueue(intent: QueueIntent, handlers: QueueHandlers): QueueCh
     onStatus: handlers.onStatus,
   });
 
-  return { close: () => channel.close() };
+  const answer = (kind: "accept" | "decline"): void => {
+    if (proposalId !== undefined) channel.send({ kind, proposalId });
+  };
+  return {
+    accept: () => answer("accept"),
+    decline: () => answer("decline"),
+    close: () => channel.close(),
+  };
 }
