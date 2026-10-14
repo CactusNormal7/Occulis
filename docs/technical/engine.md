@@ -1078,6 +1078,7 @@ de `@occulis/ui` gardent sa feuille.
 | `go()` (interne) | Fait avancer `flow.ts` et réaffiche les écrans |
 | `handlersFor(spectating)` (interne) | Les gestionnaires d'une partie, assis ou spectateur : `OnlineMatch` à la première vue, déploiement (préréglages chargés pour un joueur seulement), refus, compteur de spectateurs, `onWatching` |
 | `sit()` (interne) | Referme la file, ouvre le canal de la partie avec `handlersFor(false)` |
+| `resume()` (interne) | À l'arrivée au menu connecté (`refresh()`), demande `/api/me/current-match` (`currentMatch()`, `profile/api.ts`) et rassoit le joueur à sa partie en cours : le jeton de siège ne vit que dans la page, et un rechargement le perd. Rien s'il attend déjà une partie ou en joue une |
 | `watch()` (interne) | Ouvre le canal de spectateur (`handlersFor(true)`) et arme l'échéance `WATCH_TIMEOUT_MS` |
 | `onSocial()` (interne) | Une poussée du canal social : `matched` assied, refus d'un défi ramène au menu, le reste passe par `social/model.ts` |
 | `syncSocial()` (interne) | Ouvre ou referme le canal social selon l'identité |
