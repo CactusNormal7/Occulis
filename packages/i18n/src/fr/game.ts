@@ -49,6 +49,7 @@ export const game: Messages["game"] = {
       resign: "abandon",
     },
     leave: "Quitter la partie",
+    leaveConfirm: "Quitter la partie, c'est l'abandonner : votre adversaire l'emporte. Quitter quand même ?",
     pending: "Coup déjà envoyé : réponse du serveur en attente.",
     spectating: "Vous regardez cette partie : aucun coup à jouer.",
     resigned: "Abandon.",

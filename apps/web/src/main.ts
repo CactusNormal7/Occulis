@@ -401,6 +401,15 @@ async function main(): Promise<void> {
       });
     },
     onCancel: leave,
+    onLeaveMatch: () => {
+      // Aucun chemin ne ramène à un siège quitté : partir d'une partie vivante sans
+      // abandonner la laisserait « en cours » à jamais dans les deux historiques.
+      if (watching === undefined && match !== undefined && !match.isOver) {
+        if (!confirm(messages().game.console.leaveConfirm)) return;
+        channel?.submit({ kind: "resign" });
+      }
+      leave();
+    },
     onStopImpersonating: () => {
       leave();
       void stopImpersonating().then(() => location.assign("/admin/"));

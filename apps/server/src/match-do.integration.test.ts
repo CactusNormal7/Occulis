@@ -261,6 +261,30 @@ describe("MatchDO dans workerd", () => {
     b.socket.close();
   });
 
+  it("accepte l'abandon hors tour, au nom du siège et non du message", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    await b.awaitKind("view");
+    b.drain();
+
+    // A est au trait ; B quitte la partie et tente de faire abandonner A à sa place.
+    b.send({ kind: "action", action: { kind: "resign", player: "A" } });
+    const view = (await b.awaitKind("view")).view;
+    expect(view.outcome).toEqual({ kind: "victory", winner: "A", reason: "resignation" });
+
+    const row = await env.DB.prepare("SELECT finished_at FROM matches WHERE id = ?")
+      .bind(match.matchId)
+      .first<{ finished_at: number | null }>();
+    expect(row?.finished_at).not.toBeNull();
+    const logged = await env.DB.prepare("SELECT action FROM match_actions WHERE match_id = ?")
+      .bind(match.matchId)
+      .first<{ action: string }>();
+    expect(JSON.parse(logged?.action ?? "null")).toEqual({ kind: "resign", player: "B" });
+
+    a.socket.close();
+    b.socket.close();
+  });
+
   it("fait varier l'Elo des deux joueurs à la fin d'une partie classée", async () => {
     const [anne, boris] = [`anne-${crypto.randomUUID()}`, `boris-${crypto.randomUUID()}`];
     const match = await startMatch(env, anne, boris, { rated: true });

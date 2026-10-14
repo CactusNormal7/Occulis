@@ -273,11 +273,17 @@ l'hibernation.
 
 ### L'autorité de tour
 
-`denyOutOfTurn()` (`seating.ts`, pur) refuse toute action venue d'un autre camp que celui
-au trait. C'est la moitié de la règle que `core` ne peut pas tenir : `applyAction()` vérifie
-que la pièce appartient au joueur **au trait**, pas que l'expéditeur est ce joueur-là.
-Sans ce refus, B jouerait les pièces de A ; et comme `core` désigne le vainqueur d'un
-abandon par `opponentOf(activePlayer)`, un abandon hors tour couronnerait le mauvais camp.
+`denyOutOfTurn()` (`seating.ts`, pur) refuse tout déplacement venu d'un autre camp que
+celui au trait. C'est la moitié de la règle que `core` ne peut pas tenir : `applyAction()`
+vérifie que la pièce appartient au joueur **au trait**, pas que l'expéditeur est ce
+joueur-là. Sans ce refus, B jouerait les pièces de A.
+
+**L'abandon y échappe** : il se joue à tout moment. `play()` le réécrit en
+`{ kind: "resign", player }`, `player` venant du tag du socket — tout `player` envoyé par
+le client est écrasé, sans quoi un joueur ferait abandonner l'autre. C'est cette forme
+estampillée qui est appliquée et écrite au log. Le client s'en sert en quittant une partie
+vivante (« Quitter la partie » abandonne, après confirmation) : aucun chemin ne ramène à un
+siège quitté, et la partie resterait sinon « en cours » à jamais.
 
 ### Le cycle d'une action
 
@@ -285,7 +291,8 @@ abandon par `opponentOf(activePlayer)`, un abandon hors tour couronnerait le mau
 webSocketMessage  ──►  play(action, player, ws)
                          │
                          ├─ load()                     état courant (cache ou rejeu)
-                         ├─ denyOutOfTurn(...)          seating.ts
+                         ├─ resign ? estampille le camp du siège
+                         ├─ denyOutOfTurn(...)          seating.ts — sauf pour l'abandon
                          │     └─ refus ──► send({ kind: "rejected", error })  ← à l'émetteur seul
                          ├─ advanceMemory(live, action) @occulis/core
                          │     └─ échec ──► send({ kind: "rejected", error })  ← à l'émetteur seul

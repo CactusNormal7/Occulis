@@ -1,5 +1,5 @@
 import { type Coord, type CoordKey, coordKey } from "./coord.js";
-import { type Piece, type PieceId, opponentOf } from "./pieces/index.js";
+import { type Piece, type PieceId, type PlayerId, opponentOf } from "./pieces/index.js";
 import { type Result, err, ok } from "./result.js";
 import { type GameState, occupancy, piecesOf } from "./state.js";
 
@@ -9,10 +9,14 @@ import { type GameState, occupancy, piecesOf } from "./state.js";
  * Une pièce ne fait que se déplacer : la capture de mêlée est retirée le temps de
  * reconstruire la géométrie du jeu (docs/design.md section 3.1). Une case tenue par
  * une pièce, alliée ou adverse, est simplement inatteignable.
+ *
+ * L'abandon, lui, se joue à tout moment, au trait ou non : sans quoi un joueur qui quitte
+ * la partie pendant le tour d'en face la laisserait ouverte à jamais. `player` dit qui
+ * abandonne ; absent — tous les logs d'avant —, c'est le joueur au trait.
  */
 export type Action =
   | { readonly kind: "move"; readonly pieceId: PieceId; readonly to: Coord }
-  | { readonly kind: "resign" };
+  | { readonly kind: "resign"; readonly player?: PlayerId | undefined };
 
 export type MoveAction = Extract<Action, { readonly kind: "move" }>;
 
@@ -89,15 +93,16 @@ export function applyAction(state: GameState, action: Action): Result<GameState,
   const validation = validateAction(state, action);
   if (!validation.ok) return validation;
 
-  const record = { player: state.activePlayer, action };
-
   if (action.kind === "resign") {
+    const resigning = action.player ?? state.activePlayer;
     return ok({
       ...state,
-      outcome: { kind: "victory", winner: opponentOf(state.activePlayer), reason: "resignation" },
-      history: [...state.history, record],
+      outcome: { kind: "victory", winner: opponentOf(resigning), reason: "resignation" },
+      history: [...state.history, { player: resigning, action }],
     });
   }
+
+  const record = { player: state.activePlayer, action };
 
   const piece = state.pieces.get(action.pieceId);
   if (piece === undefined) return err({ code: "unknown-piece", pieceId: action.pieceId });

@@ -57,8 +57,10 @@ export interface ShellOptions {
   readonly elements: ShellElements;
   /** Le joueur demande une partie ; `code` n'accompagne que « rejoindre ». */
   readonly onSeek: (seeking: QueueSeeking, code?: string) => void;
-  /** Retour au menu : annulation d'une attente, ou sortie d'une partie. */
+  /** Retour au menu depuis une attente. */
   readonly onCancel: () => void;
+  /** Sortie d'une partie, jouée ou regardée. */
+  readonly onLeaveMatch: () => void;
   /** L'administrateur quitte l'identité d'emprunt. */
   readonly onStopImpersonating: () => void;
   readonly onSignOut: () => void;
@@ -109,7 +111,7 @@ export function attachShell(options: ShellOptions): Shell {
   });
 
   e.cancel.addEventListener("click", () => options.onCancel());
-  e.leave.addEventListener("click", () => options.onCancel());
+  e.leave.addEventListener("click", () => options.onLeaveMatch());
 
   e.copy.addEventListener("click", () => {
     void navigator.clipboard?.writeText(e.waitingCode.textContent ?? "").then(() => {

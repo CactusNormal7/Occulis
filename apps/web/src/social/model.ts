@@ -1,4 +1,4 @@
-import type { Challenge, Friend, FriendsOverview, SocialServerMessage } from "@occulis/protocol";
+import type { Challenge, Friend, FriendsOverview, Relation, SocialServerMessage } from "@occulis/protocol";
 import { messages } from "../i18n/current.js";
 
 /**
@@ -96,6 +96,21 @@ export function readAll(state: SocialState, friendId: string): SocialState {
 
 export function friendOf(state: SocialState, friendId: string): Friend | undefined {
   return state.overview?.friends.find((friend) => friend.id === friendId);
+}
+
+/**
+ * Ce qu'est un autre joueur pour moi, d'après la liste ; `undefined` tant qu'elle n'est
+ * pas lue. C'est ce qui décide si l'historique propose encore de l'ajouter en ami.
+ */
+export function relationTo(state: SocialState, playerId: string): Relation | undefined {
+  const overview = state.overview;
+  if (overview === undefined) return undefined;
+  const has = (list: readonly { readonly id: string }[]) => list.some((player) => player.id === playerId);
+  if (has(overview.friends)) return "friend";
+  if (has(overview.blocked)) return "blocked";
+  if (has(overview.outgoing)) return "outgoing";
+  if (has(overview.incoming)) return "incoming";
+  return "none";
 }
 
 /** Le total des messages non lus, pour un compteur d'onglet. */

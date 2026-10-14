@@ -48,6 +48,7 @@ export const game = {
       resign: "resign",
     },
     leave: "Leave the match",
+    leaveConfirm: "Leaving the match means resigning it: your opponent wins. Leave anyway?",
     pending: "Move already sent: waiting for the server.",
     spectating: "You are watching this match: there is no move to play.",
     resigned: "Resignation.",

@@ -299,13 +299,17 @@ export class MatchDO extends DurableObject<Env> {
     }
     const live = await this.load();
 
-    const denial = denyOutOfTurn(live.state.activePlayer, player);
+    // L'abandon se joue hors tour, et c'est le siège qui dit qui abandonne — jamais le
+    // message, qui pourrait sinon faire abandonner l'adversaire. Un joueur qui quitte la
+    // partie abandonne ainsi même pendant le tour d'en face, et elle se clôt.
+    const stamped: Action = action.kind === "resign" ? { kind: "resign", player } : action;
+    const denial = stamped.kind === "resign" ? undefined : denyOutOfTurn(live.state.activePlayer, player);
     if (denial !== undefined) {
       this.send(from, { kind: "rejected", error: denial });
       return;
     }
 
-    const advanced = advanceMemory(live, action);
+    const advanced = advanceMemory(live, stamped);
     if (!advanced.ok) {
       this.send(from, { kind: "rejected", error: advanced.error });
       return;
@@ -314,7 +318,7 @@ export class MatchDO extends DurableObject<Env> {
     const seq = live.state.history.length;
     this.live = advanced.value;
 
-    await this.appendToLog(action, seq);
+    await this.appendToLog(stamped, seq);
     if (advanced.value.state.outcome !== null) await this.recordOutcome(advanced.value.state);
     await this.broadcastViews();
   }
