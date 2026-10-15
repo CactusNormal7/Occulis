@@ -3,11 +3,11 @@ import { BackLink, Banner, Card, EmptyState, FactStrip, IconButton, MoveList, Qu
 import type { AdminMatchDetail } from "@occulis/protocol";
 import { boardForScenario } from "../game/scenario.js";
 import * as api from "./api.js";
-import { useLoad } from "./hooks.js";
+import { useLoad, whenReady } from "../load/hooks.js";
 import { formatDate, routeHash } from "./model.js";
 import { ReplayBoard } from "./ReplayBoard.js";
 import { clampFrame, describeEntry, frameLabel, type Perspective } from "./replay.js";
-import { ResultBadge, whenReady } from "./shared.js";
+import { ResultBadge } from "./shared.js";
 
 export function MatchDetail({ id }: { id: string }) {
   const t = useMessages().admin.match;

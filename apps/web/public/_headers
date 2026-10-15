@@ -1,0 +1,7 @@
+# Lu par les assets statiques de Cloudflare Workers (pas par le Worker : un fichier qui
+# existe est servi avant lui). Les noms de /assets/ portent le hachage de leur contenu
+# (Vite) : un nom ne change jamais de contenu, ils se gardent donc un an sans
+# revalidation. Le HTML garde la politique par défaut (revalidation à chaque chargement) :
+# c'est lui qui désigne les fichiers du déploiement courant.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

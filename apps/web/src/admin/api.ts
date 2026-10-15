@@ -6,6 +6,7 @@ import type {
 } from "@occulis/protocol";
 import { messages } from "../i18n/current.js";
 import { adminMessage, type MatchStatus } from "./model.js";
+import type { Outcome } from "../load/cache.js";
 
 /**
  * Les appels du back-office. Deux familles, comme côté serveur :
@@ -16,7 +17,7 @@ import { adminMessage, type MatchStatus } from "./model.js";
  * serveur revérifie le rôle à chacun.
  */
 
-export type Outcome<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly message: string };
+export type { Outcome };
 
 /** Un compte tel que le greffon le rend, réduit à ce que la page lit. */
 export interface AdminUser {

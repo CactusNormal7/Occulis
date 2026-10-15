@@ -18,6 +18,11 @@ export type Seeking = QueueSeeking | "challenge" | "watch";
 export type QueueSeeking = "quick" | "host" | "join";
 
 export type Stage =
+  /**
+   * L'identité n'est pas encore revenue du serveur. Ni formulaire ni menu : montrer l'un
+   * des deux avant de savoir ferait apparaître puis disparaître un écran.
+   */
+  | { readonly kind: "boot" }
   /** Personne n'est connecté : le formulaire de compte occupe l'écran. */
   | { readonly kind: "auth" }
   /** Connecté : appariement rapide, ouverture d'un salon, entrée par code. */
@@ -55,7 +60,7 @@ export type FlowEvent =
   /** Retour au menu, à la demande du joueur ou après un refus de la file. */
   | { readonly kind: "menu" };
 
-export const START: Stage = { kind: "auth" };
+export const START: Stage = { kind: "boot" };
 
 export function advance(stage: Stage, event: FlowEvent): Stage {
   switch (event.kind) {
@@ -65,7 +70,7 @@ export function advance(stage: Stage, event: FlowEvent): Stage {
       if (!event.signedIn) return { kind: "auth" };
       // Une identité confirmée ne doit pas arracher le joueur à ce qu'il fait :
       // elle est aussi rendue à chaque retour du serveur, en pleine partie.
-      return stage.kind === "auth" ? { kind: "menu" } : stage;
+      return stage.kind === "auth" || stage.kind === "boot" ? { kind: "menu" } : stage;
 
     case "seek":
       return { kind: "waiting", seeking: event.seeking, code: undefined, friend: event.friend };
@@ -85,7 +90,7 @@ export function advance(stage: Stage, event: FlowEvent): Stage {
       return event.requeued ? { kind: "waiting", seeking: "quick", code: undefined } : { kind: "menu" };
 
     case "deploying":
-      return stage.kind === "auth" || stage.kind === "game" ? stage : { kind: "deploying" };
+      return stage.kind === "boot" || stage.kind === "auth" || stage.kind === "game" ? stage : { kind: "deploying" };
 
     case "seated":
       return event.spectating === true ? { kind: "game", spectating: true } : { kind: "game" };
@@ -94,6 +99,6 @@ export function advance(stage: Stage, event: FlowEvent): Stage {
       return stage.kind === "menu" ? { kind: "teams" } : stage;
 
     case "menu":
-      return stage.kind === "auth" ? stage : { kind: "menu" };
+      return stage.kind === "boot" || stage.kind === "auth" ? stage : { kind: "menu" };
   }
 }

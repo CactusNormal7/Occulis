@@ -31,7 +31,7 @@ qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 | `view/` | Projection, caméra, désignation, animation | **Aucune** — ni PixiJS, ni DOM |
 | `game/` | La partie côté client, la sélection, le scénario | **Aucune** — ni PixiJS, ni DOM |
 | `net/` | La lecture des messages du serveur | **Aucune** sauf `channel.ts` (WebSocket) |
-| `scene/` | Le dessin | PixiJS |
+| `scene/` | Le dessin ; `board.ts`, chargé à part, monte le plateau | PixiJS |
 | `input/` | Les gestes sur le canevas | DOM |
 | `ui/` | Les écrans et le bandeau de partie | DOM sauf `flow.ts`, `messages.ts`, `command.ts` |
 | `account/` | L'écran de compte, îlot React sur `@occulis/ui` dans la page du jeu | React, DOM et réseau sauf `model.ts` |
@@ -42,11 +42,12 @@ qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 | `teams/` | Les équipes préparées, depuis le menu | React, DOM et réseau |
 | `canvas/` | Les primitives du plateau en Canvas 2D, partagées par le rejeu et le déploiement | DOM (canevas) |
 | `admin/` | Le back-office, page à part sous `/admin/`, en React sur `@occulis/ui` | React, DOM et réseau sauf `model.ts` et `replay.ts` |
+| `load/` | La lecture des données des vues React : cache, `useLoad`, `whenReady` | React sauf `cache.ts` |
 | racine | `main.ts` (composition) et `theme.ts` (tokens de DA) | — |
 
 Les modules de `view/`, `game/` et `net/session.ts` sont purs : c'est là que vivent tous
 les tests, avec `ui/flow.ts`, `ui/command.ts`, `ui/messages.ts`, `account/model.ts`,
-`profile/model.ts` et `admin/model.ts`. `net/channel.ts` est la
+`profile/model.ts`, `admin/model.ts` et `load/cache.ts`. `net/channel.ts` est la
 seule exception de son dossier — il ouvre le socket, et rien d'autre.
 
 ## Le pipeline, de bout en bout
@@ -58,7 +59,7 @@ par `ui/flow.ts`.
   ── ENTRÉE EN PARTIE ────────────────────────────────────────────────
   main.ts        ── whoAmI() ─────────────► identity  (account/ si personne)
   ui/shell.ts    ── clic sur une entrée ──► seek
-        │  ui/flow.ts        ── advance() : auth → menu → waiting → game
+        │  ui/flow.ts        ── advance() : boot → auth | menu → waiting → game
         └─► net/queue-channel.ts ── joinQueue(intent)
                  └─ matched ─► net/match-channel.ts ── connectToMatch()
                                     └─ welcome + view ─► game/online-match.ts
@@ -100,11 +101,68 @@ sur le rendu.
 Le point structurant : **le pan ne reconstruit aucune géométrie** (translation du
 conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 
+## Chargement et premier rendu
+
+**La convention de tout le client : rien de blanc, rien de vide, rien qui saute.** Elle vaut
+pour tout écran à venir ; ses quatre règles et ce qui les porte :
+
+1. **Peinture immédiate.** Chaque page HTML porte en tête de `<head>`, juste après l'encodage,
+   le bloc de `criticalHead()` (`packages/ui/src/critical.ts`), injecté au build par le greffon
+   `occulis-critical-paint` de `vite.config.ts` : `color-scheme: dark`, `theme-color`, le fond
+   en ligne (depuis `BACKGROUND`), le fondu entre pages et les règles de spéculation. Sans lui,
+   le navigateur peint en blanc le temps de charger la feuille, et entre deux pages. **Aucune
+   couleur n'est écrite dans un `index.html`** ; une nouvelle page Vite reçoit le bloc d'office.
+2. **Le cadre d'abord.** Ce qui encadre une page (barre du haut et ses onglets, en-têtes,
+   barres d'outils) ne dépend d'aucune requête : il s'affiche au premier rendu, et seul un refus
+   connu le retire. Seule la zone de contenu attend.
+3. **Une seule façon de lire une donnée** : `useLoad(key, load)` (`load/hooks.tsx`), et
+   `whenReady(loaded, render, placeholder?)` pour la montrer. Jamais de `useEffect` + `fetch`
+   écrit à la main, jamais de `return null` pendant un chargement.
+   - Une clé déjà lue s'affiche **aussitôt** depuis le cache (`loadCache`, `load/cache.ts`),
+     dès le premier rendu, puis se relit (`refreshing: true`) — *stale-while-revalidate*.
+   - Une clé jamais lue montre sa place réservée : `<Skeleton>` de la charte (`card` et
+     `lines` pour approcher la forme attendue), invisible pendant 150 ms pour qu'une réponse
+     rapide ne fasse rien clignoter.
+   - Toute lecture en cours allume la `ProgressBar` de la page, par `usePending()`.
+   - Le cache est **en mémoire seulement**, par décision : rien de ce qu'un joueur a lu n'est
+     écrit sur le poste, et il meurt avec la page. Il sert donc les navigations par fragment
+     (`#/…`) et les îlots d'une même page, pas un rechargement complet.
+4. **Navigation douce entre pages.** `@view-transition { navigation: auto }` fond une page dans
+   la suivante (coupé sous `prefers-reduced-motion`) ; les liens internes sont **préchargés au
+   survol** (règles de spéculation `prefetch`, `eagerness: moderate`, hors `/api/*`, `/match/*`
+   et `/mockups/*` — et pas `prerender`, qui exécuterait le script de la page et ouvrirait son
+   canal de présence) ; les fichiers hachés de `/assets/` se gardent un an (`public/_headers`,
+   lu par les assets de Cloudflare — un fichier existant est servi **avant** le Worker, qui ne
+   peut donc pas poser ces en-têtes lui-même).
+
+La page du jeu y ajoute deux choses : l'**amorce** (`#screen-boot`, étape `boot` de
+`ui/flow.ts`), un squelette visible dès le HTML jusqu'au retour de `whoAmI()`, qui remplace
+l'ancien panneau de compte vide montré puis retiré ; et le **plateau chargé à part**
+(`scene/board.ts`) : PixiJS n'est ni téléchargé ni analysé avant d'afficher le menu.
+
+| Module | Rôle |
+|---|---|
+| `load/cache.ts` — `LoadCache` | `initial(key)` (valeur connue ou attente), `settle(key, outcome)` (une réussite entre au cache), `invalidate(prefix?)` |
+| `load/cache.ts` — `refreshing()` | Une relecture garde ce qui est affiché |
+| `load/cache.ts` — `PendingCount` | Le nombre de lectures en cours, et ses abonnés |
+| `load/cache.ts` — `loadCache`, `pendingLoads` | Les instances de la page |
+| `load/hooks.tsx` — `useLoad()` | Lit, relit (`reload`), jette une réponse arrivée après un changement de clé (elle entre quand même au cache, juste pour sa clé) |
+| `load/hooks.tsx` — `usePending()` | Vrai tant qu'une lecture est en cours |
+| `load/hooks.tsx` — `whenReady()` | Squelette (par défaut `<Skeleton card />`), erreur (`EmptyState`) ou rendu |
+
+Ce que le fil d'un ami et la liste d'amis lisent hors de `useLoad`, ils le lisent par les
+mêmes pièces : le fil (`ChatView`) se remontre depuis `loadCache` (`chat:<id>`) et compte dans
+`pendingLoads`, la liste (`SocialProvider`) est lue dès l'ouverture, sans attendre le canal
+social, puis relue à son ouverture pour ne rien perdre de ce qu'il aurait poussé.
+
 ## Carte des modules
 
 | Fichier | Rôle | Pur ? |
 |---|---|---|
-| `apps/web/src/main.ts` | Racine de composition : initialise PixiJS, câble tout, lance le ticker | non |
+| `apps/web/src/main.ts` | Racine de composition : câble tout, charge le plateau à part | non |
+| `apps/web/src/load/cache.ts` | Cache des lectures, état d'une lecture, compteur des lectures en cours | oui |
+| `apps/web/src/load/hooks.tsx` | `useLoad()`, `usePending()`, `whenReady()` | non |
+| `apps/web/public/_headers` | Cache d'un an des fichiers hachés de `/assets/` | — |
 | `apps/web/src/theme.ts` | Tokens de DA — **seul fichier contenant une couleur** | oui |
 | `apps/web/src/view/iso.ts` | Projection isométrique et géométrie des cases | oui |
 | `apps/web/src/view/camera.ts` | État de caméra et ses transitions | oui |
@@ -124,7 +182,7 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/ui/friends-panel.ts` | Le panneau « Amis » du menu : défis reçus, présence, défier, regarder | non |
 | `apps/web/src/net/channel.ts` | Transport WebSocket et reconnexion | non |
 | `apps/web/src/net/backoff.ts` | Délai avant la n-ième tentative de reconnexion | oui |
-| `apps/web/src/ui/flow.ts` | Quel écran a lieu d'être : compte, menu, attente, partie | oui |
+| `apps/web/src/ui/flow.ts` | Quel écran a lieu d'être : amorce, compte, menu, attente, partie | oui |
 | `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes | non |
 | `apps/web/src/account/AccountApp.tsx` | Écran de compte : connexion, inscription, oubli, réinitialisation, Google | non |
 | `apps/web/src/account/mount.tsx` | Monte l'îlot de compte dans `#account-root` | non |
@@ -151,6 +209,7 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/profile/parts.tsx` | Bilan, table d'historique et replay, communs à ses parties et à celles d'un ami | non |
 | `apps/web/src/profile/api.ts` | Appels `/api/me/*` et routes de compte de Better Auth | non |
 | `apps/web/src/profile/model.ts` | Routes du profil, messages d'arrivée, délai de pseudo, liaison retirable, images du replay | oui |
+| `apps/web/src/scene/board.ts` | `mountBoard()` : application Pixi, scène, gestes, boucle d'images — chargé par `import()` | non |
 | `apps/web/src/scene/scene.ts` | Couches PixiJS et détection de changement | non |
 | `apps/web/src/scene/terrain.ts` | Géométrie d'une case | non |
 | `apps/web/src/scene/pieces.ts` | Silhouette d'une pièce | non |
@@ -169,7 +228,7 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 | `apps/web/src/admin/ReplayBoard.tsx` | Le canevas du rejeu, en composant React | non |
 | `apps/web/src/admin/actions.tsx` | Actions rapides d'un compte et leurs fenêtres | non |
 | `apps/web/src/admin/shared.tsx` | Pastilles d'état, résultat, table des parties | non |
-| `apps/web/src/admin/hooks.ts` | `useRoute()` et `useLoad()` | non |
+| `apps/web/src/admin/hooks.ts` | `useRoute()` | non |
 | `apps/web/src/admin/model.ts` | Routes du back-office et mise en mots des données | oui |
 | `apps/web/src/admin/api.ts` | Appels `/api/admin/*` et `/api/auth/admin/*` | non |
 | `apps/web/src/admin/replay.ts` | Rejeu : coups lus entre deux images, libellés, cadrage du plateau | oui |
@@ -380,13 +439,16 @@ les deux attentes du système d'amis (`challenge`, `watch`), qui ne passent pas 
 Un défi accepté passe ensuite par `deploying` comme un salon privé ; un spectateur, lui, n'en
 voit rien et reste sur l'attente jusqu'à la première vue.
 
-`advance(stage, event)` encode trois précautions qui ne se voient pas sur le schéma :
+`advance(stage, event)` encode quatre précautions qui ne se voient pas sur le schéma :
 
 - **Une déconnexion ramène au formulaire d'où que l'on soit**, partie comprise : sans
   session, ni la file ni le Durable Object n'accepteraient plus rien de ce client.
 - **Une identité reconfirmée n'arrache personne à sa partie.** `whoAmI()` est rappelé après
   chaque action de compte, donc aussi en pleine partie ; seul un passage depuis `auth`
-  ouvre le menu.
+  (ou l'amorce) ouvre le menu.
+- **L'amorce (`boot`) ne se quitte que par l'identité.** Le menu, le déploiement ou les
+  équipes n'y ont pas de sens avant de savoir qui est là ; `START` est `boot`, et
+  `identity` y mène au formulaire ou au menu.
 - **Un `hosting` arrivé après l'appariement est ignoré.** C'est un message en retard, et
   l'afficher ferait revenir un joueur déjà assis à l'écran d'attente.
 
@@ -1044,7 +1106,7 @@ PixiJS — métriques, alphas, épaisseurs :
 
 | Groupe | Contenu |
 |---|---|
-| `BACKGROUND` | Fond du canevas — dupliqué dans `index.html`, à synchroniser à la main |
+| `BACKGROUND` | Fond du canevas — celui des pages HTML vient du même token, par `criticalHead()` |
 | `METRICS` | `tileWidth` 72, `tileHeight` 36, `heightUnit` 22 |
 | `GEOMETRY` | Trait du terrain : opacités visible/fog/infranchissable, atténuation en profondeur, épaisseurs, remplissage |
 | `HOVER` | Aplat et contour de la case survolée |
@@ -1074,11 +1136,11 @@ de `@occulis/ui` gardent sa feuille.
 
 | Fonction | Rôle |
 |---|---|
-| `main()` | Initialise PixiJS et `Scene`, câble tout, lance le ticker |
+| `main()` | Lance `whoAmI()` avant tout, pose la palette, câble tout ; synchrone, sans attendre PixiJS |
 | `element()` | Résout un `id` du DOM ou lève |
 | `intentOf()` | L'entrée de menu choisie → l'intention que la file attend |
 | `go()` (interne) | Fait avancer `flow.ts` et réaffiche les écrans |
-| `handlersFor(spectating)` (interne) | Les gestionnaires d'une partie, assis ou spectateur : `OnlineMatch` à la première vue, déploiement (préréglages chargés pour un joueur seulement), refus, compteur de spectateurs, `onWatching` |
+| `handlersFor(spectating)` (interne) | Les gestionnaires d'une partie, assis ou spectateur : `OnlineMatch` à la première vue, déploiement (préréglages repris de `loadCache` puis relus, pour un joueur seulement), refus, compteur de spectateurs, `onWatching` |
 | `sit()` (interne) | Referme la file, ouvre le canal de la partie avec `handlersFor(false)` |
 | `resume()` (interne) | À l'arrivée au menu connecté (`refresh()`), demande `/api/me/current-match` (`currentMatch()`, `profile/api.ts`) et rassoit le joueur à sa partie en cours : le jeton de siège ne vit que dans la page, et un rechargement le perd. Rien s'il attend déjà une partie ou en joue une |
 | `watch()` (interne) | Ouvre le canal de spectateur (`handlersFor(true)`) et arme l'échéance `WATCH_TIMEOUT_MS` |
@@ -1086,6 +1148,8 @@ de `@occulis/ui` gardent sa feuille.
 | `syncSocial()` (interne) | Ouvre ou referme le canal social selon l'identité |
 | `reloadFriends()` (interne) | Relit `GET /api/friends` et redessine le panneau |
 | `leave()` (interne) | Referme file, canal et partie, retire un défi en attente, vide la scène et rend la main au menu |
+| `ensureBoard()` (interne) | Charge `scene/board.ts` une seule fois et monte le plateau ; appelé par `sit()` et `watch()`. Un échec (pas de WebGL) laisse le menu utilisable |
+| `prewarmBoard()` (interne) | Une fois connecté, charge le plateau au repos (`requestIdleCallback`) |
 | `onLeaveMatch` (option du shell) | `#leave-match` : assis à une partie pas finie, demande confirmation puis envoie `resign` avant `leave()` — aucun chemin ne ramène à un siège quitté ; spectateur ou partie finie, `leave()` seul |
 | `adopt()` (interne) | Une vue reçue fait autorité : efface sélection et animation |
 | `play()` (interne) | **Le seul point d'application d'une action**, clic comme clavier |
@@ -1098,7 +1162,7 @@ de `@occulis/ui` gardent sa feuille.
 - si la pièce change de case, démarre l'animation et diffère le compte rendu ;
 - sinon (frappe sur place, abandon), rafraîchit la ligne d'état immédiatement.
 
-Le rafraîchissement est différé jusqu'à la fin de l'animation, dans le ticker : l'état du
+Le rafraîchissement est différé jusqu'à la fin de l'animation, dans la boucle d'images (`frame` de `mountBoard()`) : l'état du
 tour ne doit pas annoncer un coup encore en cours de dessin.
 
 **Il n'y a qu'un point de vue, celui du siège.** Le serveur n'envoie jamais la vue d'en
@@ -1122,6 +1186,7 @@ atteindre les composants `occ-*`.
 |---|---|
 | `#app` | Hôte du canevas PixiJS — **masqué hors partie** |
 | `#shell` | Conteneur des écrans, transparent aux clics |
+| `#screen-boot` | L'amorce : un squelette visible dès le HTML, jusqu'au retour de l'identité |
 | `#screen-auth` / `#account-root` | Compte : l'hôte de l'îlot React (`account/`) |
 | `#impersonation` | Bandeau de session d'emprunt, au-dessus de tous les écrans — masqué hors usurpation |
 | `#account-corner` | Pseudo et lien vers le profil, en haut à droite — montré au seul menu |
@@ -1149,8 +1214,9 @@ composants de `@occulis/ui`** (`docs/technical/ui.md`). Elle ne charge ni PixiJS
 de jeu, et le jeu n'embarque rien d'elle. Elle n'a **ni classe ni feuille propres** : tout ce
 qui manquait à une vue (`Toolbar`, `Versus`…) a été ajouté à la charte, pas à la page.
 
-**La garde réelle est côté serveur.** `App` interroge `whoAmI()` et n'affiche rien à qui n'est
-pas connecté ou pas administrateur, mais ce n'est qu'une politesse : chaque appel d'`api.ts`
+**La garde réelle est côté serveur.** `App` interroge `whoAmI()` (par `useLoad`) et n'affiche rien à qui n'est
+pas connecté ou pas administrateur — ses onglets se montrent pourtant dès le premier rendu, et
+seul un refus connu les retire, mais ce n'est qu'une politesse : chaque appel d'`api.ts`
 est revérifié par `handleAdmin()` ou par le greffon Better Auth (`docs/technical/server.md`,
 « `admin/` »). Pendant une usurpation, la page n'affiche que le bouton de retour.
 
@@ -1160,10 +1226,11 @@ reste un seul fichier statique, et une fiche se partage par son lien. `parseRout
 `useRoute()` (`hooks.ts`) suit `hashchange`. `App` rend la vue sous une clé égale à la route,
 ce qui rejoue l'animation d'entrée (`occ-enter`) à chaque navigation.
 
-**Les données passent par `useLoad(key, load)`** : une réponse arrivée après un changement de
-`key` est jetée — une navigation rapide n'affiche jamais la vue d'avant — et `reload()` relit
-depuis le serveur après chaque geste, pour que l'écran montre ce que la base contient et non ce
-qu'on vient d'envoyer.
+**Les données passent par `useLoad(key, load)` et `whenReady()`** (`load/`, voir « Chargement
+et premier rendu ») : une réponse arrivée après un changement de `key` n'est pas affichée — une
+navigation rapide n'affiche jamais la vue d'avant —, une vue déjà vue revient aussitôt depuis le
+cache, et `reload()` relit depuis le serveur après chaque geste, pour que l'écran montre ce que
+la base contient et non ce qu'on vient d'envoyer.
 
 | Route | Vue (`views.tsx`, `MatchDetail.tsx`) | Contenu |
 |---|---|---|
@@ -1226,8 +1293,14 @@ Les maquettes d'écrans de [`docs/mockups/`](../mockups/README.md) sont exposée
 `/mockups`. Elles restent de la documentation : le client ne les importe jamais, et elles
 ne doivent jamais partir en production.
 
-Deux greffons, volontairement disjoints, parce que les deux chemins n'ont pas les mêmes
-contraintes :
+Un troisième greffon, `occulis-critical-paint`, sert toutes les pages et tous les modes : il
+place le bloc de `criticalHead()` en tête de chaque `<head>` (voir « Chargement et premier
+rendu »). Il l'importe **par chemin relatif** (`../../packages/ui/src/critical.js`) et non par
+`@occulis/ui/critical` : Vite laisse les imports nus de sa configuration à Node, qui ne lit pas
+le TypeScript du paquet, alors qu'un chemin relatif est empaqueté avec elle.
+
+Les deux greffons des maquettes sont volontairement disjoints, parce que les deux chemins n'ont
+pas les mêmes contraintes :
 
 | Greffon | `apply` | Ce qu'il fait |
 |---|---|---|

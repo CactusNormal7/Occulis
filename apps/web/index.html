@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Occulis</title>
     <link rel="stylesheet" href="/src/ui/ui.css" />
+    <!-- Le fond et le thème sombre sont injectés au build, en tête de <head>
+         (`criticalPaint`, vite.config.ts) : aucune couleur écrite ici. -->
     <style>
-      /* Doit rester synchronisé avec BACKGROUND dans src/theme.ts. */
-      html, body { margin: 0; height: 100%; background: #0d0f12; overflow: hidden; }
+      html, body { margin: 0; height: 100%; overflow: hidden; }
     </style>
   </head>
   <body>
@@ -45,6 +46,18 @@
     </nav>
 
     <main id="shell">
+      <!-- L'amorce : visible dès le HTML, avant tout script, jusqu'au retour de l'identité.
+           Un squelette de la charte, qui ne se dessine qu'après 150 ms — une réponse
+           rapide ne fait rien apparaître. -->
+      <section id="screen-boot" class="screen">
+        <div class="occ-skeleton occ-skeleton--card" role="status" aria-busy="true" aria-label="Loading…" data-i18n-label="ui.loading">
+          <span class="occ-skeleton__line"></span>
+          <span class="occ-skeleton__line"></span>
+          <span class="occ-skeleton__line"></span>
+          <span class="occ-skeleton__line"></span>
+        </div>
+      </section>
+
       <!-- Compte : connexion, inscription, mot de passe oublié, réinitialisation. Un îlot
            React sur la charte (`src/account/`), un formulaire et une URL par parcours. -->
       <section id="screen-auth" class="screen" hidden>

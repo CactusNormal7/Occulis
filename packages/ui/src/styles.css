@@ -758,6 +758,39 @@ a.occ-person:hover .occ-tile-avatar:not(.occ-tile-avatar--A, .occ-tile-avatar--B
   color: var(--occ-refused);
 }
 
+/* ---- Chargement ----------------------------------------------------------------------- */
+
+/* Invisible pendant les 150 premières millisecondes : une réponse rapide ne doit rien
+   faire clignoter. Au-delà, la place du contenu se dessine au trait le plus discret. */
+.occ-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--occ-space-3);
+  padding: var(--occ-space-2) 0;
+  opacity: 0;
+  animation: occ-skeleton-in var(--occ-fast) linear 150ms forwards;
+}
+
+.occ-skeleton--card {
+  padding: 18px var(--occ-space-5);
+  border: 1px solid var(--occ-ink-line);
+}
+
+.occ-skeleton__line {
+  display: block;
+  height: 10px;
+  background: var(--occ-ink-ghost);
+  animation: occ-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.occ-skeleton__line:nth-child(3n + 2) {
+  width: 72%;
+}
+
+.occ-skeleton__line:nth-child(3n) {
+  width: 46%;
+}
+
 /* ---- Faits et définitions ------------------------------------------------------------- */
 
 .occ-fact-strip {
@@ -1931,6 +1964,18 @@ button.occ-choice__main:focus-visible {
   from {
     opacity: 0;
     transform: translateX(40px);
+  }
+}
+
+@keyframes occ-skeleton-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes occ-skeleton-pulse {
+  50% {
+    opacity: 0.4;
   }
 }
 

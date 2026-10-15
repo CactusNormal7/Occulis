@@ -30,9 +30,9 @@ import {
 import type { AdminPlayer } from "@occulis/protocol";
 import * as api from "./api.js";
 import { CreateUserDialog, QuickActions, useAct, useGo } from "./actions.js";
-import { useLoad } from "./hooks.js";
+import { useLoad, whenReady } from "../load/hooks.js";
 import { describeBan, formatDate, pageLabel, routeHash, shortAgent, winRate, type MatchStatus } from "./model.js";
-import { MatchTable, StateBadges, whenReady } from "./shared.js";
+import { MatchTable, StateBadges } from "./shared.js";
 
 /**
  * Les vues du back-office, faites des seules briques de `@occulis/ui`. Aucune classe ni
