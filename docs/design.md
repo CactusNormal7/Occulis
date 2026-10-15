@@ -11,7 +11,7 @@ Nom du projet : Occulis (voir section 8 — nom retenu avec réserve documentée
 ## 2. Piliers de design (non négociables, validés)
 
 - Compétitif 1v1 direct, pas de leaderboard, pas de local multiplayer. (Un Elo existe — départ 1200, K = 32, parties de la file rapide seulement — pour situer un adversaire à l'annonce de la partie ; aucun classement n'en est tiré.)
-- Info et calcul plutôt que réflexes : tour par tour alterné, temps de réflexion illimité pour l'instant. Ce n'est PAS un jeu en temps réel malgré une confusion de vocabulaire en cours de discussion (voir section 6, itération sur le tour).
+- Info et calcul plutôt que réflexes : tour par tour alterné, temps de réflexion illimité pour l'instant. Seule l'absence est bornée : un joueur sans connexion pendant 30 s perd par forfait (un rechargement de page le rassoit à temps), et quitter une partie l'abandonne. Ce n'est PAS un jeu en temps réel malgré une confusion de vocabulaire en cours de discussion (voir section 6, itération sur le tour).
 - Peu de règles, profondeur émergente — esprit échecs plutôt que tactics-RPG à kits de pouvoirs complexes. Chaque ajout de mécanique doit être pesé contre ce principe.
 - Différenciation des pièces par capacité/mouvement, jamais par robustesse (pas de PV).
 - DA minimaliste, dessin procédural en traits (pas de sprites bitmap), cohérent avec un rendu type Canvas/WebGL.

@@ -6,6 +6,7 @@ import {
   presenceLabel,
   readAll,
   receive,
+  relationTo,
   socialMessage,
   unreadTotal,
   withOverview,
@@ -81,5 +82,26 @@ describe("état social", () => {
     expect(socialMessage("UNAVAILABLE")).toBe("This player is not available.");
     expect(socialMessage("toString")).toBeUndefined();
     expect(socialMessage("INCONNU")).toBeUndefined();
+  });
+});
+
+describe("relation à un joueur", () => {
+  const state = withOverview(EMPTY_SOCIAL, {
+    friends: [friend("bob")],
+    incoming: [{ id: "ann", handle: "Ann", createdAt: 1 }],
+    outgoing: [{ id: "eve", handle: "Eve", createdAt: 1 }],
+    blocked: [{ id: "max", handle: "Max" }],
+  });
+
+  it("lit la relation dans la liste", () => {
+    expect(relationTo(state, "bob")).toBe("friend");
+    expect(relationTo(state, "ann")).toBe("incoming");
+    expect(relationTo(state, "eve")).toBe("outgoing");
+    expect(relationTo(state, "max")).toBe("blocked");
+    expect(relationTo(state, "zoe")).toBe("none");
+  });
+
+  it("ne dit rien tant que la liste n'est pas lue", () => {
+    expect(relationTo(EMPTY_SOCIAL, "bob")).toBeUndefined();
   });
 });

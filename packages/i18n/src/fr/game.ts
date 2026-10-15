@@ -9,6 +9,7 @@ export const game: Messages["game"] = {
   myProfile: "Mon profil",
   menu: {
     resend: "Renvoyer le message de vérification",
+    play: "Jouer",
     quick: "Partie rapide",
     quickHint: "Le premier adversaire disponible",
     host: "Créer une partie",
@@ -49,6 +50,7 @@ export const game: Messages["game"] = {
       resign: "abandon",
     },
     leave: "Quitter la partie",
+    leaveConfirm: "Quitter la partie, c'est l'abandonner : votre adversaire l'emporte. Quitter quand même ?",
     pending: "Coup déjà envoyé : réponse du serveur en attente.",
     spectating: "Vous regardez cette partie : aucun coup à jouer.",
     resigned: "Abandon.",

@@ -10,6 +10,7 @@ export const ui = {
   send: "Send",
   noMessages: "No messages.",
   empty: "Nothing to show.",
+  loading: "Loading…",
   pager: {
     none: "no results",
     range: (from: number, to: number, total: number) => `${from}–${to} of ${total}`,

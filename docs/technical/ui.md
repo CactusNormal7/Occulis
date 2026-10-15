@@ -20,6 +20,7 @@ composants.
 | `src/components/*.tsx` | Un composant (ou une petite famille) par fichier |
 | `src/index.ts` | Point d'entrée : tokens et composants |
 | `src/cx.ts` | Assemblage de noms de classe |
+| `src/critical.ts` | `criticalHead()` et `withCriticalHead()` : le bloc de tête de chaque page HTML (sous-chemin `@occulis/ui/critical`) |
 | `scripts/build-tokens.ts` | Écrit `generated/tokens.css` (`pnpm --filter @occulis/ui tokens`) |
 | `scripts/bundle-css.mjs` | Écrit `dist/styles.css` : tokens **inclus**, sans `@import` |
 | `tsup.config.ts` | Le build publié : `dist/index.js`, `dist/index.d.ts`, `dist/styles.css` |
@@ -73,7 +74,7 @@ gouvernent `styles.css` :
    résultat de partie celle du camp vainqueur.
 
 Classes utilitaires : `occ-root` (posée par `UiRoot`), `occ-page`, `occ-stack`, `occ-enter`
-(entrée en cascade), `occ-label`, `occ-muted`, `occ-actions-cell`. Les infobulles passent par
+(fondu d'un bloc entier, jamais en cascade), `occ-label`, `occ-muted`, `occ-actions-cell`. Les infobulles passent par
 l'attribut `data-tip`. Toutes les animations s'éteignent sous `prefers-reduced-motion`.
 
 ## Les composants
@@ -86,7 +87,7 @@ l'attribut `data-tip`. Toutes les animations s'éteignent sous `prefers-reduced-
 | Formulaires | `TextField` (aide et erreur rattachées par `aria-describedby`), `PasswordField` (bouton d'affichage), `SelectField`, `SearchField` (validé par Entrée ; `onInput` à chaque frappe), `InlineEdit`, `Segmented`, `ChipGroup` |
 | Parcours de compte | `FormPanel` (colonne étroite, marque, titre), `FormMessage` (`error`/`success`/`info`), `Divider` (« ou »), `ProviderButton` (« Continuer avec Google », logo monochrome) |
 | Réglages | `SettingList`, `SettingRow` (libellé, valeur, précision, bouton d'édition ou geste propre), `SettingEditor` (l'éditeur déplié dans la ligne) |
-| États | `Badge` (`plain`/`strong`/`dim`/`refused`/`A`/`B`), `BadgeRow`, `Banner`, `EmptyState`, `ToastProvider` + `useToast`, `ToastStack`, `ProgressBar` |
+| États | `Badge` (`plain`/`strong`/`dim`/`refused`/`A`/`B`), `BadgeRow`, `Banner`, `EmptyState`, `Skeleton`, `ToastProvider` + `useToast`, `ToastStack`, `ProgressBar` |
 | Joueurs | `TileAvatar` (initiales dans une case 2:1), `Person`, `Versus`, `PlayerPlate` (la plaque d'un joueur à l'annonce d'une partie), `Reveal` (l'annonce : deux plaques et un « vs », réductible en bandeau) |
 | Choix | `ChoiceList`, `ChoiceRow` (une ligne choisissable, `aria-pressed`, marquée du trait de la sélection) |
 | Temps | `CountdownRing` (un anneau qui se vide, piloté par ses propriétés, dans la teinte des refus sous cinq secondes) |
@@ -136,6 +137,23 @@ Quelques comportements à connaître :
   que fixe `UiRoot locale={…}` (qui pose aussi `lang` sur sa racine), à défaut celle d'un
   `LocaleProvider` englobant, à défaut l'anglais. Le build (`tsup`) embarque
   `@occulis/i18n` (`noExternal`) : hors du dépôt, Claude Design ne saurait pas le résoudre.
+- **`Skeleton`** est la place d'un contenu qui n'est pas arrivé (`lines`, `card`). Il ne se
+  dessine qu'après **150 ms** (`animation-delay`, pas de minuterie). **Le client n'en montre
+  aucun** : un écran attend d'être complet pour paraître (`docs/technical/engine.md`,
+  « Chargement et premier rendu »), et un squelette serait justement une partie de l'écran
+  montrée avant les autres. Il reste dans la charte pour un contenu qui, par nature,
+  arriverait après l'écran.
+- **`ProgressBar`** n'apparaît qu'après **0,4 s** d'activité, qu'elle soit montée active
+  (l'attente d'une page entière) ou qu'elle le devienne (une navigation) : une attente courte
+  ne fait rien paraître puis disparaître.
+- **`occ-enter`** fond le bloc entier d'un coup. Il n'y a plus d'entrée en cascade : un écran
+  qui se compose morceau par morceau se lit comme un écran qui charge. `FormPanel` n'a pas
+  d'animation d'entrée, puisqu'il se pose dans un cadre déjà affiché.
+- **`criticalHead()`** n'est pas un composant : c'est le texte injecté en tête de chaque page
+  HTML par `apps/web/vite.config.ts` — `color-scheme: dark`, `theme-color`, le fond en ligne
+  depuis `BACKGROUND`, `@view-transition` (coupé sous mouvement réduit) et les règles de
+  spéculation (`prefetch` au survol). `withCriticalHead(html)` le place juste après la
+  déclaration d'encodage, donc avant toute feuille et tout script.
 - **`MessageThread`** aligne à droite les messages du lecteur (`mine`), au trait franc, et ceux
   de l'autre à gauche ; aucun aplat. Il reste calé sur le dernier message à chaque arrivée, et
   `more` porte le geste qui charge les plus anciens. C'est un `role="log"`.
@@ -156,12 +174,13 @@ catégories (`docs/<Nom>.md`), l'en-tête de conventions lu par l'agent de desig
 
 ## Tests
 
-21 tests, sous Node : `pnpm --filter @occulis/ui test`.
+27 tests, sous Node : `pnpm --filter @occulis/ui test`.
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
 | `src/tokens.test.ts` | `generated/tokens.css` identique à sa source, `styles.css` sans propriété indéfinie ni couleur en dur, conversion des couleurs, **alpha précomposé pour les courriers** |
-| `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition**, **langue fixée par `UiRoot` (et anglais par défaut)**, compte à rebours proportionnel et urgent, plaques dans la couleur de leur camp, ligne de choix marquée, fenêtre sans croix, **fil de messages : les siens marqués à part, texte échappé, état vide, longueur du champ** |
+| `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition**, **langue fixée par `UiRoot` (et anglais par défaut)**, compte à rebours proportionnel et urgent, plaques dans la couleur de leur camp, ligne de choix marquée, fenêtre sans croix, **fil de messages : les siens marqués à part, texte échappé, état vide, longueur du champ**, squelette annoncé sans texte visible |
+| `src/critical.test.ts` | **Fond et thème sombre sans variable** (la feuille n'est pas encore là), fondu coupé sous mouvement réduit, aucun préchargement de `/api/*` ni `/match/*` et jamais de `prerender`, **bloc placé après l'encodage et avant toute feuille** |
 
 Le rendu visuel n'est pas testé ici : il l'est par les aperçus vérifiés sur captures lors de
 chaque synchronisation (`.design-sync/`).
@@ -177,3 +196,6 @@ chaque synchronisation (`.design-sync/`).
    ni classe ni feuille propres.
 5. **Aucun texte en dur dans un composant** : un libellé par défaut vient de `useMessages()`,
    donc existe en anglais et en français (`@occulis/i18n`).
+6. **Le fond d'une page ne dépend jamais de la feuille.** `criticalHead()` le pose en ligne ;
+   une variable `--occ-bg` n'existe qu'une fois la feuille chargée, et la page serait blanche
+   jusque-là.

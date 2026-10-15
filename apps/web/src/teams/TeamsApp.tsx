@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import type { Locale } from "@occulis/i18n";
 import { type TeamEntry, rulesetFor, scenarioFor } from "@occulis/core";
 import type { TeamPreset, TeamPresetList } from "@occulis/protocol";
@@ -15,6 +15,7 @@ import {
   Note,
   PageHead,
   QuickBar,
+  ProgressBar,
   TextField,
   ToastProvider,
   UiRoot,
@@ -22,6 +23,8 @@ import {
   useToast,
 } from "@occulis/ui";
 import * as api from "../profile/api.js";
+import { useLoad } from "../load/hooks.js";
+import { presets as presetsResource } from "../profile/resources.js";
 import { boardForScenario } from "../game/scenario.js";
 import { TeamBuilder } from "../team/TeamBuilder.js";
 import { type TeamDraft, emptyDraft, fromEntries, toEntries, verdict } from "../team/model.js";
@@ -42,7 +45,10 @@ export function TeamsApp({ locale, onBack }: TeamsAppProps) {
     <UiRoot locale={locale} fullPage>
       <ToastProvider>
         <main className="occ-page">
-          <Teams onBack={onBack} />
+          {/* Les équipes sont préchargées dès le menu : en temps normal, rien n'attend ici. */}
+          <Suspense fallback={<ProgressBar active />}>
+            <Teams onBack={onBack} />
+          </Suspense>
         </main>
       </ToastProvider>
     </UiRoot>
@@ -54,23 +60,14 @@ type Editing = { readonly id: string | undefined; readonly name: string; readonl
 function Teams({ onBack }: { onBack: () => void }) {
   const m = useMessages().team.presets;
   const notify = useToast();
-  const [list, setList] = useState<TeamPresetList | undefined>(undefined);
-  const [failure, setFailure] = useState<string | undefined>(undefined);
+  const { loaded, reload } = useLoad(presetsResource);
   const [editing, setEditing] = useState<Editing>(undefined);
   const [deleting, setDeleting] = useState<TeamPreset | undefined>(undefined);
 
-  const reload = (): void => {
-    void api.presets().then((outcome) => {
-      if (outcome.ok) setList(outcome.value);
-      else setFailure(outcome.message);
-    });
-  };
-  useEffect(reload, []);
-
-  if (failure !== undefined) {
-    return <EmptyState error action={<Button onClick={onBack}>{m.back}</Button>}>{failure}</EmptyState>;
+  if (loaded.state === "failed") {
+    return <EmptyState error action={<Button onClick={onBack}>{m.back}</Button>}>{loaded.message}</EmptyState>;
   }
-  if (list === undefined) return null;
+  const list = loaded.value;
 
   if (editing !== undefined) {
     return (

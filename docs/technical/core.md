@@ -470,7 +470,7 @@ de `lastSeenTurn` pour les fantômes.
 ```ts
 type Action =
   | { kind: "move"; pieceId: PieceId; to: Coord }
-  | { kind: "resign" }
+  | { kind: "resign"; player?: PlayerId }
 ```
 
 | Fonction | Rôle |
@@ -511,6 +511,12 @@ position produite — et `withOutcome()`.
 `applyAction()` ne fait donc plus rien après le coup : il déplace la pièce, passe le trait,
 incrémente `turn` et consigne l'action. Seul `resign` pose une issue, et il reste valide
 même quand aucun coup n'est jouable — c'est la seule sortie d'une position bloquée.
+
+**L'abandon se joue à tout moment, au trait ou non.** `player` nomme qui abandonne : le
+vainqueur est `opponentOf(player)`, l'historique consigne ce camp, et le trait ne bouge
+pas. Absent — c'est le cas de tous les logs écrits avant —, c'est le joueur au trait, ce
+qui rejoue ces logs à l'identique. Sans cela, un joueur qui quitte la partie pendant le
+tour d'en face ne pouvait pas l'abandonner, et elle restait ouverte.
 
 ### `ActionError`
 
@@ -634,7 +640,7 @@ serait contournable via les devtools.
 |---|---|
 | `packages/core/src/los.test.ts` | Tracé, occultation par la hauteur **et par les pièces**, symétrie, portée |
 | `packages/core/src/movement.test.ts` | Parcours, verticalité, grimpe, blocage par occupation |
-| `packages/core/src/actions.test.ts` | Coups légaux, validation, blocage par les pièces, abandon |
+| `packages/core/src/actions.test.ts` | Coups légaux, validation, blocage par les pièces, abandon (y compris hors tour) |
 | `packages/core/src/fog.test.ts` | Visibilité, mémoire fantôme, contenu de `PlayerView` |
 | `packages/core/src/pieces/piece-type.test.ts` | Vision, mêlée et déplacement définis par le type ; dérivation de `fieldOfView` depuis `canSee` y compris redéfini ; extension par héritage. **Indépendant du roster** |
 | `packages/core/src/pieces/roster/roster.test.ts` | Propriétés du roster provisoire : différenciation par capacité, rôles, pion le plus lent et le plus myope, héritage du comportement commun, portée couvrant la carte de démonstration, indexation par `kind` et par rôle, composition |

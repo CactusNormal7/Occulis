@@ -14,10 +14,14 @@ export interface FormPanelProps extends Omit<HTMLAttributes<HTMLDivElement>, "ti
   children: ReactNode;
 }
 
-/** Une colonne étroite et centrée, marque en tête : l'écrin des parcours de compte. */
+/**
+ * Une colonne étroite et centrée, marque en tête : l'écrin des parcours de compte. Sans
+ * animation d'entrée : posée dans un cadre déjà affiché, elle laisserait voir le cadre vide
+ * avant son contenu.
+ */
 export function FormPanel({ title, lead, footer, children, className, ...rest }: FormPanelProps) {
   return (
-    <div className={cx("occ-form-panel", "occ-enter", className)} {...rest}>
+    <div className={cx("occ-form-panel", className)} {...rest}>
       <Wordmark />
       <div className="occ-form-panel__head">
         <h1 className="occ-form-panel__title">{title}</h1>

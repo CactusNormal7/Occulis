@@ -2,16 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { BackLink, Banner, Card, EmptyState, FactStrip, IconButton, MoveList, QuickBar, Segmented, Toolbar, ToolbarText, Versus, useMessages, type MoveEntry } from "@occulis/ui";
 import type { AdminMatchDetail } from "@occulis/protocol";
 import { boardForScenario } from "../game/scenario.js";
-import * as api from "./api.js";
-import { useLoad } from "./hooks.js";
+import { useLoad, whenReady } from "../load/hooks.js";
+import * as R from "./resources.js";
 import { formatDate, routeHash } from "./model.js";
 import { ReplayBoard } from "./ReplayBoard.js";
 import { clampFrame, describeEntry, frameLabel, type Perspective } from "./replay.js";
-import { ResultBadge, whenReady } from "./shared.js";
+import { ResultBadge } from "./shared.js";
 
 export function MatchDetail({ id }: { id: string }) {
   const t = useMessages().admin.match;
-  const { loaded } = useLoad(`match:${id}`, () => api.match(id));
+  const { loaded } = useLoad(R.match(id));
   return whenReady(loaded, (m) => (
     <>
       <BackLink href={routeHash({ view: "matches", status: null, offset: 0 })}>{t.back}</BackLink>

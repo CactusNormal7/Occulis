@@ -203,6 +203,26 @@ export async function listMyMatches(db: D1Database, playerId: string, page: Page
   };
 }
 
+/**
+ * La plus récente partie pas finie du joueur, et son camp. Une partie dont personne ne
+ * revient se clôt par forfait (`ABSENCE_MS`) : il n'y en a normalement qu'une.
+ */
+export async function readCurrentMatch(
+  db: D1Database,
+  playerId: string,
+): Promise<{ readonly matchId: string; readonly player: PlayerId } | undefined> {
+  const row = await db
+    .prepare(
+      `SELECT id, player_a FROM matches
+       WHERE (player_a = ?1 OR player_b = ?1) AND finished_at IS NULL
+       ORDER BY started_at DESC LIMIT 1`,
+    )
+    .bind(playerId)
+    .first<{ id: string; player_a: string }>();
+  if (row === null) return undefined;
+  return { matchId: row.id, player: row.player_a === playerId ? "A" : "B" };
+}
+
 export type MyMatch = MeMatchDetail | "unknown" | "ongoing";
 
 /**

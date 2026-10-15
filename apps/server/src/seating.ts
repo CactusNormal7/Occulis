@@ -26,13 +26,12 @@ export function seatFor(seats: Seats, token: string | null): PlayerId | undefine
 }
 
 /**
- * Seul le joueur au trait peut agir.
+ * Seul le joueur au trait peut déplacer.
  *
- * `core` modélise déjà l'abandon comme une action du joueur au trait — le vainqueur
- * y est `opponentOf(activePlayer)`. Accepter une action hors tour couronnerait donc
- * le mauvais camp, et laisserait un joueur jouer les pièces de l'autre : `core`
- * vérifie que la pièce appartient au joueur au trait, pas que l'expéditeur est ce
- * joueur-là. C'est le serveur qui tient cette moitié de la règle.
+ * `core` vérifie que la pièce appartient au joueur au trait, pas que l'expéditeur est ce
+ * joueur-là : accepter un déplacement hors tour laisserait un joueur jouer les pièces de
+ * l'autre. C'est le serveur qui tient cette moitié de la règle. L'abandon n'y passe pas :
+ * il se joue à tout moment, et le Durable Object y inscrit le camp du siège.
  */
 export function denyOutOfTurn(activePlayer: PlayerId, seat: PlayerId): SeatDenial | undefined {
   return seat === activePlayer ? undefined : { code: "not-your-turn", activePlayer };

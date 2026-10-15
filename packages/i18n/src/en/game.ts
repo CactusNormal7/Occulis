@@ -8,6 +8,7 @@ export const game = {
   myProfile: "My profile",
   menu: {
     resend: "Resend the verification email",
+    play: "Play",
     quick: "Quick match",
     quickHint: "The first available opponent",
     host: "Create a match",
@@ -48,6 +49,7 @@ export const game = {
       resign: "resign",
     },
     leave: "Leave the match",
+    leaveConfirm: "Leaving the match means resigning it: your opponent wins. Leave anyway?",
     pending: "Move already sent: waiting for the server.",
     spectating: "You are watching this match: there is no move to play.",
     resigned: "Resignation.",

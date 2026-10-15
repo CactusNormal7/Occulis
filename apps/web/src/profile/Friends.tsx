@@ -24,8 +24,10 @@ import {
   useMessages,
   useToast,
 } from "@occulis/ui";
-import type { ChatMessage, Friend, PlayerSearchResult, Relation, SocialServerMessage } from "@occulis/protocol";
-import { useLoad } from "../admin/hooks.js";
+import type { ChatMessage, Friend, FriendsOverview, PlayerSearchResult, Relation, SocialServerMessage } from "@occulis/protocol";
+import { useLoad, whenReady } from "../load/hooks.js";
+import { loadCache } from "../load/cache.js";
+import * as R from "./resources.js";
 import { formatDate } from "../admin/model.js";
 import { openSocial } from "../net/social-channel.js";
 import * as friends from "../social/api.js";
@@ -74,17 +76,23 @@ export function SocialProvider({ enabled, children }: { enabled: boolean; childr
   // Lu par le canal, ouvert une seule fois : la langue peut changer entre-temps.
   const toastsRef = useRef(toasts);
   toastsRef.current = toasts;
-  const [state, setState] = useState<SocialState>(EMPTY_SOCIAL);
+  // La liste est déjà là : la page l'a attendue avant de paraître (`WithFriends`, App.tsx).
+  const [state, setState] = useState<SocialState>(() => {
+    const known = loadCache.value<FriendsOverview>(R.friendsOverview.key);
+    return known === undefined ? EMPTY_SOCIAL : withOverview(EMPTY_SOCIAL, known);
+  });
   const listeners = useRef(new Set<(message: SocialServerMessage) => void>());
 
   const reload = useCallback(() => {
-    void friends.overview().then((outcome) => {
+    void loadCache.request(R.friendsOverview, { force: true }).then((outcome) => {
       if (outcome.ok) setState((current) => withOverview(current, outcome.value));
     });
   }, []);
 
   useEffect(() => {
     if (!enabled) return;
+    // Relue à chaque ouverture du canal (dont la première), pour ne rien perdre de ce qu'il
+    // aurait poussé entre la lecture de la page et son ouverture.
     const channel = openSocial(
       "profile",
       (message) => {
@@ -405,11 +413,11 @@ export function FriendView({ id, offset, readOnly }: { id: string; offset: numbe
   const off = readOnly ? all.readOnly : undefined;
   const act = useAct();
   const { state } = useSocial();
-  const { loaded } = useLoad(`friend:${id}`, () => friends.friend(id));
-  const page = useLoad(`friend:${id}:matches:${offset}`, () => friends.friendMatches(id, offset)).loaded;
   const [blocking, setBlocking] = useState(false);
+  // Les deux lectures sont parties ensemble au préchargement de la route (`resources.ts`).
+  const { loaded } = useLoad(R.friend(id));
+  const page = useLoad(R.friendMatches(id, offset)).loaded;
 
-  if (loaded.state === "loading") return null;
   if (loaded.state === "failed") {
     return (
       <>
@@ -501,17 +509,11 @@ export function FriendView({ id, offset, readOnly }: { id: string; offset: numbe
 }
 
 export function FriendMatchReplay({ id, matchId }: { id: string; matchId: string }) {
-  const { loaded } = useLoad(`friend:${id}:match:${matchId}`, () => friends.friendMatch(id, matchId));
+  const { loaded } = useLoad(R.friendMatch(id, matchId));
   const name = friendOf(useSocial().state, id)?.handle ?? useMessages().social.friend.someone;
-  if (loaded.state === "loading") return null;
-  if (loaded.state === "failed") return <EmptyState error>{loaded.message}</EmptyState>;
-  return (
-    <MatchReplayView
-      match={loaded.value}
-      back={{ href: profileHash({ view: "friend", id, offset: 0 }), label: name }}
-      friend={name}
-    />
-  );
+  return whenReady(loaded, (match) => (
+    <MatchReplayView match={match} back={{ href: profileHash({ view: "friend", id, offset: 0 }), label: name }} friend={name} />
+  ));
 }
 
 // --- Les messages ---------------------------------------------------------------------
@@ -522,9 +524,13 @@ export function ChatView({ id, readOnly }: { id: string; readOnly: boolean }) {
   const notify = useToast();
   const { state, listen, update } = useSocial();
   const friend = friendOf(state, id);
-  const [messages, setMessages] = useState<readonly ChatMessage[]>([]);
-  const [hasMore, setHasMore] = useState(false);
-  const [failure, setFailure] = useState<string | undefined>(undefined);
+  // Le fil lu avec l'écran ; s'y ajoutent ce que le canal pousse, ce qu'on envoie et les
+  // messages plus anciens chargés à la demande.
+  const { loaded } = useLoad(R.chat(id));
+  const page = loaded.state === "ready" ? loaded.value : undefined;
+  const failure = loaded.state === "failed" ? loaded.message : undefined;
+  const [messages, setMessages] = useState<readonly ChatMessage[]>(() => page?.messages ?? []);
+  const [hasMore, setHasMore] = useState(page?.hasMore ?? false);
 
   // Lire le fil le marque lu — sauf sous emprunt, où rien ne doit changer pour le joueur.
   const markRead = () => {
@@ -533,24 +539,23 @@ export function ChatView({ id, readOnly }: { id: string; readOnly: boolean }) {
     update((current) => readAll(current, id));
   };
 
+  // Une relecture du fil s'y fond sans perdre ce qui est arrivé entre-temps.
   useEffect(() => {
-    setMessages([]);
-    void friends.messages(id).then((outcome) => {
-      if (!outcome.ok) {
-        setFailure(outcome.message);
-        return;
-      }
-      setMessages(outcome.value.messages);
-      setHasMore(outcome.value.hasMore);
-      markRead();
-    });
-    return listen((message) => {
+    if (page === undefined) return;
+    setMessages((current) => merged(page.messages, current));
+    setHasMore(page.hasMore);
+    markRead();
+  }, [page]);
+
+  useEffect(() => {
+    const unlisten = listen((message) => {
       if (message.kind !== "message") return;
       const incoming = message.message;
       if (incoming.sender !== id && incoming.recipient !== id) return;
-      setMessages((current) => (current.some((m) => m.id === incoming.id) ? current : [...current, incoming]));
+      setMessages((current) => withMessage(current, incoming));
       if (incoming.sender === id) markRead();
     });
+    return unlisten;
   }, [id]);
 
   const older = () => {
@@ -558,7 +563,7 @@ export function ChatView({ id, readOnly }: { id: string; readOnly: boolean }) {
     if (first === undefined) return;
     void friends.messages(id, first.createdAt).then((outcome) => {
       if (!outcome.ok) return;
-      setMessages((current) => [...outcome.value.messages, ...current]);
+      setMessages((current) => merged(outcome.value.messages, current));
       setHasMore(outcome.value.hasMore);
     });
   };
@@ -570,7 +575,7 @@ export function ChatView({ id, readOnly }: { id: string; readOnly: boolean }) {
       return false;
     }
     const sent = outcome.value;
-    setMessages((current) => (current.some((m) => m.id === sent.id) ? current : [...current, sent]));
+    setMessages((current) => withMessage(current, sent));
     return true;
   };
 
@@ -612,4 +617,16 @@ export function ChatView({ id, readOnly }: { id: string; readOnly: boolean }) {
       </Card>
     </>
   );
+}
+
+/** Ajoute un message au fil, une seule fois : il peut arriver par l'envoi et par le canal. */
+function withMessage(current: readonly ChatMessage[], message: ChatMessage): readonly ChatMessage[] {
+  return current.some((m) => m.id === message.id) ? current : [...current, message];
+}
+
+/** Deux morceaux du même fil, sans doublon, dans l'ordre d'envoi. */
+function merged(incoming: readonly ChatMessage[], current: readonly ChatMessage[]): readonly ChatMessage[] {
+  const byId = new Map(current.map((message) => [message.id, message]));
+  for (const message of incoming) byId.set(message.id, message);
+  return [...byId.values()].sort((a, b) => a.createdAt - b.createdAt);
 }

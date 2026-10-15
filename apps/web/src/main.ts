@@ -1,4 +1,3 @@
-import { Application } from "pixi.js";
 import type { QueueIntent } from "@occulis/protocol";
 import {
   type Action,
@@ -20,7 +19,6 @@ import {
   withViewport,
 } from "./view/camera.js";
 import { tileAt } from "./view/picking.js";
-import { attachControls } from "./input/controls.js";
 import { OnlineMatch } from "./game/online-match.js";
 import { boardForScenario } from "./game/scenario.js";
 import { type MatchChannel, type MatchHandlers, connectToMatch, watchMatch } from "./net/match-channel.js";
@@ -36,33 +34,38 @@ import { mountAccount } from "./account/mount.js";
 import { arrivalNotice, cleanedSearch, routeOf } from "./account/model.js";
 import { START, type QueueSeeking, type Stage, advance } from "./ui/flow.js";
 import { type Selection, resolveClick } from "./game/selection.js";
-import { Scene } from "./scene/scene.js";
-import { BACKGROUND } from "./theme.js";
+import type { Board } from "./scene/board.js";
 import { type GameConsole, attachConsole } from "./ui/console.js";
 import { applyPalette } from "./ui/palette.js";
 import { resendVerification, signOut, stopImpersonating, whoAmI, type Identity } from "./net/auth.js";
 import { chooseLocale, initLocale, translateDom } from "./i18n/browser.js";
 import { currentLocale, messages, onLocaleChange } from "./i18n/current.js";
 import { isLocale } from "@occulis/i18n";
-import type { TeamPreset } from "@occulis/protocol";
+import type { TeamPreset, TeamPresetList } from "@occulis/protocol";
 import { mountDeployment, mountMatchFound } from "./prepare/mount.js";
 import type { DeploymentProps } from "./prepare/Deployment.js";
 import type { MatchFoundProps } from "./prepare/MatchFound.js";
 import { mountTeams } from "./teams/mount.js";
-import { presets as loadPresets } from "./profile/api.js";
+import { currentMatch } from "./profile/api.js";
+import { loadCache } from "./load/cache.js";
+import { friendsOverview, presets as presetsResource } from "./profile/resources.js";
 
 /** Racine de composition : elle câble les modules, elle n'en implémente aucun. */
-async function main(): Promise<void> {
+function main(): void {
+  // Tout ce que le premier écran montre part ensemble, avant le reste : l'identité, la
+  // liste d'amis du menu et une éventuelle partie à reprendre. Le menu ne paraît qu'une
+  // fois tout arrivé (« Chargement et premier rendu », docs/technical/engine.md).
+  let identityRequest: Promise<Identity> | undefined = whoAmI();
+  loadCache.preload([friendsOverview]);
+  let matchRequest: ReturnType<typeof currentMatch> | undefined = currentMatch();
+  applyPalette(document.documentElement);
   initLocale();
   translateDom(document);
 
   const host = element<HTMLDivElement>("app");
-  const app = new Application();
-  await app.init({ background: BACKGROUND, resizeTo: window, antialias: true });
-  host.appendChild(app.canvas);
-
-  const scene = new Scene();
-  app.stage.addChild(scene.root);
+  /** Le plateau Pixi, chargé à part (`scene/board.ts`) ; absent tant qu'il n'est pas prêt. */
+  let board: Board | undefined;
+  let boardLoading: Promise<Board | undefined> | undefined;
 
   /**
    * Il n'existe **aucune partie locale** : tant que le serveur n'a pas assis le
@@ -81,7 +84,9 @@ async function main(): Promise<void> {
   let spectators = 0;
   let watchDeadline: ReturnType<typeof setTimeout> | undefined;
 
-  const viewport = (): Coord => ({ x: app.screen.width, y: app.screen.height });
+  // Le canevas suit la fenêtre (`resizeTo: window`) : ses dimensions sont les siennes,
+  // connues avant même que Pixi soit chargé.
+  const viewport = (): Coord => ({ x: window.innerWidth, y: window.innerHeight });
   let camera: Camera = createCamera({ x: 0, y: 0 }, viewport());
   let hovered: Coord | undefined;
   let selection: Selection | undefined;
@@ -154,7 +159,7 @@ async function main(): Promise<void> {
     found = undefined;
     deploying = undefined;
     showIslands();
-    scene.clear();
+    board?.clear();
     go({ kind: "menu" });
   };
 
@@ -163,11 +168,12 @@ async function main(): Promise<void> {
    * annonce de déploiement ni coups légaux : seule la vue du camp qu'il suit.
    */
   const handlersFor = (spectating: boolean): MatchHandlers => {
-    let presets: readonly TeamPreset[] = [];
+    // Les équipes préparées déjà lues (l'écran des équipes les a peut-être chargées) servent
+    // aussitôt ; elles se relisent pendant l'annonce, et l'écran reprend la réponse.
+    let presets: readonly TeamPreset[] = loadCache.value<TeamPresetList>(presetsResource.key)?.presets ?? [];
     let lastRemaining: number | undefined;
-    // Les équipes préparées se chargent pendant l'annonce ; l'écran les reprend à l'arrivée.
     if (!spectating) {
-      void loadPresets().then((outcome) => {
+      void loadCache.request(presetsResource, { force: true }).then((outcome) => {
         if (!outcome.ok) return;
         presets = outcome.value.presets;
         if (deploying !== undefined) {
@@ -251,6 +257,7 @@ async function main(): Promise<void> {
     queue?.close();
     queue = undefined;
     challengedFriend = undefined;
+    void ensureBoard();
     channel = connectToMatch(matchId, seat, handlersFor(false));
   };
 
@@ -262,6 +269,7 @@ async function main(): Promise<void> {
     shell.notify("");
     watching = friend;
     go({ kind: "seek", seeking: "watch", friend });
+    void ensureBoard();
     channel = watchMatch(matchId, side, handlersFor(true));
     watchDeadline = setTimeout(() => {
       if (match !== undefined) return;
@@ -274,12 +282,20 @@ async function main(): Promise<void> {
     friendsPanel.render(socialState, identity.signedIn && identity.emailVerified !== false);
   };
 
-  const reloadFriends = async (): Promise<void> => {
-    const outcome = await friends.overview();
+  const reloadFriends = async (options: { force?: boolean } = { force: true }): Promise<void> => {
+    const outcome = await loadCache.request(friendsOverview, options);
     if (!outcome.ok) return;
     socialState = withOverview(socialState, outcome.value);
     renderFriends();
   };
+
+  /**
+   * La liste d'amis, avant de montrer le menu : le panneau paraît avec le reste au lieu
+   * de pousser le menu une seconde plus tard. Au-delà de `MENU_DEADLINE_MS`, le menu paraît
+   * sans elle — mieux vaut un panneau en retard qu'un menu qui n'arrive pas.
+   */
+  const friendsBeforeMenu = (force: boolean): Promise<void> =>
+    Promise.race([reloadFriends({ force }), new Promise<void>((resolve) => setTimeout(resolve, MENU_DEADLINE_MS))]);
 
   const onSocial = (message: SocialServerMessage): void => {
     if (message.kind === "matched") {
@@ -327,6 +343,7 @@ async function main(): Promise<void> {
 
   const shell = attachShell({
     elements: {
+      boot: element<HTMLElement>("screen-boot"),
       auth: element<HTMLElement>("screen-auth"),
       menu: element<HTMLElement>("screen-menu"),
       waiting: element<HTMLElement>("screen-waiting"),
@@ -401,6 +418,15 @@ async function main(): Promise<void> {
       });
     },
     onCancel: leave,
+    onLeaveMatch: () => {
+      // Aucun chemin ne ramène à un siège quitté : partir d'une partie vivante sans
+      // abandonner la laisserait « en cours » à jamais dans les deux historiques.
+      if (watching === undefined && match !== undefined && !match.isOver) {
+        if (!confirm(messages().game.console.leaveConfirm)) return;
+        channel?.submit({ kind: "resign" });
+      }
+      leave();
+    },
     onStopImpersonating: () => {
       leave();
       void stopImpersonating().then(() => location.assign("/admin/"));
@@ -494,27 +520,50 @@ async function main(): Promise<void> {
   }
   let identity: Identity = { signedIn: false };
 
+  /**
+   * Rassoit le joueur à sa partie en cours. Le jeton de siège ne vit que dans la page :
+   * un rechargement le perd, et c'est le serveur qui le rend, à la seule session du
+   * joueur. Il a `ABSENCE_MS` pour revenir avant de perdre par forfait.
+   */
+  const resume = async (): Promise<void> => {
+    if (stage.kind !== "menu" || channel !== undefined || queue !== undefined) return;
+    const outcome = await (matchRequest ?? currentMatch());
+    matchRequest = undefined;
+    if (!outcome.ok || outcome.value === null) return;
+    if (stage.kind !== "menu" || channel !== undefined || queue !== undefined) return;
+    sit(outcome.value.matchId, outcome.value.seat);
+  };
+
   // L'identité vient du serveur, via un cookie de session : le client ne l'annonce
   // jamais lui-même. Sans compte, la file d'attente répondrait 401.
   const refresh = async (message?: string): Promise<void> => {
-    identity = await whoAmI();
+    const request = identityRequest ?? whoAmI();
+    identityRequest = undefined;
+    identity = await request;
     shell.setIdentity(identity);
+    // Le menu va paraître (premier écran, ou retour d'une connexion) : il attend sa liste
+    // d'amis. Celle de l'amorce est déjà partie ; après une connexion, elle est à relire.
+    const toMenu = identity.signedIn && (stage.kind === "boot" || stage.kind === "auth");
+    if (toMenu && identity.emailVerified !== false) await friendsBeforeMenu(stage.kind !== "boot");
     syncSocial();
     // Une déconnexion referme la partie en cours : sans session, ni la file ni le
     // Durable Object n'accepteraient plus rien de ce client.
-    if (!identity.signedIn && stage.kind !== "auth") leave();
+    if (!identity.signedIn && stage.kind !== "auth" && stage.kind !== "boot") leave();
+    // Le formulaire est dessiné avant que son écran soit montré : le panneau ne paraît
+    // jamais vide.
+    if (!identity.signedIn) showAccount();
     go({ kind: "identity", signedIn: identity.signedIn });
 
     if (identity.signedIn) {
+      prewarmBoard();
       // Connecté sur une URL de parcours de compte (un lien de connexion ouvert alors
       // qu'on l'est déjà) : on revient à celle du menu.
       if (location.pathname !== "/") history.replaceState(null, "", "/");
       const notice = message ?? arrival?.text;
       if (notice !== undefined) shell.notify(notice);
       arrival = undefined;
-      return;
+      void resume();
     }
-    showAccount();
   };
   const showAccount = (): void => {
     renderAccount({
@@ -549,7 +598,6 @@ async function main(): Promise<void> {
   });
   markLocale();
 
-  applyPalette(document.documentElement);
   gameConsole = attachConsole({
     elements: {
       form: element<HTMLFormElement>("command-form"),
@@ -568,54 +616,83 @@ async function main(): Promise<void> {
 
   shell.render(stage);
 
-  app.renderer.on("resize", () => {
-    camera = withViewport(camera, viewport());
-  });
+  /**
+   * Charge le plateau une seule fois. Un échec (pas de WebGL) laisse le menu utilisable :
+   * il ne coûte que la partie, qui ne s'affichera pas.
+   */
+  function ensureBoard(): Promise<Board | undefined> {
+    boardLoading ??= import("./scene/board.js")
+      .then(({ mountBoard }) =>
+        mountBoard(host, {
+          onResize: () => {
+            camera = withViewport(camera, viewport());
+          },
+          controls: {
+            getCamera: () => camera,
+            setCamera: (next) => {
+              camera = next;
+            },
+            pickTile: (point) =>
+              match === undefined
+                ? undefined
+                : tileAt(toProjectionSpace(camera, point), match.board, toProjection(camera)),
+            setHovered: (coord) => {
+              hovered = coord;
+            },
+            onPick: (coord) => {
+              if (match === undefined) return;
+              gameConsole.showTile(coord);
 
-  attachControls({
-    canvas: app.canvas,
-    getCamera: () => camera,
-    setCamera: (next) => {
-      camera = next;
-    },
-    pickTile: (point) =>
-      match === undefined
-        ? undefined
-        : tileAt(toProjectionSpace(camera, point), match.board, toProjection(camera)),
-    setHovered: (coord) => {
-      hovered = coord;
-    },
-    onPick: (coord) => {
-      if (match === undefined) return;
-      gameConsole.showTile(coord);
+              const outcome = resolveClick(match.legalActions, match.state, selection, coord);
+              if (outcome.kind === "select") selection = outcome.selection;
+              else if (outcome.kind === "clear") selection = undefined;
+              else gameConsole.playAction(outcome.action);
+            },
+          },
+          frame: (deltaMS) => {
+            if (match === undefined) return undefined;
+            camera = settle(camera, deltaMS);
 
-      const outcome = resolveClick(match.legalActions, match.state, selection, coord);
-      if (outcome.kind === "select") selection = outcome.selection;
-      else if (outcome.kind === "clear") selection = undefined;
-      else gameConsole.playAction(outcome.action);
-    },
-  });
+            if (animation !== undefined) {
+              animation = step(animation, deltaMS);
+              if (animation === undefined) gameConsole.refresh();
+            }
 
-  app.ticker.add((ticker) => {
-    if (match === undefined) return;
-    camera = settle(camera, ticker.deltaMS);
+            return {
+              board: match.board,
+              view: match.viewFor(match.player),
+              projection: toProjection(camera),
+              origin: originOf(camera),
+              hovered,
+              selection,
+              animation,
+            };
+          },
+        }),
+      )
+      .then((mounted) => (board = mounted))
+      .catch((error: unknown) => {
+        console.error("board unavailable", error);
+        return undefined;
+      });
+    return boardLoading;
+  }
 
-    if (animation !== undefined) {
-      animation = step(animation, ticker.deltaMS);
-      if (animation === undefined) gameConsole.refresh();
-    }
-
-    scene.render({
-      board: match.board,
-      view: match.viewFor(match.player),
-      projection: toProjection(camera),
-      origin: originOf(camera),
-      hovered,
-      selection,
-      animation,
-    });
-  });
+  /** Le plateau se charge au repos, une fois le menu affiché : rien ne l'attend avant. */
+  function prewarmBoard(): void {
+    if (boardLoading !== undefined) return;
+    const prewarm = (): void => {
+      void ensureBoard();
+      // L'écran des équipes s'ouvre alors complet, sans attente.
+      loadCache.preload([presetsResource]);
+    };
+    if (typeof requestIdleCallback === "function") requestIdleCallback(prewarm);
+    else setTimeout(prewarm, 1);
+  }
 }
+
+/** Au-delà, le menu paraît sans attendre la liste d'amis. */
+const MENU_DEADLINE_MS = 2500;
 
 /** Au-delà, une partie qui n'a envoyé aucune vue au spectateur lui est refusée. */
 const WATCH_TIMEOUT_MS = 6000;
@@ -633,4 +710,4 @@ function element<T extends HTMLElement>(id: string): T {
   return found as T;
 }
 
-void main();
+main();

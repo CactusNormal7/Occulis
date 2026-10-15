@@ -1,16 +1,7 @@
-import { Badge, BadgeRow, EmptyState, IconButton, Table, useMessages } from "@occulis/ui";
+import { Badge, BadgeRow, IconButton, Table, useMessages } from "@occulis/ui";
 import type { AdminMatchSummary } from "@occulis/protocol";
-import type { Loaded } from "./hooks.js";
 import { describeResult, formatDate, isAdminRole, routeHash } from "./model.js";
 import type { QuickUser } from "./actions.js";
-import type { ReactNode } from "react";
-
-/** Ce qu'une vue montre tant que sa ressource n'est pas là, ou si elle a échoué. */
-export function whenReady<T>(loaded: Loaded<T>, render: (value: T) => ReactNode): ReactNode {
-  if (loaded.state === "loading") return null;
-  if (loaded.state === "failed") return <EmptyState error>{loaded.message}</EmptyState>;
-  return render(loaded.value);
-}
 
 /**
  * Les pastilles d'état d'un compte. Blanches ou estompées : la couleur reste réservée à

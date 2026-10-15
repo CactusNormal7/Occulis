@@ -30,9 +30,10 @@ import {
 import type { AdminPlayer } from "@occulis/protocol";
 import * as api from "./api.js";
 import { CreateUserDialog, QuickActions, useAct, useGo } from "./actions.js";
-import { useLoad } from "./hooks.js";
+import { useLoad, whenReady } from "../load/hooks.js";
+import * as R from "./resources.js";
 import { describeBan, formatDate, pageLabel, routeHash, shortAgent, winRate, type MatchStatus } from "./model.js";
-import { MatchTable, StateBadges, whenReady } from "./shared.js";
+import { MatchTable, StateBadges } from "./shared.js";
 
 /**
  * Les vues du back-office, faites des seules briques de `@occulis/ui`. Aucune classe ni
@@ -46,11 +47,7 @@ const GAMES = { view: "matches", status: null, offset: 0 } as const;
 
 export function Overview() {
   const t = useMessages().admin.overview;
-  const { loaded } = useLoad("overview", async () => {
-    const [stats, recent, newcomers] = await Promise.all([api.stats(), api.matches({ offset: 0, limit: 6 }), api.users("", 0)]);
-    if (!stats.ok) return stats;
-    return { ok: true as const, value: { stats: stats.value, recent, newcomers } };
-  });
+  const { loaded } = useLoad(R.overview);
 
   return whenReady(loaded, ({ stats: s, recent, newcomers }) => (
     <>
@@ -97,7 +94,7 @@ export function UserList({ search, offset, self }: { search: string; offset: num
   const t = useMessages().admin.users;
   const notify = useToast();
   const [creating, setCreating] = useState(false);
-  const { loaded, reload } = useLoad(`users:${search}:${offset}`, () => api.users(search, offset));
+  const { loaded, reload } = useLoad(R.users(search, offset));
 
   return (
     <>
@@ -165,17 +162,7 @@ export function UserDetail({ id, self }: { id: string; self: string }) {
   const t = useMessages().admin.user;
   const notify = useToast();
   const go = useGo();
-  const { loaded, reload } = useLoad(`user:${id}`, async () => {
-    const user = await api.user(id);
-    if (!user.ok) return user;
-    const playerId = user.value.playerId ?? undefined;
-    const [sessions, player, history] = await Promise.all([
-      api.sessions(id),
-      playerId === undefined ? undefined : api.player(playerId),
-      playerId === undefined ? undefined : api.matches({ player: playerId, offset: 0, limit: 6 }),
-    ]);
-    return { ok: true as const, value: { user: user.value, playerId, sessions, player, history } };
-  });
+  const { loaded, reload } = useLoad(R.user(id));
   const act = useAct(reload);
 
   return whenReady(loaded, ({ user, playerId, sessions, player, history }) => {
@@ -327,11 +314,7 @@ function ProfileCard({ player }: { player: AdminPlayer }) {
 export function PlayerDetail({ id }: { id: string }) {
   const all = useMessages().admin;
   const t = all.player;
-  const { loaded } = useLoad(`player:${id}`, async () => {
-    const [player, history] = await Promise.all([api.player(id), api.matches({ player: id, offset: 0, limit: 100 })]);
-    if (!player.ok) return player;
-    return { ok: true as const, value: { player: player.value, history } };
-  });
+  const { loaded } = useLoad(R.player(id));
 
   return whenReady(loaded, ({ player: p, history }) => (
     <>
@@ -361,7 +344,7 @@ export function PlayerDetail({ id }: { id: string }) {
 
 export function MatchList({ status, offset }: { status: MatchStatus | null; offset: number }) {
   const t = useMessages().admin.matchList;
-  const { loaded } = useLoad(`matches:${status}:${offset}`, () => api.matches({ status, offset }));
+  const { loaded } = useLoad(R.matches(status, offset));
   const filters: { value: "all" | MatchStatus; label: string }[] = [
     { value: "all", label: t.all },
     { value: "ongoing", label: t.ongoing },

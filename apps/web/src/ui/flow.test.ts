@@ -4,9 +4,16 @@ import { START, type Stage, advance } from "./flow.js";
 const waiting: Stage = { kind: "waiting", seeking: "host", code: undefined };
 
 describe("advance", () => {
-  it("part du formulaire de compte et n'ouvre le menu qu'une fois connecté", () => {
-    expect(START).toEqual({ kind: "auth" });
+  it("n'affiche ni formulaire ni menu avant de connaître l'identité", () => {
+    expect(START).toEqual({ kind: "boot" });
     expect(advance(START, { kind: "identity", signedIn: true })).toEqual({ kind: "menu" });
+    expect(advance(START, { kind: "identity", signedIn: false })).toEqual({ kind: "auth" });
+  });
+
+  it("ne quitte l'amorce que par l'identité", () => {
+    expect(advance(START, { kind: "menu" })).toEqual(START);
+    expect(advance(START, { kind: "deploying" })).toEqual(START);
+    expect(advance(START, { kind: "teams" })).toEqual(START);
   });
 
   it("ramène au formulaire dès la déconnexion, y compris en pleine partie", () => {

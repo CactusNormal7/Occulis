@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import { Button, EmptyState, LocaleSwitch, ProgressBar, ToastProvider, TopBar, UiRoot, useMessages } from "@occulis/ui";
 import { chooseLocale, initLocale } from "../i18n/browser.js";
-import { stopImpersonating, whoAmI, type Identity } from "../net/auth.js";
-import { useRoute } from "./hooks.js";
+import { stopImpersonating, type Identity } from "../net/auth.js";
+import { useHashRoute, useLoad, usePending } from "../load/hooks.js";
 import { MatchDetail } from "./MatchDetail.js";
-import { routeHash, sectionOf, type Route } from "./model.js";
+import { parseRoute, routeHash, sectionOf, type Route } from "./model.js";
+import { identity as identityResource, resourcesOf } from "./resources.js";
 import { MatchList, Overview, PlayerDetail, UserDetail, UserList } from "./views.js";
 
 /**
@@ -16,33 +17,38 @@ export function App() {
   const [locale, setLocale] = useState(initLocale);
   return (
     <UiRoot fullPage locale={locale}>
-      <Page
-        localeSwitch={
-          <LocaleSwitch
-            value={locale}
-            onChange={(next) => {
-              chooseLocale(next);
-              setLocale(next);
-            }}
-          />
-        }
-      />
+      {/* La seule frontière d'attente de la page : rien ne paraît avant que l'écran entier
+          — barre du haut comprise — ait ses données (« Chargement et premier rendu »). */}
+      <Suspense fallback={<ProgressBar active />}>
+        <Page
+          localeSwitch={
+            <LocaleSwitch
+              value={locale}
+              onChange={(next) => {
+                chooseLocale(next);
+                setLocale(next);
+              }}
+            />
+          }
+        />
+      </Suspense>
     </UiRoot>
   );
 }
 
 function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
   const m = useMessages().admin;
-  const [identity, setIdentity] = useState<Identity | undefined>(undefined);
-  useEffect(() => void whoAmI().then(setIdentity), []);
+  const { loaded } = useLoad(identityResource);
+  const identity: Identity = loaded.state === "ready" ? loaded.value : { signedIn: false };
+  const pending = usePending();
 
-  const route = useRoute();
+  const route = useHashRoute(parseRoute, resourcesOf);
   const section = sectionOf(route);
-  const admin = identity?.signedIn === true && identity.impersonating !== true && identity.admin === true;
+  const admin = identity.signedIn && identity.impersonating !== true && identity.admin === true;
 
   return (
     <ToastProvider>
-      <ProgressBar active={identity === undefined} />
+      <ProgressBar active={pending} />
       <TopBar
         section={m.section}
         brandHref="#/"
@@ -58,12 +64,14 @@ function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
         end={
           <>
             {localeSwitch}
-            {identity?.handle !== undefined && <span>{identity.handle}</span>}
+            {identity.handle !== undefined && <span>{identity.handle}</span>}
             <a href="/">{m.backToGame}</a>
           </>
         }
       />
-      <main className="occ-page">{identity === undefined ? null : <Gate identity={identity} route={route} />}</main>
+      <main className="occ-page">
+        <Gate identity={identity} route={route} />
+      </main>
     </ToastProvider>
   );
 }
@@ -82,9 +90,9 @@ function Gate({ identity, route }: { identity: Identity; route: Route }) {
   }
   if (identity.admin !== true) return <EmptyState>{m.adminsOnly}</EmptyState>;
 
-  // La clé rejoue l'animation d'entrée à chaque navigation.
+  // Une clé par route : l'écran suivant remplace le précédent d'un bloc, sans en garder l'état.
   return (
-    <div key={routeHash(route)} className="occ-stack occ-enter">
+    <div key={routeHash(route)} className="occ-stack">
       <View route={route} self={identity.handle ?? ""} />
     </div>
   );

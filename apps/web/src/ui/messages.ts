@@ -159,5 +159,7 @@ export function describeIdentity(identity: Identity): string {
     // aucune explication à l'écran.
     return messages().game.menu.unverified(identity.handle ?? "");
   }
-  return identity.handle ?? "";
+  // Le pseudo est déjà affiché par le coin du compte : le répéter sous le titre
+  // ne dirait rien de plus.
+  return "";
 }
