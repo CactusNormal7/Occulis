@@ -24,6 +24,7 @@ export const ui = {
   },
   language: "Language",
   languages: { en: "English", fr: "Français" },
+  settings: { label: "Settings", title: "Settings" },
   theme: {
     label: "Design",
     names: { obsidian: "Obsidian", reliquary: "Reliquary", astral: "Astral" },

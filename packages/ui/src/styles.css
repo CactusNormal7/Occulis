@@ -1555,17 +1555,12 @@ select.occ-input option {
   color: var(--occ-ink);
   font: var(--occ-text-md) / 1.5 var(--occ-font-pixel);
   -webkit-font-smoothing: none;
-  animation: occ-pop-in 0.22s var(--occ-ease) both;
 }
 
 /* Le voile tramé : ce qui est derrière reste lisible, un pixel sur deux. */
 .occ-dialog::backdrop {
   background: var(--pixel-dither);
   animation: occ-fade 0.22s ease both;
-}
-
-.occ-dialog--closing {
-  animation: occ-pop-out 0.16s ease both;
 }
 
 .occ-dialog--closing::backdrop {
@@ -1631,7 +1626,6 @@ select.occ-input option {
   box-shadow: 0 2px 0 var(--occ-shade);
   cursor: pointer;
   pointer-events: auto;
-  animation: occ-slide-in 0.28s var(--occ-ease) both;
 }
 
 .occ-toast--ok {
@@ -1645,7 +1639,7 @@ select.occ-input option {
 }
 
 .occ-toast--leaving {
-  animation: occ-slide-out 0.22s ease both;
+  pointer-events: none;
 }
 
 /* ---- Fil de messages ------------------------------------------------------------ */
@@ -2029,27 +2023,6 @@ button.occ-choice__main:focus-visible {
   from {
     opacity: 0;
     transform: translateY(10px) scale(0.97);
-  }
-}
-
-@keyframes occ-pop-out {
-  to {
-    opacity: 0;
-    transform: translateY(6px) scale(0.98);
-  }
-}
-
-@keyframes occ-slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(24px);
-  }
-}
-
-@keyframes occ-slide-out {
-  to {
-    opacity: 0;
-    transform: translateX(24px);
   }
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { Button } from "./Button.js";
 import { IconButton } from "./IconButton.js";
 import { useMessages } from "./Locale.js";
+import { pixelReveal } from "../pixel-reveal.js";
 
 export interface DialogProps {
   open: boolean;
@@ -30,7 +31,8 @@ export interface DialogProps {
 
 /**
  * Une fenêtre modale sur `<dialog>` natif : focus piégé, Échap, page inerte derrière.
- * Elle s'ouvre et se ferme en fondu ; un clic sur le voile la ferme aussi.
+ * Elle se construit et se défait en petits carrés (`pixelReveal`), sur un voile tramé qui
+ * se pose en fondu ; un clic sur le voile la ferme aussi.
  */
 export function Dialog({
   open,
@@ -55,15 +57,17 @@ export function Dialog({
     if (open && !dialog.open) {
       setClosing(false);
       dialog.showModal();
+      void pixelReveal(dialog);
       dialog.querySelector<HTMLInputElement>("input, select")?.focus();
     }
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
   const close = () => {
-    if (closing) return;
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) onClose();
-    else setClosing(true);
+    const dialog = ref.current;
+    if (closing || dialog === null) return;
+    setClosing(true);
+    void pixelReveal(dialog, "close").then(onClose);
   };
 
   const submit = (event: FormEvent) => {
@@ -86,9 +90,6 @@ export function Dialog({
       }}
       onClick={(event) => {
         if (dismissible && event.target === ref.current) close();
-      }}
-      onAnimationEnd={() => {
-        if (closing) onClose();
       }}
     >
       <form onSubmit={submit}>

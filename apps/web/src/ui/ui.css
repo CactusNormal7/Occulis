@@ -29,11 +29,20 @@
 }
 
 /* Le fond hors partie : le halo d'aura et la voûte de `.occ-root--page`. En partie, le
-   canevas le couvre entièrement. */
-body {
+   canevas le couvre entièrement. Posé sur `html` et non sur `body` : un fond de `body` se
+   peindrait par-dessus la voûte, qui est derrière lui (`z-index: -1`). Les sélecteurs
+   égalent ceux du bloc critique (`html[data-theme]`), que cette feuille, posée après lui,
+   remplace donc. */
+html,
+html[data-theme] {
   background:
     radial-gradient(ellipse 90% 60% at 50% -12%, var(--occ-aura) 0%, transparent 70%),
     var(--occ-bg);
+}
+
+html body,
+html[data-theme] body {
+  background: transparent;
 }
 
 /* La voûte : deux trames d'étoiles d'un pixel à pas premiers entre eux, pour qu'aucun
@@ -133,38 +142,56 @@ body::after {
   padding: 4px 10px;
 }
 
-/* ---- Coin du compte ------------------------------------------------------------ */
+/* ---- Coin du compte et réglages ------------------------------------------------- */
 
-/* Le pseudo et le lien vers le profil, en haut à droite, hors du panneau de menu : c'est
-   la place où l'on cherche son compte, et ce n'est pas un geste de jeu. */
-#account-corner {
+/* En haut à droite, hors du panneau de menu : c'est là qu'on cherche son compte et ses
+   réglages, et ce ne sont pas des gestes de jeu. */
+#corner-tools {
   position: fixed;
   top: 16px;
   right: 16px;
-  z-index: 5;
+  z-index: 6;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+#account-corner,
+#settings-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: calc(100vw - 32px);
   height: 40px;
   box-sizing: border-box;
-  padding: 0 12px;
   border: var(--line);
   background: var(--panel);
   clip-path: var(--notch);
   color: var(--ink-soft);
+  transition:
+    color 150ms,
+    border-color 150ms,
+    background 150ms;
+}
+
+#account-corner {
+  max-width: calc(100vw - 96px);
+  padding: 0 12px;
   text-decoration: none;
-  transition: color 150ms, border-color 150ms;
 }
 
 #account-corner:hover,
-#account-corner:focus-visible {
+#account-corner:focus-visible,
+#settings-toggle:hover,
+#settings-toggle:focus-visible,
+#settings-toggle[aria-expanded="true"] {
   border-color: var(--ink-soft);
+  background: var(--occ-matter);
   color: var(--ink);
   outline: none;
 }
 
-#account-corner svg {
+#account-corner svg,
+#settings-toggle svg {
   flex: none;
   fill: none;
   stroke: currentColor;
@@ -177,105 +204,137 @@ body::after {
   white-space: nowrap;
 }
 
-/* ---- Choix de langue ----------------------------------------------------------- */
+/* L'engrenage : carré, sans biseau de touche — c'est un réglage, pas un geste. Il tourne
+   d'un huitième de tour quand ses réglages s'ouvrent. */
+#corner-tools #settings-toggle {
+  justify-content: center;
+  width: 40px;
+  padding: 0;
+  box-shadow: none;
+}
 
-/* En haut à gauche, en miroir du coin du compte : un réglage d'affichage, pas un geste
-   de jeu. Montré hors partie seulement. */
-#locale-switch {
-  position: fixed;
-  top: 16px;
-  left: 16px;
-  z-index: 5;
+#settings-toggle svg {
+  transition: transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+#settings-toggle:hover svg {
+  transform: rotate(22.5deg);
+}
+
+#settings-toggle[aria-expanded="true"] svg {
+  transform: rotate(45deg);
+}
+
+/* La fenêtre des réglages, accrochée sous l'engrenage. */
+#settings {
+  position: absolute;
+  top: 48px;
+  right: 0;
   display: flex;
-  height: 40px;
+  flex-direction: column;
+  gap: 16px;
+  width: 320px;
+  max-width: calc(100vw - 32px);
   box-sizing: border-box;
+  padding: 20px;
   border: var(--line);
   background: var(--panel);
+  box-shadow: 0 4px 0 var(--occ-shade);
   clip-path: var(--notch);
-}
-
-#locale-switch button {
-  padding: 0 10px;
-  border: none;
-  background: none;
-  color: var(--ink-faint);
-  font: inherit;
-  cursor: pointer;
-}
-
-#locale-switch button[aria-current="true"] {
   color: var(--ink);
 }
 
-#locale-switch button:hover,
-#locale-switch button:focus-visible {
-  color: var(--ink);
-  outline: none;
+#settings h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 10px var(--occ-ink-glow);
+  text-transform: uppercase;
 }
 
-/* ---- Choix du design ------------------------------------------------------------ */
-
-/* En bas à droite, à l'écart des gestes de jeu : un réglage d'affichage. Chaque entrée
-   porte un échantillon de trois pixels dans les couleurs de sa proposition. */
-#theme-switch {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px;
-  border: var(--line);
-  background: var(--panel);
-  clip-path: var(--notch);
-}
-
-.theme-switch__label {
-  padding: 0 8px 0 6px;
+#settings h3 {
+  margin: 0 0 8px;
   color: var(--ink-dim);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-#theme-switch button {
+.settings__group + .settings__group {
+  padding-top: 16px;
+  border-top: var(--line);
+}
+
+/* Un design : son échantillon de trois pixels, son nom, une ligne qui dit son ton. */
+#settings .settings__choice {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
+  gap: 12px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
   border-color: transparent;
   background: transparent;
   box-shadow: none;
-  color: var(--ink-soft);
 }
 
-#theme-switch button[aria-current="true"] {
+#settings .settings__choice[aria-current="true"] {
   border-color: var(--ink-soft);
   background: var(--occ-matter);
-  color: var(--ink);
 }
 
-#theme-switch i {
+.settings__choice span {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings__choice small {
+  color: var(--ink-dim);
+}
+
+.settings__choice i {
   display: block;
-  width: 12px;
-  height: 12px;
+  flex: none;
+  width: 16px;
+  height: 16px;
   outline: 1px solid var(--ink-faint);
   transition: transform 250ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-#theme-switch button:hover i,
-#theme-switch button[aria-current="true"] i {
-  transform: rotate(45deg) scale(0.85);
+.settings__choice:hover i,
+.settings__choice[aria-current="true"] i {
+  transform: rotate(45deg) scale(0.8);
 }
 
-#theme-switch [data-theme-choice="obsidian"] i {
-  background: linear-gradient(90deg, var(--occ-swatch-obsidian-a) 0 4px, var(--occ-swatch-obsidian-ink) 4px 8px, var(--occ-swatch-obsidian-b) 8px);
+[data-theme-choice="obsidian"] i {
+  background: linear-gradient(90deg, var(--occ-swatch-obsidian-a) 0 33%, var(--occ-swatch-obsidian-ink) 33% 66%, var(--occ-swatch-obsidian-b) 66%);
 }
 
-#theme-switch [data-theme-choice="reliquary"] i {
-  background: linear-gradient(90deg, var(--occ-swatch-reliquary-a) 0 4px, var(--occ-swatch-reliquary-ink) 4px 8px, var(--occ-swatch-reliquary-b) 8px);
+[data-theme-choice="reliquary"] i {
+  background: linear-gradient(90deg, var(--occ-swatch-reliquary-a) 0 33%, var(--occ-swatch-reliquary-ink) 33% 66%, var(--occ-swatch-reliquary-b) 66%);
 }
 
-#theme-switch [data-theme-choice="astral"] i {
-  background: linear-gradient(90deg, var(--occ-swatch-astral-a) 0 4px, var(--occ-swatch-astral-ink) 4px 8px, var(--occ-swatch-astral-b) 8px);
+[data-theme-choice="astral"] i {
+  background: linear-gradient(90deg, var(--occ-swatch-astral-a) 0 33%, var(--occ-swatch-astral-ink) 33% 66%, var(--occ-swatch-astral-b) 66%);
+}
+
+.settings__locales {
+  display: flex;
+  gap: 8px;
+}
+
+#settings .settings__locales button {
+  flex: 1;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+#settings .settings__locales button[aria-current="true"] {
+  border-color: var(--ink);
+  background: var(--occ-matter);
+  color: var(--ink);
 }
 
 /* Le changement de thème : un voile tramé qui balaie l'écran, le temps que tout se repeigne. */
@@ -303,6 +362,13 @@ body::after {
 @media (prefers-reduced-motion: reduce) {
   .theme-veil {
     display: none;
+  }
+
+  #status[data-fresh],
+  #command-log[data-fresh],
+  .friend--challenge,
+  .waiting-orbit i {
+    animation: none !important;
   }
 }
 
@@ -378,7 +444,8 @@ body::after {
 
 /* Un bouton est une touche : biseau sombre en pied, qui s'efface quand on l'enfonce. */
 button:not([class*="occ-"]) {
-  padding: 8px 14px;
+  min-height: 40px;
+  padding: 7px 14px;
   border: 1px solid var(--ink-soft);
   background: var(--occ-surface);
   box-shadow: inset 0 -2px 0 var(--occ-shade);
@@ -577,7 +644,8 @@ button.primary:focus-visible::after {
    l'emporter sur la règle générique des boutons, plus spécifique qu'une classe seule. */
 :is(button, a).quiet {
   align-self: flex-start;
-  padding: 6px 10px;
+  min-height: 32px;
+  padding: 3px 12px;
   border: 1px solid var(--ink-faint);
   background: transparent;
   box-shadow: none;
@@ -588,6 +656,7 @@ button.primary:focus-visible::after {
 /* Un lien de navigation secondaire, sans cadre : gérer les amis, back-office,
    déconnexion. Ce ne sont pas des gestes de jeu, ils ne doivent pas en avoir l'air. */
 :is(button, a).menu-link {
+  min-height: 0;
   padding: 0;
   border: none;
   background: none;
@@ -618,6 +687,50 @@ button.primary:focus-visible::after {
   text-shadow:
     0 0 16px var(--occ-ink-glow),
     0 0 40px var(--occ-ink-glow);
+}
+
+/* L'œil d'attente : huit pixels en couronne, dont l'éclat fait le tour en continu. */
+.waiting-orbit {
+  position: relative;
+  align-self: center;
+  width: 32px;
+  height: 32px;
+  margin: 4px 0;
+}
+
+.waiting-orbit i {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 4px;
+  height: 4px;
+  background: var(--ink);
+  animation: orbit 1.6s linear infinite;
+}
+
+.waiting-orbit i:nth-child(1) { transform: rotate(0deg) translateY(-14px); animation-delay: 0s; }
+.waiting-orbit i:nth-child(2) { transform: rotate(45deg) translateY(-14px); animation-delay: -1.4s; }
+.waiting-orbit i:nth-child(3) { transform: rotate(90deg) translateY(-14px); animation-delay: -1.2s; }
+.waiting-orbit i:nth-child(4) { transform: rotate(135deg) translateY(-14px); animation-delay: -1s; }
+.waiting-orbit i:nth-child(5) { transform: rotate(180deg) translateY(-14px); animation-delay: -0.8s; }
+.waiting-orbit i:nth-child(6) { transform: rotate(225deg) translateY(-14px); animation-delay: -0.6s; }
+.waiting-orbit i:nth-child(7) { transform: rotate(270deg) translateY(-14px); animation-delay: -0.4s; }
+.waiting-orbit i:nth-child(8) { transform: rotate(315deg) translateY(-14px); animation-delay: -0.2s; }
+
+@keyframes orbit {
+  from {
+    opacity: 1;
+    box-shadow: 0 0 6px var(--occ-ink-glow);
+  }
+  to {
+    opacity: 0.12;
+    box-shadow: none;
+  }
+}
+
+/* Le code tient la place de l'œil quand il y en a un : l'attente se lit sur le code. */
+.waiting-orbit:has(~ .code:not([hidden])) {
+  display: none;
 }
 
 #waiting-copy {
@@ -710,6 +823,61 @@ button.primary:focus-visible::after {
   color: var(--refused);
 }
 
+/* Un compte rendu neuf : il se trace de gauche à droite en luisant, puis s'éteint. Un refus
+   tremble d'un pixel, deux fois — assez pour se voir, pas assez pour inquiéter. */
+#status[data-fresh],
+#command-log[data-fresh] {
+  animation: line-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+#status[data-fresh][data-yours="true"] {
+  animation:
+    line-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both,
+    your-turn 1.4s ease-out both;
+}
+
+#command-log[data-fresh][data-state="ko"] {
+  animation:
+    line-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both,
+    refused 320ms linear both;
+}
+
+@keyframes line-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+    text-shadow: 0 0 12px currentColor;
+  }
+  60% {
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    text-shadow: none;
+  }
+}
+
+@keyframes your-turn {
+  0%,
+  40% {
+    color: var(--ink);
+    text-shadow: 0 0 10px var(--occ-ink-glow);
+  }
+  to {
+    text-shadow: none;
+  }
+}
+
+@keyframes refused {
+  20%,
+  60% {
+    transform: translateX(-2px);
+  }
+  40%,
+  80% {
+    transform: translateX(2px);
+  }
+}
+
 #command-help {
   margin-top: 8px;
   color: var(--ink-dim);
@@ -789,6 +957,17 @@ button.primary:focus-visible::after {
 
 .friend--challenge .friend__name {
   color: var(--accepted);
+}
+
+/* Un défi reçu appelle : il luit doucement tant qu'il attend une réponse. */
+.friend--challenge {
+  animation: challenge 2.4s ease-in-out infinite;
+}
+
+@keyframes challenge {
+  50% {
+    text-shadow: 0 0 10px var(--occ-ink-glow);
+  }
 }
 
 .friend__name {

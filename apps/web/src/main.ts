@@ -38,11 +38,10 @@ import type { Board } from "./scene/board.js";
 import { type GameConsole, attachConsole } from "./ui/console.js";
 import { applyPalette } from "./ui/palette.js";
 import { applyTheme, storedTheme } from "./ui/theme-choice.js";
-import { isThemeName } from "@occulis/ui/tokens";
+import { attachSettings } from "./ui/settings.js";
 import { resendVerification, signOut, stopImpersonating, whoAmI, type Identity } from "./net/auth.js";
 import { chooseLocale, initLocale, translateDom } from "./i18n/browser.js";
 import { currentLocale, messages, onLocaleChange } from "./i18n/current.js";
-import { isLocale } from "@occulis/i18n";
 import type { TeamPreset, TeamPresetList } from "@occulis/protocol";
 import { mountDeployment, mountMatchFound } from "./prepare/mount.js";
 import type { DeploymentProps } from "./prepare/Deployment.js";
@@ -102,15 +101,34 @@ function main(): void {
    */
   let pending = false;
 
-  const localeSwitch = element<HTMLElement>("locale-switch");
-  const themeSwitch = element<HTMLElement>("theme-switch");
+  const settings = attachSettings({
+    elements: {
+      toggle: element<HTMLButtonElement>("settings-toggle"),
+      panel: element<HTMLElement>("settings"),
+    },
+    theme: storedTheme,
+    locale: currentLocale,
+    hint: (theme) => messages().ui.theme.hints[theme],
+    chooseTheme: (theme) => {
+      // Un voile tramé balaie l'écran pendant que tout se repeint (ui.css, `.theme-veil`).
+      const veil = document.createElement("div");
+      veil.className = "theme-veil";
+      document.body.append(veil);
+      window.setTimeout(() => veil.remove(), 600);
+      window.setTimeout(() => {
+        applyTheme(theme);
+        applyPalette(document.documentElement);
+        settings.refresh();
+      }, 200);
+    },
+    chooseLocale,
+  });
   const go = (event: Parameters<typeof advance>[1]): void => {
     stage = advance(stage, event);
     shell.render(stage);
-    // Hors des écrans pleine page et de la partie seulement : il y couvrirait le contenu.
-    localeSwitch.hidden = stage.kind === "game" || stage.kind === "deploying" || stage.kind === "teams";
-    // Le choix du design reste en partie : c'est sur le plateau qu'une proposition se juge.
-    themeSwitch.hidden = stage.kind === "deploying" || stage.kind === "teams" || stage.kind === "boot";
+    // Hors des écrans pleine page seulement, partie comprise : c'est sur le plateau qu'un
+    // design se juge.
+    settings.setAvailable(stage.kind !== "deploying" && stage.kind !== "teams" && stage.kind !== "boot");
   };
 
   /**
@@ -582,52 +600,17 @@ function main(): void {
   };
   void refresh();
 
-  const markLocale = (): void => {
-    for (const button of localeSwitch.querySelectorAll<HTMLButtonElement>("button[data-locale]")) {
-      button.setAttribute("aria-current", String(button.dataset["locale"] === currentLocale()));
-    }
-  };
-  const markTheme = (): void => {
-    const current = storedTheme();
-    for (const button of themeSwitch.querySelectorAll<HTMLButtonElement>("button[data-theme-choice]")) {
-      const choice = button.dataset["themeChoice"];
-      button.setAttribute("aria-current", String(choice === current));
-      if (isThemeName(choice)) button.title = messages().ui.theme.hints[choice];
-    }
-  };
-  themeSwitch.addEventListener("click", (event) => {
-    const chosen = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-theme-choice]")?.dataset["themeChoice"];
-    if (!isThemeName(chosen) || chosen === storedTheme()) return;
-    // Un voile tramé balaie l'écran pendant que tout se repeint (ui.css, `.theme-veil`).
-    const veil = document.createElement("div");
-    veil.className = "theme-veil";
-    document.body.append(veil);
-    window.setTimeout(() => veil.remove(), 600);
-    window.setTimeout(() => {
-      applyTheme(chosen);
-      applyPalette(document.documentElement);
-      markTheme();
-    }, 200);
-  });
-  markTheme();
-
-  localeSwitch.addEventListener("click", (event) => {
-    const chosen = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-locale]")?.dataset["locale"];
-    if (isLocale(chosen)) chooseLocale(chosen);
-  });
   // Tout ce qui est déjà écrit est réécrit : le HTML statique, l'écran courant, l'identité,
   // l'îlot de compte. Les messages déjà affichés (`notify`) gardent leur langue d'origine.
   onLocaleChange(() => {
     translateDom(document);
-    markLocale();
-    markTheme();
+    settings.refresh();
     shell.render(stage);
     shell.setIdentity(identity);
     gameConsole.refresh();
     showIslands();
     if (!identity.signedIn) showAccount();
   });
-  markLocale();
 
   gameConsole = attachConsole({
     elements: {

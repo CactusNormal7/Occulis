@@ -216,7 +216,8 @@ chaque ouverture du canal social.
 | `apps/web/src/net/channel.ts` | Transport WebSocket et reconnexion | non |
 | `apps/web/src/net/backoff.ts` | Délai avant la n-ième tentative de reconnexion | oui |
 | `apps/web/src/ui/flow.ts` | Quel écran a lieu d'être : amorce, compte, menu, attente, partie | oui |
-| `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes | non |
+| `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes ; un panneau qui paraît se construit en carrés | non |
+| `apps/web/src/ui/settings.ts` | Les réglages d'affichage (design, langue) derrière l'engrenage | non |
 | `apps/web/src/account/AccountApp.tsx` | Écran de compte : connexion, inscription, oubli, réinitialisation, Google | non |
 | `apps/web/src/account/mount.tsx` | Monte l'îlot de compte dans `#account-root` | non |
 | `apps/web/src/account/model.ts` | Parcours ↔ URL, messages de retour, refus rattachés à leur champ, indication de longueur | oui |
@@ -886,7 +887,8 @@ l'exécution, et les pluriels s'écrivent dans la fonction.
   `UiRoot locale={…}`. Chaque page la passe : l'îlot de compte la reçoit en propriété
   (`AccountAppProps.locale`), le profil et le back-office la tiennent dans un état et
   offrent un `LocaleSwitch` dans leur barre du haut.
-- Dans la page du jeu, `#locale-switch` (en haut à gauche, hors partie) change la langue ;
+- Dans la page du jeu, la langue se change dans les réglages (`ui/settings.ts`, engrenage en
+  haut à droite) ;
   `main.ts` réécrit alors tout ce qui est affiché — HTML statique, écran courant, identité,
   îlot de compte. Un message déjà affiché (`notify`) garde sa langue d'origine.
 
@@ -1002,7 +1004,8 @@ compte et le menu ont leurs écrans (`shell.ts`).
 | Fonction | Rôle |
 |---|---|
 | `attachConsole()` | Installe le formulaire et rend un `GameConsole` |
-| `refresh()` (interne) | Réécrit la ligne d'état ; cache la saisie et son aide à un spectateur (`watching()`) |
+| `refresh()` (interne) | Réécrit la ligne d'état ; cache la saisie et son aide à un spectateur (`watching()`). Une ligne neuve est animée (`freshen()`), plus fort quand le trait revient au joueur (`data-yours`) |
+| `freshen()` (interne) | Rejoue l'animation d'une ligne neuve (`data-fresh`) : elle se trace en luisant ; un refus tremble d'un pixel |
 | `showTile()` (interne) | Écrit la lecture d'une case désignée au clic |
 | `report()` (interne) | Écrit un compte rendu et son état `ok`/`ko` |
 | `playAction()` (interne) | Joue une action **et la rapporte** ; rend `true` si acceptée — refusée d'emblée à un spectateur |
@@ -1099,6 +1102,9 @@ convertissent en état d'effet :
 | Nouvelle pièce sélectionnée | `selectedAt` | La pièce s'élève, une colonne de lumière la désigne, ses destinations s'ouvrent en cascade (`cascadeOf()`) |
 | Nouvelle case survolée | `hoveredAt` | Le réticule se referme sur la case |
 | Fin d'un déplacement | une `Landing` (case, hauteur, couleur du camp, instant) | Onde au sol et étincelles (`landingAt()`, `sparksOf()`) |
+| Un adversaire sort de la vue | sa dernière image dans `vanished` | Elle se dissout en montant sur son fantôme (`MOTION_FX.vanishMs`) |
+| Le trait revient au joueur | `turnAt` | L'œil de ses pièces bat une fois, en vague du fond vers l'avant (`turnPulse()`) |
+| La partie est finie (`view.outcome`) | `light` ← `relight()` vers une vue vide | Le plateau s'éteint ; la position finale reste lisible dans l'ombre |
 
 Pendant un déplacement, la pièce suit un arc (`liftOf()`), son œil s'illumine, et
 `MOTION_FX.trail` images rémanentes la suivent (`lagging()`), dessinées en fantômes tramés.
@@ -1117,6 +1123,7 @@ Sous `prefers-reduced-motion`, `track()` et le dessin passent des durées nulles
 | `ditherPattern()` (privée) | Texture de trame → `FillPattern` |
 | `occupantsOf()` (privée) | `PlayerView` → identité, case, couleur, fantôme ou non, adverse ou non, par occupant |
 | `isTile()` (privée) | Discrimine les deux formes de `Drawable` |
+| `turnPulse()` (privée) | L'éclat d'un œil quand le trait revient, selon le temps écoulé |
 
 Le pan n'affecte que `board.position`, arrondie à la grille des pixels du plateau (`snap()`)
 pour que la trame ne scintille pas en glissant.
@@ -1238,11 +1245,28 @@ Les épaisseurs sont en **pixels du plateau** (`view/pixel.ts`), jamais en pixel
 | `applyTheme()` | Stockage, `<html data-theme>`, `setLook()` |
 
 Le bloc critique (`criticalHead()`) a déjà posé `data-theme` avant la première image, ce
-qui fait paraître toute page dans le bon thème. `main.ts` applique le thème au démarrage,
-puis porte le sélecteur `#theme-switch` (en bas à droite, hors des écrans pleine page,
-**partie comprise** — c'est sur le plateau qu'une proposition se juge) : un clic pose un
-voile tramé qui balaie l'écran (`.theme-veil`), puis applique le thème et réécrit la palette
-CSS (`applyPalette()`). Le profil et le back-office appliquent le thème stocké au démarrage,
+qui fait paraître toute page dans le bon thème. `main.ts` applique le thème au démarrage ;
+le choix se fait dans les réglages (`ui/settings.ts`) : un clic pose un voile tramé qui
+balaie l'écran (`.theme-veil`), puis applique le thème et réécrit la palette CSS
+(`applyPalette()`).
+
+## `ui/settings.ts` — les réglages d'affichage
+
+Une fenêtre flottante non modale (`#settings`), ouverte par l'engrenage `#settings-toggle`
+en haut à droite (`#corner-tools`, à côté du lien vers le compte). Elle porte le **design**
+(trois choix, chacun avec son échantillon, son nom et une ligne de ton) et la **langue**.
+L'engrenage est montré partout sauf à l'amorce et sur les écrans pleine page (déploiement,
+équipes), **partie comprise** — c'est sur le plateau qu'un design se juge.
+
+| Fonction | Rôle |
+|---|---|
+| `attachSettings()` | Branche l'engrenage et la fenêtre ; rend un `Settings` |
+| `open()`, `close()` (internes) | Montre la fenêtre et joue l'ouverture en carrés (`pixelReveal`) ; la ferme en carrés puis la masque. Échap, l'engrenage ou un clic hors de la fenêtre la ferment |
+| `refresh()` | Marque le design et la langue en vigueur (`aria-current`), pose l'indication de chaque design |
+| `setAvailable()` | Montre ou cache l'engrenage ; le cacher referme la fenêtre sans animation |
+
+Le choix lui-même est délégué à `main.ts` (`chooseTheme`, `chooseLocale`) : ce module ne
+connaît ni le stockage ni le rendu. Le profil et le back-office appliquent le thème stocké au démarrage,
 pour que leurs rejeux en Canvas 2D en suivent les couleurs.
 
 ### La règle est mécanique, pas conventionnelle

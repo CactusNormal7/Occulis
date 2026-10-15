@@ -216,6 +216,11 @@ export const MOTION_FX = {
   sparks: 8,
   /** Une pièce adverse qui entre dans la vue se matérialise. */
   materializeMs: 520,
+  /** Un adversaire qui sort de la vue se dissout sur son fantôme. */
+  vanishMs: 480,
+  /** Le trait revient au joueur : l'œil de ses pièces bat une fois, en vague du fond vers l'avant. */
+  turnMs: 560,
+  turnSpreadMs: 260,
   /** La sélection : la pièce choisie s'élève, et une colonne de lumière la désigne. */
   liftMs: 180,
   lift: 3,

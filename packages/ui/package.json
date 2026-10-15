@@ -10,7 +10,8 @@
     ".": "./src/index.ts",
     "./tokens": "./src/tokens.ts",
     "./critical": "./src/critical.ts",
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles.css",
+    "./reveal": "./src/pixel-reveal.ts"
   },
   "sideEffects": [
     "*.css"

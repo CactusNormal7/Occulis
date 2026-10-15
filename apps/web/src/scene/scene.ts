@@ -155,6 +155,12 @@ function occupantsOf(view: PlayerView): Map<CoordKey, Occupant> {
   return occupants;
 }
 
+/** L'éclat de l'œil quand le trait revient au joueur : un battement, puis rien. */
+function turnPulse(elapsed: number): number {
+  if (elapsed < 0 || elapsed > MOTION_FX.turnMs) return 0;
+  return Math.sin(Math.PI * (elapsed / MOTION_FX.turnMs)) * 0.9;
+}
+
 export class Scene {
   readonly root = new Container();
   private readonly board = new Container();
@@ -181,8 +187,12 @@ export class Scene {
   private lastAnimation: MoveAnimation | undefined;
   private landings: Landing[] = [];
   /** Les pièces adverses déjà vues, et l'instant où chacune est entrée dans la vue. */
-  private seenEnemies: Set<PieceId> | undefined;
+  private seenEnemies: Map<PieceId, Occupant> | undefined;
   private readonly appeared = new Map<PieceId, number>();
+  /** Les adversaires sortis de la vue : leur dernière image, qui s'efface sur leur fantôme. */
+  private vanished: { readonly occupant: Occupant; readonly start: number }[] = [];
+  /** L'instant où le trait est revenu au joueur. */
+  private turnAt = -Infinity;
 
   /** `resolution` : celle du rendu (`view/pixel.ts`), un pixel du tampon par pixel du plateau. */
   constructor(resolution: number) {
@@ -207,6 +217,8 @@ export class Scene {
     this.landings = [];
     this.seenEnemies = undefined;
     this.appeared.clear();
+    this.vanished = [];
+    this.turnAt = -Infinity;
   }
 
   render(input: SceneInput, frame: SceneFrame): void {
@@ -238,6 +250,7 @@ export class Scene {
       this.seenEnemies = undefined;
       this.appeared.clear();
       this.landings = [];
+      this.vanished = [];
     }
 
     if (input.view !== this.lastView) {
@@ -246,13 +259,24 @@ export class Scene {
       const sources = input.view.ownPieces.map((piece) => piece.coord);
       // La première vue attend que le plateau soit à moitié monté pour se déployer.
       const delay = first ? introLength(timing) * 0.55 : 0;
-      this.light = relight(this.light, keys, input.view.visible, sources, now, timing, delay);
+      // Une partie finie s'éteint : la vue se retire de tout le plateau, qui reste lisible
+      // dans l'ombre — la position finale n'est pas effacée, elle est close.
+      const lit = input.view.outcome === undefined ? input.view.visible : new Set<CoordKey>();
+      this.light = relight(this.light, keys, lit, sources, now, timing, delay);
 
-      const visible = new Set(input.view.visibleEnemies.map((piece) => piece.id));
-      if (this.seenEnemies !== undefined) {
-        for (const id of visible) if (!this.seenEnemies.has(id) && !still) this.appeared.set(id, now);
+      const occupants = occupantsOf(input.view);
+      const visible = new Map(
+        [...occupants.values()].filter((occupant) => occupant.enemy && !occupant.ghost).map((occupant) => [occupant.id, occupant]),
+      );
+      if (this.seenEnemies !== undefined && !still) {
+        for (const id of visible.keys()) if (!this.seenEnemies.has(id)) this.appeared.set(id, now);
+        for (const [id, occupant] of this.seenEnemies) if (!visible.has(id)) this.vanished.push({ occupant, start: now });
       }
       this.seenEnemies = visible;
+
+      const yours = input.view.outcome === undefined && input.view.activePlayer === input.view.player;
+      const wasYours = this.lastView !== undefined && this.lastView.activePlayer === this.lastView.player;
+      if (yours && !wasYours && !first && !still) this.turnAt = now;
       this.lastView = input.view;
     }
 
@@ -275,6 +299,7 @@ export class Scene {
     }
     this.lastAnimation = input.animation;
     this.landings = this.landings.filter((landing) => now - landing.start < MOTION_FX.landingMs);
+    this.vanished = this.vanished.filter((gone) => now - gone.start < MOTION_FX.vanishMs);
   }
 
   private dither(color: number): FillPattern {
@@ -352,8 +377,29 @@ export class Scene {
         alpha: shown?.alpha ?? 1,
         trail: false,
         rise: lift * MOTION_FX.lift * this.px,
-        flash: Math.max(shown?.flash ?? 0, moving === undefined ? 0 : Math.sin(Math.PI * (moving.elapsed / moving.duration)) * 0.5),
+        flash: Math.max(
+          shown?.flash ?? 0,
+          moving === undefined ? 0 : Math.sin(Math.PI * (moving.elapsed / moving.duration)) * 0.5,
+          occupant.enemy ? 0 : turnPulse(now - this.turnAt - rank * MOTION_FX.turnSpreadMs),
+        ),
         beam: selected ? lift * (0.75 + 0.25 * breath(now, MOTION_FX.breathMs)) : 0,
+      });
+    }
+
+    // Un adversaire qui sort de la vue : sa dernière image se dissout sur son fantôme.
+    for (const gone of this.vanished) {
+      const t = phase(now, gone.start, MOTION_FX.vanishMs);
+      const coord = gone.occupant.coord;
+      const base = project(coord, board.heightAt(coord) ?? 0, projection);
+      drawables.push({
+        depth: standingDepth(coord, board, projection),
+        base: { x: base.x, y: base.y - easeOutCubic(t) * 4 * this.px },
+        occupant: { ...gone.occupant, ghost: false },
+        alpha: 1 - easeOutCubic(t),
+        trail: false,
+        rise: 0,
+        flash: Math.sin(Math.PI * t) * 0.6,
+        beam: 0,
       });
     }
 

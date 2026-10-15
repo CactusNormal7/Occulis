@@ -25,6 +25,7 @@ export const ui: Messages["ui"] = {
   },
   language: "Langue",
   languages: { en: "English", fr: "Français" },
+  settings: { label: "Réglages", title: "Réglages" },
   theme: {
     label: "Design",
     names: { obsidian: "Obsidienne", reliquary: "Reliquaire", astral: "Astral" },

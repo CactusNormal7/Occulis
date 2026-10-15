@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { CLOSE_MS, pixelReveal } from "../pixel-reveal.js";
 
 export interface ToastMessage {
   id: number;
@@ -12,11 +13,12 @@ type Notify = (text: string, ok?: boolean) => void;
 const ToastContext = createContext<Notify>(() => undefined);
 
 const TOAST_MS = 4500;
-const LEAVE_MS = 240;
+/** Le temps de se défaire en carrés, et une image de marge. */
+const LEAVE_MS = CLOSE_MS + 20;
 
 /**
- * Les messages éphémères, empilés en bas à droite : ils ne poussent pas la page et
- * partent d'eux-mêmes — deux fois plus lentement pour un refus — ou au clic.
+ * Les messages éphémères, empilés en bas à droite : ils ne poussent pas la page, se
+ * construisent et se défont en petits carrés de leur couleur (`pixelReveal`), et partent d'eux-mêmes — deux fois plus lentement pour un refus — ou au clic.
  * `useToast()` les émet depuis n'importe quel descendant.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -60,15 +62,28 @@ export function ToastStack({ messages, onDismiss }: ToastStackProps) {
   return (
     <div className="occ-toasts" aria-live="polite">
       {messages.map((message) => (
-        <div
-          key={message.id}
-          role={message.ok ? "status" : "alert"}
-          className={`occ-toast occ-toast--${message.ok ? "ok" : "ko"}${message.leaving === true ? " occ-toast--leaving" : ""}`}
-          onClick={() => onDismiss?.(message.id)}
-        >
-          {message.text}
-        </div>
+        <Toast key={message.id} message={message} onDismiss={onDismiss} />
       ))}
+    </div>
+  );
+}
+
+function Toast({ message, onDismiss }: { message: ToastMessage; onDismiss?: ((id: number) => void) | undefined }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const leaving = message.leaving === true;
+
+  useLayoutEffect(() => {
+    if (ref.current !== null) void pixelReveal(ref.current, leaving ? "close" : "open");
+  }, [leaving]);
+
+  return (
+    <div
+      ref={ref}
+      role={message.ok ? "status" : "alert"}
+      className={`occ-toast occ-toast--${message.ok ? "ok" : "ko"}${leaving ? " occ-toast--leaving" : ""}`}
+      onClick={() => onDismiss?.(message.id)}
+    >
+      {message.text}
     </div>
   );
 }

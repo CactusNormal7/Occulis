@@ -190,6 +190,16 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   une onde et des étincelles ; un adversaire qui entre dans la vue se matérialise. Tout est
   coupé sous « mouvement réduit ». Ces animations ne lisent que la vue que le serveur a
   transmise : elles mettent en scène l'information, elles n'en révèlent aucune.
+- **Toute fenêtre flottante se construit en petits carrés.** Demande du porteur du projet :
+  une fenêtre qui n'est pas une page entière — fenêtre modale, message, réglages, panneaux
+  de compte et d'attente, bandeau de partie — s'ouvre par de petits carrés blancs qui
+  partent du coin de la fenêtre le plus proche de la souris et gagnent régulièrement le coin
+  opposé, jaillissent, puis s'effacent en dévoilant la fenêtre ; elle se referme par le geste
+  inverse. Une première version, une nuée éclose du centre avec du désordre, a été jugée
+  trop chaotique par le porteur du projet. **Le menu principal ne s'ouvre pas ainsi**, à sa
+  demande : on y revient sans cesse. Les pages entières gardent le fondu entre pages. Le
+  design et la langue se règlent dans une petite fenêtre de **réglages**, ouverte par un
+  engrenage à côté du lien vers le compte.
 - **Code couleur : le vide porte la matière, l'os porte la géométrie, les lueurs portent
   l'état de jeu.** Le terrain est fait de faces sombres et pleines, aux arêtes d'os ; le fog
   of war et la hauteur se lisent par la **valeur** (le dessus s'éclaircit avec la hauteur,
