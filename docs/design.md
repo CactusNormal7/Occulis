@@ -4,7 +4,7 @@ Ce document est une synthèse d'une session de brainstorming critique. Il captur
 
 ## 1. Pitch
 
-Un jeu de plateau tactique compétitif 1v1 en ligne, en vue isométrique 2D, à l'esthétique minimaliste filaire ("supra minimaliste, style traits, très chill"). Il reprend le squelette conceptuel des échecs — une pièce maîtresse (roi) à protéger, victoire par mat quand elle n'a plus aucune parade — mais casse le plateau plat 8x8 au profit d'une carte à géométrie libre, avec hauteur, murs, ligne de vue (LOS) et fog of war façon Dofus/XCOM. Les pièces ont des capacités au-delà du simple mouvement échiquéen.
+Un jeu de plateau tactique compétitif 1v1 en ligne, en vue isométrique 2D, en pixel art léger, mystique et cryptique (section 8.1 — l'intention de départ, « supra minimaliste, style traits, très chill », a été refondue à la demande du porteur du projet). Il reprend le squelette conceptuel des échecs — une pièce maîtresse (roi) à protéger, victoire par mat quand elle n'a plus aucune parade — mais casse le plateau plat 8x8 au profit d'une carte à géométrie libre, avec hauteur, murs, ligne de vue (LOS) et fog of war façon Dofus/XCOM. Les pièces ont des capacités au-delà du simple mouvement échiquéen.
 
 Nom du projet : Occulis (voir section 8 — nom retenu avec réserve documentée).
 
@@ -159,24 +159,37 @@ Le seuil de la seconde règle n'est **pas** un équilibrage : aucun roster n'est
 
 ### 8.1 Direction artistique et caméra — décisions provisoires
 
-Ces quatre points ont été arrêtés lors de l'implémentation du moteur de rendu. Ils sont
-explicitement **provisoires** : aucun design system n'est encore posé, et le porteur du
-projet a indiqué que le code couleur évoluerait. Ils sont consignés ici pour que le code
-ne soit pas la seule trace d'une décision de DA.
+Ces points ont été arrêtés lors de l'implémentation du moteur de rendu, puis la direction
+artistique a été refondue à la demande du porteur du projet. Ils restent **provisoires**,
+et sont consignés ici pour que le code ne soit pas la seule trace d'une décision de DA.
 
-- **Code couleur : le blanc porte la géométrie, la couleur porte l'état de jeu.** Tout le
-  terrain est blanc ; le fog of war, la hauteur et l'infranchissabilité se lisent par alpha
-  et par épaisseur de trait, jamais par teinte. La couleur est réservée à l'information de
-  partie (camps, et plus tard sélection, coups légaux, menace). Conséquence directe : un
-  trait coloré signifie toujours quelque chose. La contrainte est verrouillée
+- **Direction : un pixel art léger, mystique et cryptique.** Inspirations données par le
+  porteur du projet : *Animal Well*, *Helix: Descent n Ascent*, *Void Stranger* et
+  *Octopath Traveler*. On en retient : des pixels **visibles mais très fins** (un pixel du
+  plateau couvre deux pixels physiques, quel que soit l'écran) ; des animations
+  **jamais saccadées**, à la manière d'Octopath — la matière est en pixels, le mouvement et
+  la lumière restent continus (glissements interpolés à chaque image, lueurs qui respirent,
+  vignettage en pleine résolution par-dessus le plateau) ; des noirs violacés et un os
+  chaud, avec des lueurs saturées et rares, à la manière d'Helix et de Void Stranger ; et un
+  décor cryptique qui ne veut rien dire — un sceau gravé sous le plateau qui tourne très
+  lentement, des poussières en suspension. Ce qui a été écarté : le pixel art « gros
+  grain », et toute animation par paliers.
+- **Code couleur : le vide porte la matière, l'os porte la géométrie, les lueurs portent
+  l'état de jeu.** Le terrain est fait de faces sombres et pleines, aux arêtes d'os ; le fog
+  of war et la hauteur se lisent par la **valeur** (le dessus s'éclaircit avec la hauteur,
+  une case hors de vue est assombrie et tramée un pixel sur deux), jamais par une teinte.
+  La couleur est réservée à l'information de partie (camps, sélection, coups légaux,
+  menace) : une lueur signifie toujours quelque chose. La contrainte est verrouillée
   mécaniquement — une règle ESLint interdit toute valeur de couleur hors de
   `packages/ui/src/tokens.ts`, seul détenteur du code couleur, que le rendu PixiJS
   (`apps/web/src/theme.ts`) et la charte d'interface (`@occulis/ui`) partagent.
-- **Rendu filaire par défaut, sans remplissage.** Les faces des cases ne sont pas remplies ;
-  seule la case survolée reçoit un aplat blanc de faible opacité. En l'absence de surfaces
-  opaques, le volume est restitué par une atténuation des traits en profondeur. Le
-  remplissage existe comme token à opacité nulle : repasser à des faces opaques, et
-  retrouver une occlusion par surface, ne demande que de relever cette valeur.
+- **Faces pleines, et non plus filaire.** Le rendu filaire des débuts a été abandonné avec
+  la refonte : les faces opaques rétablissent l'occlusion par surface (une pièce derrière
+  un relief est cachée par une matière, plus seulement par l'ordre des traits), et c'est
+  la lumière — face de falaise éclairée à gauche, d'ombre à droite — qui restitue le volume.
+- **Une police pixel pour toute l'interface** (Tiny5, licence OFL), à des tailles multiples
+  de 8 pour rester nette. Elle est servie par le client et préchargée avec le HTML : c'est la
+  seule ressource que le premier écran attend, et il paraît directement dans cette police.
 - **Rotation libre avec aimantation.** La rotation se fait au drag (bouton droit ou milieu),
   de façon continue, et s'aimante sur le quart de tour le plus proche au relâchement ; les
   flèches gauche/droite conservent le quart de tour direct. Conformément à la section 8, la
@@ -207,7 +220,7 @@ ne soit pas la seule trace d'une décision de DA.
 - **Caméra : zoom et déplacement.** Molette pour zoomer vers le curseur, drag gauche pour
   déplacer la vue. Le facteur de zoom vit dans la projection et non dans la transformation
   du conteneur de rendu, afin que l'épaisseur des traits reste constante à l'écran quel que
-  soit le niveau de zoom — exigence propre à une DA filaire.
+  soit le niveau de zoom — une arête reste large d'un seul pixel du plateau.
 
 
 ## 9. Nom du projet

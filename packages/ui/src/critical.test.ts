@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { criticalHead, withCriticalHead } from "./critical.js";
+import { PIXEL_FONT_URL, criticalHead, withCriticalHead } from "./critical.js";
 import { BACKGROUND, cssColor } from "./tokens.js";
 
 describe("criticalHead", () => {
@@ -9,6 +9,12 @@ describe("criticalHead", () => {
     expect(head).toContain('<meta name="color-scheme" content="dark" />');
     expect(head).toContain(`background:${cssColor(BACKGROUND)}`);
     expect(head).not.toContain("var(");
+  });
+
+  it("déclare et précharge la police pixel avant toute feuille", () => {
+    expect(head).toContain(`<link rel="preload" href="${PIXEL_FONT_URL}" as="font"`);
+    expect(head).toContain('font-family:"Tiny5"');
+    expect(head).toContain("font-display:block");
   });
 
   it("enchaîne les pages par un fondu, sauf mouvement réduit", () => {

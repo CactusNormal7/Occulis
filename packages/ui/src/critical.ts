@@ -8,6 +8,10 @@ import { BACKGROUND, cssColor, hexColor } from "./tokens.js";
  *   blanc le temps de charger la feuille, et entre deux pages. Une variable `--occ-bg`
  *   n'y suffit pas — elle n'existe qu'une fois la feuille arrivée.
  * - `@view-transition` : un fondu entre deux pages du site plutôt qu'une coupure.
+ * - La police pixel (`FONT.pixel`) : déclarée et préchargée ici, avant toute feuille. Sa
+ *   requête part avec le HTML au lieu d'attendre que le CSS la découvre, et
+ *   `font-display: block` retient le texte jusqu'à elle : un écran ne paraît jamais
+ *   dans la police de secours pour basculer ensuite.
  * - Les règles de spéculation : un lien interne survolé est préchargé. `prefetch` et non
  *   `prerender` — une page pré-rendue exécuterait son script, et ouvrirait donc le canal
  *   de présence d'une page que le joueur n'a pas encore ouverte.
@@ -15,9 +19,13 @@ import { BACKGROUND, cssColor, hexColor } from "./tokens.js";
  * Injecté au build par `apps/web/vite.config.ts` : le HTML ne contient aucune couleur
  * écrite à la main, et ce fichier n'en contient aucune qui ne vienne de `tokens.ts`.
  */
+/** L'adresse fixe de la police pixel, servie depuis `apps/web/public/fonts/`. */
+export const PIXEL_FONT_URL = "/fonts/tiny5-latin.woff2";
+
 export function criticalHead(): string {
   const background = cssColor(BACKGROUND);
   const style = [
+    `@font-face{font-family:"Tiny5";src:url(${PIXEL_FONT_URL}) format("woff2");font-display:block}`,
     `html,body{background:${background};color-scheme:dark}`,
     "@view-transition{navigation:auto}",
     "@media (prefers-reduced-motion:reduce){@view-transition{navigation:none}}",
@@ -38,6 +46,7 @@ export function criticalHead(): string {
   return [
     '<meta name="color-scheme" content="dark" />',
     `<meta name="theme-color" content="${hexColor(BACKGROUND)}" />`,
+    `<link rel="preload" href="${PIXEL_FONT_URL}" as="font" type="font/woff2" crossorigin />`,
     `<style>${style}</style>`,
     `<script type="speculationrules">${JSON.stringify(speculation)}</script>`,
   ].join("\n");

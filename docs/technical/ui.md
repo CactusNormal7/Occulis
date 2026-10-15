@@ -35,20 +35,25 @@ et à la CI (`pnpm -r build`).
 
 | Export | Contenu |
 |---|---|
-| `BACKGROUND`, `INK` | Le fond et l'encre (entiers `0xRRGGBB`) |
+| `BACKGROUND`, `SURFACE`, `INK` | Le vide, la surface des panneaux et l'os (entiers `0xRRGGBB`) |
+| `TERRAIN` | La matière du plateau : dessus `top` → `peak`, `fog`, faces `sideLight` / `sideShade` |
 | `CAMP.A`, `CAMP.B` | Couleurs de camp |
 | `STATE` | `selection`, `legalMove`, `climb`, `threat` |
-| `INK_ALPHA` | Les opacités de l'encre : `soft` .55, `dim` .35, `faint` .2, `line` .1, `ghost` .05 |
+| `INK_ALPHA` | Les opacités de l'os : `soft` .62, `dim` .4, `faint` .22, `line` .12, `ghost` .06 |
 | `PANEL_ALPHA` | Le voile des panneaux posés sur le plateau |
-| `FONT` | Monospace système, tailles `xs`…`xxl`, interlettrage des capitales |
+| `FONT` | `pixel` (Tiny5, la police de toute l'interface), `mono` (système, pour les courriers), tailles `xs`…`display` **toutes multiples de 8**, interlettrages |
 | `SPACE` | Échelle de 4 en 4 (`1` = 4px … `8` = 32px) |
-| `MOTION` | Courbe et durées |
+| `MOTION` | Courbe, durées, et `breath` (la respiration des lueurs) |
 | `cssColor(color, alpha)` | Entier → `rgb(r g b / a)` |
 | `hexColor(color, alpha, over)` | Entier → `#rrggbb`, l'alpha **précomposé** sur le fond : le format des courriers HTML du serveur, que la moitié des clients de messagerie lisent sans transparence |
 | `cssVariables()` | Nom `--occ-*` → valeur ; c'est ce que `generated/tokens.css` pose |
 | `tokensStylesheet()` | Le texte exact de `generated/tokens.css` |
 
-`apps/web/src/theme.ts` (PixiJS) importe `BACKGROUND`, `CAMP`, `INK` et `STATE` depuis
+`cssVariables()` dérive en plus quelques lueurs (`--occ-camp-a-glow`, `--occ-camp-b-glow`,
+`--occ-ink-glow`, `--occ-selection-glow`) et les matières (`--occ-surface`, `--occ-matter`,
+`--occ-matter-peak`, `--occ-shade`).
+
+`apps/web/src/theme.ts` (PixiJS) importe `BACKGROUND`, `CAMP`, `INK`, `STATE` et `TERRAIN` depuis
 `@occulis/ui/tokens` — un sous-chemin sans React, pour que le jeu n'embarque rien d'autre.
 Le serveur fait de même pour ses courriers (`apps/server/src/auth/mail.ts`).
 
@@ -63,15 +68,29 @@ de style échappent à ESLint ; `tokens.test.ts` les garde à la place :
 
 ## La feuille de style
 
-Trois règles de la direction artistique (`docs/design.md` 8.1, maquettes de `docs/mockups/`)
-gouvernent `styles.css` :
+Quatre règles de la direction artistique (`docs/design.md` 8.1) gouvernent `styles.css` :
 
-1. **angles vifs, traits fins** — aucun `border-radius`, des cadres d'un pixel en
-   `--occ-ink-line`, aucun bouton plein ;
-2. **la hiérarchie par l'alpha** — l'encre est blanche à opacité décroissante, jamais grise ;
-3. **la couleur porte l'information de partie** — camps, sélection, coup légal, refus. Les
-   états de compte restent blancs ; seule une suspension prend la teinte des refus, et un
+1. **le pixel se voit, il ne saccade pas** — la police Tiny5 à des tailles multiples de 8,
+   sans lissage (`-webkit-font-smoothing: none`) ; des cadres d'un pixel aux coins crantés
+   (`clip-path: var(--pixel-notch)`, deux pixels coupés par coin) ; des boutons biseautés
+   comme des touches (ombre intérieure en pied, qui s'efface à l'appui) et des champs en
+   creux (ombre en tête) ; mais des transitions continues ;
+2. **la matière est le vide** — panneaux et cartes en `--occ-surface`, une page
+   (`occ-root--page`) porte un halo de matière et deux trames d'étoiles d'un pixel, et le
+   voile d'une fenêtre modale est une trame un-sur-deux (`--pixel-dither`) plutôt qu'un
+   flou. Seul le bouton principal est plein — d'os ;
+3. **la hiérarchie par l'alpha** — l'os à opacité décroissante, jamais gris ; les titres
+   luisent (`text-shadow` en `--occ-ink-glow`) ;
+4. **la couleur porte l'information de partie** — camps, sélection, coup légal, refus. Les
+   états de compte restent dans l'os ; seule une suspension prend la teinte des refus, et un
    résultat de partie celle du camp vainqueur.
+
+`--pixel-notch` et `--pixel-dither` sont des formes, pas des couleurs : elles sont posées
+sur `:root` par la feuille elle-même, hors des tokens. Un cran coupe aussi les ombres
+portées : les éléments à infobulle (`data-tip`) n'en ont pas.
+
+Un encart (`occ-root` sans `--page`) reste transparent : il se pose sur la matière de son
+hôte, un panneau du jeu par exemple.
 
 Classes utilitaires : `occ-root` (posée par `UiRoot`), `occ-page`, `occ-stack`, `occ-enter`
 (fondu d'un bloc entier, jamais en cascade), `occ-label`, `occ-muted`, `occ-actions-cell`. Les infobulles passent par
@@ -81,7 +100,7 @@ l'attribut `data-tip`. Toutes les animations s'éteignent sous `prefers-reduced-
 
 | Famille | Composants |
 |---|---|
-| Fondations | `UiRoot` (racine : fond, encre, police, langue), `Icon` (tracés au trait, `currentColor`) |
+| Fondations | `UiRoot` (racine : encre, police, langue ; fond pour une page), `Icon` (tracés au trait, `currentColor`) |
 | Langue | `LocaleProvider`, `useLocale()`, `useMessages()`, `LocaleSwitch` (choix EN/FR) |
 | Actions | `Button` (`default`/`primary`/`danger`/`ghost`), `IconButton` (infobulle, `disabledReason`), `QuickBar` |
 | Formulaires | `TextField` (aide et erreur rattachées par `aria-describedby`), `PasswordField` (bouton d'affichage), `SelectField`, `SearchField` (validé par Entrée ; `onInput` à chaque frappe), `InlineEdit`, `Segmented`, `ChipGroup` |
@@ -151,7 +170,8 @@ Quelques comportements à connaître :
   d'animation d'entrée, puisqu'il se pose dans un cadre déjà affiché.
 - **`criticalHead()`** n'est pas un composant : c'est le texte injecté en tête de chaque page
   HTML par `apps/web/vite.config.ts` — `color-scheme: dark`, `theme-color`, le fond en ligne
-  depuis `BACKGROUND`, `@view-transition` (coupé sous mouvement réduit) et les règles de
+  depuis `BACKGROUND`, la déclaration `@font-face` de Tiny5 (`font-display: block`) et son
+  préchargement (`PIXEL_FONT_URL`, `/fonts/tiny5-latin.woff2`), `@view-transition` (coupé sous mouvement réduit) et les règles de
   spéculation (`prefetch` au survol). `withCriticalHead(html)` le place juste après la
   déclaration d'encodage, donc avant toute feuille et tout script.
 - **`MessageThread`** aligne à droite les messages du lecteur (`mine`), au trait franc, et ceux
@@ -180,7 +200,7 @@ catégories (`docs/<Nom>.md`), l'en-tête de conventions lu par l'agent de desig
 |---|---|
 | `src/tokens.test.ts` | `generated/tokens.css` identique à sa source, `styles.css` sans propriété indéfinie ni couleur en dur, conversion des couleurs, **alpha précomposé pour les courriers** |
 | `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition**, **langue fixée par `UiRoot` (et anglais par défaut)**, compte à rebours proportionnel et urgent, plaques dans la couleur de leur camp, ligne de choix marquée, fenêtre sans croix, **fil de messages : les siens marqués à part, texte échappé, état vide, longueur du champ**, squelette annoncé sans texte visible |
-| `src/critical.test.ts` | **Fond et thème sombre sans variable** (la feuille n'est pas encore là), fondu coupé sous mouvement réduit, aucun préchargement de `/api/*` ni `/match/*` et jamais de `prerender`, **bloc placé après l'encodage et avant toute feuille** |
+| `src/critical.test.ts` | **Fond et thème sombre sans variable** (la feuille n'est pas encore là), police pixel déclarée et préchargée, fondu coupé sous mouvement réduit, aucun préchargement de `/api/*` ni `/match/*` et jamais de `prerender`, **bloc placé après l'encodage et avant toute feuille** |
 
 Le rendu visuel n'est pas testé ici : il l'est par les aperçus vérifiés sur captures lors de
 chaque synchronisation (`.design-sync/`).

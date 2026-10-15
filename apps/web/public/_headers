@@ -5,3 +5,9 @@
 # c'est lui qui désigne les fichiers du déploiement courant.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# La police pixel (Tiny5) : hors de /assets/ pour garder une adresse fixe, que le bloc
+# critique précharge (`@occulis/ui/critical`). Une semaine, le temps qu'un changement de
+# police se propage.
+/fonts/*
+  Cache-Control: public, max-age=604800

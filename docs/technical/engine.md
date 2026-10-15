@@ -1,8 +1,9 @@
 # Le moteur de rendu et le client — `apps/web`
 
-Rendu isométrique filaire en dessin procédural : aucun sprite, aucune texture, aucun
-moteur 3D. Tout est tracé en traits par `Graphics` de PixiJS 8, à partir des coordonnées
-logiques de `packages/core`. Toute partie est arbitrée par le serveur : le client porte les
+Rendu isométrique en pixel art léger, en dessin procédural : aucun sprite, aucune image,
+aucun moteur 3D. Tout est tracé par `Graphics` de PixiJS 8, à partir des coordonnées
+logiques de `packages/core`, dans un tampon plus petit que l'écran puis agrandi au plus
+proche voisin — le pixel se voit, fin, et le mouvement reste continu (`view/pixel.ts`). Toute partie est arbitrée par le serveur : le client porte les
 écrans de compte et de menu, l'entrée en partie, puis le plateau — à la souris ou au
 clavier.
 
@@ -93,9 +94,11 @@ sur le rendu.
         ├─► advance()          ── avance l'animation, handOver() à son terme
         │
         └─► Scene.render()     ── scene/scene.ts
-                 ├── root.position ← origin        (pan : simple translation)
+                 ├── board.position ← origin       (pan : translation, arrondie au pixel)
+                 ├── ground  à chaque image        (le sceau, qui tourne)
                  ├── world   si projection / plateau / vue changés, ou animation en cours
-                 └── overlay si survol ou sélection changés, ou projection
+                 ├── overlay si survol ou sélection changés, ou projection, ou sélection qui respire
+                 └── ambient à chaque image        (les poussières)
 ```
 
 Le point structurant : **le pan ne reconstruit aucune géométrie** (translation du
@@ -111,8 +114,9 @@ qui les porte :
 1. **Peinture immédiate du fond.** Chaque page HTML porte en tête de `<head>`, juste après
    l'encodage, le bloc de `criticalHead()` (`packages/ui/src/critical.ts`), injecté au build
    par le greffon `occulis-critical-paint` de `vite.config.ts` : `color-scheme: dark`,
-   `theme-color`, le fond en ligne (depuis `BACKGROUND`), le fondu entre pages et les règles
-   de spéculation. **Aucune couleur n'est écrite dans un `index.html`** ; une nouvelle page
+   `theme-color`, le fond en ligne (depuis `BACKGROUND`), la police pixel déclarée en
+   `font-display: block` et préchargée — un écran ne paraît jamais dans la police de
+   secours pour basculer ensuite —, le fondu entre pages et les règles de spéculation. **Aucune couleur n'est écrite dans un `index.html`** ; une nouvelle page
    Vite reçoit le bloc d'office.
 2. **Tout ce qu'un écran lit part en même temps.** Chaque page déclare, par route, les
    ressources de son écran (`profile/resources.ts`, `admin/resources.ts` : `resourcesOf(route)`)
@@ -185,12 +189,16 @@ chaque ouverture du canal social.
 | `apps/web/src/main.ts` | Racine de composition : câble tout, charge le plateau à part | non |
 | `apps/web/src/load/cache.ts` | Cache des lectures, état d'une lecture, compteur des lectures en cours | oui |
 | `apps/web/src/load/hooks.tsx` | `useLoad()`, `usePending()`, `whenReady()` | non |
-| `apps/web/public/_headers` | Cache d'un an des fichiers hachés de `/assets/` | — |
+| `apps/web/public/_headers` | Cache d'un an des fichiers hachés de `/assets/`, d'une semaine de la police | — |
+| `apps/web/public/fonts/` | La police pixel Tiny5 (sous-ensemble latin) et sa licence OFL, à adresse fixe | — |
 | `apps/web/src/theme.ts` | Tokens de DA — **seul fichier contenant une couleur** | oui |
 | `apps/web/src/view/iso.ts` | Projection isométrique et géométrie des cases | oui |
 | `apps/web/src/view/camera.ts` | État de caméra et ses transitions | oui |
 | `apps/web/src/view/picking.ts` | Point à l'écran → case du plateau | oui |
 | `apps/web/src/view/animation.ts` | Interpolation d'un déplacement de pièce | oui |
+| `apps/web/src/view/pixel.ts` | Le grain du plateau (`pixelResolution()`), arrondi à la grille, mélange de couleurs, respiration | oui |
+| `apps/web/src/view/matter.ts` | La teinte du dessus d'une case, selon sa hauteur et sa visibilité | oui |
+| `apps/web/src/view/ambient.ts` | Les poussières en suspension : nuée à graine, position en fonction du temps | oui |
 | `apps/web/src/game/online-match.ts` | La partie arbitrée par le serveur, vue du client | oui |
 | `apps/web/src/game/hypothesis.ts` | `PlayerView` → position telle que le joueur peut la croire | oui |
 | `apps/web/src/game/movement-diff.ts` | Ce que deux vues successives ont fait bouger | oui |
@@ -234,8 +242,9 @@ chaque ouverture du canal social.
 | `apps/web/src/profile/api.ts` | Appels `/api/me/*` et routes de compte de Better Auth | non |
 | `apps/web/src/profile/model.ts` | Routes du profil, messages d'arrivée, délai de pseudo, liaison retirable, images du replay | oui |
 | `apps/web/src/scene/board.ts` | `mountBoard()` : application Pixi, scène, gestes, boucle d'images — chargé par `import()` | non |
-| `apps/web/src/scene/scene.ts` | Couches PixiJS et détection de changement | non |
-| `apps/web/src/scene/terrain.ts` | Géométrie d'une case | non |
+| `apps/web/src/scene/scene.ts` | Couches PixiJS, trames et détection de changement | non |
+| `apps/web/src/scene/ground.ts` | Le sceau gravé sous le plateau | non |
+| `apps/web/src/scene/terrain.ts` | Faces et arêtes d'une case | non |
 | `apps/web/src/scene/pieces.ts` | Silhouette d'une pièce | non |
 | `apps/web/src/scene/overlay.ts` | Survol et sélection | non |
 | `apps/web/src/input/controls.ts` | Gestes du canevas → intentions | non |
@@ -277,8 +286,8 @@ interface IsoProjection {
 ```
 
 `scale` vit **dans la projection** et non dans la transformation du conteneur PixiJS :
-avec `root.scale`, les traits s'épaissiraient avec le zoom, ce qu'une DA filaire ne
-supporte pas. Le coût est une réémission de géométrie pendant l'animation de zoom —
+avec `root.scale`, les traits s'épaissiraient avec le zoom, alors qu'une arête doit rester
+large d'un seul pixel du plateau. Le coût est une réémission de géométrie pendant l'animation de zoom —
 négligeable à cette échelle.
 
 | Fonction | Rôle |
@@ -331,7 +340,7 @@ même fichier : c'est là le vrai risque de désynchronisation.
 ### `cliffQuads()` et l'ordre du peintre
 
 `cliffQuads()` n'émet une face verticale que si la case **domine** son voisin : deux cases
-de même hauteur ne produisent aucune arête interne, et le filaire garde une silhouette
+de même hauteur ne produisent aucune arête interne, et le relief garde une silhouette
 nette au lieu de devenir un maillage.
 
 `depthOf()` renvoie `{ plane, height }` où `plane = rx + ry` après rotation.
@@ -940,9 +949,13 @@ chaque équipe ; un preset que de nouvelles règles rendent caduc reste listé, 
 ## `canvas/paint.ts` — le plateau en Canvas 2D
 
 Les primitives communes au rejeu (`admin/replay-canvas.ts`) et au placement :
-`terrainDrawables()` (le relief avec l'atténuation en profondeur du jeu, et un crochet pour
-peindre une zone ou un survol **dans l'ordre du peintre**), `drawPiece()` (la silhouette de
-`scene/pieces.ts`), `strokeQuad()`, `fillQuad()`.
+`fitPixelCanvas()` (dimensionne le tampon au grain du plateau, `pixelResolution()`, et pose
+`image-rendering: pixelated`), `terrainDrawables()` (faces pleines, trame du fog et
+atténuation en profondeur du jeu, avec un crochet pour peindre une zone ou un survol **dans
+l'ordre du peintre**), `drawPiece()` (la silhouette de `scene/pieces.ts` ; une pièce sous
+`PIECES.alphaVisible` y est un fantôme, contour seul), `strokeQuad()` (épaisseur en pixels
+du plateau), `fillQuad()`. La trame du fog est un `CanvasPattern` de deux pixels sur deux,
+mis à l'échelle d'un pixel du tampon et gardé par contexte.
 
 ## `ui/messages.ts` — tous les textes
 
@@ -972,9 +985,10 @@ une position hors LOS. Un test le verrouille.
 
 ## `ui/palette.ts` et `ui/console.ts`
 
-`applyPalette()` convertit les tokens entiers de `theme.ts` en propriétés personnalisées
-CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--panel`, `--accepted`, `--refused`)
-pour les écrans du jeu ; la conversion est `cssColor()` de `@occulis/ui/tokens`. Le back-office
+`applyPalette()` pose sur la racine du document toutes les propriétés `--occ-*` de la
+charte (`cssVariables()`), puis convertit les tokens entiers de `theme.ts` en propriétés
+personnalisées CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--panel`,
+`--accepted`, `--refused`) pour les écrans du jeu ; la conversion est `cssColor()` de `@occulis/ui/tokens`. Le back-office
 n'en dépend pas : il lit les `--occ-*` de la feuille de `@occulis/ui`, posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
 `ui.css`.**
 
@@ -1044,22 +1058,46 @@ commande ferait pivoter le plateau.
 
 ---
 
-## `scene/scene.ts` — couches, tri et animation
+## `scene/board.ts` et `scene/scene.ts` — couches, tri et animation
 
-**Deux couches, et deux seulement.**
+`mountBoard()` initialise PixiJS **sans anticrénelage**, à la résolution
+`pixelResolution(devicePixelRatio)` (`view/pixel.ts`) avec `autoDensity`, et pose
+`image-rendering: pixelated` sur le canevas : le tampon fait la moitié de l'écran en pixels
+physiques, et le navigateur l'agrandit au plus proche voisin. Un pixel du plateau couvre
+donc toujours **deux pixels physiques** (`ART_PIXEL`), sur un écran ordinaire comme sur un
+écran dense, et l'agrandissement tombe toujours juste. Il passe aussi à chaque image la
+taille de l'écran et `prefers-reduced-motion`, qui fige les décors et la respiration.
 
-- **`world`** réunit terrain et pièces. Elles doivent partager un **unique ordre du
-  peintre** pour qu'une pièce derrière un relief soit réellement masquée.
-- **`overlay`** porte survol et sélection, dessinés par-dessus.
+**Quatre couches**, dans `root` :
+
+- **`ground`** (dans `board`) : le sceau (`scene/ground.ts`), redessiné à chaque image
+  puisqu'il tourne. Sous le plateau, il n'est visible qu'autour.
+- **`world`** (dans `board`) réunit terrain et pièces. Elles doivent partager un **unique
+  ordre du peintre** pour qu'une pièce derrière un relief soit réellement masquée — d'où
+  les faces pleines.
+- **`overlay`** (dans `board`) porte survol et sélection, dessinés par-dessus.
+- **`ambient`** (hors de `board`, en coordonnées d'écran) : les poussières
+  (`view/ambient.ts`), redessinées à chaque image.
+
+La scène tient `px`, la taille d'un pixel du plateau en unités logiques (`1 / resolution`) :
+toutes les épaisseurs de `theme.ts` en sont des multiples. Elle tient aussi son horloge
+(`time`), qui n'avance pas sous mouvement réduit, et une trame un-sur-deux par couleur
+(`dither()`, `ditherPattern()` : une texture de deux texels sur deux, couleur cuite, un texel
+par pixel du plateau, en `FillPattern` répété) — celle du vide pour le fog, celle d'un camp
+pour ses fantômes.
 
 | Fonction | Rôle |
 |---|---|
-| `Scene.render()` | Positionne le conteneur, décide quelle couche réémettre |
+| `mountBoard()` | Application Pixi au grain du plateau, scène, gestes, boucle d'images |
+| `Scene.render()` | Avance l'horloge, positionne `board`, redessine sceau et poussières, décide quelle couche réémettre |
 | `Scene.drawWorld()` (privée) | Terrain et pièces triés ensemble par profondeur |
-| `Scene.drawOverlay()` (privée) | Sélection puis survol |
+| `Scene.drawOverlay()` (privée) | Sélection (avec sa respiration) puis survol |
+| `Scene.drawAmbient()` (privée) | Les poussières, arrondies à la grille des pixels |
+| `Scene.dither()` (privée) | La trame d'une couleur, créée une fois |
+| `ditherPattern()` (privée) | Texture de trame → `FillPattern` |
 | `sameProjection()` (privée) | Compare champ à champ deux `IsoProjection` |
 | `sameHover()` (privée) | Compare deux survols, `undefined` compris |
-| `occupantsOf()` (privée) | `PlayerView` → identité, case, couleur et opacité par occupant |
+| `occupantsOf()` (privée) | `PlayerView` → identité, case, couleur, et fantôme ou non, par occupant |
 | `isTile()` (privée) | Discrimine les deux formes de `Drawable` |
 
 ### Conditions de réémission
@@ -1067,8 +1105,11 @@ commande ferait pivoter le plateau.
 - **`world`** : projection changée (rotation ou zoom), `Board` ou `PlayerView` changés
   **par identité de référence** — d'où le cache de vues de `Match` — **ou animation en
   cours**. Une pièce qui glisse change de position à chaque image.
-- **`overlay`** : survol changé, sélection changée (par identité), ou projection.
-- **Le pan ne déclenche rien** : il n'affecte que `root.position`.
+- **`overlay`** : survol changé, sélection changée (par identité), projection, **ou
+  sélection présente** — elle respire, donc change à chaque image.
+- **`ground`** et **`ambient`** : à chaque image ; quelques dizaines de traits.
+- **Le pan ne déclenche rien** : il n'affecte que `board.position`, arrondie à la grille
+  des pixels du plateau (`snap()`) pour que la trame ne scintille pas en glissant.
 
 ### La liste unique de `Drawable`
 
@@ -1087,7 +1128,7 @@ pièce présente l'emporte sur un souvenir situé sur la même case.
 
 ---
 
-## `scene/terrain.ts`, `scene/pieces.ts`, `scene/overlay.ts`
+## `scene/terrain.ts`, `scene/pieces.ts`, `scene/overlay.ts`, `scene/ground.ts`
 
 Ce sont des **fonctions**, pas des classes : elles écrivent dans un `Graphics` qu'on leur
 passe. C'est précisément ce qui permet à `scene.ts` de tout entrelacer dans un seul ordre
@@ -1095,14 +1136,16 @@ du peintre.
 
 | Fonction | Emplacement | Rôle |
 |---|---|---|
-| `drawTile()` | `scene/terrain.ts` | Falaises puis face supérieure d'une case |
-| `depthAlpha()` (privée) | `scene/terrain.ts` | Proximité normalisée → opacité |
-| `drawPiece()` | `scene/pieces.ts` | Tige verticale + tête en losange |
-| `markTile()` (privée) | `scene/overlay.ts` | Aplat + contour d'une case, falaises en option |
-| `drawHover()` | `scene/overlay.ts` | Surbrillance de la case survolée |
-| `drawSelection()` | `scene/overlay.ts` | Destinations, puis la pièce |
+| `drawTile()` | `scene/terrain.ts` | Falaises (face éclairée à gauche, d'ombre à droite), puis dessus plein, trame si hors de vue, arête |
+| `depthAlpha()` (privée) | `scene/terrain.ts` | Proximité normalisée → opacité des arêtes |
+| `topColor()` | `view/matter.ts` | Teinte du dessus : `top` → `peak` avec la hauteur ; assombrie hors de vue |
+| `drawPiece()` | `scene/pieces.ts` | Ombre portée, obélisque à deux faces, œil flottant à pupille ; fantôme : contour et trame |
+| `drawHover()` | `scene/overlay.ts` | Voile d'os et réticule aux quatre coins de la case survolée, falaises soulignées |
+| `drawSelection()` | `scene/overlay.ts` | Destinations (aplat qui respire, gemme centrale), puis la pièce |
+| `drawSigil()` | `scene/ground.ts` | Trois cercles, graduations et glyphes, projetés dans le plan du sol |
+| `boardRadius()` | `scene/ground.ts` | Rayon du plateau autour du pivot, en cases |
 
-L'opacité d'une case est le produit de trois facteurs, dans `drawTile()` :
+L'opacité des **arêtes** d'une case est le produit de trois facteurs, dans `drawTile()` :
 
 ```
 alpha = (visible ? alphaVisible : alphaFogged)
@@ -1110,13 +1153,41 @@ alpha = (visible ? alphaVisible : alphaFogged)
       × depthAlpha(proximité)
 ```
 
+Le relief se lit **par la valeur** : le dessus s'éclaircit avec la hauteur, et les deux
+faces d'une falaise ne reçoivent pas la même lumière — celle dont l'arête est à gauche du
+centre de la case est éclairée. Hors de vue, tout est assombri et le dessus reçoit la
+trame du vide : le relief reste lisible (implementation-notes 10), il est seulement éteint.
+
 `drawSelection()` dessine les destinations, **puis** la case d'origine — pour que celle-ci
-reste lisible quand des destinations la jouxtent.
+reste lisible quand des destinations la jouxtent. Son paramètre `glow` (0 → 1) est
+`breath(time, SELECTION.breathMs)`.
 
 `drawPiece()` dérive ses proportions de la projection, ce qui la fait suivre le zoom sans
-réglage séparé. Aucun type de `packages/core/src/pieces/` ne porte de champ visuel : la
-correspondance `kind` → forme appartient donc à ce module. Le roster n'étant pas acté,
-**toutes les pièces partagent aujourd'hui la même silhouette**.
+réglage séparé ; ses épaisseurs et l'écart de l'œil sont en pixels du plateau. Aucun type
+de `packages/core/src/pieces/` ne porte de champ visuel : la correspondance `kind` → forme
+appartient donc à ce module. Le roster n'étant pas acté, **toutes les pièces partagent
+aujourd'hui la même silhouette**.
+
+`drawSigil()` place le sceau à `SIGIL.height`, sous le sol, sur un cercle qui contient tout
+le plateau (`boardRadius()` + `SIGIL.margin`) : chaque point est projeté par `project()`,
+si bien qu'il suit rotation et zoom. Les graduations tournent dans un sens, les glyphes dans
+l'autre, à `SIGIL.speed`. Il ne lit que la forme de la carte, jamais l'état de la partie.
+
+## `view/pixel.ts`, `view/matter.ts`, `view/ambient.ts`
+
+| Fonction | Rôle |
+|---|---|
+| `pixelResolution()` | `devicePixelRatio / ART_PIXEL` : la résolution PixiJS qui fait d'un pixel du plateau deux pixels physiques |
+| `snap()` | Arrondit une coordonnée à la grille des pixels du plateau |
+| `mixColor()` | Mélange canal par canal de deux couleurs `0xRRGGBB` |
+| `breath()` | Pulsation en cosinus, 0 → 1 → 0 sur une période |
+| `topColor()` | Voir ci-dessus |
+| `createMotes()` | Une nuée à graine (mulberry32) : position, montée, ondulation, phase, taille, alpha |
+| `moteAt()` | Position et alpha d'une poussière à un instant, sur un écran donné ; elle revient par le bas et s'éteint près des bords |
+
+Les poussières sont une **fonction du temps seul** : rien n'évolue image par image, et
+un test vérifie qu'aucune ne saute d'un pixel entier d'une image à la suivante — le pixel
+se voit, le mouvement ne saccade pas.
 
 ---
 
@@ -1127,25 +1198,25 @@ Code couleur acté dans `docs/design.md` section 8.1, **provisoire**. Les **vale
 (`docs/technical/ui.md`) ; `theme.ts` les reprend et y ajoute ce qui n'appartient qu'au rendu
 PixiJS — métriques, alphas, épaisseurs :
 
-> Le blanc porte la géométrie, la couleur porte l'état de jeu.
+> Le vide porte la matière, l'os porte la géométrie, les lueurs portent l'état de jeu.
 
 | Groupe | Contenu |
 |---|---|
 | `BACKGROUND` | Fond du canevas — celui des pages HTML vient du même token, par `criticalHead()` |
 | `METRICS` | `tileWidth` 72, `tileHeight` 36, `heightUnit` 22 |
-| `GEOMETRY` | Trait du terrain : opacités visible/fog/infranchissable, atténuation en profondeur, épaisseurs, remplissage |
-| `HOVER` | Aplat et contour de la case survolée |
+| `GEOMETRY` | Terrain : opacités des arêtes visible/fog/infranchissable, atténuation en profondeur, épaisseurs, teintes des faces (`top`, `peak`, `fog`, `sideLight`, `sideShade`), trame du fog |
+| `HOVER` | Voile, réticule et falaises de la case survolée |
 | `PLAYERS` | Couleurs de camp A et B — **provisoires** |
 | `STATE` | `selection`, `legalMove`, `threat` consommés ; `climb` réservé |
-| `SELECTION` | Couleurs, épaisseurs et opacités du marquage de sélection |
-| `PIECES` | Opacités visible/fantôme, épaisseur, proportions de la silhouette |
+| `SELECTION` | Couleurs, épaisseurs, opacités (min, max) et période de respiration du marquage de sélection |
+| `PIECES` | Opacités visible/fantôme, épaisseur, proportions de l'obélisque et de l'œil, ombre |
+| `SIGIL` | Le sceau : alphas, marge, anneau, graduations, glyphes, hauteur, vitesse |
+| `MOTES` | Les poussières : couleur, nombre, graine |
 
 `STATE.legalMove` est **délibérément distinct des deux couleurs de camp** : une case mise
 en avant ne doit jamais se confondre avec une pièce.
 
-Le rendu est **filaire par défaut** : `GEOMETRY.fillAlpha` vaut 0. La géométrie des faces
-est pourtant bien émise et triée — repasser à des faces opaques ne demande que de relever
-cette seule valeur.
+Les épaisseurs y sont en **pixels du plateau** (`view/pixel.ts`), jamais en pixels CSS.
 
 ### La règle est mécanique, pas conventionnelle
 

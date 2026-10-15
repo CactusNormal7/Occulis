@@ -1,6 +1,6 @@
 import type { Graphics } from "pixi.js";
 import type { Board, Coord } from "@occulis/core";
-import { type IsoProjection, cliffQuads, flattenQuad, tileQuad } from "../view/iso.js";
+import { type IsoProjection, type Quad, cliffQuads, flattenQuad, tileQuad } from "../view/iso.js";
 import type { Selection } from "../game/selection.js";
 import { HOVER, SELECTION } from "../theme.js";
 
@@ -10,82 +10,85 @@ import { HOVER, SELECTION } from "../theme.js";
  * jamais la géométrie du terrain.
  */
 
-interface Mark {
-  readonly color: number;
-  readonly width: number;
-  readonly fillAlpha: number;
-  /** Souligne aussi les falaises, pour lire la colonne entière en relief. */
-  readonly cliffs?: number | undefined;
+function lerp(range: readonly [number, number], t: number): number {
+  return range[0] + (range[1] - range[0]) * t;
 }
 
-function markTile(g: Graphics, board: Board, coord: Coord, mark: Mark, proj: IsoProjection): void {
+function topOf(board: Board, coord: Coord, proj: IsoProjection): Quad | undefined {
   const tile = board.getTile(coord);
-  if (tile === undefined) return;
-
-  if (mark.cliffs !== undefined) {
-    for (const cliff of cliffQuads(board, tile.coord, tile.height, proj)) {
-      g.poly(flattenQuad(cliff)).stroke({
-        width: mark.width,
-        color: mark.color,
-        alpha: mark.cliffs,
-      });
-    }
-  }
-
-  g.poly(flattenQuad(tileQuad(tile.coord, tile.height, proj)))
-    .fill({ color: mark.color, alpha: mark.fillAlpha })
-    .stroke({ width: mark.width, color: mark.color });
+  return tile === undefined ? undefined : tileQuad(tile.coord, tile.height, proj);
 }
 
-export function drawHover(g: Graphics, board: Board, coord: Coord, proj: IsoProjection): void {
-  markTile(
-    g,
-    board,
-    coord,
-    {
-      color: HOVER.stroke,
-      width: HOVER.strokeWidth,
-      fillAlpha: HOVER.fillAlpha,
-      cliffs: HOVER.cliffAlpha,
-    },
-    proj,
-  );
+/** Les quatre coins de la case, en branches courtes : un réticule plutôt qu'un cadre. */
+export function drawHover(
+  g: Graphics,
+  board: Board,
+  coord: Coord,
+  proj: IsoProjection,
+  px: number,
+): void {
+  const tile = board.getTile(coord);
+  const quad = topOf(board, coord, proj);
+  if (tile === undefined || quad === undefined) return;
+
+  for (const cliff of cliffQuads(board, tile.coord, tile.height, proj)) {
+    g.poly(flattenQuad(cliff)).stroke({ width: px, color: HOVER.stroke, alpha: HOVER.cliffAlpha });
+  }
+  g.poly(flattenQuad(quad)).fill({ color: HOVER.fill, alpha: HOVER.fillAlpha });
+
+  quad.forEach((corner, i) => {
+    const next = quad[(i + 1) % 4];
+    const previous = quad[(i + 3) % 4];
+    if (next === undefined || previous === undefined) return;
+    const k = HOVER.reticle;
+    g.moveTo(corner.x + (previous.x - corner.x) * k, corner.y + (previous.y - corner.y) * k)
+      .lineTo(corner.x, corner.y)
+      .lineTo(corner.x + (next.x - corner.x) * k, corner.y + (next.y - corner.y) * k)
+      .stroke({ width: HOVER.strokeWidth * px, color: HOVER.stroke });
+  });
 }
 
 /**
  * La pièce sélectionnée, puis ce qu'elle peut faire. Les destinations sont
  * dessinées avant la case d'origine pour que celle-ci reste lisible même quand
- * elles la jouxtent.
+ * elles la jouxtent. `glow` (0 → 1) est la respiration des lueurs.
  */
 export function drawSelection(
   g: Graphics,
   board: Board,
   selection: Selection,
   proj: IsoProjection,
+  px: number,
+  glow: number,
 ): void {
   for (const coord of selection.moves.values()) {
-    markTile(
-      g,
-      board,
-      coord,
-      {
+    const quad = topOf(board, coord, proj);
+    if (quad === undefined) continue;
+    g.poly(flattenQuad(quad))
+      .fill({ color: SELECTION.destination, alpha: lerp(SELECTION.destinationFillAlpha, glow) })
+      .stroke({
+        width: SELECTION.destinationWidth * px,
         color: SELECTION.destination,
-        width: SELECTION.destinationWidth,
-        fillAlpha: SELECTION.destinationFillAlpha,
-      },
-      proj,
-    );
+        alpha: SELECTION.destinationStrokeAlpha,
+      });
+
+    // La gemme centrale : le même losange, réduit autour du centre de la case.
+    const cx = (quad[0].x + quad[2].x) / 2;
+    const cy = (quad[0].y + quad[2].y) / 2;
+    const k = SELECTION.destinationGem;
+    g.poly(quad.flatMap((p) => [cx + (p.x - cx) * k, cy + (p.y - cy) * k])).fill({
+      color: SELECTION.destination,
+      alpha: 0.7 + 0.3 * glow,
+    });
   }
 
-  markTile(
-    g,
-    board,
-    selection.piece.coord,
-    {
-      color: SELECTION.piece,
-      width: SELECTION.pieceWidth,
-      fillAlpha: SELECTION.pieceFillAlpha,
-    },
-    proj,
-  );
+  const tile = board.getTile(selection.piece.coord);
+  const quad = topOf(board, selection.piece.coord, proj);
+  if (tile === undefined || quad === undefined) return;
+  for (const cliff of cliffQuads(board, tile.coord, tile.height, proj)) {
+    g.poly(flattenQuad(cliff)).stroke({ width: px, color: SELECTION.piece, alpha: 0.5 });
+  }
+  g.poly(flattenQuad(quad))
+    .fill({ color: SELECTION.piece, alpha: lerp(SELECTION.pieceFillAlpha, glow) })
+    .stroke({ width: SELECTION.pieceWidth * px, color: SELECTION.piece });
 }

@@ -1,5 +1,5 @@
-import { cssColor } from "@occulis/ui/tokens";
-import { BACKGROUND, GEOMETRY, STATE } from "../theme.js";
+import { INK_ALPHA, PANEL_ALPHA, SURFACE, cssColor, cssVariables } from "@occulis/ui/tokens";
+import { GEOMETRY, STATE } from "../theme.js";
 
 /**
  * Passe le code couleur de `theme.ts` à la feuille de style de l'interface.
@@ -13,11 +13,14 @@ import { BACKGROUND, GEOMETRY, STATE } from "../theme.js";
 
 export function applyPalette(root: HTMLElement): void {
   const variables: Record<string, string> = {
+    // Toute la charte d'abord : les écrans natifs du jeu lisent aussi les `--occ-*`, sans
+    // attendre qu'un îlot React ait chargé la feuille de `@occulis/ui`.
+    ...cssVariables(),
     "--ink": cssColor(GEOMETRY.stroke),
-    "--ink-soft": cssColor(GEOMETRY.stroke, 0.55),
-    "--ink-dim": cssColor(GEOMETRY.stroke, 0.35),
-    "--ink-faint": cssColor(GEOMETRY.stroke, 0.2),
-    "--panel": cssColor(BACKGROUND, 0.82),
+    "--ink-soft": cssColor(GEOMETRY.stroke, INK_ALPHA.soft),
+    "--ink-dim": cssColor(GEOMETRY.stroke, INK_ALPHA.dim),
+    "--ink-faint": cssColor(GEOMETRY.stroke, INK_ALPHA.faint),
+    "--panel": cssColor(SURFACE, PANEL_ALPHA),
     // Un coup accepté et un coup refusé sont de l'information de partie : ils
     // reprennent donc les tokens d'état, pas une couleur d'interface propre.
     "--accepted": cssColor(STATE.legalMove),

@@ -23,16 +23,16 @@ describe("tokens", () => {
   });
 
   it("convertit une couleur entière en CSS, avec ou sans alpha", () => {
-    expect(cssColor(BACKGROUND)).toBe("rgb(13 15 18)");
-    expect(cssColor(INK, 0.5)).toBe("rgb(255 255 255 / 0.5)");
+    expect(cssColor(BACKGROUND)).toBe("rgb(8 7 14)");
+    expect(cssColor(INK, 0.5)).toBe("rgb(238 230 210 / 0.5)");
   });
 
   it("précompose l'alpha sur le fond pour les courriers", () => {
     // Comparé par canal plutôt qu'en littéral : la règle ESLint du code couleur
     // n'admet aucune valeur de couleur hors de tokens.ts, tests compris.
     const channels = (hex: string) => [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
-    expect(channels(hexColor(BACKGROUND))).toEqual([13, 15, 18]);
-    expect(channels(hexColor(INK))).toEqual([255, 255, 255]);
-    expect(channels(hexColor(INK, 0.5))).toEqual([134, 135, 137]);
+    expect(channels(hexColor(BACKGROUND))).toEqual([8, 7, 14]);
+    expect(channels(hexColor(INK))).toEqual([238, 230, 210]);
+    expect(channels(hexColor(INK, 0.5))).toEqual([123, 119, 112]);
   });
 });

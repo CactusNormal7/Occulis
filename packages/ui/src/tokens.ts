@@ -1,11 +1,15 @@
 /**
  * Les tokens de la charte d'Occulis — **seule source** des valeurs de couleur du projet.
  *
- * Le code couleur est acté provisoirement en docs/design.md 8.1 : le blanc porte la
- * géométrie, la couleur porte l'état de jeu. Le fog, le relief et la hiérarchie de
- * l'interface se lisent donc par alpha et par épaisseur de trait, jamais par teinte ; un
- * trait coloré signifie toujours une information de partie (un camp, une sélection, un
- * coup légal, une menace).
+ * Direction artistique « liturgie du vide » (docs/design.md 8.1) : un pixel art léger
+ * et cryptique. Trois matières seulement :
+ * - **le vide** (`BACKGROUND`, `SURFACE`, `TERRAIN`) : des noirs violacés, profonds, qui
+ *   portent la matière du plateau et des panneaux ;
+ * - **l'os** (`INK`) : un blanc cassé, chaud, qui porte la géométrie et le texte. La
+ *   hiérarchie se lit à son alpha, jamais à un gris ;
+ * - **les lueurs** (`CAMP`, `STATE`) : des teintes saturées et rares, réservées à
+ *   l'information de partie (un camp, une sélection, un coup légal, une menace). Une
+ *   lueur signifie toujours quelque chose.
  *
  * Deux consommateurs, deux formats :
  * - `apps/web/src/theme.ts` (PixiJS) reprend les entiers 0xRRGGBB ;
@@ -16,16 +20,33 @@
  * Une règle ESLint interdit toute valeur de couleur ailleurs, client comme paquet.
  */
 
-/** Le fond, partout : plateau, écrans, back-office. */
-export const BACKGROUND = 0x0d0f12;
+/** Le vide, partout : plateau, écrans, back-office. */
+export const BACKGROUND = 0x08070e;
 
-/** La géométrie — terrain, texte, traits d'interface. */
-export const INK = 0xffffff;
+/** Le fond des panneaux, un cran au-dessus du vide. */
+export const SURFACE = 0x110e1f;
+
+/** L'os — géométrie, texte, traits d'interface. */
+export const INK = 0xeee6d2;
+
+/**
+ * La matière du plateau : les faces pleines des cases. Le dessus s'éclaircit avec la
+ * hauteur (`top` → `peak`) ; les falaises ont une face éclairée et une face d'ombre, la
+ * lumière venant de la gauche. `fog` est le dessus d'une case hors de vue : plus sombre,
+ * et tramé par-dessus.
+ */
+export const TERRAIN = {
+  top: 0x1f1a38,
+  peak: 0x3a3166,
+  fog: 0x110e20,
+  sideLight: 0x17132c,
+  sideShade: 0x0d0b1a,
+} as const;
 
 /** Couleurs de camp — provisoires, le code couleur définitif reste à arrêter. */
 export const CAMP = {
-  A: 0x74d3c4,
-  B: 0xe0785f,
+  A: 0x7cf0d8,
+  B: 0xff5c88,
 } as const;
 
 /**
@@ -33,49 +54,62 @@ export const CAMP = {
  * en avant ne doit jamais se confondre avec une pièce.
  */
 export const STATE = {
-  selection: 0xf5d76e,
-  legalMove: 0x6aa9ff,
+  selection: 0xffd27a,
+  legalMove: 0x8e9cff,
   /** Réservé : grimper consomme le tour entier et mériterait un marquage propre. */
-  climb: 0x9b8cf0,
-  threat: 0xe0785f,
+  climb: 0xc49bff,
+  threat: 0xff5c88,
 } as const;
 
 /**
- * Les opacités de l'encre blanche, du plus présent au plus discret. L'interface n'a pas
- * d'autre moyen de hiérarchiser : pas de gris, seulement du blanc plus ou moins posé.
+ * Les opacités de l'os, du plus présent au plus discret. L'interface n'a pas d'autre
+ * moyen de hiérarchiser : pas de gris, seulement de l'os plus ou moins posé.
  */
 export const INK_ALPHA = {
-  soft: 0.55,
-  dim: 0.35,
-  faint: 0.2,
-  line: 0.1,
-  ghost: 0.05,
+  soft: 0.62,
+  dim: 0.4,
+  faint: 0.22,
+  line: 0.12,
+  ghost: 0.06,
 } as const;
 
-/** Le voile des panneaux posés sur le plateau : le fond, à peine transparent. */
-export const PANEL_ALPHA = 0.82;
+/** Le voile des panneaux posés sur le plateau : la surface, à peine transparente. */
+export const PANEL_ALPHA = 0.9;
 
 export const FONT = {
   /**
-   * Monospace système, volontairement : aucune police n'est servie, le client ne doit
-   * rien télécharger avant d'afficher un écran.
+   * Tiny5 (SIL OFL), une police pixel dessinée sur une grille de 8 : elle n'est nette
+   * qu'à un multiple de 8 px, d'où l'échelle ci-dessous. Servie par `apps/web` sous
+   * `/fonts/` et préchargée par le bloc critique (`critical.ts`), pour que le premier
+   * écran paraisse directement dans sa police.
+   */
+  pixel: '"Tiny5", ui-monospace, "SF Mono", Menlo, Consolas, monospace',
+  /**
+   * Monospace système : les courriers, qui ne chargent aucune police, et les données
+   * longues où la lisibilité prime sur la matière.
    */
   mono: 'ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
-  size: { xs: 10, sm: 11, md: 13, lg: 15, xl: 20, xxl: 26 },
+  /** Multiples de 8 seulement : un pixel de la police reste un nombre entier de pixels. */
+  size: { xs: 16, sm: 16, md: 16, lg: 16, xl: 24, xxl: 32, display: 48 },
   /** L'interlettrage des capitales — titres, libellés, boutons. */
-  caps: "0.16em",
-  wordmark: "5px",
+  caps: "0.12em",
+  wordmark: "0.5em",
 } as const;
 
 /** Une échelle de 4 en 4 : tout écart d'interface en est un multiple. */
 export const SPACE = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 20, 6: 24, 8: 32 } as const;
 
 export const MOTION = {
-  /** Départ franc, arrivée amortie : la courbe de toutes les entrées. */
+  /**
+   * Départ franc, arrivée amortie : la courbe de toutes les entrées. Le pixel est
+   * visible, le mouvement jamais saccadé — rien ne s'anime par paliers.
+   */
   ease: "cubic-bezier(0.2, 0.7, 0.2, 1)",
   fast: "150ms",
   base: "250ms",
   slow: "420ms",
+  /** La respiration des lueurs : une pulsation lente, jamais un clignotement. */
+  breath: "3.2s",
 } as const;
 
 /** `0xRRGGBB` vers une couleur CSS, avec alpha. */
@@ -110,7 +144,11 @@ export function hexColor(color: number, alpha = 1, over: number = BACKGROUND): s
 export function cssVariables(): Record<string, string> {
   return {
     "--occ-bg": cssColor(BACKGROUND),
-    "--occ-panel": cssColor(BACKGROUND, PANEL_ALPHA),
+    "--occ-surface": cssColor(SURFACE),
+    "--occ-panel": cssColor(SURFACE, PANEL_ALPHA),
+    "--occ-matter": cssColor(TERRAIN.top),
+    "--occ-matter-peak": cssColor(TERRAIN.peak),
+    "--occ-shade": cssColor(TERRAIN.sideShade),
     "--occ-ink": cssColor(INK),
     "--occ-ink-soft": cssColor(INK, INK_ALPHA.soft),
     "--occ-ink-dim": cssColor(INK, INK_ALPHA.dim),
@@ -119,6 +157,10 @@ export function cssVariables(): Record<string, string> {
     "--occ-ink-ghost": cssColor(INK, INK_ALPHA.ghost),
     "--occ-camp-a": cssColor(CAMP.A),
     "--occ-camp-b": cssColor(CAMP.B),
+    "--occ-camp-a-glow": cssColor(CAMP.A, 0.35),
+    "--occ-camp-b-glow": cssColor(CAMP.B, 0.35),
+    "--occ-ink-glow": cssColor(INK, 0.28),
+    "--occ-selection-glow": cssColor(STATE.selection, 0.35),
     "--occ-selection": cssColor(STATE.selection),
     "--occ-legal": cssColor(STATE.legalMove),
     "--occ-climb": cssColor(STATE.climb),
@@ -127,6 +169,7 @@ export function cssVariables(): Record<string, string> {
     // d'état, pas une couleur d'interface propre.
     "--occ-accepted": cssColor(STATE.legalMove),
     "--occ-refused": cssColor(STATE.threat),
+    "--occ-font-pixel": FONT.pixel,
     "--occ-font-mono": FONT.mono,
     "--occ-text-xs": `${FONT.size.xs}px`,
     "--occ-text-sm": `${FONT.size.sm}px`,
@@ -134,6 +177,7 @@ export function cssVariables(): Record<string, string> {
     "--occ-text-lg": `${FONT.size.lg}px`,
     "--occ-text-xl": `${FONT.size.xl}px`,
     "--occ-text-xxl": `${FONT.size.xxl}px`,
+    "--occ-text-display": `${FONT.size.display}px`,
     "--occ-caps": FONT.caps,
     "--occ-wordmark": FONT.wordmark,
     ...Object.fromEntries(Object.entries(SPACE).map(([step, px]) => [`--occ-space-${step}`, `${px}px`])),
@@ -141,6 +185,7 @@ export function cssVariables(): Record<string, string> {
     "--occ-fast": MOTION.fast,
     "--occ-base": MOTION.base,
     "--occ-slow": MOTION.slow,
+    "--occ-breath": MOTION.breath,
   };
 }
 

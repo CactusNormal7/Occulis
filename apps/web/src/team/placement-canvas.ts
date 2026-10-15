@@ -1,6 +1,6 @@
 import type { Board, Coord, PieceKind, PlayerId } from "@occulis/core";
-import { INK, cssColor } from "@occulis/ui/tokens";
-import { type Drawable, drawPiece, fillQuad, strokeQuad, terrainDrawables } from "../canvas/paint.js";
+import { FONT, INK, cssColor } from "@occulis/ui/tokens";
+import { type Drawable, drawPiece, fillQuad, fitPixelCanvas, strokeQuad, terrainDrawables } from "../canvas/paint.js";
 import { centerOffset, fitScale } from "../admin/replay.js";
 import { METRICS, PIECES, PLAYERS, STATE } from "../theme.js";
 import { type Camera, createCamera, pivotOf, settle, toProjection, turn } from "../view/camera.js";
@@ -61,11 +61,9 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
       observer.disconnect();
       return;
     }
-    const ratio = window.devicePixelRatio || 1;
-    const { width, height } = canvas.getBoundingClientRect();
-    if (width === 0 || height === 0) return;
-    canvas.width = Math.round(width * ratio);
-    canvas.height = Math.round(height * ratio);
+    const size = fitPixelCanvas(canvas);
+    if (size === undefined) return;
+    const { width, height } = size;
     camera = { ...camera, viewport: { x: width, y: height }, scale: fitScale(board, base, width, height, PADDING) };
     draw();
   };
@@ -136,7 +134,7 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
         fillQuad(context, quad, cssColor(camp, 0.1));
         strokeQuad(context, quad, cssColor(camp, 0.55), 1);
       } else if (theirs.has(key)) {
-        context.setLineDash([3, 4]);
+        context.setLineDash([2 / ratio, 2 / ratio]);
         strokeQuad(context, quad, cssColor(other, 0.35), 1);
         context.setLineDash([]);
       }
@@ -150,13 +148,14 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
       drawables.push({
         depth: { ...depthOf(piece.coord, height, proj), height: height + 0.5 },
         paint: () => {
-          const color = piece.selected ? cssColor(STATE.selection) : cssColor(camp, PIECES.alphaVisible);
-          const top = drawPiece(context, project(piece.coord, height, proj), current.side, PIECES.alphaVisible, proj, color);
-          context.fillStyle = color;
-          context.font = `${Math.max(9, Math.round(11 * proj.scale))}px ui-monospace, monospace`;
+          const tint = piece.selected ? STATE.selection : camp;
+          const top = drawPiece(context, project(piece.coord, height, proj), current.side, PIECES.alphaVisible, proj, tint);
+          context.fillStyle = cssColor(tint);
+          // Tiny5 n'est nette qu'à 8 pixels du tampon, ou un multiple.
+          context.font = `${8 / ratio}px ${FONT.pixel}`;
           context.textAlign = "center";
           context.textBaseline = "bottom";
-          context.fillText(current.initialOf(piece.kind), top.x, top.y - 2);
+          context.fillText(current.initialOf(piece.kind), top.x, top.y - 2 / ratio);
         },
       });
     }
