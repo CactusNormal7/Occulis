@@ -141,6 +141,20 @@ export function depthOf(coord: Coord, height: number, proj: IsoProjection): Dept
   return { plane: r.x + r.y, height };
 }
 
+/**
+ * La profondeur d'une pièce posée en `coord`, fractionnaire en cours de déplacement : celle
+ * de la case **sur laquelle elle se tient** (la plus proche), un demi-niveau au-dessus.
+ *
+ * Calculée depuis la position exacte, une pièce qui glisse vers l'avant passait derrière
+ * la case qu'elle allait atteindre — dessinée après elle — et semblait s'enfoncer sous le
+ * sol. Rattachée à sa case, elle se dessine toujours juste après ce qui la porte.
+ */
+export function standingDepth(coord: Coord, board: Board, proj: IsoProjection): Depth {
+  const under = { x: Math.round(coord.x), y: Math.round(coord.y) };
+  const height = board.heightAt(under) ?? 0;
+  return { ...depthOf(under, height, proj), height: height + 0.5 };
+}
+
 /** Ordonne du plus lointain au plus proche de la caméra. */
 export function compareDepth(a: Depth, b: Depth): number {
   return a.plane - b.plane || a.height - b.height;

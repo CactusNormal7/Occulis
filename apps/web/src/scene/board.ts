@@ -1,6 +1,6 @@
 import { Application } from "pixi.js";
 import { type ControlsOptions, attachControls } from "../input/controls.js";
-import { BACKGROUND } from "../theme.js";
+import { look } from "../theme.js";
 import { pixelResolution } from "../view/pixel.js";
 import { Scene, type SceneInput } from "./scene.js";
 
@@ -30,7 +30,7 @@ export async function mountBoard(host: HTMLElement, hooks: BoardHooks): Promise<
   const resolution = pixelResolution(window.devicePixelRatio);
   const app = new Application();
   await app.init({
-    background: BACKGROUND,
+    background: look().palette.background,
     resizeTo: window,
     antialias: false,
     resolution,
@@ -49,6 +49,9 @@ export async function mountBoard(host: HTMLElement, hooks: BoardHooks): Promise<
   app.ticker.add((ticker) => {
     const input = hooks.frame(ticker.deltaMS);
     if (input === undefined) return;
+    // Le thème peut changer en pleine partie : le vide du canevas le suit.
+    const background = look().palette.background;
+    if (app.renderer.background.color.toNumber() !== background) app.renderer.background.color = background;
     scene.render(input, {
       deltaMS: ticker.deltaMS,
       width: app.screen.width,

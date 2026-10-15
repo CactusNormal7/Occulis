@@ -35,8 +35,10 @@ et à la CI (`pnpm -r build`).
 
 | Export | Contenu |
 |---|---|
-| `BACKGROUND`, `SURFACE`, `INK` | Le vide, la surface des panneaux et l'os (entiers `0xRRGGBB`) |
-| `TERRAIN` | La matière du plateau : dessus `top` → `peak`, `fog`, faces `sideLight` / `sideShade` |
+| `Palette` | Tout ce qui porte une couleur pour un thème : `background`, `surface`, `ink`, `terrain` (`top`, `peak`, `fog`, `sideLight`, `sideShade`), `camp`, `state`, `sky` (`star`, `aura`) |
+| `THEMES`, `ThemeName`, `THEME_NAMES`, `isThemeName()` | Les thèmes proposés (`obsidian`, `reliquary`, `astral`), une `Palette` chacun |
+| `DEFAULT_THEME` | `obsidian` : premier passage, courriers, première image d'une page |
+| `BACKGROUND`, `SURFACE`, `INK`, `TERRAIN`, `CAMP`, `STATE` | Les valeurs du thème par défaut (entiers `0xRRGGBB`), lues par les courriers et le bloc critique |
 | `CAMP.A`, `CAMP.B` | Couleurs de camp |
 | `STATE` | `selection`, `legalMove`, `climb`, `threat` |
 | `INK_ALPHA` | Les opacités de l'os : `soft` .62, `dim` .4, `faint` .22, `line` .12, `ghost` .06 |
@@ -46,12 +48,15 @@ et à la CI (`pnpm -r build`).
 | `MOTION` | Courbe, durées, et `breath` (la respiration des lueurs) |
 | `cssColor(color, alpha)` | Entier → `rgb(r g b / a)` |
 | `hexColor(color, alpha, over)` | Entier → `#rrggbb`, l'alpha **précomposé** sur le fond : le format des courriers HTML du serveur, que la moitié des clients de messagerie lisent sans transparence |
-| `cssVariables()` | Nom `--occ-*` → valeur ; c'est ce que `generated/tokens.css` pose |
-| `tokensStylesheet()` | Le texte exact de `generated/tokens.css` |
+| `cssVariables(theme)` | Nom `--occ-*` → valeur pour un thème (par défaut, celui par défaut) |
+| `tokensStylesheet()` | Le texte exact de `generated/tokens.css` : le thème par défaut sur `:root`, puis chaque thème sous `:root[data-theme="…"]` |
 
 `cssVariables()` dérive en plus quelques lueurs (`--occ-camp-a-glow`, `--occ-camp-b-glow`,
-`--occ-ink-glow`, `--occ-selection-glow`) et les matières (`--occ-surface`, `--occ-matter`,
-`--occ-matter-peak`, `--occ-shade`).
+`--occ-ink-glow`, `--occ-selection-glow`), le ciel (`--occ-star`, `--occ-star-faint`,
+`--occ-aura`), les matières (`--occ-surface`, `--occ-matter`, `--occ-matter-peak`,
+`--occ-shade`), et les échantillons de **tous** les thèmes (`--occ-swatch-<thème>-bg`,
+`-ink`, `-a`, `-b`), identiques sous chaque thème, pour que le sélecteur montre chaque
+proposition dans ses propres couleurs.
 
 `apps/web/src/theme.ts` (PixiJS) importe `BACKGROUND`, `CAMP`, `INK`, `STATE` et `TERRAIN` depuis
 `@occulis/ui/tokens` — un sous-chemin sans React, pour que le jeu n'embarque rien d'autre.
@@ -76,7 +81,8 @@ Quatre règles de la direction artistique (`docs/design.md` 8.1) gouvernent `sty
    comme des touches (ombre intérieure en pied, qui s'efface à l'appui) et des champs en
    creux (ombre en tête) ; mais des transitions continues ;
 2. **la matière est le vide** — panneaux et cartes en `--occ-surface`, une page
-   (`occ-root--page`) porte un halo de matière et deux trames d'étoiles d'un pixel, et le
+   (`occ-root--page`) porte un halo d'aura et, sur ses pseudo-éléments, deux trames
+   d'étoiles d'un pixel qui scintillent en décalé (`occ-twinkle`), et le
    voile d'une fenêtre modale est une trame un-sur-deux (`--pixel-dither`) plutôt qu'un
    flou. Seul le bouton principal est plein — d'os ;
 3. **la hiérarchie par l'alpha** — l'os à opacité décroissante, jamais gris ; les titres
@@ -170,7 +176,9 @@ Quelques comportements à connaître :
   d'animation d'entrée, puisqu'il se pose dans un cadre déjà affiché.
 - **`criticalHead()`** n'est pas un composant : c'est le texte injecté en tête de chaque page
   HTML par `apps/web/vite.config.ts` — `color-scheme: dark`, `theme-color`, le fond en ligne
-  depuis `BACKGROUND`, la déclaration `@font-face` de Tiny5 (`font-display: block`) et son
+  depuis `BACKGROUND` et celui de chaque thème sous `html[data-theme="…"]`, un script en
+  ligne qui relit le thème choisi (`THEME_STORAGE_KEY`) et le pose sur `<html data-theme>`
+  avant la première image, la déclaration `@font-face` de Tiny5 (`font-display: block`) et son
   préchargement (`PIXEL_FONT_URL`, `/fonts/tiny5-latin.woff2`), `@view-transition` (coupé sous mouvement réduit) et les règles de
   spéculation (`prefetch` au survol). `withCriticalHead(html)` le place juste après la
   déclaration d'encodage, donc avant toute feuille et tout script.
@@ -198,9 +206,9 @@ catégories (`docs/<Nom>.md`), l'en-tête de conventions lu par l'agent de desig
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
-| `src/tokens.test.ts` | `generated/tokens.css` identique à sa source, `styles.css` sans propriété indéfinie ni couleur en dur, conversion des couleurs, **alpha précomposé pour les courriers** |
+| `src/tokens.test.ts` | `generated/tokens.css` identique à sa source, mêmes propriétés pour chaque thème, `styles.css` sans propriété indéfinie ni couleur en dur, conversion des couleurs, **alpha précomposé pour les courriers** |
 | `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition**, **langue fixée par `UiRoot` (et anglais par défaut)**, compte à rebours proportionnel et urgent, plaques dans la couleur de leur camp, ligne de choix marquée, fenêtre sans croix, **fil de messages : les siens marqués à part, texte échappé, état vide, longueur du champ**, squelette annoncé sans texte visible |
-| `src/critical.test.ts` | **Fond et thème sombre sans variable** (la feuille n'est pas encore là), police pixel déclarée et préchargée, fondu coupé sous mouvement réduit, aucun préchargement de `/api/*` ni `/match/*` et jamais de `prerender`, **bloc placé après l'encodage et avant toute feuille** |
+| `src/critical.test.ts` | **Fond et thème sombre sans variable** (la feuille n'est pas encore là), police pixel déclarée et préchargée, thème posé avant la première image, fondu coupé sous mouvement réduit, aucun préchargement de `/api/*` ni `/match/*` et jamais de `prerender`, **bloc placé après l'encodage et avant toute feuille** |
 
 Le rendu visuel n'est pas testé ici : il l'est par les aperçus vérifiés sur captures lors de
 chaque synchronisation (`.design-sync/`).

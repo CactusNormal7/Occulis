@@ -1,8 +1,8 @@
 import type { Board, Coord, PieceKind, PlayerId } from "@occulis/core";
-import { FONT, INK, cssColor } from "@occulis/ui/tokens";
+import { FONT, cssColor } from "@occulis/ui/tokens";
 import { type Drawable, drawPiece, fillQuad, fitPixelCanvas, strokeQuad, terrainDrawables } from "../canvas/paint.js";
 import { centerOffset, fitScale } from "../admin/replay.js";
-import { METRICS, PIECES, PLAYERS, STATE } from "../theme.js";
+import { METRICS, look } from "../theme.js";
 import { type Camera, createCamera, pivotOf, settle, toProjection, turn } from "../view/camera.js";
 import { compareDepth, depthOf, project, tileQuad } from "../view/iso.js";
 import { tileAt } from "../view/picking.js";
@@ -124,8 +124,8 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
 
     const own = new Set(current.zone.map((coord) => `${coord.x},${coord.y}`));
     const theirs = new Set(current.opponentZone.map((coord) => `${coord.x},${coord.y}`));
-    const camp = PLAYERS[current.side];
-    const other = PLAYERS[current.side === "A" ? "B" : "A"];
+    const camp = look().players[current.side];
+    const other = look().players[current.side === "A" ? "B" : "A"];
 
     const drawables: Drawable[] = terrainDrawables(context, board, proj, () => true, (coord, height) => {
       const key = `${coord.x},${coord.y}`;
@@ -139,7 +139,7 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
         context.setLineDash([]);
       }
       if (hovered !== undefined && hovered.x === coord.x && hovered.y === coord.y) {
-        strokeQuad(context, quad, own.has(key) ? cssColor(STATE.selection) : cssColor(INK, 0.4), 2);
+        strokeQuad(context, quad, own.has(key) ? cssColor(look().state.selection) : cssColor(look().palette.ink, 0.4), 2);
       }
     });
 
@@ -148,8 +148,8 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
       drawables.push({
         depth: { ...depthOf(piece.coord, height, proj), height: height + 0.5 },
         paint: () => {
-          const tint = piece.selected ? STATE.selection : camp;
-          const top = drawPiece(context, project(piece.coord, height, proj), current.side, PIECES.alphaVisible, proj, tint);
+          const tint = piece.selected ? look().state.selection : camp;
+          const top = drawPiece(context, project(piece.coord, height, proj), current.side, look().pieces.alphaVisible, proj, tint);
           context.fillStyle = cssColor(tint);
           // Tiny5 n'est nette qu'à 8 pixels du tampon, ou un multiple.
           context.font = `${8 / ratio}px ${FONT.pixel}`;

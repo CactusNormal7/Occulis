@@ -53,17 +53,58 @@
   -moz-osx-font-smoothing: unset;
 }
 
-/* Le fond d'une page : un halo de matière qui tombe d'en haut, et deux trames d'étoiles
-   d'un pixel à pas premiers entre eux, pour qu'aucun motif ne se répète à l'œil. */
+/* Le fond d'une page : un halo d'aura qui tombe d'en haut, sous la voûte. */
 .occ-root--page {
+  position: relative;
+  z-index: 0;
   min-height: 100vh;
   background:
-    radial-gradient(var(--occ-ink-faint) 1px, transparent 1px) 13px 29px / 97px 89px,
-    radial-gradient(var(--occ-ink-line) 1px, transparent 1px) 51px 7px / 61px 67px,
-    radial-gradient(ellipse 90% 60% at 50% -12%, var(--occ-matter) 0%, transparent 70%),
+    radial-gradient(ellipse 90% 60% at 50% -12%, var(--occ-aura) 0%, transparent 70%),
     var(--occ-bg);
   background-attachment: fixed;
 }
+
+/* La voûte : deux trames d'étoiles d'un pixel à pas premiers entre eux, pour qu'aucun
+   motif ne se répète à l'œil, qui scintillent en décalé. Derrière tout le contenu. */
+.occ-root--page::before,
+.occ-root--page::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.occ-root--page::before {
+  background:
+    radial-gradient(var(--occ-star) 1px, transparent 1px) 13px 29px / 97px 89px,
+    radial-gradient(var(--occ-star-faint) 1px, transparent 1px) 51px 7px / 61px 67px;
+  animation: occ-twinkle 4.7s ease-in-out infinite alternate;
+}
+
+.occ-root--page::after {
+  background:
+    radial-gradient(var(--occ-star) 1px, transparent 1.5px) 71px 113px / 149px 131px,
+    radial-gradient(var(--occ-star-faint) 1px, transparent 1px) 3px 41px / 43px 53px;
+  animation: occ-twinkle 6.1s ease-in-out -2s infinite alternate-reverse;
+}
+
+@keyframes occ-twinkle {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .occ-root--page::before,
+  .occ-root--page::after {
+    animation: none;
+  }
+}
+
 
 /* Le contenu d'une page : colonne centrée, blocs empilés à intervalle régulier. */
 .occ-page {

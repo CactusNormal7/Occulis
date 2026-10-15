@@ -8,6 +8,7 @@ import {
   depthOf,
   lerpAngle,
   snapAngle,
+  standingDepth,
   tileQuad,
 } from "./iso.js";
 
@@ -118,5 +119,21 @@ describe("snapAngle", () => {
     expect(snapAngle(1.3)).toBeCloseTo(QUARTER_TURN, 10);
     expect(snapAngle(-1.3)).toBeCloseTo(-QUARTER_TURN, 10);
     expect(snapAngle(QUARTER_TURN)).toBeCloseTo(QUARTER_TURN, 10);
+  });
+});
+
+describe("standingDepth", () => {
+  it("dessine une pièce qui glisse vers l'avant après la case qu'elle quitte, jamais sous celle qu'elle atteint", () => {
+    // Le bug : à mi-chemin de (1,0) vers (1,1), la profondeur exacte de la pièce était
+    // inférieure à celle de (1,1), dessinée après elle et qui la recouvrait.
+    const proj = projection();
+    const leaving = standingDepth({ x: 1, y: 0.4 }, FLAT, proj);
+    const arriving = standingDepth({ x: 1, y: 0.6 }, FLAT, proj);
+    expect(compareDepth(leaving, depthOf({ x: 1, y: 0 }, 0, proj))).toBeGreaterThan(0);
+    expect(compareDepth(arriving, depthOf({ x: 1, y: 1 }, 0, proj))).toBeGreaterThan(0);
+  });
+
+  it("se tient un demi-niveau au-dessus de sa case, relief compris", () => {
+    expect(standingDepth({ x: 1, y: 1 }, MOUND, projection()).height).toBe(2.5);
   });
 });

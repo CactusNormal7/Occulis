@@ -24,4 +24,13 @@ export const ui = {
   },
   language: "Language",
   languages: { en: "English", fr: "Français" },
+  theme: {
+    label: "Design",
+    names: { obsidian: "Obsidian", reliquary: "Reliquary", astral: "Astral" },
+    hints: {
+      obsidian: "Black and bone, cold glows — the severe one",
+      reliquary: "Warm black, old gold, fireflies and a turning seal",
+      astral: "A dense sky: constellations, shooting stars, nebulae",
+    },
+  },
 };

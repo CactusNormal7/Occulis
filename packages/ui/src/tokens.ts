@@ -20,46 +20,107 @@
  * Une règle ESLint interdit toute valeur de couleur ailleurs, client comme paquet.
  */
 
-/** Le vide, partout : plateau, écrans, back-office. */
-export const BACKGROUND = 0x08070e;
-
-/** Le fond des panneaux, un cran au-dessus du vide. */
-export const SURFACE = 0x110e1f;
-
-/** L'os — géométrie, texte, traits d'interface. */
-export const INK = 0xeee6d2;
+/**
+ * Une palette complète : tout ce qui porte une couleur, pour un thème. Le jeu en propose
+ * plusieurs, entre lesquels le joueur bascule depuis le menu (`THEMES`) ; tous gardent la
+ * même grammaire — vide, os, lueurs — et ne changent que la matière et la lumière.
+ */
+export interface Palette {
+  /** Le vide : le fond du plateau et des pages. */
+  readonly background: number;
+  /** La surface des panneaux, un cran au-dessus du vide. */
+  readonly surface: number;
+  /** L'os : géométrie, texte, traits d'interface. */
+  readonly ink: number;
+  /**
+   * La matière du plateau. Le dessus s'éclaircit avec la hauteur (`top` → `peak`) ; les
+   * falaises ont une face éclairée et une face d'ombre ; `fog` est le dessus d'une case
+   * hors de vue, tramé par-dessus.
+   */
+  readonly terrain: {
+    readonly top: number;
+    readonly peak: number;
+    readonly fog: number;
+    readonly sideLight: number;
+    readonly sideShade: number;
+  };
+  /** Couleurs de camp — provisoires, le code couleur définitif reste à arrêter. */
+  readonly camp: { readonly A: number; readonly B: number };
+  /**
+   * Code couleur d'état. Distinct des couleurs de camp par construction : une case mise
+   * en avant ne doit jamais se confondre avec une pièce.
+   */
+  readonly state: {
+    readonly selection: number;
+    readonly legalMove: number;
+    /** Réservé : grimper consomme le tour entier et mériterait un marquage propre. */
+    readonly climb: number;
+    readonly threat: number;
+  };
+  /** Le ciel : la couleur des étoiles et de la lumière d'ambiance (nébuleuse, lucioles). */
+  readonly sky: { readonly star: number; readonly aura: number };
+}
 
 /**
- * La matière du plateau : les faces pleines des cases. Le dessus s'éclaircit avec la
- * hauteur (`top` → `peak`) ; les falaises ont une face éclairée et une face d'ombre, la
- * lumière venant de la gauche. `fog` est le dessus d'une case hors de vue : plus sombre,
- * et tramé par-dessus.
+ * Les thèmes (docs/design.md 8.1). Trois propositions, toutes noires et non plus
+ * bleutées, sous la même grammaire :
+ * - **obsidian** — le noir de *Void Stranger* : matière grise et neutre, os froid, lueurs
+ *   glacées et rouges. Le plus sévère ;
+ * - **reliquary** — la chaleur d'*Animal Well* : un noir brun, un os doré, des lucioles et
+ *   un sceau d'or sous le plateau ;
+ * - **astral** — le ciel d'*Helix* : un noir à peine prune, une voûte dense d'étoiles, des
+ *   constellations et des étoiles filantes, des lueurs cyan et magenta.
  */
-export const TERRAIN = {
-  top: 0x1f1a38,
-  peak: 0x3a3166,
-  fog: 0x110e20,
-  sideLight: 0x17132c,
-  sideShade: 0x0d0b1a,
-} as const;
+export const THEMES = {
+  obsidian: {
+    background: 0x050505,
+    surface: 0x0d0d0e,
+    ink: 0xe9e6df,
+    terrain: { top: 0x1a1a1c, peak: 0x3d3d42, fog: 0x0b0b0c, sideLight: 0x131315, sideShade: 0x09090a },
+    camp: { A: 0x9be7ff, B: 0xff4d5e },
+    state: { selection: 0xffd166, legalMove: 0x7d9cff, climb: 0xc49bff, threat: 0xff4d5e },
+    sky: { star: 0xe9e6df, aura: 0x2a2a30 },
+  },
+  reliquary: {
+    background: 0x070504,
+    surface: 0x110c09,
+    ink: 0xf2dcb0,
+    terrain: { top: 0x1e1610, peak: 0x4d3721, fog: 0x0c0806, sideLight: 0x18110b, sideShade: 0x0d0906 },
+    camp: { A: 0x72f5c4, B: 0xff7a45 },
+    state: { selection: 0xfff0a0, legalMove: 0x5ec8ff, climb: 0xd49bff, threat: 0xff7a45 },
+    sky: { star: 0xf2dcb0, aura: 0x8fe8a0 },
+  },
+  astral: {
+    background: 0x040307,
+    surface: 0x0d0a12,
+    ink: 0xece6ff,
+    terrain: { top: 0x17121f, peak: 0x3e2b54, fog: 0x09070d, sideLight: 0x120e19, sideShade: 0x0a0810 },
+    camp: { A: 0x5ef0ff, B: 0xff4fd8 },
+    state: { selection: 0xffe066, legalMove: 0x8b7bff, climb: 0xb98bff, threat: 0xff4fd8 },
+    sky: { star: 0xece6ff, aura: 0x6b3fa0 },
+  },
+} as const satisfies Record<string, Palette>;
 
-/** Couleurs de camp — provisoires, le code couleur définitif reste à arrêter. */
-export const CAMP = {
-  A: 0x7cf0d8,
-  B: 0xff5c88,
-} as const;
+export type ThemeName = keyof typeof THEMES;
 
-/**
- * Code couleur d'état. Distinct des couleurs de camp par construction : une case mise
- * en avant ne doit jamais se confondre avec une pièce.
- */
-export const STATE = {
-  selection: 0xffd27a,
-  legalMove: 0x8e9cff,
-  /** Réservé : grimper consomme le tour entier et mériterait un marquage propre. */
-  climb: 0xc49bff,
-  threat: 0xff5c88,
-} as const;
+/** Le thème d'un premier passage, et celui des courriers et de la première image d'une page. */
+export const DEFAULT_THEME: ThemeName = "obsidian";
+
+export const THEME_NAMES = Object.keys(THEMES) as ThemeName[];
+
+export function isThemeName(value: unknown): value is ThemeName {
+  return typeof value === "string" && Object.hasOwn(THEMES, value);
+}
+
+const DEFAULT_PALETTE: Palette = THEMES[DEFAULT_THEME];
+
+/** Le vide du thème par défaut. Les courriers et la première image d'une page le lisent. */
+export const BACKGROUND = DEFAULT_PALETTE.background;
+export const SURFACE = DEFAULT_PALETTE.surface;
+export const INK = DEFAULT_PALETTE.ink;
+export const TERRAIN = DEFAULT_PALETTE.terrain;
+export const CAMP = DEFAULT_PALETTE.camp;
+export const STATE = DEFAULT_PALETTE.state;
 
 /**
  * Les opacités de l'os, du plus présent au plus discret. L'interface n'a pas d'autre
@@ -137,38 +198,55 @@ export function hexColor(color: number, alpha = 1, over: number = BACKGROUND): s
 }
 
 /**
- * Les propriétés CSS de la charte, nom → valeur. C'est ce que `generated/tokens.css`
+ * Les propriétés CSS de la charte pour un thème, nom → valeur. C'est ce que `generated/tokens.css`
  * pose sur `:root`, et ce que les composants lisent — jamais de valeur en dur dans
  * `styles.css`.
  */
-export function cssVariables(): Record<string, string> {
+export function cssVariables(theme: ThemeName = DEFAULT_THEME): Record<string, string> {
+  const { background, surface, ink, terrain, camp, state, sky } = THEMES[theme] as Palette;
   return {
-    "--occ-bg": cssColor(BACKGROUND),
-    "--occ-surface": cssColor(SURFACE),
-    "--occ-panel": cssColor(SURFACE, PANEL_ALPHA),
-    "--occ-matter": cssColor(TERRAIN.top),
-    "--occ-matter-peak": cssColor(TERRAIN.peak),
-    "--occ-shade": cssColor(TERRAIN.sideShade),
-    "--occ-ink": cssColor(INK),
-    "--occ-ink-soft": cssColor(INK, INK_ALPHA.soft),
-    "--occ-ink-dim": cssColor(INK, INK_ALPHA.dim),
-    "--occ-ink-faint": cssColor(INK, INK_ALPHA.faint),
-    "--occ-ink-line": cssColor(INK, INK_ALPHA.line),
-    "--occ-ink-ghost": cssColor(INK, INK_ALPHA.ghost),
-    "--occ-camp-a": cssColor(CAMP.A),
-    "--occ-camp-b": cssColor(CAMP.B),
-    "--occ-camp-a-glow": cssColor(CAMP.A, 0.35),
-    "--occ-camp-b-glow": cssColor(CAMP.B, 0.35),
-    "--occ-ink-glow": cssColor(INK, 0.28),
-    "--occ-selection-glow": cssColor(STATE.selection, 0.35),
-    "--occ-selection": cssColor(STATE.selection),
-    "--occ-legal": cssColor(STATE.legalMove),
-    "--occ-climb": cssColor(STATE.climb),
-    "--occ-threat": cssColor(STATE.threat),
+    "--occ-bg": cssColor(background),
+    "--occ-surface": cssColor(surface),
+    "--occ-panel": cssColor(surface, PANEL_ALPHA),
+    "--occ-matter": cssColor(terrain.top),
+    "--occ-matter-peak": cssColor(terrain.peak),
+    "--occ-shade": cssColor(terrain.sideShade),
+    "--occ-ink": cssColor(ink),
+    "--occ-ink-soft": cssColor(ink, INK_ALPHA.soft),
+    "--occ-ink-dim": cssColor(ink, INK_ALPHA.dim),
+    "--occ-ink-faint": cssColor(ink, INK_ALPHA.faint),
+    "--occ-ink-line": cssColor(ink, INK_ALPHA.line),
+    "--occ-ink-ghost": cssColor(ink, INK_ALPHA.ghost),
+    "--occ-camp-a": cssColor(camp.A),
+    "--occ-camp-b": cssColor(camp.B),
+    "--occ-camp-a-glow": cssColor(camp.A, 0.35),
+    "--occ-camp-b-glow": cssColor(camp.B, 0.35),
+    "--occ-ink-glow": cssColor(ink, 0.28),
+    "--occ-star": cssColor(sky.star, 0.5),
+    "--occ-star-faint": cssColor(sky.star, 0.22),
+    "--occ-aura": cssColor(sky.aura, 0.16),
+    "--occ-selection-glow": cssColor(state.selection, 0.35),
+    "--occ-selection": cssColor(state.selection),
+    "--occ-legal": cssColor(state.legalMove),
+    "--occ-climb": cssColor(state.climb),
+    "--occ-threat": cssColor(state.threat),
     // Un geste accepté ou refusé est de l'information de partie : il reprend les tokens
     // d'état, pas une couleur d'interface propre.
-    "--occ-accepted": cssColor(STATE.legalMove),
-    "--occ-refused": cssColor(STATE.threat),
+    "--occ-accepted": cssColor(state.legalMove),
+    "--occ-refused": cssColor(state.threat),
+    // Les échantillons de chaque thème, identiques sous tous les thèmes : le sélecteur
+    // montre chaque proposition dans ses propres couleurs.
+    ...Object.fromEntries(
+      THEME_NAMES.flatMap((name) => {
+        const other: Palette = THEMES[name];
+        return [
+          [`--occ-swatch-${name}-bg`, cssColor(other.terrain.top)],
+          [`--occ-swatch-${name}-ink`, cssColor(other.ink)],
+          [`--occ-swatch-${name}-a`, cssColor(other.camp.A)],
+          [`--occ-swatch-${name}-b`, cssColor(other.camp.B)],
+        ];
+      }),
+    ),
     "--occ-font-pixel": FONT.pixel,
     "--occ-font-mono": FONT.mono,
     "--occ-text-xs": `${FONT.size.xs}px`,
@@ -189,14 +267,20 @@ export function cssVariables(): Record<string, string> {
   };
 }
 
-/** Le contenu de `generated/tokens.css`, tel que le script l'écrit et que le test le relit. */
+/**
+ * Le contenu de `generated/tokens.css` : le thème par défaut sur `:root`, puis chaque
+ * thème sous `:root[data-theme="…"]`, que le bloc critique pose avant la première image.
+ */
 export function tokensStylesheet(): string {
-  const lines = Object.entries(cssVariables()).map(([name, value]) => `  ${name}: ${value};`);
+  const block = (selector: string, theme: ThemeName): string[] => [
+    `${selector} {`,
+    ...Object.entries(cssVariables(theme)).map(([name, value]) => `  ${name}: ${value};`),
+    "}",
+  ];
   return [
     "/* Généré depuis src/tokens.ts par `pnpm --filter @occulis/ui tokens` — ne pas modifier. */",
-    ":root {",
-    ...lines,
-    "}",
+    ...block(":root", DEFAULT_THEME),
+    ...THEME_NAMES.flatMap((theme) => block(`:root[data-theme="${theme}"]`, theme)),
     "",
   ].join("\n");
 }

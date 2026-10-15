@@ -169,11 +169,27 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   plateau couvre deux pixels physiques, quel que soit l'écran) ; des animations
   **jamais saccadées**, à la manière d'Octopath — la matière est en pixels, le mouvement et
   la lumière restent continus (glissements interpolés à chaque image, lueurs qui respirent,
-  vignettage en pleine résolution par-dessus le plateau) ; des noirs violacés et un os
-  chaud, avec des lueurs saturées et rares, à la manière d'Helix et de Void Stranger ; et un
+  vignettage en pleine résolution par-dessus le plateau) ; des noirs profonds et un os, avec des lueurs saturées et rares, à la manière d'Helix et de Void Stranger ; et un
   décor cryptique qui ne veut rien dire — un sceau gravé sous le plateau qui tourne très
   lentement, des poussières en suspension. Ce qui a été écarté : le pixel art « gros
   grain », et toute animation par paliers.
+- **Plusieurs propositions, comparées par le porteur du projet.** Trois thèmes coexistent,
+  choisis depuis le menu et en pleine partie (bouton « Design ») : *Obsidienne* (le noir de
+  Void Stranger, neutre et sévère), *Reliquaire* (le noir chaud d'Animal Well, or ancien,
+  lucioles, sceau tournant) et *Astral* (le ciel d'Helix, constellations, étoiles filantes,
+  nuées). Retours du porteur ayant motivé cette étape : le fond doit être **plus noir et
+  moins bleuté** que la première refonte (violet-noir, écartée) ; **la voûte d'étoiles est
+  retenue** comme marqueur du ton cryptique et poétique, présente dans les trois ; **le sceau
+  qui tourne autour du plateau reste à juger** — il n'est allumé que dans Reliquaire. Le
+  choix entre les trois n'est pas tranché.
+- **Chaque action s'anime comme dans un jeu d'action.** Rien n'apparaît ni ne disparaît
+  d'un coup : la ligne de vue se **déploie** depuis les pièces en vague, case par case, et se
+  retire d'un bloc ; le plateau monte du vide à l'entrée de la partie ; une pièce
+  sélectionnée s'élève sous une colonne de lumière et ses destinations s'ouvrent en
+  cascade ; un déplacement est un saut en arc suivi d'images rémanentes, qui retombe dans
+  une onde et des étincelles ; un adversaire qui entre dans la vue se matérialise. Tout est
+  coupé sous « mouvement réduit ». Ces animations ne lisent que la vue que le serveur a
+  transmise : elles mettent en scène l'information, elles n'en révèlent aucune.
 - **Code couleur : le vide porte la matière, l'os porte la géométrie, les lueurs portent
   l'état de jeu.** Le terrain est fait de faces sombres et pleines, aux arêtes d'os ; le fog
   of war et la hauteur se lisent par la **valeur** (le dessus s'éclaircit avec la hauteur,

@@ -95,14 +95,13 @@ sur le rendu.
         │
         └─► Scene.render()     ── scene/scene.ts
                  ├── board.position ← origin       (pan : translation, arrondie au pixel)
-                 ├── ground  à chaque image        (le sceau, qui tourne)
-                 ├── world   si projection / plateau / vue changés, ou animation en cours
-                 ├── overlay si survol ou sélection changés, ou projection, ou sélection qui respire
-                 └── ambient à chaque image        (les poussières)
+                 ├── track()                       (retient les instants : vue, sélection, survol, retombée)
+                 └── sky, ground, world, overlay, ambient — redessinés à chaque image
 ```
 
 Le point structurant : **le pan ne reconstruit aucune géométrie** (translation du
-conteneur), et **le survol ne reconstruit que la couche `overlay`**.
+conteneur), et toute animation est une fonction de l'horloge de la scène et d'instants
+retenus — jamais un état qu'on fait évoluer image par image.
 
 ## Chargement et premier rendu
 
@@ -197,8 +196,11 @@ chaque ouverture du canal social.
 | `apps/web/src/view/picking.ts` | Point à l'écran → case du plateau | oui |
 | `apps/web/src/view/animation.ts` | Interpolation d'un déplacement de pièce | oui |
 | `apps/web/src/view/pixel.ts` | Le grain du plateau (`pixelResolution()`), arrondi à la grille, mélange de couleurs, respiration | oui |
+| `apps/web/src/view/easing.ts` | Les courbes d'animation | oui |
+| `apps/web/src/view/reveal.ts` | La lumière de chaque case, animée : vague de ligne de vue | oui |
+| `apps/web/src/view/effects.ts` | Entrée du plateau, cascade, retombée, matérialisation | oui |
 | `apps/web/src/view/matter.ts` | La teinte du dessus d'une case, selon sa hauteur et sa visibilité | oui |
-| `apps/web/src/view/ambient.ts` | Les poussières en suspension : nuée à graine, position en fonction du temps | oui |
+| `apps/web/src/view/ambient.ts` | Poussières, lucioles, étoiles, constellations, étoiles filantes : à graine, fonctions du temps | oui |
 | `apps/web/src/game/online-match.ts` | La partie arbitrée par le serveur, vue du client | oui |
 | `apps/web/src/game/hypothesis.ts` | `PlayerView` → position telle que le joueur peut la croire | oui |
 | `apps/web/src/game/movement-diff.ts` | Ce que deux vues successives ont fait bouger | oui |
@@ -244,6 +246,8 @@ chaque ouverture du canal social.
 | `apps/web/src/scene/board.ts` | `mountBoard()` : application Pixi, scène, gestes, boucle d'images — chargé par `import()` | non |
 | `apps/web/src/scene/scene.ts` | Couches PixiJS, trames et détection de changement | non |
 | `apps/web/src/scene/ground.ts` | Le sceau gravé sous le plateau | non |
+| `apps/web/src/scene/sky.ts` | La voûte derrière le plateau et les particules devant | non |
+| `apps/web/src/ui/theme-choice.ts` | Le thème choisi : stockage, document, rendu | non |
 | `apps/web/src/scene/terrain.ts` | Faces et arêtes d'une case | non |
 | `apps/web/src/scene/pieces.ts` | Silhouette d'une pièce | non |
 | `apps/web/src/scene/overlay.ts` | Survol et sélection | non |
@@ -986,7 +990,7 @@ une position hors LOS. Un test le verrouille.
 ## `ui/palette.ts` et `ui/console.ts`
 
 `applyPalette()` pose sur la racine du document toutes les propriétés `--occ-*` de la
-charte (`cssVariables()`), puis convertit les tokens entiers de `theme.ts` en propriétés
+charte pour le thème en vigueur (`cssVariables(look().name)`), puis convertit ses tokens en propriétés
 personnalisées CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--panel`,
 `--accepted`, `--refused`) pour les écrans du jeu ; la conversion est `cssColor()` de `@occulis/ui/tokens`. Le back-office
 n'en dépend pas : il lit les `--occ-*` de la feuille de `@occulis/ui`, posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
@@ -1064,159 +1068,182 @@ commande ferait pivoter le plateau.
 `pixelResolution(devicePixelRatio)` (`view/pixel.ts`) avec `autoDensity`, et pose
 `image-rendering: pixelated` sur le canevas : le tampon fait la moitié de l'écran en pixels
 physiques, et le navigateur l'agrandit au plus proche voisin. Un pixel du plateau couvre
-donc toujours **deux pixels physiques** (`ART_PIXEL`), sur un écran ordinaire comme sur un
-écran dense, et l'agrandissement tombe toujours juste. Il passe aussi à chaque image la
-taille de l'écran et `prefers-reduced-motion`, qui fige les décors et la respiration.
+donc toujours **deux pixels physiques** (`ART_PIXEL`). À chaque image, il passe la taille de
+l'écran et `prefers-reduced-motion`, et recale le fond du canevas sur le vide du thème en
+vigueur (`look().palette.background`) : changer de thème en pleine partie ne demande rien
+d'autre.
 
-**Quatre couches**, dans `root` :
+**Cinq couches, toutes redessinées à chaque image** — presque tout y est animé, et un
+plateau de quelques dizaines de cases se redessine en une fraction de milliseconde :
 
-- **`ground`** (dans `board`) : le sceau (`scene/ground.ts`), redessiné à chaque image
-  puisqu'il tourne. Sous le plateau, il n'est visible qu'autour.
-- **`world`** (dans `board`) réunit terrain et pièces. Elles doivent partager un **unique
-  ordre du peintre** pour qu'une pièce derrière un relief soit réellement masquée — d'où
-  les faces pleines.
-- **`overlay`** (dans `board`) porte survol et sélection, dessinés par-dessus.
-- **`ambient`** (hors de `board`, en coordonnées d'écran) : les poussières
-  (`view/ambient.ts`), redessinées à chaque image.
+- **`sky`** (coordonnées d'écran) : la voûte du thème (`scene/sky.ts`) ;
+- **`ground`** (dans `board`) : le sceau (`scene/ground.ts`), pour les thèmes qui l'allument ;
+- **`world`** (dans `board`) : terrain et pièces, qui doivent partager un **unique ordre du
+  peintre** pour qu'une pièce derrière un relief soit réellement masquée ;
+- **`overlay`** (dans `board`) : survol, sélection, retombées ;
+- **`ambient`** (coordonnées d'écran) : les particules en suspension (`scene/sky.ts`).
 
 La scène tient `px`, la taille d'un pixel du plateau en unités logiques (`1 / resolution`) :
-toutes les épaisseurs de `theme.ts` en sont des multiples. Elle tient aussi son horloge
-(`time`), qui n'avance pas sous mouvement réduit, et une trame un-sur-deux par couleur
-(`dither()`, `ditherPattern()` : une texture de deux texels sur deux, couleur cuite, un texel
-par pixel du plateau, en `FillPattern` répété) — celle du vide pour le fog, celle d'un camp
-pour ses fantômes.
+toutes les épaisseurs en sont des multiples. Elle tient aussi son horloge (`time`), qui
+n'avance pas sous mouvement réduit, et une trame un-sur-deux par couleur (`dither()`,
+`ditherPattern()`).
+
+**Toute l'animation est une fonction de `time` et de quelques instants retenus** par
+`Scene.track()`, que les modules purs de `view/` (`reveal.ts`, `effects.ts`, `easing.ts`)
+convertissent en état d'effet :
+
+| Déclencheur | Ce que `track()` retient | Effet |
+|---|---|---|
+| Nouveau `Board` (début de partie) | `introStart` ; lumière, apparitions et retombées remises à zéro | Les cases montent du vide en vague du fond vers l'avant (`introOf()`), le sceau se trace, les pièces se matérialisent sur leur case posée |
+| Nouvelle `PlayerView` | `light` ← `relight()` ; les pièces adverses nouvellement vues dans `appeared` | La ligne de vue se déploie depuis les pièces, case par case ; un adversaire qui entre dans la vue se matérialise (`materializeAt()`) |
+| Nouvelle pièce sélectionnée | `selectedAt` | La pièce s'élève, une colonne de lumière la désigne, ses destinations s'ouvrent en cascade (`cascadeOf()`) |
+| Nouvelle case survolée | `hoveredAt` | Le réticule se referme sur la case |
+| Fin d'un déplacement | une `Landing` (case, hauteur, couleur du camp, instant) | Onde au sol et étincelles (`landingAt()`, `sparksOf()`) |
+
+Pendant un déplacement, la pièce suit un arc (`liftOf()`), son œil s'illumine, et
+`MOTION_FX.trail` images rémanentes la suivent (`lagging()`), dessinées en fantômes tramés.
+
+Sous `prefers-reduced-motion`, `track()` et le dessin passent des durées nulles
+(`INSTANT`) : tout effet est immédiatement à son terme, rien ne bouge.
 
 | Fonction | Rôle |
 |---|---|
-| `mountBoard()` | Application Pixi au grain du plateau, scène, gestes, boucle d'images |
-| `Scene.render()` | Avance l'horloge, positionne `board`, redessine sceau et poussières, décide quelle couche réémettre |
-| `Scene.drawWorld()` (privée) | Terrain et pièces triés ensemble par profondeur |
-| `Scene.drawOverlay()` (privée) | Sélection (avec sa respiration) puis survol |
-| `Scene.drawAmbient()` (privée) | Les poussières, arrondies à la grille des pixels |
+| `mountBoard()` | Application Pixi au grain du plateau, scène, gestes, boucle d'images, fond du thème |
+| `Scene.render()` | Avance l'horloge, positionne `board`, appelle `track()`, puis dessine les cinq couches |
+| `Scene.track()` (privée) | Retient les instants qui déclenchent un effet (tableau ci-dessus) |
+| `Scene.drawWorld()` (privée) | Terrain, pièces et images rémanentes triés ensemble par profondeur |
+| `Scene.drawOverlay()` (privée) | Sélection, survol, retombées |
 | `Scene.dither()` (privée) | La trame d'une couleur, créée une fois |
 | `ditherPattern()` (privée) | Texture de trame → `FillPattern` |
-| `sameProjection()` (privée) | Compare champ à champ deux `IsoProjection` |
-| `sameHover()` (privée) | Compare deux survols, `undefined` compris |
-| `occupantsOf()` (privée) | `PlayerView` → identité, case, couleur, et fantôme ou non, par occupant |
+| `occupantsOf()` (privée) | `PlayerView` → identité, case, couleur, fantôme ou non, adverse ou non, par occupant |
 | `isTile()` (privée) | Discrimine les deux formes de `Drawable` |
 
-### Conditions de réémission
-
-- **`world`** : projection changée (rotation ou zoom), `Board` ou `PlayerView` changés
-  **par identité de référence** — d'où le cache de vues de `Match` — **ou animation en
-  cours**. Une pièce qui glisse change de position à chaque image.
-- **`overlay`** : survol changé, sélection changée (par identité), projection, **ou
-  sélection présente** — elle respire, donc change à chaque image.
-- **`ground`** et **`ambient`** : à chaque image ; quelques dizaines de traits.
-- **Le pan ne déclenche rien** : il n'affecte que `board.position`, arrondie à la grille
-  des pixels du plateau (`snap()`) pour que la trame ne scintille pas en glissant.
+Le pan n'affecte que `board.position`, arrondie à la grille des pixels du plateau (`snap()`)
+pour que la trame ne scintille pas en glissant.
 
 ### La liste unique de `Drawable`
 
-Cases et pièces sont poussées dans **un seul tableau**, puis triées ensemble par
-`compareDepth()`. Les cases sont poussées en premier : le tri de JavaScript étant stable,
-à profondeur égale une pièce se dessine donc toujours **après** la case qui la porte.
+Cases, pièces et images rémanentes sont poussées dans **un seul tableau**, puis triées
+ensemble par `compareDepth()`. Les cases sont poussées en premier : le tri de JavaScript étant
+stable, à profondeur égale une pièce se dessine donc toujours **après** la case qui la porte.
 
-C'est ce qui rend l'animation possible. Une pièce en mouvement n'est plus attachée à une
-case : sa position est celle que renvoie `positionOf()`, **fractionnaire**, et sa
-profondeur est calculée depuis cette position. Elle se glisse donc d'elle-même à la bonne
-place dans l'ordre du peintre au fil de son déplacement, et passe correctement derrière
-puis devant les reliefs qu'elle croise.
+**La profondeur d'une pièce est celle de la case sur laquelle elle se tient**
+(`standingDepth()`, `view/iso.ts`) : la case la plus proche de sa position, fractionnaire en
+cours de déplacement, un demi-niveau au-dessus. Calculée depuis la position exacte, une pièce
+qui glissait vers l'avant passait derrière la case qu'elle allait atteindre — dessinée après
+elle — et semblait s'enfoncer sous le sol. Rattachée à sa case, elle bascule dans l'ordre du
+peintre au moment où elle en change, et passe correctement derrière puis devant les reliefs
+qu'elle croise. L'arc d'un saut est un décalage d'affichage seulement.
 
 `occupantsOf()` insère les fantômes **avant** les pièces réellement vues, pour qu'une
 pièce présente l'emporte sur un souvenir situé sur la même case.
 
 ---
 
-## `scene/terrain.ts`, `scene/pieces.ts`, `scene/overlay.ts`, `scene/ground.ts`
+## `scene/terrain.ts`, `scene/pieces.ts`, `scene/overlay.ts`, `scene/ground.ts`, `scene/sky.ts`
 
 Ce sont des **fonctions**, pas des classes : elles écrivent dans un `Graphics` qu'on leur
-passe. C'est précisément ce qui permet à `scene.ts` de tout entrelacer dans un seul ordre
-du peintre.
+passe. Toutes lisent le thème en vigueur par `look()`.
 
 | Fonction | Emplacement | Rôle |
 |---|---|---|
-| `drawTile()` | `scene/terrain.ts` | Falaises (face éclairée à gauche, d'ombre à droite), puis dessus plein, trame si hors de vue, arête |
+| `drawTile()` | `scene/terrain.ts` | Falaises **tournées vers la caméra** (face éclairée à gauche, d'ombre à droite), dessus plein, trame selon l'éclairage, arête qui luit au passage de la vague ; décalée et estompée pendant l'entrée |
+| `facesCamera()` (privée) | `scene/terrain.ts` | Une falaise dont l'arête haute est dans la moitié basse du dessus ; une face arrière, pleine, déborderait sous le relief |
 | `depthAlpha()` (privée) | `scene/terrain.ts` | Proximité normalisée → opacité des arêtes |
-| `topColor()` | `view/matter.ts` | Teinte du dessus : `top` → `peak` avec la hauteur ; assombrie hors de vue |
-| `drawPiece()` | `scene/pieces.ts` | Ombre portée, obélisque à deux faces, œil flottant à pupille ; fantôme : contour et trame |
-| `drawHover()` | `scene/overlay.ts` | Voile d'os et réticule aux quatre coins de la case survolée, falaises soulignées |
-| `drawSelection()` | `scene/overlay.ts` | Destinations (aplat qui respire, gemme centrale), puis la pièce |
-| `drawSigil()` | `scene/ground.ts` | Trois cercles, graduations et glyphes, projetés dans le plan du sol |
+| `drawPiece()` | `scene/pieces.ts` | Colonne de lumière (sélection), ombre, obélisque à deux faces, halo et œil (qui s'élève et s'illumine) ; fantôme : contour et trame |
+| `drawBeam()` (privée) | `scene/pieces.ts` | La colonne de lumière, en bandes d'un pixel qui s'effacent vers le haut |
+| `drawHover()` | `scene/overlay.ts` | Voile et réticule qui se referme sur la case survolée, falaises soulignées |
+| `drawSelection()` | `scene/overlay.ts` | Destinations en cascade (aplat qui respire, gemme qui jaillit), puis la case de la pièce |
+| `drawLanding()` | `scene/overlay.ts` | Deux ondes au sol et une couronne d'étincelles |
+| `drawSigil()` | `scene/ground.ts` | Trois cercles tracés progressivement (`drawn`), graduations et glyphes, projetés dans le plan du sol |
 | `boardRadius()` | `scene/ground.ts` | Rayon du plateau autour du pivot, en cases |
+| `drawSky()` | `scene/sky.ts` | Nuées tramées, constellations, étoiles qui scintillent, étoile filante — selon l'atmosphère du thème |
+| `drawMotes()` | `scene/sky.ts` | Poussière d'os qui monte, ou lucioles qui errent et luisent |
 
-L'opacité des **arêtes** d'une case est le produit de trois facteurs, dans `drawTile()` :
+L'opacité des **arêtes** d'une case, dans `drawTile()` :
 
 ```
-alpha = (visible ? alphaVisible : alphaFogged)
+alpha = (alphaFogged + (alphaVisible − alphaFogged) × lumière + front × 0.45)
       × (passable ? 1 : impassableFactor)
-      × depthAlpha(proximité)
+      × depthAlpha(proximité) × opacité d'entrée
 ```
 
-Le relief se lit **par la valeur** : le dessus s'éclaircit avec la hauteur, et les deux
-faces d'une falaise ne reçoivent pas la même lumière — celle dont l'arête est à gauche du
-centre de la case est éclairée. Hors de vue, tout est assombri et le dessus reçoit la
-trame du vide : le relief reste lisible (implementation-notes 10), il est seulement éteint.
+`lumière` (0 → 1) et `front` viennent de `view/reveal.ts`. Le relief se lit **par la
+valeur** : le dessus s'éclaircit avec la hauteur (`topColor()`), et une case hors de vue
+est assombrie et tramée — le relief reste lisible (implementation-notes 10).
 
-`drawSelection()` dessine les destinations, **puis** la case d'origine — pour que celle-ci
-reste lisible quand des destinations la jouxtent. Son paramètre `glow` (0 → 1) est
-`breath(time, SELECTION.breathMs)`.
+Aucun type de `packages/core/src/pieces/` ne porte de champ visuel : la correspondance
+`kind` → forme appartient à `scene/pieces.ts`. Le roster n'étant pas acté, **toutes les
+pièces partagent aujourd'hui la même silhouette**.
 
-`drawPiece()` dérive ses proportions de la projection, ce qui la fait suivre le zoom sans
-réglage séparé ; ses épaisseurs et l'écart de l'œil sont en pixels du plateau. Aucun type
-de `packages/core/src/pieces/` ne porte de champ visuel : la correspondance `kind` → forme
-appartient donc à ce module. Le roster n'étant pas acté, **toutes les pièces partagent
-aujourd'hui la même silhouette**.
+## `view/` — les modules purs du rendu animé
 
-`drawSigil()` place le sceau à `SIGIL.height`, sous le sol, sur un cercle qui contient tout
-le plateau (`boardRadius()` + `SIGIL.margin`) : chaque point est projeté par `project()`,
-si bien qu'il suit rotation et zoom. Les graduations tournent dans un sens, les glyphes dans
-l'autre, à `SIGIL.speed`. Il ne lit que la forme de la carte, jamais l'état de la partie.
+| Fonction | Emplacement | Rôle |
+|---|---|---|
+| `pixelResolution()` | `view/pixel.ts` | `devicePixelRatio / ART_PIXEL` : la résolution qui fait d'un pixel du plateau deux pixels physiques |
+| `snap()`, `mixColor()`, `breath()` | `view/pixel.ts` | Arrondi à la grille, mélange de couleurs, pulsation en cosinus |
+| `topColor(height, light)` | `view/matter.ts` | Teinte du dessus, continue entre hors de vue (0) et en vue (1) |
+| `clamp01()`, `easeOutCubic()`, `easeInOutSine()`, `easeOutBack()`, `phase()` | `view/easing.ts` | Les courbes ; `easeOutBack` dépasse sa cible avant de s'y poser |
+| `relight()` | `view/reveal.ts` | Nouvel éclairage après un changement de vue : chaque case part de son éclairage courant, avec un retard par case de distance à la plus proche pièce qui voit (vague qui se déploie ; extinction plus rapide et d'un bloc) |
+| `lightAt()`, `crestAt()`, `settling()` | `view/reveal.ts` | Éclairage d'une case à un instant, front de la vague, transition en cours |
+| `introOf()`, `introLength()` | `view/effects.ts` | Entrée d'une case selon son rang de profondeur |
+| `cascadeOf()` | `view/effects.ts` | Ouverture d'une destination selon sa distance à la pièce sélectionnée |
+| `sparksOf()`, `landingAt()` | `view/effects.ts` | Étincelles d'une retombée et état de la retombée |
+| `materializeAt()` | `view/effects.ts` | Matérialisation : opacité, chute de quelques pixels, éclat de l'œil |
+| `liftOf()`, `lagging()` | `view/animation.ts` | Arc d'un déplacement ; la même animation en retard (image rémanente) |
+| `standingDepth()` | `view/iso.ts` | Profondeur d'une pièce : celle de la case qui la porte |
+| `createMotes()`, `moteAt()`, `fireflyAt()` | `view/ambient.ts` | Nuée à graine ; poussière qui monte, luciole qui erre |
+| `createStars()`, `starAlpha()`, `constellationsOf()`, `shootingStarAt()` | `view/ambient.ts` | La voûte, son scintillement, ses segments, une étoile filante par période |
 
-## `view/pixel.ts`, `view/matter.ts`, `view/ambient.ts`
-
-| Fonction | Rôle |
-|---|---|
-| `pixelResolution()` | `devicePixelRatio / ART_PIXEL` : la résolution PixiJS qui fait d'un pixel du plateau deux pixels physiques |
-| `snap()` | Arrondit une coordonnée à la grille des pixels du plateau |
-| `mixColor()` | Mélange canal par canal de deux couleurs `0xRRGGBB` |
-| `breath()` | Pulsation en cosinus, 0 → 1 → 0 sur une période |
-| `topColor()` | Voir ci-dessus |
-| `createMotes()` | Une nuée à graine (mulberry32) : position, montée, ondulation, phase, taille, alpha |
-| `moteAt()` | Position et alpha d'une poussière à un instant, sur un écran donné ; elle revient par le bas et s'éteint près des bords |
-
-Les poussières sont une **fonction du temps seul** : rien n'évolue image par image, et
-un test vérifie qu'aucune ne saute d'un pixel entier d'une image à la suivante — le pixel
-se voit, le mouvement ne saccade pas.
+La vague de lumière ne lit que la vue transmise : elle anime ce que le serveur a envoyé,
+elle ne révèle rien d'autre.
 
 ---
 
-## `theme.ts` — le code couleur
+## `theme.ts` — le code couleur et les thèmes
 
 Code couleur acté dans `docs/design.md` section 8.1, **provisoire**. Les **valeurs** de couleur
-(`BACKGROUND`, camps, états) viennent de `@occulis/ui/tokens`, seule source du projet
-(`docs/technical/ui.md`) ; `theme.ts` les reprend et y ajoute ce qui n'appartient qu'au rendu
-PixiJS — métriques, alphas, épaisseurs :
+viennent de `@occulis/ui/tokens` (`THEMES`, une `Palette` par thème) ; `theme.ts` y ajoute ce
+qui n'appartient qu'au rendu.
 
 > Le vide porte la matière, l'os porte la géométrie, les lueurs portent l'état de jeu.
 
-| Groupe | Contenu |
+| Export | Contenu |
 |---|---|
-| `BACKGROUND` | Fond du canevas — celui des pages HTML vient du même token, par `criticalHead()` |
+| `look()` | Le thème en vigueur, calculé une fois par thème : `palette`, `atmosphere`, `geometry`, `hover`, `players`, `state`, `selection`, `pieces`, `sigil` |
+| `setLook(name)` | Change de thème ; le rendu le lit à l'image suivante |
+| `Look` | Le type de `look()` |
 | `METRICS` | `tileWidth` 72, `tileHeight` 36, `heightUnit` 22 |
-| `GEOMETRY` | Terrain : opacités des arêtes visible/fog/infranchissable, atténuation en profondeur, épaisseurs, teintes des faces (`top`, `peak`, `fog`, `sideLight`, `sideShade`), trame du fog |
-| `HOVER` | Voile, réticule et falaises de la case survolée |
-| `PLAYERS` | Couleurs de camp A et B — **provisoires** |
-| `STATE` | `selection`, `legalMove`, `threat` consommés ; `climb` réservé |
-| `SELECTION` | Couleurs, épaisseurs, opacités (min, max) et période de respiration du marquage de sélection |
-| `PIECES` | Opacités visible/fantôme, épaisseur, proportions de l'obélisque et de l'œil, ombre |
-| `SIGIL` | Le sceau : alphas, marge, anneau, graduations, glyphes, hauteur, vitesse |
-| `MOTES` | Les poussières : couleur, nombre, graine |
+| `MOTION_FX` | Durées et amplitudes de toutes les animations du plateau |
 
-`STATE.legalMove` est **délibérément distinct des deux couleurs de camp** : une case mise
-en avant ne doit jamais se confondre avec une pièce.
+L'**atmosphère** d'un thème (`ATMOSPHERES`) dit ce qu'il allume au-delà de sa palette : le
+sceau (`sigil`), les particules (`motes` : poussière, lucioles ou rien), la densité de la
+voûte (`stars`), les constellations, les étoiles filantes, les nuées.
 
-Les épaisseurs y sont en **pixels du plateau** (`view/pixel.ts`), jamais en pixels CSS.
+| Thème | Palette | Atmosphère |
+|---|---|---|
+| `obsidian` (défaut) | Noir neutre, matière grise, os froid, camps glace et rouge | Voûte moyenne, étoiles filantes, poussière |
+| `reliquary` | Noir brun, matière brune, os doré, camps vert luciole et braise | Sceau tournant, lucioles, voûte clairsemée |
+| `astral` | Noir à peine prune, matière violette, camps cyan et magenta | Voûte dense, constellations, étoiles filantes, nuées |
+
+`STATE.legalMove` est **délibérément distinct des deux couleurs de camp** dans chaque thème.
+Les épaisseurs sont en **pixels du plateau** (`view/pixel.ts`), jamais en pixels CSS.
+
+## `ui/theme-choice.ts` — le choix du joueur
+
+| Fonction | Rôle |
+|---|---|
+| `storedTheme()` | Le thème relu du stockage (`THEME_STORAGE_KEY`), ou celui par défaut |
+| `nextTheme()` | Le suivant dans la liste, en boucle |
+| `applyTheme()` | Stockage, `<html data-theme>`, `setLook()` |
+
+Le bloc critique (`criticalHead()`) a déjà posé `data-theme` avant la première image, ce
+qui fait paraître toute page dans le bon thème. `main.ts` applique le thème au démarrage,
+puis porte le sélecteur `#theme-switch` (en bas à droite, hors des écrans pleine page,
+**partie comprise** — c'est sur le plateau qu'une proposition se juge) : un clic pose un
+voile tramé qui balaie l'écran (`.theme-veil`), puis applique le thème et réécrit la palette
+CSS (`applyPalette()`). Le profil et le back-office appliquent le thème stocké au démarrage,
+pour que leurs rejeux en Canvas 2D en suivent les couleurs.
 
 ### La règle est mécanique, pas conventionnelle
 

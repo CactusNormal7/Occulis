@@ -37,6 +37,8 @@ import { type Selection, resolveClick } from "./game/selection.js";
 import type { Board } from "./scene/board.js";
 import { type GameConsole, attachConsole } from "./ui/console.js";
 import { applyPalette } from "./ui/palette.js";
+import { applyTheme, storedTheme } from "./ui/theme-choice.js";
+import { isThemeName } from "@occulis/ui/tokens";
 import { resendVerification, signOut, stopImpersonating, whoAmI, type Identity } from "./net/auth.js";
 import { chooseLocale, initLocale, translateDom } from "./i18n/browser.js";
 import { currentLocale, messages, onLocaleChange } from "./i18n/current.js";
@@ -58,6 +60,7 @@ function main(): void {
   let identityRequest: Promise<Identity> | undefined = whoAmI();
   loadCache.preload([friendsOverview]);
   let matchRequest: ReturnType<typeof currentMatch> | undefined = currentMatch();
+  applyTheme(storedTheme());
   applyPalette(document.documentElement);
   initLocale();
   translateDom(document);
@@ -100,11 +103,14 @@ function main(): void {
   let pending = false;
 
   const localeSwitch = element<HTMLElement>("locale-switch");
+  const themeSwitch = element<HTMLElement>("theme-switch");
   const go = (event: Parameters<typeof advance>[1]): void => {
     stage = advance(stage, event);
     shell.render(stage);
     // Hors des écrans pleine page et de la partie seulement : il y couvrirait le contenu.
     localeSwitch.hidden = stage.kind === "game" || stage.kind === "deploying" || stage.kind === "teams";
+    // Le choix du design reste en partie : c'est sur le plateau qu'une proposition se juge.
+    themeSwitch.hidden = stage.kind === "deploying" || stage.kind === "teams" || stage.kind === "boot";
   };
 
   /**
@@ -581,6 +587,30 @@ function main(): void {
       button.setAttribute("aria-current", String(button.dataset["locale"] === currentLocale()));
     }
   };
+  const markTheme = (): void => {
+    const current = storedTheme();
+    for (const button of themeSwitch.querySelectorAll<HTMLButtonElement>("button[data-theme-choice]")) {
+      const choice = button.dataset["themeChoice"];
+      button.setAttribute("aria-current", String(choice === current));
+      if (isThemeName(choice)) button.title = messages().ui.theme.hints[choice];
+    }
+  };
+  themeSwitch.addEventListener("click", (event) => {
+    const chosen = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-theme-choice]")?.dataset["themeChoice"];
+    if (!isThemeName(chosen) || chosen === storedTheme()) return;
+    // Un voile tramé balaie l'écran pendant que tout se repeint (ui.css, `.theme-veil`).
+    const veil = document.createElement("div");
+    veil.className = "theme-veil";
+    document.body.append(veil);
+    window.setTimeout(() => veil.remove(), 600);
+    window.setTimeout(() => {
+      applyTheme(chosen);
+      applyPalette(document.documentElement);
+      markTheme();
+    }, 200);
+  });
+  markTheme();
+
   localeSwitch.addEventListener("click", (event) => {
     const chosen = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-locale]")?.dataset["locale"];
     if (isLocale(chosen)) chooseLocale(chosen);
@@ -590,6 +620,7 @@ function main(): void {
   onLocaleChange(() => {
     translateDom(document);
     markLocale();
+    markTheme();
     shell.render(stage);
     shell.setIdentity(identity);
     gameConsole.refresh();

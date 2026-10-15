@@ -1,4 +1,4 @@
-import { BACKGROUND, cssColor, hexColor } from "./tokens.js";
+import { BACKGROUND, THEMES, THEME_NAMES, cssColor, hexColor } from "./tokens.js";
 
 /**
  * Le bloc que chaque page HTML porte en tête de `<head>`, avant toute feuille et tout
@@ -12,6 +12,9 @@ import { BACKGROUND, cssColor, hexColor } from "./tokens.js";
  *   requête part avec le HTML au lieu d'attendre que le CSS la découvre, et
  *   `font-display: block` retient le texte jusqu'à elle : un écran ne paraît jamais
  *   dans la police de secours pour basculer ensuite.
+ * - Le thème choisi (`THEMES`) : un script en ligne le relit du stockage et le pose sur
+ *   `<html data-theme>` avant la première image, et le fond de chaque thème est écrit en
+ *   ligne. Sans cela, une page s'ouvrirait dans le thème par défaut pour basculer ensuite.
  * - Les règles de spéculation : un lien interne survolé est préchargé. `prefetch` et non
  *   `prerender` — une page pré-rendue exécuterait son script, et ouvrirait donc le canal
  *   de présence d'une page que le joueur n'a pas encore ouverte.
@@ -19,6 +22,9 @@ import { BACKGROUND, cssColor, hexColor } from "./tokens.js";
  * Injecté au build par `apps/web/vite.config.ts` : le HTML ne contient aucune couleur
  * écrite à la main, et ce fichier n'en contient aucune qui ne vienne de `tokens.ts`.
  */
+/** La clé de stockage du thème choisi, partagée par toutes les pages du site. */
+export const THEME_STORAGE_KEY = "occulis.theme";
+
 /** L'adresse fixe de la police pixel, servie depuis `apps/web/public/fonts/`. */
 export const PIXEL_FONT_URL = "/fonts/tiny5-latin.woff2";
 
@@ -27,6 +33,9 @@ export function criticalHead(): string {
   const style = [
     `@font-face{font-family:"Tiny5";src:url(${PIXEL_FONT_URL}) format("woff2");font-display:block}`,
     `html,body{background:${background};color-scheme:dark}`,
+    ...THEME_NAMES.map(
+      (theme) => `html[data-theme="${theme}"],html[data-theme="${theme}"] body{background:${cssColor(THEMES[theme].background)}}`,
+    ),
     "@view-transition{navigation:auto}",
     "@media (prefers-reduced-motion:reduce){@view-transition{navigation:none}}",
   ].join("");
@@ -47,6 +56,7 @@ export function criticalHead(): string {
     '<meta name="color-scheme" content="dark" />',
     `<meta name="theme-color" content="${hexColor(BACKGROUND)}" />`,
     `<link rel="preload" href="${PIXEL_FONT_URL}" as="font" type="font/woff2" crossorigin />`,
+    `<script>try{var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});if(${JSON.stringify(THEME_NAMES)}.indexOf(t)>=0)document.documentElement.dataset.theme=t}catch(e){}</script>`,
     `<style>${style}</style>`,
     `<script type="speculationrules">${JSON.stringify(speculation)}</script>`,
   ].join("\n");

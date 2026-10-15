@@ -45,6 +45,15 @@
       <button type="button" data-locale="fr" lang="fr">FR</button>
     </nav>
 
+    <!-- Les propositions de design (docs/design.md 8.1), à comparer en un geste : hors des
+         écrans pleine page, partie comprise — c'est sur le plateau qu'elles se jugent. -->
+    <nav id="theme-switch" aria-label="Design" data-i18n-label="ui.theme.label" hidden>
+      <span class="theme-switch__label" data-i18n="ui.theme.label">Design</span>
+      <button type="button" data-theme-choice="obsidian"><i aria-hidden="true"></i><span data-i18n="ui.theme.names.obsidian">Obsidian</span></button>
+      <button type="button" data-theme-choice="reliquary"><i aria-hidden="true"></i><span data-i18n="ui.theme.names.reliquary">Reliquary</span></button>
+      <button type="button" data-theme-choice="astral"><i aria-hidden="true"></i><span data-i18n="ui.theme.names.astral">Astral</span></button>
+    </nav>
+
     <main id="shell">
       <!-- L'amorce : visible dès le HTML, avant tout script, jusqu'à ce que le premier écran
            soit complet. Rien que la barre de chargement de la charte, après un délai : un
