@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { Button } from "./Button.js";
 import { IconButton } from "./IconButton.js";
 import { useMessages } from "./Locale.js";
-import { pixelReveal } from "../pixel-reveal.js";
+import { revealWindow } from "../window-reveal.js";
 
 export interface DialogProps {
   open: boolean;
@@ -31,8 +31,8 @@ export interface DialogProps {
 
 /**
  * Une fenêtre modale sur `<dialog>` natif : focus piégé, Échap, page inerte derrière.
- * Elle se construit et se défait en petits carrés (`pixelReveal`), sur un voile tramé qui
- * se pose en fondu ; un clic sur le voile la ferme aussi.
+ * Elle s'ouvre et se referme comme un œil (`revealWindow`), sur un voile tramé qui se pose
+ * en fondu ; un clic sur le voile la ferme aussi.
  */
 export function Dialog({
   open,
@@ -57,7 +57,7 @@ export function Dialog({
     if (open && !dialog.open) {
       setClosing(false);
       dialog.showModal();
-      void pixelReveal(dialog);
+      void revealWindow(dialog);
       dialog.querySelector<HTMLInputElement>("input, select")?.focus();
     }
     if (!open && dialog.open) dialog.close();
@@ -67,7 +67,7 @@ export function Dialog({
     const dialog = ref.current;
     if (closing || dialog === null) return;
     setClosing(true);
-    void pixelReveal(dialog, "close").then(onClose);
+    void revealWindow(dialog, "close").then(onClose);
   };
 
   const submit = (event: FormEvent) => {

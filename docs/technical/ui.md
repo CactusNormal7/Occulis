@@ -21,7 +21,7 @@ composants.
 | `src/index.ts` | Point d'entrée : tokens et composants |
 | `src/cx.ts` | Assemblage de noms de classe |
 | `src/critical.ts` | `criticalHead()` et `withCriticalHead()` : le bloc de tête de chaque page HTML (sous-chemin `@occulis/ui/critical`) |
-| `src/pixel-reveal.ts` | `pixelReveal()` : l'ouverture et la fermeture en petits carrés de toute fenêtre flottante, et son calendrier pur (sous-chemin `@occulis/ui/reveal`, sans React) |
+| `src/window-reveal.ts` | `revealWindow()` : l'ouverture et la fermeture de toute fenêtre flottante (l'œil qui s'ouvre), et son calendrier pur (sous-chemin `@occulis/ui/reveal`, sans React) |
 | `scripts/build-tokens.ts` | Écrit `generated/tokens.css` (`pnpm --filter @occulis/ui tokens`) |
 | `scripts/bundle-css.mjs` | Écrit `dist/styles.css` : tokens **inclus**, sans `@import` |
 | `tsup.config.ts` | Le build publié : `dist/index.js`, `dist/index.d.ts`, `dist/styles.css` |
@@ -125,43 +125,14 @@ l'attribut `data-tip`. Toutes les animations s'éteignent sous `prefers-reduced-
 Quelques comportements à connaître :
 
 - **`Dialog`** s'appuie sur `<dialog>` natif (focus piégé, Échap, page inerte). `onConfirm`
-  rend `true` pour fermer, `false` pour rester ouverte sur un refus. Elle se construit en
-  petits carrés à l'ouverture et se défait de même à la fermeture (`pixelReveal`), qui
-  attend la fin de l'animation avant d'appeler `onClose` ; son voile tramé se pose en fondu.
+  rend `true` pour fermer, `false` pour rester ouverte sur un refus. Elle s'ouvre et se
+  referme comme un œil (`revealWindow`) ; la fermeture attend la fin de l'animation avant
+  d'appeler `onClose`, et son voile tramé se pose en fondu.
 - **`IconButton`** exige un `label` ; `disabledReason` grise le bouton **et** remplace
   l'infobulle par la raison.
 - **`ToastProvider`** empile les messages en bas à droite ; un refus reste deux fois plus
-  longtemps qu'un succès. Chaque message se construit et se défait en carrés de sa propre
-  couleur (`Toast`, interne : `pixelReveal` à l'arrivée et au départ).
-
-### `pixelReveal()` — les fenêtres flottantes s'ouvrent en petits carrés
-
-Toute fenêtre flottante du site — `Dialog` et `ToastStack` ici ; dans la page du jeu, les
-panneaux de compte et d'attente, le bandeau de partie, le bandeau d'usurpation et les
-réglages — s'ouvre du même geste : des carrés de 8 px (`REVEAL_CELL`) partent du coin de la
-fenêtre **le plus proche de la souris** et gagnent le coin opposé, diagonale après
-diagonale, sans désordre ; chaque carré jaillit un peu trop grand, se pose, puis s'efface en
-dévoilant la fenêtre. La fermeture rejoue le geste à l'envers, du coin opposé vers celui de
-la souris. Les pages entières n'en usent pas, ni le menu principal du jeu.
-
-| Export | Rôle |
-|---|---|
-| `pixelReveal(target, mode)` | Joue `"open"` ou `"close"` sur un élément affiché ; promesse tenue à la fin. Immédiate sous `prefers-reduced-motion` ou pour un élément sans taille ; interrompt une animation en cours sur le même élément |
-| `cellDelay(col, row, cols, rows, from)` | Rang d'éclosion d'un carré, 0 → 1 : sa diagonale comptée depuis le coin de départ |
-| `nearestCorner(bounds, point)` | Le coin d'un rectangle le plus proche d'un point ; haut gauche sans point |
-| `openCell(age)`, `closeCell(age)` | L'état d'un carré (fenêtre visible dessous, taille, opacité) selon son âge |
-| `REVEAL_CELL`, `OPEN_MS`, `CLOSE_MS`, `OPEN_SPREAD_MS`, `CLOSE_SPREAD_MS` | Le côté d'un carré et les durées |
-
-La position de la souris est retenue par un écouteur posé au premier appel
-(`pointermove`, `pointerdown`, en capture). La grille suit la taille de la fenêtre à chaque
-image : une fenêtre qui grandit en cours d'ouverture (un code qui arrive) reste couverte.
-
-Le mécanisme : un `clip-path: path(…)` fait des seuls carrés éclos, fusionnés en segments
-par ligne, masque la fenêtre ; les carrés eux-mêmes sont peints dans un canevas posé
-**dans** l'élément (et non sur la page, pour rester dans la couche du haut d'une `<dialog>`
-modale). Leur couleur est le `color` calculé de l'élément : l'os pour une fenêtre, la
-teinte d'un refus pour un message d'erreur. Le `clip-path` et le `position` en ligne de
-l'élément sont rendus à la fin.
+  longtemps qu'un succès. Chaque message s'ouvre et se referme d'un trait de sa propre
+  couleur (`Toast`, interne : `revealWindow` à l'arrivée et au départ).
 - **`CountdownRing`** ne tient aucune horloge : l'appelant fait décroître `remainingMs`, et
   l'anneau glisse d'une valeur à l'autre en une seconde. Une animation CSS aurait été
   écrasée à zéro sous mouvement réduit, vidant l'anneau d'un coup — or le temps restant est
@@ -224,6 +195,34 @@ l'élément sont rendus à la fin.
   `.design-sync/config.json` (`dtsPropsFor`).
 - Toutes les props optionnelles acceptent `undefined` (`exactOptionalPropertyTypes`).
 
+### `revealWindow()` — les fenêtres flottantes s'ouvrent comme un œil
+
+Toute fenêtre flottante du site — `Dialog` et `ToastStack` ici ; dans la page du jeu, les
+panneaux de compte et d'attente, le bandeau de partie, le bandeau d'usurpation et les
+réglages — s'ouvre du même geste : un trait de lumière d'un pixel se trace au milieu de la
+fenêtre, du centre vers les bords, un éclat en losange à chaque pointe ; puis il s'écarte en
+deux paupières qui dévoilent la fenêtre, leur bord frangé d'une trame un-sur-deux qui
+s'efface à mesure qu'elles s'ouvrent. La fermeture referme les paupières sur le trait, qui
+se résorbe en son centre. Les pages entières n'en usent pas, ni le menu principal du jeu.
+
+| Export | Rôle |
+|---|---|
+| `revealWindow(target, mode)` | Joue `"open"` ou `"close"` sur un élément affiché ; promesse tenue à la fin. Immédiate sous `prefers-reduced-motion` ou pour un élément sans taille ; interrompt une animation en cours sur le même élément |
+| `eyeAt(elapsed, mode)` | L'état de l'œil à un instant : étendue du trait, ouverture des paupières, éclat |
+| `OPEN_MS`, `CLOSE_MS` | Les durées (420 ms, 310 ms) |
+
+Le mécanisme : un `clip-path: inset(…)` suit les paupières (une bande de quatre pixels
+autour du trait tant qu'elles sont closes) ; le trait, ses éclats et la frange sont peints
+dans un canevas posé **dans** l'élément (et non sur la page, pour rester dans la couche du
+haut d'une `<dialog>` modale). Leur couleur est le `color` calculé de l'élément : l'os pour
+une fenêtre, la teinte d'un refus pour un message d'erreur. La taille est relue à chaque
+image : une fenêtre qui grandit en cours d'ouverture (un code qui arrive) reste juste. Le
+`clip-path` et le `position` en ligne de l'élément sont rendus à la fin.
+
+Deux propositions ont précédé celle-ci, écartées par le porteur du projet : une nuée de
+carrés éclose du centre, puis un balayage de carrés depuis le coin le plus proche de la
+souris.
+
 ## La synchronisation vers Claude Design
 
 `.design-sync/` porte la configuration, les aperçus rédigés (`previews/<Nom>.tsx`), les
@@ -240,7 +239,7 @@ catégories (`docs/<Nom>.md`), l'en-tête de conventions lu par l'agent de desig
 |---|---|
 | `src/tokens.test.ts` | `generated/tokens.css` identique à sa source, mêmes propriétés pour chaque thème, `styles.css` sans propriété indéfinie ni couleur en dur, conversion des couleurs, **alpha précomposé pour les courriers** |
 | `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition**, **langue fixée par `UiRoot` (et anglais par défaut)**, compte à rebours proportionnel et urgent, plaques dans la couleur de leur camp, ligne de choix marquée, fenêtre sans croix, **fil de messages : les siens marqués à part, texte échappé, état vide, longueur du champ**, squelette annoncé sans texte visible |
-| `src/pixel-reveal.test.ts` | Balayage d'un coin au coin opposé, diagonales simultanées, coin le plus proche de la souris, fenêtre cachée avant l'éclosion, carré qui jaillit puis s'efface, fermeture plus rapide que l'ouverture |
+| `src/window-reveal.test.ts` | Le trait d'abord, paupières closes ; ouverture continue jusqu'à la fenêtre entière ; fermeture des paupières puis résorption du trait ; fermeture plus rapide que l'ouverture |
 | `src/critical.test.ts` | **Fond et thème sombre sans variable** (la feuille n'est pas encore là), police pixel déclarée et préchargée, thème posé avant la première image, fondu coupé sous mouvement réduit, aucun préchargement de `/api/*` ni `/match/*` et jamais de `prerender`, **bloc placé après l'encodage et avant toute feuille** |
 
 Le rendu visuel n'est pas testé ici : il l'est par les aperçus vérifiés sur captures lors de

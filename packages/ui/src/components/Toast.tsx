@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { CLOSE_MS, pixelReveal } from "../pixel-reveal.js";
+import { CLOSE_MS, revealWindow } from "../window-reveal.js";
 
 export interface ToastMessage {
   id: number;
@@ -13,12 +13,12 @@ type Notify = (text: string, ok?: boolean) => void;
 const ToastContext = createContext<Notify>(() => undefined);
 
 const TOAST_MS = 4500;
-/** Le temps de se défaire en carrés, et une image de marge. */
+/** Le temps de se refermer, et une image de marge. */
 const LEAVE_MS = CLOSE_MS + 20;
 
 /**
- * Les messages éphémères, empilés en bas à droite : ils ne poussent pas la page, se
- * construisent et se défont en petits carrés de leur couleur (`pixelReveal`), et partent d'eux-mêmes — deux fois plus lentement pour un refus — ou au clic.
+ * Les messages éphémères, empilés en bas à droite : ils ne poussent pas la page, s'ouvrent
+ * et se referment comme un œil, d'un trait de leur couleur (`revealWindow`), et partent d'eux-mêmes — deux fois plus lentement pour un refus — ou au clic.
  * `useToast()` les émet depuis n'importe quel descendant.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -73,7 +73,7 @@ function Toast({ message, onDismiss }: { message: ToastMessage; onDismiss?: ((id
   const leaving = message.leaving === true;
 
   useLayoutEffect(() => {
-    if (ref.current !== null) void pixelReveal(ref.current, leaving ? "close" : "open");
+    if (ref.current !== null) void revealWindow(ref.current, leaving ? "close" : "open");
   }, [leaving]);
 
   return (

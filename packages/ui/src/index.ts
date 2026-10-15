@@ -4,7 +4,7 @@
  * et du fond de la page hôte.
  */
 export * from "./tokens.js";
-export { pixelReveal } from "./pixel-reveal.js";
+export { revealWindow } from "./window-reveal.js";
 export { Icon, ICON_NAMES, type IconName, type IconProps } from "./components/Icon.js";
 export { UiRoot, type UiRootProps } from "./components/UiRoot.js";
 export {

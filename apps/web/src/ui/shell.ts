@@ -2,7 +2,7 @@ import type { Identity } from "../net/auth.js";
 import type { QueueSeeking, Stage } from "./flow.js";
 import { describeIdentity, describeWaiting } from "./messages.js";
 import { messages } from "../i18n/current.js";
-import { pixelReveal } from "@occulis/ui/reveal";
+import { revealWindow } from "@occulis/ui/reveal";
 
 /**
  * Les écrans : compte, menu, attente, partie. Un seul est visible à la fois.
@@ -16,15 +16,15 @@ import { pixelReveal } from "@occulis/ui/reveal";
  * l'îlot React de `src/account/`, sur la charte.
  *
  * Un panneau flottant qui paraît — compte, attente, bandeau de partie, bandeau
- * d'usurpation — se construit en petits carrés (`pixelReveal`), d'un seul tenant : c'est
+ * d'usurpation — s'ouvre comme un œil (`revealWindow`), d'un seul tenant : c'est
  * le panneau entier qui se forme, jamais ses morceaux l'un après l'autre. Le menu
  * principal fait exception, sur demande du porteur du projet : c'est le lieu où l'on
  * revient sans cesse, il paraît sans cérémonie.
  */
 
-/** Joue l'ouverture en carrés sur `element` s'il vient de paraître. */
+/** Joue l'ouverture sur `element` s'il vient de paraître. */
 function revealIfShown(element: HTMLElement, wasHidden: boolean, target: HTMLElement | null = element): void {
-  if (wasHidden && !element.hidden && target !== null) void pixelReveal(target);
+  if (wasHidden && !element.hidden && target !== null) void revealWindow(target);
 }
 export interface ShellElements {
   readonly boot: HTMLElement;
