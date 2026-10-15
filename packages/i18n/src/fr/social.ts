@@ -81,6 +81,7 @@ export const social: Messages["social"] = {
     nowRefused: "Vos parties ne se regardent plus.",
   },
   addOpponent: (handle) => `Demander ${handle} en ami`,
+  requestPending: (handle) => `Demande d'ami déjà envoyée à ${handle}.`,
   toasts: {
     requested: (handle) => `Demande envoyée à ${handle}.`,
     friends: (handle) => `${handle} et vous êtes amis.`,

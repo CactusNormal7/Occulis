@@ -1,4 +1,4 @@
-import type { MeProfile } from "@occulis/protocol";
+import type { MeCurrentMatch, MeProfile } from "@occulis/protocol";
 import { availableProviders, type Auth } from "../auth/better-auth.js";
 import { guardCaller } from "../auth/guard.js";
 import { parsePage } from "../admin/paging.js";
@@ -7,6 +7,7 @@ import {
   listMyMatches,
   listSessions,
   nextHandleChange,
+  readCurrentMatch,
   readMyMatch,
   readProfileRow,
   revokeOtherSessions,
@@ -60,6 +61,18 @@ export async function handleMe(auth: Auth, env: Env, request: Request, url: URL)
     if (path === "/feats") return Response.json(await readMyFeats(env.DB, playerId));
     if (path === "/presets") return Response.json(await listPresets(env.DB, playerId));
     if (path === "/matches") return Response.json(await listMyMatches(env.DB, playerId, parsePage(url.searchParams)));
+    if (path === "/current-match") {
+      // Une session d'emprunt est en lecture seule : elle ne s'assied pas à la place du joueur.
+      const current = impersonating ? undefined : await readCurrentMatch(env.DB, playerId);
+      if (current === undefined) return Response.json(null);
+      const forwarded = new URL("https://do/seat");
+      forwarded.searchParams.set("side", current.player);
+      const answer = await env.MATCH.get(env.MATCH.idFromName(current.matchId)).fetch(forwarded);
+      if (!answer.ok) return Response.json(null);
+      const { seat } = (await answer.json()) as { seat: string };
+      const body: MeCurrentMatch = { ...current, seat };
+      return Response.json(body);
+    }
 
     const matchId = path.match(/^\/matches\/([\w-]+)$/)?.[1];
     if (matchId !== undefined) {

@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import {
   type Action,
+  type ActionError,
   type GameState,
   type MatchMemory,
   type Piece,
@@ -70,6 +71,17 @@ export const DEPLOYMENT_MS = 90_000;
  * avant, et ce message doit avoir le temps d'arriver.
  */
 const DEPLOYMENT_GRACE_MS = 2_000;
+/**
+ * Un siège resté sans connexion aussi longtemps perd la partie par forfait. Assez long
+ * pour qu'un rechargement de page ou une coupure brève reconnecte avant, assez court pour
+ * qu'un onglet fermé ne laisse pas la partie « en cours » à jamais (implementation-notes 31).
+ * Le temps de réflexion reste illimité : seule l'absence est bornée, pas le tour.
+ */
+export const ABSENCE_MS = 30_000;
+
+function absenceKey(player: PlayerId): string {
+  return `absent:${player}`;
+}
 
 type LockedTeams = Partial<Record<PlayerId, readonly TeamEntry[]>>;
 
@@ -105,6 +117,14 @@ export class MatchDO extends DurableObject<Env> {
 
     const config = await this.config();
 
+    // Chemin atteint seulement par le Worker, qui a vérifié que la session est bien celle
+    // du joueur de ce camp : c'est ainsi qu'il retrouve sa partie après un rechargement.
+    if (url.pathname === "/seat") {
+      const side = url.searchParams.get("side");
+      if (side !== "A" && side !== "B") return new Response("unknown side", { status: 400 });
+      return Response.json({ seat: config.seats[side] });
+    }
+
     // Chemin atteint seulement par le Worker, qui a vérifié l'amitié et le réglage du
     // joueur suivi : la route publique `/match/:id` ne transmet que son propre chemin.
     if (url.pathname === "/watch") {
@@ -131,6 +151,15 @@ export class MatchDO extends DurableObject<Env> {
     // fois supérieur et aucune différence fonctionnelle (docs/costs.md). Le camp est
     // porté par un tag, seule information qui survit à l'hibernation du socket.
     this.ctx.acceptWebSocket(pair[1], [player]);
+    // Revenu à temps : le forfait qui courait depuis sa déconnexion tombe. L'adversaire,
+    // s'il n'est pas là sans qu'aucun départ ait été noté — une partie d'avant le forfait —,
+    // commence à compter maintenant : sinon le joueur revenu l'attendrait à jamais.
+    await this.ctx.storage.delete(absenceKey(player));
+    const other: PlayerId = player === "A" ? "B" : "A";
+    if (!this.connected(other) && (await this.ctx.storage.get<number>(absenceKey(other))) === undefined) {
+      await this.ctx.storage.put(absenceKey(other), Date.now());
+    }
+    await this.scheduleAlarm();
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
 
@@ -175,19 +204,35 @@ export class MatchDO extends DurableObject<Env> {
   }
 
   /**
-   * Rien à nettoyer : l'état de la partie ne dépend d'aucune connexion ouverte, et le
-   * tag du camp disparaît avec le socket. Le gestionnaire doit exister malgré tout —
-   * le runtime l'appelle sur tout socket accepté pour l'hibernation, et lève une
-   * exception non rattrapée s'il est absent (constaté par les tests dans workerd).
+   * Le gestionnaire doit exister — le runtime l'appelle sur tout socket accepté pour
+   * l'hibernation, et lève une exception non rattrapée s'il est absent (constaté par les
+   * tests dans workerd).
    *
-   * Une déconnexion n'interrompt pas la partie : le temps de réflexion est illimité
-   * (docs/design.md section 2), et le joueur retrouve sa position en se reconnectant.
-   * Pendant le déploiement non plus : l'échéance posera l'équipe par défaut. Seul le
-   * départ d'un spectateur se signale, au camp qu'il regardait.
+   * Une déconnexion n'interrompt pas la partie tout de suite : le joueur a `ABSENCE_MS`
+   * pour revenir — un rechargement de page y suffit — avant de perdre par forfait. Le
+   * départ d'un spectateur, lui, se signale seulement au camp qu'il regardait.
    */
   async webSocketClose(ws: WebSocket): Promise<void> {
+    await this.left(ws);
+  }
+
+  async webSocketError(ws: WebSocket): Promise<void> {
+    await this.left(ws);
+  }
+
+  private async left(ws: WebSocket): Promise<void> {
     const watched = this.watchedBy(ws);
-    if (watched !== undefined) this.announceSpectators(watched, ws);
+    if (watched !== undefined) {
+      this.announceSpectators(watched, ws);
+      return;
+    }
+    const player = this.playerOf(ws);
+    if (player === undefined) return;
+    // Un autre onglet resté ouvert sur le même siège suffit à ne pas le compter absent.
+    if (this.connected(player, ws)) return;
+    if ((await this.ctx.storage.get<number>(absenceKey(player))) !== undefined) return;
+    await this.ctx.storage.put(absenceKey(player), Date.now());
+    await this.scheduleAlarm();
   }
 
   /**
@@ -219,6 +264,16 @@ export class MatchDO extends DurableObject<Env> {
     for (const socket of this.ctx.getWebSockets(side)) this.send(socket, { kind: "spectators", count });
   }
 
+  /**
+   * Le camp a au moins un socket ouvert, `leaving` excepté. Un socket qui se ferme reste
+   * listé par `getWebSockets` le temps de sa fermeture : seul l'état `OPEN` compte.
+   */
+  private connected(player: PlayerId, leaving?: WebSocket): boolean {
+    return this.ctx
+      .getWebSockets(player)
+      .some((socket) => socket !== leaving && socket.readyState === WebSocket.OPEN);
+  }
+
   private watchedBy(ws: WebSocket): PlayerId | undefined {
     const tag = this.ctx.getTags(ws)[0];
     if (tag === watchTag("A")) return "A";
@@ -226,13 +281,68 @@ export class MatchDO extends DurableObject<Env> {
     return undefined;
   }
 
-  /** L'échéance du déploiement : qui n'a rien verrouillé reçoit l'équipe par défaut de la carte. */
+  /**
+   * L'unique alarme du DO porte deux échéances : celle du déploiement — qui n'a rien
+   * verrouillé reçoit l'équipe par défaut de la carte — et celle de l'absence d'un siège,
+   * qui le fait perdre par forfait. Elle peut donc sonner pour l'une sans que l'autre soit
+   * due, et se réarme sur la prochaine.
+   */
   async alarm(): Promise<void> {
-    if (!(await this.deploying())) return;
-    const deployment = (await this.scenario()).deployment;
-    if (deployment === undefined) return;
-    const teams = await this.teams();
-    await this.start({ A: teams.A ?? deployment.defaultTeams.A, B: teams.B ?? deployment.defaultTeams.B });
+    const now = Date.now();
+    if (await this.deploying()) {
+      const deadline = (await this.ctx.storage.get<number>("deadline")) ?? 0;
+      const deployment = (await this.scenario()).deployment;
+      if (deployment !== undefined && now >= deadline + DEPLOYMENT_GRACE_MS) {
+        const teams = await this.teams();
+        await this.start({ A: teams.A ?? deployment.defaultTeams.A, B: teams.B ?? deployment.defaultTeams.B });
+      }
+    }
+    if (!(await this.deploying())) await this.forfeitAbsent(now);
+    await this.scheduleAlarm();
+  }
+
+  /**
+   * Le premier siège absent depuis `ABSENCE_MS` abandonne ; si les deux le sont, c'est
+   * celui parti le premier. Une partie déjà finie n'a plus d'absence à suivre.
+   */
+  private async forfeitAbsent(now: number): Promise<void> {
+    const live = await this.load();
+    const since = await this.absences();
+    if (live.state.outcome === null) {
+      const due = (["A", "B"] as const)
+        .filter((seat) => since[seat] !== undefined && now >= (since[seat] ?? 0) + ABSENCE_MS)
+        .filter((seat) => !this.connected(seat))
+        .sort((x, y) => (since[x] ?? 0) - (since[y] ?? 0))[0];
+      if (due === undefined) return;
+      await this.commit(live, { kind: "resign", player: due });
+    }
+    await this.ctx.storage.delete([absenceKey("A"), absenceKey("B")]);
+  }
+
+  private async absences(): Promise<Record<PlayerId, number | undefined>> {
+    const stored = await this.ctx.storage.get<number>([absenceKey("A"), absenceKey("B")]);
+    return { A: stored.get(absenceKey("A")), B: stored.get(absenceKey("B")) };
+  }
+
+  /**
+   * Réarme l'alarme sur la prochaine échéance. Pendant le déploiement, seule la sienne
+   * compte : une absence ne peut se solder qu'une fois la partie ouverte, ce que fait
+   * l'alarme du déploiement elle-même — sinon l'alarme d'une absence échue sonnerait en
+   * boucle sans pouvoir rien conclure.
+   */
+  private async scheduleAlarm(): Promise<void> {
+    let next: number | undefined;
+    if (await this.deploying()) {
+      const deadline = await this.ctx.storage.get<number>("deadline");
+      if (deadline !== undefined) next = deadline + DEPLOYMENT_GRACE_MS;
+    } else {
+      const since = await this.absences();
+      for (const at of [since.A, since.B]) {
+        if (at !== undefined) next = Math.min(next ?? Infinity, at + ABSENCE_MS);
+      }
+    }
+    if (next === undefined) await this.ctx.storage.deleteAlarm();
+    else await this.ctx.storage.setAlarm(next);
   }
 
   /**
@@ -284,11 +394,20 @@ export class MatchDO extends DurableObject<Env> {
     if (!pieces.ok) throw new Error(`MatchDO: invalid team for ${pieces.error.player}: ${pieces.error.error.code}`);
 
     await this.ctx.storage.put("setup", pieces.value);
-    await this.ctx.storage.deleteAlarm();
     await this.env.DB.prepare("UPDATE matches SET setup = ? WHERE id = ?")
       .bind(JSON.stringify(pieces.value), config.matchId)
       .run();
     this.live = null;
+    // Un siège qui ne s'est jamais connecté — ou plus depuis le déploiement — n'a laissé
+    // aucune fermeture à compter : son absence part de l'ouverture de la partie.
+    const now = Date.now();
+    for (const seat of ["A", "B"] as const) {
+      if (this.connected(seat)) continue;
+      if ((await this.ctx.storage.get<number>(absenceKey(seat))) === undefined) {
+        await this.ctx.storage.put(absenceKey(seat), now);
+      }
+    }
+    await this.scheduleAlarm();
     await this.broadcastViews();
   }
 
@@ -299,17 +418,24 @@ export class MatchDO extends DurableObject<Env> {
     }
     const live = await this.load();
 
-    const denial = denyOutOfTurn(live.state.activePlayer, player);
+    // L'abandon se joue hors tour, et c'est le siège qui dit qui abandonne — jamais le
+    // message, qui pourrait sinon faire abandonner l'adversaire. Un joueur qui quitte la
+    // partie abandonne ainsi même pendant le tour d'en face, et elle se clôt.
+    const stamped: Action = action.kind === "resign" ? { kind: "resign", player } : action;
+    const denial = stamped.kind === "resign" ? undefined : denyOutOfTurn(live.state.activePlayer, player);
     if (denial !== undefined) {
       this.send(from, { kind: "rejected", error: denial });
       return;
     }
 
+    const error = await this.commit(live, stamped);
+    if (error !== undefined) this.send(from, { kind: "rejected", error });
+  }
+
+  /** Applique une action déjà autorisée : log, clôture éventuelle, diffusion. */
+  private async commit(live: MatchMemory, action: Action): Promise<ActionError | undefined> {
     const advanced = advanceMemory(live, action);
-    if (!advanced.ok) {
-      this.send(from, { kind: "rejected", error: advanced.error });
-      return;
-    }
+    if (!advanced.ok) return advanced.error;
 
     const seq = live.state.history.length;
     this.live = advanced.value;
@@ -317,6 +443,7 @@ export class MatchDO extends DurableObject<Env> {
     await this.appendToLog(action, seq);
     if (advanced.value.state.outcome !== null) await this.recordOutcome(advanced.value.state);
     await this.broadcastViews();
+    return undefined;
   }
 
   /**

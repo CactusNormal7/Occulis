@@ -133,6 +133,13 @@ describe("fin de partie", () => {
     expect(after.outcome).toEqual({ kind: "victory", winner: "B", reason: "resignation" });
   });
 
+  it("accepte l'abandon du joueur qui n'est pas au trait", () => {
+    const after = unwrap(applyAction(duel(), { kind: "resign", player: "B" }));
+    expect(after.activePlayer).toBe("A");
+    expect(after.outcome).toEqual({ kind: "victory", winner: "A", reason: "resignation" });
+    expect(after.history.at(-1)?.player).toBe("B");
+  });
+
   it("refuse toute action après la fin de partie", () => {
     const finished = unwrap(applyAction(duel(), { kind: "resign" }));
     expect(applyAction(finished, { kind: "resign" })).toEqual({ ok: false, error: { code: "game-over" } });

@@ -80,6 +80,7 @@ export const social = {
     nowRefused: "Your matches can no longer be watched.",
   },
   addOpponent: (handle: string) => `Send ${handle} a friend request`,
+  requestPending: (handle: string) => `Friend request already sent to ${handle}.`,
   toasts: {
     requested: (handle: string) => `Request sent to ${handle}.`,
     friends: (handle: string) => `${handle} and you are now friends.`,
