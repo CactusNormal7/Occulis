@@ -9,6 +9,7 @@ export const game: Messages["game"] = {
   myProfile: "Mon profil",
   menu: {
     resend: "Renvoyer le message de vérification",
+    play: "Jouer",
     quick: "Partie rapide",
     quickHint: "Le premier adversaire disponible",
     host: "Créer une partie",

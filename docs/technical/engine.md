@@ -543,6 +543,8 @@ Les trois entrées du menu restent désactivées tant que personne n'est connect
 que l'adresse n'est pas vérifiée** : la file répondrait 401 dans le premier cas, 403 dans
 le second. `describeIdentity()` (`ui/messages.ts`) dit laquelle des deux raisons s'applique —
 sans quoi des boutons désactivés n'auraient aucune explication à l'écran.
+Une fois l'adresse vérifiée, elle rend une chaîne vide : le pseudo est déjà dans le coin du
+compte, et `#menu-identity` vide est masqué.
 
 ### Les amis
 
@@ -1123,7 +1125,7 @@ atteindre les composants `occ-*`.
 | `#screen-auth` / `#account-root` | Compte : l'hôte de l'îlot React (`account/`) |
 | `#impersonation` | Bandeau de session d'emprunt, au-dessus de tous les écrans — masqué hors usurpation |
 | `#account-corner` | Pseudo et lien vers le profil, en haut à droite — montré au seul menu |
-| `#screen-menu` | Identité, renvoi de vérification, partie rapide, création, entrée par code, amis, lien du back-office (`#menu-admin`, administrateurs seuls), déconnexion |
+| `#screen-menu` | Trois sections séparées par un filet : **Jouer** (partie rapide, création, entrée par code — trois cartes `.primary` au même gabarit, la partie rapide seule au trait plein — puis la carte en retrait des équipes), **Amis**, et un pied de liens (`.menu-link` : back-office pour les administrateurs, déconnexion). Sous le titre, `#menu-identity` n'apparaît que si l'adresse n'est pas vérifiée, avec le renvoi du message |
 | `#menu-friends` | Le panneau « Amis » : `#friends-challenges`, `#friends-list`, `#friends-empty` — masqué tant que la liste n'est pas lue |
 | `#screen-waiting` | Le code du salon, sa copie, l'attente (adversaire, ami défié, partie d'un ami) et son annulation |
 | `#console` | Le bandeau de partie |
