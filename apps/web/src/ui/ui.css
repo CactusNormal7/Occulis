@@ -506,13 +506,6 @@ button.primary:focus-visible::after {
   margin-top: 10px;
 }
 
-/* ---- Amorce ------------------------------------------------------------------- */
-
-/* La place d'un panneau, le temps de savoir lequel montrer (formulaire ou menu). */
-#screen-boot {
-  max-width: 460px;
-}
-
 /* ---- Écran de compte ---------------------------------------------------------- */
 
 /* L'îlot de compte porte sa propre mise en page (`FormPanel`) : le panneau ne fait que

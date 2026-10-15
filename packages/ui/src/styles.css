@@ -608,9 +608,11 @@ a.occ-person:hover .occ-tile-avatar:not(.occ-tile-avatar--A, .occ-tile-avatar--B
   animation: occ-progress 1.1s var(--occ-ease) infinite;
 }
 
+/* N'apparaît qu'après 0,4 s, qu'elle soit montée active (l'attente d'une page) ou qu'elle le
+   devienne (une navigation) : une attente courte ne fait rien paraître puis disparaître. */
 .occ-progress[data-active="true"] {
   opacity: 1;
-  transition-delay: 0.12s;
+  animation: occ-progress-show 0.2s linear 0.4s backwards;
 }
 
 /* ---- En-têtes de vue et de fiche ------------------------------------------------------- */
@@ -1610,43 +1612,11 @@ select.occ-input option {
 /* ---- Animations -------------------------------------------------------------------- */
 
 /* Une vue qui entre : ses blocs montent en cascade. À poser sur le conteneur de la vue. */
-.occ-enter > * {
-  animation: occ-rise 0.42s var(--occ-ease) backwards;
+/* Un bloc entre d'un seul tenant : un fondu de l'ensemble, jamais ses parties l'une après
+   l'autre — un écran qui se compose par morceaux se lit comme un écran qui charge. */
+.occ-enter {
+  animation: occ-fade 0.18s var(--occ-ease) backwards;
 }
-
-.occ-enter > :nth-child(2) {
-  animation-delay: 0.04s;
-}
-
-.occ-enter > :nth-child(3) {
-  animation-delay: 0.08s;
-}
-
-.occ-enter > :nth-child(n + 4) {
-  animation-delay: 0.12s;
-}
-
-.occ-enter .occ-table tbody tr {
-  animation: occ-fade 0.35s var(--occ-ease) backwards;
-}
-
-.occ-enter .occ-table tbody tr:nth-child(2) { animation-delay: 0.03s; }
-.occ-enter .occ-table tbody tr:nth-child(3) { animation-delay: 0.06s; }
-.occ-enter .occ-table tbody tr:nth-child(4) { animation-delay: 0.09s; }
-.occ-enter .occ-table tbody tr:nth-child(5) { animation-delay: 0.12s; }
-.occ-enter .occ-table tbody tr:nth-child(n + 6) { animation-delay: 0.15s; }
-
-.occ-enter .occ-stat-tile {
-  animation: occ-rise 0.42s var(--occ-ease) backwards;
-}
-
-.occ-enter .occ-stat-tile:nth-child(2) { animation-delay: 0.03s; }
-.occ-enter .occ-stat-tile:nth-child(3) { animation-delay: 0.06s; }
-.occ-enter .occ-stat-tile:nth-child(4) { animation-delay: 0.09s; }
-.occ-enter .occ-stat-tile:nth-child(5) { animation-delay: 0.12s; }
-.occ-enter .occ-stat-tile:nth-child(6) { animation-delay: 0.15s; }
-.occ-enter .occ-stat-tile:nth-child(7) { animation-delay: 0.18s; }
-.occ-enter .occ-stat-tile:nth-child(8) { animation-delay: 0.21s; }
 
 /* ---- Compte à rebours ---------------------------------------------------------------- */
 
@@ -1976,6 +1946,12 @@ button.occ-choice__main:focus-visible {
 @keyframes occ-skeleton-pulse {
   50% {
     opacity: 0.4;
+  }
+}
+
+@keyframes occ-progress-show {
+  from {
+    opacity: 0;
   }
 }
 

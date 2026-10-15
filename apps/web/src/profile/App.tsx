@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import {
   Badge,
   Banner,
@@ -18,7 +18,6 @@ import {
   Pager,
   PasswordField,
   ProgressBar,
-  Skeleton,
   SettingEditor,
   SettingList,
   SettingRow,
@@ -33,8 +32,10 @@ import {
 } from "@occulis/ui";
 import type { MeProfile, MeSession } from "@occulis/protocol";
 import { linkGoogle, stopImpersonating } from "../net/auth.js";
-import { useLoad, usePending, whenReady } from "../load/hooks.js";
+import { useHashRoute, useLoad, usePending, whenReady } from "../load/hooks.js";
 import type { Loaded } from "../load/cache.js";
+import * as R from "./resources.js";
+import { resourcesOf } from "./resources.js";
 import { formatDate, shortAgent } from "../admin/model.js";
 import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH, passwordHint } from "../account/model.js";
 import { chooseLocale, initLocale } from "../i18n/browser.js";
@@ -67,39 +68,48 @@ export function App() {
   const [locale, setLocale] = useState(initLocale);
   return (
     <UiRoot fullPage locale={locale}>
-      <Page
-        localeSwitch={
-          <LocaleSwitch
-            value={locale}
-            onChange={(next) => {
-              chooseLocale(next);
-              setLocale(next);
-            }}
-          />
-        }
-      />
+      {/* La seule frontière d'attente de la page : rien ne paraît avant que l'écran entier
+          — barre du haut comprise — ait ses données (« Chargement et premier rendu »). */}
+      <Suspense fallback={<ProgressBar active />}>
+        <Page
+          localeSwitch={
+            <LocaleSwitch
+              value={locale}
+              onChange={(next) => {
+                chooseLocale(next);
+                setLocale(next);
+              }}
+            />
+          }
+        />
+      </Suspense>
     </UiRoot>
   );
 }
 
 function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
-  const { loaded, reload } = useLoad("profile", api.profile);
-  return (
-    <ToastProvider>
-      <SocialProvider enabled={loaded.state === "ready" && loaded.value.emailVerified}>
-        <Frame localeSwitch={localeSwitch} loaded={loaded} reload={reload} />
-      </SocialProvider>
-    </ToastProvider>
+  const { loaded, reload } = useLoad(R.profile);
+  const verified = loaded.state === "ready" && loaded.value.emailVerified;
+  const frame = (
+    <SocialProvider enabled={verified}>
+      <Frame localeSwitch={localeSwitch} loaded={loaded} reload={reload} />
+    </SocialProvider>
   );
+  // Les non-lus de l'onglet Amis font partie de la barre du haut : la page attend la liste
+  // avec le reste, plutôt que de voir l'onglet changer de libellé une fois affichée.
+  return <ToastProvider>{verified ? <WithFriends>{frame}</WithFriends> : frame}</ToastProvider>;
+}
+
+function WithFriends({ children }: { children: ReactNode }) {
+  useLoad(R.friendsOverview);
+  return children;
 }
 
 function Frame({ localeSwitch, loaded, reload }: { localeSwitch: ReactNode; loaded: Loaded<MeProfile>; reload: () => void }) {
   const all = useMessages();
   const m = all.profile;
-  const route = useProfileRoute();
-  // Les onglets se montrent avant la réponse : le cadre ne dépend d'aucune requête, et seul
-  // un refus connu les retire.
-  const signedIn = loaded.state !== "failed";
+  const route = useHashRoute(parseProfileRoute, resourcesOf);
+  const signedIn = loaded.state === "ready";
   const unread = unreadTotal(useSocial().state);
 
   return (
@@ -136,25 +146,14 @@ function Frame({ localeSwitch, loaded, reload }: { localeSwitch: ReactNode; load
   );
 }
 
-function useProfileRoute(): ProfileRoute {
-  const [route, setRoute] = useState(() => parseProfileRoute(location.hash));
-  useEffect(() => {
-    const update = () => setRoute(parseProfileRoute(location.hash));
-    window.addEventListener("hashchange", update);
-    return () => window.removeEventListener("hashchange", update);
-  }, []);
-  return route;
-}
-
 function Gate({ loaded, route, reload }: { loaded: Loaded<MeProfile>; route: ProfileRoute; reload: () => void }) {
   const m = useMessages().profile;
-  if (loaded.state === "loading") return <Skeleton card lines={5} />;
   if (loaded.state === "failed") {
     return <EmptyState action={<a href={ROUTE_PATHS.signin}>{m.signIn}</a>}>{loaded.message}</EmptyState>;
   }
   const profile = loaded.value;
   return (
-    <div key={profileHash(route)} className="occ-stack occ-enter">
+    <div key={profileHash(route)} className="occ-stack">
       {profile.impersonating && (
         <Banner
           icon="impersonate"
@@ -512,8 +511,7 @@ function FeatsCard({ readOnly }: { readOnly: boolean }) {
   const all = useMessages();
   const m = all.feats;
   const notify = useToast();
-  const { loaded, reload } = useLoad("feats", api.feats);
-  if (loaded.state === "loading") return <Skeleton card lines={4} />;
+  const { loaded, reload } = useLoad(R.feats);
   if (loaded.state === "failed") return <EmptyState error>{loaded.message}</EmptyState>;
   const { feats, showcase } = loaded.value;
   const full = showcase.length >= 3;
@@ -591,7 +589,7 @@ function SpectatorsCard({ profile, readOnly, onDone }: { profile: MeProfile; rea
 function Sessions({ readOnly }: { readOnly: boolean }) {
   const m = useMessages().profile.sessions;
   const notify = useToast();
-  const { loaded, reload } = useLoad("sessions", api.sessions);
+  const { loaded, reload } = useLoad(R.sessions);
 
   const revoke = async (pending: Promise<{ ok: boolean; message?: string }>, done: string) => {
     const outcome = await pending;
@@ -614,8 +612,6 @@ function Sessions({ readOnly }: { readOnly: boolean }) {
     >
       {loaded.state === "failed" ? (
         <EmptyState error>{loaded.message}</EmptyState>
-      ) : loaded.state === "loading" ? (
-        <Skeleton lines={2} />
       ) : (
         <List>
           {list.map((session) => (
@@ -692,7 +688,7 @@ function Matches({ offset, readOnly }: { offset: number; readOnly: boolean }) {
   const m = all.profile.matches;
   const notify = useToast();
   const social = useSocial();
-  const { loaded } = useLoad(`matches:${offset}`, () => api.matches(offset));
+  const { loaded } = useLoad(R.matches(offset));
   return whenReady(loaded, (page) => (
     <Card title={m.title(page.total)}>
       <MatchTable
@@ -726,7 +722,7 @@ function Matches({ offset, readOnly }: { offset: number; readOnly: boolean }) {
 
 function MatchReplay({ id }: { id: string }) {
   const t = useMessages().profile.matches;
-  const { loaded } = useLoad(`match:${id}`, () => api.match(id));
+  const { loaded } = useLoad(R.match(id));
   return whenReady(loaded, (match) => (
     <MatchReplayView match={match} back={{ href: profileHash({ view: "matches", offset: 0 }), label: t.back }} />
   ));

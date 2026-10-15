@@ -74,7 +74,7 @@ gouvernent `styles.css` :
    résultat de partie celle du camp vainqueur.
 
 Classes utilitaires : `occ-root` (posée par `UiRoot`), `occ-page`, `occ-stack`, `occ-enter`
-(entrée en cascade), `occ-label`, `occ-muted`, `occ-actions-cell`. Les infobulles passent par
+(fondu d'un bloc entier, jamais en cascade), `occ-label`, `occ-muted`, `occ-actions-cell`. Les infobulles passent par
 l'attribut `data-tip`. Toutes les animations s'éteignent sous `prefers-reduced-motion`.
 
 ## Les composants
@@ -137,12 +137,18 @@ Quelques comportements à connaître :
   que fixe `UiRoot locale={…}` (qui pose aussi `lang` sur sa racine), à défaut celle d'un
   `LocaleProvider` englobant, à défaut l'anglais. Le build (`tsup`) embarque
   `@occulis/i18n` (`noExternal`) : hors du dépôt, Claude Design ne saurait pas le résoudre.
-- **`Skeleton`** est la place d'un contenu qui n'est pas arrivé (`lines`, `card` pour la forme
-  d'une `Card`). Il ne se dessine qu'après **150 ms**, par un `animation-delay` de la feuille et
-  non par une minuterie : une réponse rapide ne fait rien clignoter. C'est un `role="status"`,
-  `aria-busy`, étiqueté par `ui.loading`. Le client le montre par `whenReady()`
-  (`docs/technical/engine.md`, « Chargement et premier rendu ») ; la page du jeu en pose un en
-  HTML statique (`#screen-boot`), que la feuille habille sans React.
+- **`Skeleton`** est la place d'un contenu qui n'est pas arrivé (`lines`, `card`). Il ne se
+  dessine qu'après **150 ms** (`animation-delay`, pas de minuterie). **Le client n'en montre
+  aucun** : un écran attend d'être complet pour paraître (`docs/technical/engine.md`,
+  « Chargement et premier rendu »), et un squelette serait justement une partie de l'écran
+  montrée avant les autres. Il reste dans la charte pour un contenu qui, par nature,
+  arriverait après l'écran.
+- **`ProgressBar`** n'apparaît qu'après **0,4 s** d'activité, qu'elle soit montée active
+  (l'attente d'une page entière) ou qu'elle le devienne (une navigation) : une attente courte
+  ne fait rien paraître puis disparaître.
+- **`occ-enter`** fond le bloc entier d'un coup. Il n'y a plus d'entrée en cascade : un écran
+  qui se compose morceau par morceau se lit comme un écran qui charge. `FormPanel` n'a pas
+  d'animation d'entrée, puisqu'il se pose dans un cadre déjà affiché.
 - **`criticalHead()`** n'est pas un composant : c'est le texte injecté en tête de chaque page
   HTML par `apps/web/vite.config.ts` — `color-scheme: dark`, `theme-color`, le fond en ligne
   depuis `BACKGROUND`, `@view-transition` (coupé sous mouvement réduit) et les règles de

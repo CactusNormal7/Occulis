@@ -1,54 +1,38 @@
-import { type ReactNode, useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { EmptyState, Skeleton } from "@occulis/ui";
-import { type Loaded, type Outcome, loadCache, pendingLoads, refreshing } from "./cache.js";
+import { type ReactNode, useCallback, useEffect, useRef, useState, useSyncExternalStore, startTransition } from "react";
+import { EmptyState } from "@occulis/ui";
+import { type Loaded, type Resource, loadCache, loadedOf, pendingLoads } from "./cache.js";
 
 /**
- * Charge une ressource et la recharge à la demande — **la** façon de lire une donnée dans
- * une vue React du client (docs/technical/engine.md, « Chargement et premier rendu »).
+ * Lit une ressource — **la** façon de lire une donnée dans une vue React du client
+ * (docs/technical/engine.md, « Chargement et premier rendu »).
  *
- * - Une clé déjà lue rend aussitôt sa valeur en cache, dès le premier rendu : aucun rendu
- *   vide intermédiaire, puis la relecture la remplace.
- * - Une réponse arrivée après un changement de `key` n'est pas affichée : une navigation
- *   rapide ne doit jamais montrer la vue d'avant. Elle entre quand même au cache, où elle
- *   reste juste pour sa propre clé.
- * - `reload` relit depuis le serveur après une écriture, en gardant l'écran affiché :
- *   l'écran montre ce que la base contient, jamais ce qu'on vient d'envoyer.
+ * Tant que la ressource n'est jamais arrivée, la vue **suspend** : c'est la frontière
+ * `Suspense` de la page qui attend, pour toutes les vues de l'écran à la fois, et l'écran
+ * paraît d'un seul tenant. Une navigation passée par `startTransition` (`useHashRoute`)
+ * garde l'écran précédent affiché pendant ce temps. Arrivée, la ressource se relit en
+ * arrière-plan si elle n'est plus fraîche ; `reload` la relit après une écriture, en
+ * gardant l'écran — l'écran montre ce que la base contient, jamais ce qu'on vient
+ * d'envoyer.
  */
-export function useLoad<T>(
-  key: string,
-  load: () => Promise<Outcome<T>>,
-): { loaded: Loaded<T>; reload: () => void } {
-  const [entry, setEntry] = useState<{ key: string; loaded: Loaded<T> }>(() => ({
-    key,
-    loaded: loadCache.initial<T>(key),
-  }));
-  const [generation, setGeneration] = useState(0);
+export function useLoad<T>(resource: Resource<T>): { loaded: Loaded<T>; reload: () => void } {
+  const { key } = resource;
+  const latest = useRef(resource);
+  latest.current = resource;
+
+  const entry = useSyncExternalStore(
+    (listener) => loadCache.subscribe(key, listener),
+    () => loadCache.peek<T>(key),
+  );
 
   useEffect(() => {
-    let current = true;
-    const done = pendingLoads.begin();
-    setEntry((previous) => ({
-      key,
-      loaded: previous.key === key ? refreshing(previous.loaded) : loadCache.initial<T>(key),
-    }));
-    void load()
-      .then((outcome) => {
-        const settled = loadCache.settle(key, outcome);
-        if (current) setEntry({ key, loaded: settled });
-      })
-      .finally(done);
-    return () => {
-      current = false;
-      done();
-    };
-    // `load` change d'identité à chaque rendu : c'est `key` qui dit quand la ressource
-    // change vraiment, et `generation` quand il faut la relire.
-  }, [key, generation]);
+    void loadCache.request(latest.current);
+  }, [key]);
 
-  const reload = useCallback(() => setGeneration((value) => value + 1), []);
-  // Le rendu qui suit un changement de clé précède l'effet : il lit déjà le cache de la
-  // nouvelle clé plutôt que de montrer, une image durant, la valeur de l'ancienne.
-  return { loaded: entry.key === key ? entry.loaded : loadCache.initial<T>(key), reload };
+  const reload = useCallback(() => void loadCache.request(latest.current, { force: true }), [key]);
+
+  // Une promesse qui ne rejette jamais : React rend de nouveau la vue à son arrivée.
+  if (entry?.outcome === undefined) throw loadCache.request(resource);
+  return { loaded: loadedOf({ ...entry, outcome: entry.outcome }), reload };
 }
 
 /** Vrai tant qu'au moins une lecture de la page est en cours : la barre de progression le suit. */
@@ -59,17 +43,27 @@ export function usePending(): boolean {
   );
 }
 
-/**
- * Ce qu'une vue montre selon l'état de sa ressource : sa place réservée tant qu'elle
- * n'est pas là (un squelette par défaut, jamais rien), le message s'il a échoué, sinon
- * son rendu.
- */
-export function whenReady<T>(
-  loaded: Loaded<T>,
-  render: (value: T) => ReactNode,
-  placeholder: ReactNode = <Skeleton card />,
-): ReactNode {
-  if (loaded.state === "loading") return placeholder;
+/** Le rendu d'une ressource arrivée, ou son refus. */
+export function whenReady<T>(loaded: Loaded<T>, render: (value: T) => ReactNode): ReactNode {
   if (loaded.state === "failed") return <EmptyState error>{loaded.message}</EmptyState>;
   return render(loaded.value);
+}
+
+/**
+ * La route lue dans le fragment de l'URL. Un changement précharge ce que la route lira
+ * (`resourcesOf`), puis passe en transition : l'écran affiché reste en place jusqu'à ce
+ * que le suivant soit complet, au lieu de se vider puis de se remplir par morceaux.
+ */
+export function useHashRoute<R>(parse: (hash: string) => R, resourcesOf: (route: R) => readonly Resource<unknown>[]): R {
+  const [route, setRoute] = useState(() => parse(location.hash));
+  useEffect(() => {
+    const update = () => {
+      const next = parse(location.hash);
+      loadCache.preload(resourcesOf(next));
+      startTransition(() => setRoute(next));
+    };
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
+  return route;
 }
