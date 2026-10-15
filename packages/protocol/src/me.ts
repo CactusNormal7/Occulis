@@ -53,6 +53,17 @@ export interface MeSession {
 
 export type MeResult = "won" | "lost" | "ongoing" | "ended";
 
+/**
+ * La partie en cours du joueur, de quoi s'y rasseoir après un rechargement : le jeton de
+ * siège ne vit que dans la page, qui le perd. `null` s'il n'en a aucune.
+ */
+export interface MeCurrentMatch {
+  readonly matchId: string;
+  readonly player: PlayerId;
+  /** Jeton de siège, comme celui de la file d'attente. */
+  readonly seat: string;
+}
+
 export interface MeMatchSummary {
   readonly id: string;
   /** Le camp que vous teniez. */

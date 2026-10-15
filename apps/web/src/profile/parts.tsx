@@ -16,7 +16,7 @@ import {
   ToolbarText,
   useMessages,
 } from "@occulis/ui";
-import type { MeMatchDetail, MeMatchSummary, MeRecord } from "@occulis/protocol";
+import type { MeMatchDetail, MeMatchSummary, MeRecord, Relation } from "@occulis/protocol";
 import { boardForScenario } from "../game/scenario.js";
 import { ReplayBoard } from "../admin/ReplayBoard.js";
 import { clampFrame } from "../admin/replay.js";
@@ -61,16 +61,25 @@ export interface MatchTableProps {
   replayHref: (match: MeMatchSummary) => string;
   /** Ajouter l'adversaire en ami ; absent, la colonne ne le propose pas. */
   onAddFriend?: ((match: MeMatchSummary) => void) | undefined;
+  /**
+   * Ce qu'est déjà l'adversaire : un ami ou un joueur bloqué ne se propose plus, une
+   * demande envoyée se grise. Inconnue (liste pas encore lue), le geste reste offert —
+   * le serveur tranche de toute façon.
+   */
+  relationOf?: ((match: MeMatchSummary) => Relation | undefined) | undefined;
   readOnly?: boolean | undefined;
 }
 
-export function MatchTable({ matches, replayHref, onAddFriend, readOnly = false }: MatchTableProps) {
+export function MatchTable({ matches, replayHref, onAddFriend, relationOf, readOnly = false }: MatchTableProps) {
   const all = useMessages();
   const t = all.profile.matches;
   const c = t.columns;
   return (
     <Table columns={[c.start, c.opponent, c.side, c.result, c.elo, c.moves, ""]} rowCount={matches.length} empty={t.empty}>
-      {matches.map((m) => (
+      {matches.map((m) => {
+        const relation = relationOf?.(m);
+        const offerFriend = onAddFriend !== undefined && relation !== "friend" && relation !== "blocked";
+        return (
         <tr key={m.id}>
           <td className="occ-muted">{formatDate(m.startedAt)}</td>
           <td>{m.opponent}</td>
@@ -84,12 +93,14 @@ export function MatchTable({ matches, replayHref, onAddFriend, readOnly = false 
           <td className="occ-muted">{m.actions}</td>
           <td className="occ-actions-cell">
             <QuickBar>
-              {onAddFriend !== undefined && (
+              {offerFriend && (
                 <IconButton
                   icon="userPlus"
                   label={all.social.addOpponent(m.opponent)}
                   tipAlign="end"
-                  disabledReason={readOnly ? all.social.readOnly : undefined}
+                  disabledReason={
+                    readOnly ? all.social.readOnly : relation === "outgoing" ? all.social.requestPending(m.opponent) : undefined
+                  }
                   onClick={() => onAddFriend(m)}
                 />
               )}
@@ -103,7 +114,8 @@ export function MatchTable({ matches, replayHref, onAddFriend, readOnly = false 
             </QuickBar>
           </td>
         </tr>
-      ))}
+        );
+      })}
     </Table>
   );
 }

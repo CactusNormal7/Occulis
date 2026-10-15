@@ -68,7 +68,9 @@
   align-items: center;
   gap: 8px;
   max-width: calc(100vw - 32px);
-  padding: 7px 12px;
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 12px;
   border: var(--line);
   background: var(--panel);
   color: var(--ink-soft);
@@ -106,12 +108,14 @@
   left: 16px;
   z-index: 5;
   display: flex;
+  height: 34px;
+  box-sizing: border-box;
   border: var(--line);
   background: var(--panel);
 }
 
 #locale-switch button {
-  padding: 6px 10px;
+  padding: 0 10px;
   border: none;
   background: none;
   color: var(--ink-faint);
@@ -191,30 +195,6 @@
   margin: 0;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.field > span {
-  color: var(--ink-soft);
-  text-transform: lowercase;
-}
-
-.field input {
-  padding: 8px 10px;
-  border: var(--line);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-}
-
-.field input:focus {
-  outline: none;
-  border-color: var(--ink-soft);
-}
-
 button:not([class*="occ-"]) {
   padding: 9px 14px;
   border: 1px solid var(--ink-soft);
@@ -235,63 +215,191 @@ button:not([class*="occ-"]):disabled {
   cursor: default;
 }
 
-/* Les entrées du menu sont les seuls boutons pleine largeur : ce sont les gestes
-   principaux de l'écran. */
-.choices {
+/* ---- Menu ------------------------------------------------------------------- */
+
+/* Le menu se lit en sections — Jouer, Amis, puis le pied de compte — séparées par un
+   filet et titrées toutes de la même façon : un seul niveau de titre, une seule grille. */
+#screen-menu .panel {
+  gap: 24px;
+}
+
+.menu-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.primary {
+.menu-section + .menu-section {
+  padding-top: 20px;
+  border-top: var(--line);
+}
+
+.menu-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.menu-heading {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.choices {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 8px;
+}
+
+/* Une carte d'entrée : titre, puis une ligne d'aide. Le bouton et le formulaire de
+   code partagent ce gabarit, pour que les trois entrées s'alignent au pixel près.
+   Préfixé de l'écran : la règle générique des boutons est plus spécifique qu'une classe. */
+#screen-menu .primary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-sizing: border-box;
+  width: 100%;
   padding: 12px 14px;
+  border: var(--line);
+  transition: border-color 150ms;
 }
 
 .primary small {
   color: var(--ink-soft);
 }
 
-/* Les équipes : une entrée du menu sans être un geste de partie, donc en retrait. */
-#menu-teams {
+/* Les cartes-boutons portent une flèche : elles mènent quelque part, le formulaire non. */
+button.primary {
+  position: relative;
+  padding-right: 36px;
+}
+
+button.primary::after {
+  content: "→";
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  color: var(--ink-dim);
+  transform: translateY(-50%);
+  transition: color 150ms, transform 150ms;
+}
+
+button.primary:hover:not(:disabled)::after,
+button.primary:focus-visible::after {
+  color: var(--ink);
+  transform: translate(3px, -50%);
+}
+
+/* La partie rapide, geste attendu par défaut : seule carte au trait plein. */
+#screen-menu .primary--lead {
+  border-color: var(--ink-soft);
+}
+
+/* Les équipes : une carte du menu sans être une entrée en partie, donc en retrait —
+   détachée des trois autres et sans ligne d'aide appuyée. */
+#screen-menu .primary--minor {
+  margin-top: 6px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-style: dashed;
+}
+
+.primary--minor small {
+  color: var(--ink-dim);
+}
+
+#screen-menu button.primary:hover:not(:disabled),
+#screen-menu button.primary:focus-visible,
+#screen-menu .primary:focus-within {
+  outline: none;
+  border-color: var(--ink);
+}
+
+#screen-menu button.primary:disabled::after {
+  content: none;
+}
+
+#screen-menu button.primary:disabled small {
+  color: var(--ink-faint);
+}
+
+/* Sous le titre, l'identité ne s'affiche que pour dire pourquoi le jeu reste fermé. */
+#screen-menu .tagline {
+  margin-top: -16px;
+}
+
+/* Le formulaire de code : le libellé en titre de carte, le champ et son bouton sur
+   une ligne, à la même hauteur. */
+.panel #join-form {
+  gap: 8px;
+}
+
+.join-row {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 14px;
-}
-
-#menu-teams small {
-  color: var(--ink-soft);
-}
-
-.quiet {
-  align-self: flex-start;
-  padding: 6px 10px;
-  border-color: var(--ink-faint);
-  color: var(--ink-soft);
-}
-
-/* Le lien du back-office, habillé comme les autres gestes discrets. */
-a.quiet {
-  border: 1px solid var(--ink-faint);
-  text-decoration: none;
-}
-
-#join-form {
-  flex-direction: row;
-  align-items: flex-end;
-  gap: 10px;
-}
-
-#join-form .field {
-  flex: 1;
+  align-items: stretch;
+  gap: 8px;
 }
 
 #join-code {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
   letter-spacing: 0.3em;
   text-transform: uppercase;
+}
+
+#join-code:focus {
+  outline: none;
+  border-color: var(--ink-soft);
+}
+
+#join-code:disabled {
+  color: var(--ink-faint);
+}
+
+#play-join {
+  flex: none;
+  text-align: center;
+}
+
+/* Les gestes discrets (attente, amis) : un cadre fin. Préfixés de leur élément pour
+   l'emporter sur la règle générique des boutons, plus spécifique qu'une classe seule. */
+:is(button, a).quiet {
+  align-self: flex-start;
+  padding: 6px 10px;
+  border: 1px solid var(--ink-faint);
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+/* Un lien de navigation secondaire, sans cadre : gérer les amis, back-office,
+   déconnexion. Ce ne sont pas des gestes de jeu, ils ne doivent pas en avoir l'air. */
+:is(button, a).menu-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+:is(button, a).menu-link:hover,
+:is(button, a).menu-link:focus-visible {
+  color: var(--ink);
+  outline: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* Le code du salon est fait pour être lu à voix haute ou recopié : il occupe
@@ -417,41 +525,28 @@ a.quiet {
   padding: 32px;
 }
 
-/* Les gestes discrets du menu, côte à côte en pied de panneau. */
+/* Le pied du menu : les gestes de compte, petits et aux deux bords. Le back-office
+   n'existant que pour les administrateurs, la déconnexion se cale seule à droite. */
 .menu-links {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: -4px;
+  padding-top: 16px;
+  border-top: var(--line);
+  font-size: 12px;
+}
+
+#account-signout {
+  margin-left: auto;
 }
 
 /* ---- Amis ------------------------------------------------------------------------ */
 
 /* Les amis sous les entrées de jeu : une ligne par ami, ses gestes à droite. Un ami absent
    est estompé — sa présence est l'information qui compte ici. */
-.friends {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 14px;
-  border-top: var(--line);
-}
-
-.friends h2 {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin: 0;
-  font-size: 13px;
-  font-weight: 400;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-
-.friends h2 a {
-  padding: 2px 8px;
-  letter-spacing: normal;
-  text-transform: none;
+.friends .menu-link {
+  font-size: 12px;
 }
 
 .friend-list {
@@ -463,6 +558,11 @@ a.quiet {
   padding: 0;
   overflow-y: auto;
   list-style: none;
+}
+
+/* Une liste vide ne doit pas compter dans l'espacement de la section. */
+.friend-list:empty {
+  display: none;
 }
 
 .friend {

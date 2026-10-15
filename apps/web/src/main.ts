@@ -46,7 +46,7 @@ import { mountDeployment, mountMatchFound } from "./prepare/mount.js";
 import type { DeploymentProps } from "./prepare/Deployment.js";
 import type { MatchFoundProps } from "./prepare/MatchFound.js";
 import { mountTeams } from "./teams/mount.js";
-import { presets as loadPresets } from "./profile/api.js";
+import { currentMatch, presets as loadPresets } from "./profile/api.js";
 import { loadCache } from "./load/cache.js";
 
 /** Racine de composition : elle câble les modules, elle n'en implémente aucun. */
@@ -406,6 +406,15 @@ function main(): void {
       });
     },
     onCancel: leave,
+    onLeaveMatch: () => {
+      // Aucun chemin ne ramène à un siège quitté : partir d'une partie vivante sans
+      // abandonner la laisserait « en cours » à jamais dans les deux historiques.
+      if (watching === undefined && match !== undefined && !match.isOver) {
+        if (!confirm(messages().game.console.leaveConfirm)) return;
+        channel?.submit({ kind: "resign" });
+      }
+      leave();
+    },
     onStopImpersonating: () => {
       leave();
       void stopImpersonating().then(() => location.assign("/admin/"));
@@ -499,6 +508,19 @@ function main(): void {
   }
   let identity: Identity = { signedIn: false };
 
+  /**
+   * Rassoit le joueur à sa partie en cours. Le jeton de siège ne vit que dans la page :
+   * un rechargement le perd, et c'est le serveur qui le rend, à la seule session du
+   * joueur. Il a `ABSENCE_MS` pour revenir avant de perdre par forfait.
+   */
+  const resume = async (): Promise<void> => {
+    if (stage.kind !== "menu" || channel !== undefined || queue !== undefined) return;
+    const outcome = await currentMatch();
+    if (!outcome.ok || outcome.value === null) return;
+    if (stage.kind !== "menu" || channel !== undefined || queue !== undefined) return;
+    sit(outcome.value.matchId, outcome.value.seat);
+  };
+
   // L'identité vient du serveur, via un cookie de session : le client ne l'annonce
   // jamais lui-même. Sans compte, la file d'attente répondrait 401.
   const refresh = async (message?: string): Promise<void> => {
@@ -520,6 +542,7 @@ function main(): void {
       const notice = message ?? arrival?.text;
       if (notice !== undefined) shell.notify(notice);
       arrival = undefined;
+      void resume();
       return;
     }
     showAccount();

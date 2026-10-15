@@ -1,9 +1,9 @@
-import { SELF, env, runDurableObjectAlarm } from "cloudflare:test";
+import { SELF, env, runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type { ClientMessage, ServerMessage } from "@occulis/protocol";
 import { PROTOCOL_VERSION } from "@occulis/protocol";
 import { type StartedMatch, startMatch } from "./match-setup.js";
-import { DEPLOYMENT_MS } from "./match-do.js";
+import { ABSENCE_MS, DEPLOYMENT_MS } from "./match-do.js";
 
 /**
  * Tests d'intégration dans **workerd**, le runtime réel.
@@ -62,6 +62,16 @@ async function seat(matchId: string, token: string) {
   send({ kind: "hello", protocol: PROTOCOL_VERSION });
 
   return { socket, send, awaitKind, drain: () => (received = []) };
+}
+
+/** Attend que le DO ait noté le départ d'un siège : sa fermeture lui parvient en différé. */
+async function absentSince(stub: DurableObjectStub, side: "A" | "B"): Promise<number> {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const since = await runInDurableObject(stub, (_instance, state) => state.storage.get<number>(`absent:${side}`));
+    if (since !== undefined) return since;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`départ de ${side} jamais noté`);
 }
 
 /** Les deux joueurs assis, chacun ayant posé l'équipe par défaut de la carte. */
@@ -167,7 +177,10 @@ describe("MatchDO dans workerd", () => {
     a.send({ kind: "deploy", team: mine });
     await a.awaitKind("deployment-update");
 
-    expect(await runDurableObjectAlarm(env.MATCH.get(env.MATCH.idFromName(match.matchId)))).toBe(true);
+    // Le temps ne s'avance pas dans workerd : on avance l'échéance elle-même.
+    const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
+    await runInDurableObject(stub, (_instance, state) => state.storage.put("deadline", 0));
+    expect(await runDurableObjectAlarm(stub)).toBe(true);
     const view = (await a.awaitKind("view")).view;
     expect(view.ownPieces.find((piece) => piece.id === "a-0")?.coord).toEqual({ x: 0, y: 8 });
 
@@ -259,6 +272,74 @@ describe("MatchDO dans workerd", () => {
 
     a.socket.close();
     b.socket.close();
+  });
+
+  it("accepte l'abandon hors tour, au nom du siège et non du message", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    await b.awaitKind("view");
+    b.drain();
+
+    // A est au trait ; B quitte la partie et tente de faire abandonner A à sa place.
+    b.send({ kind: "action", action: { kind: "resign", player: "A" } });
+    const view = (await b.awaitKind("view")).view;
+    expect(view.outcome).toEqual({ kind: "victory", winner: "A", reason: "resignation" });
+
+    const row = await env.DB.prepare("SELECT finished_at FROM matches WHERE id = ?")
+      .bind(match.matchId)
+      .first<{ finished_at: number | null }>();
+    expect(row?.finished_at).not.toBeNull();
+    const logged = await env.DB.prepare("SELECT action FROM match_actions WHERE match_id = ?")
+      .bind(match.matchId)
+      .first<{ action: string }>();
+    expect(JSON.parse(logged?.action ?? "null")).toEqual({ kind: "resign", player: "B" });
+
+    a.socket.close();
+    b.socket.close();
+  });
+
+  it("fait perdre par forfait le siège absent depuis trop longtemps", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    await a.awaitKind("view");
+    await b.awaitKind("view");
+    a.drain();
+
+    b.socket.close();
+    const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
+    const since = await absentSince(stub, "B");
+    expect(since).toBeTypeOf("number");
+
+    // Le temps ne s'avance pas dans workerd : on recule le départ.
+    await runInDurableObject(stub, (_instance, state) => state.storage.put("absent:B", Date.now() - ABSENCE_MS - 1));
+    expect(await runDurableObjectAlarm(stub)).toBe(true);
+    const view = (await a.awaitKind("view")).view;
+    expect(view.outcome).toEqual({ kind: "victory", winner: "A", reason: "resignation" });
+
+    const row = await env.DB.prepare("SELECT finished_at FROM matches WHERE id = ?")
+      .bind(match.matchId)
+      .first<{ finished_at: number | null }>();
+    expect(row?.finished_at).not.toBeNull();
+    a.socket.close();
+  });
+
+  it("ne fait rien perdre à qui revient à temps — un rechargement de page", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    await a.awaitKind("view");
+    await b.awaitKind("view");
+
+    b.socket.close();
+    const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
+    await absentSince(stub, "B");
+
+    const back = await seat(match.matchId, match.seats.B);
+    expect((await back.awaitKind("view")).view.outcome).toBeNull();
+    const cleared = await runInDurableObject(stub, (_instance, state) => state.storage.get("absent:B"));
+    expect(cleared).toBeUndefined();
+
+    a.socket.close();
+    back.socket.close();
   });
 
   it("fait varier l'Elo des deux joueurs à la fin d'une partie classée", async () => {

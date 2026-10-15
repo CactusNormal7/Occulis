@@ -177,7 +177,7 @@ social, puis relue à son ouverture pour ne rien perdre de ce qu'il aurait pouss
 | `apps/web/src/net/queue-channel.ts` | Le canal de la file : appariement, salon, entrée par code | non |
 | `apps/web/src/net/match-channel.ts` | Le canal d'une partie, assis (`connectToMatch`) ou spectateur (`watchMatch`) | non |
 | `apps/web/src/net/social-channel.ts` | Le canal social de la page (`/api/social`) | non |
-| `apps/web/src/social/model.ts` | État social : liste d'amis retouchée par les poussées, défis, non-lus, refus traduits (`social.errors`) | oui |
+| `apps/web/src/social/model.ts` | État social : liste d'amis retouchée par les poussées, défis, non-lus, relation à un joueur (`relationTo()`), refus traduits (`social.errors`) | oui |
 | `apps/web/src/social/api.ts` | Appels des routes d'amis, partagés par le menu et le profil | non |
 | `apps/web/src/ui/friends-panel.ts` | Le panneau « Amis » du menu : défis reçus, présence, défier, regarder | non |
 | `apps/web/src/net/channel.ts` | Transport WebSocket et reconnexion | non |
@@ -605,6 +605,8 @@ Les trois entrées du menu restent désactivées tant que personne n'est connect
 que l'adresse n'est pas vérifiée** : la file répondrait 401 dans le premier cas, 403 dans
 le second. `describeIdentity()` (`ui/messages.ts`) dit laquelle des deux raisons s'applique —
 sans quoi des boutons désactivés n'auraient aucune explication à l'écran.
+Une fois l'adresse vérifiée, elle rend une chaîne vide : le pseudo est déjà dans le coin du
+compte, et `#menu-identity` vide est masqué.
 
 ### Les amis
 
@@ -658,7 +660,7 @@ un 401 affiche un lien vers `/sign-in`.
 | Vue | Fragment | Contenu |
 |---|---|---|
 | Compte | `#/` (et `#security`, l'ancre des courriers et de `/.well-known/change-password`) | Compte (pseudo, adresse), bilan, connexion et sécurité (mot de passe, Google), sessions, zone sensible |
-| Parties | `#/matches?offset=` | Ses parties, son camp, l'adversaire, le résultat de son point de vue |
+| Parties | `#/matches?offset=` | Ses parties, son camp, l'adversaire, le résultat de son point de vue ; l'ajout de l'adversaire en ami, selon la relation (`relationTo()`) : absent pour un ami ou un bloqué, grisé si la demande est déjà partie |
 | Partie | `#/matches/<id>` | Le replay **de son point de vue** |
 | Amis | `#/friends` | Recherche par préfixe au fil de la frappe, amis (présence, non-lus), défis reçus (à relever depuis le jeu), demandes reçues et envoyées, bloqués |
 | Ami | `#/friends/<id>?offset=` | Sa fiche : présence, bilan et Elo, historique ; messages, retrait, blocage |
@@ -1140,6 +1142,7 @@ de `@occulis/ui` gardent sa feuille.
 | `go()` (interne) | Fait avancer `flow.ts` et réaffiche les écrans |
 | `handlersFor(spectating)` (interne) | Les gestionnaires d'une partie, assis ou spectateur : `OnlineMatch` à la première vue, déploiement (préréglages repris de `loadCache` puis relus, pour un joueur seulement), refus, compteur de spectateurs, `onWatching` |
 | `sit()` (interne) | Referme la file, ouvre le canal de la partie avec `handlersFor(false)` |
+| `resume()` (interne) | À l'arrivée au menu connecté (`refresh()`), demande `/api/me/current-match` (`currentMatch()`, `profile/api.ts`) et rassoit le joueur à sa partie en cours : le jeton de siège ne vit que dans la page, et un rechargement le perd. Rien s'il attend déjà une partie ou en joue une |
 | `watch()` (interne) | Ouvre le canal de spectateur (`handlersFor(true)`) et arme l'échéance `WATCH_TIMEOUT_MS` |
 | `onSocial()` (interne) | Une poussée du canal social : `matched` assied, refus d'un défi ramène au menu, le reste passe par `social/model.ts` |
 | `syncSocial()` (interne) | Ouvre ou referme le canal social selon l'identité |
@@ -1147,6 +1150,7 @@ de `@occulis/ui` gardent sa feuille.
 | `leave()` (interne) | Referme file, canal et partie, retire un défi en attente, vide la scène et rend la main au menu |
 | `ensureBoard()` (interne) | Charge `scene/board.ts` une seule fois et monte le plateau ; appelé par `sit()` et `watch()`. Un échec (pas de WebGL) laisse le menu utilisable |
 | `prewarmBoard()` (interne) | Une fois connecté, charge le plateau au repos (`requestIdleCallback`) |
+| `onLeaveMatch` (option du shell) | `#leave-match` : assis à une partie pas finie, demande confirmation puis envoie `resign` avant `leave()` — aucun chemin ne ramène à un siège quitté ; spectateur ou partie finie, `leave()` seul |
 | `adopt()` (interne) | Une vue reçue fait autorité : efface sélection et animation |
 | `play()` (interne) | **Le seul point d'application d'une action**, clic comme clavier |
 
@@ -1186,7 +1190,7 @@ atteindre les composants `occ-*`.
 | `#screen-auth` / `#account-root` | Compte : l'hôte de l'îlot React (`account/`) |
 | `#impersonation` | Bandeau de session d'emprunt, au-dessus de tous les écrans — masqué hors usurpation |
 | `#account-corner` | Pseudo et lien vers le profil, en haut à droite — montré au seul menu |
-| `#screen-menu` | Identité, renvoi de vérification, partie rapide, création, entrée par code, amis, lien du back-office (`#menu-admin`, administrateurs seuls), déconnexion |
+| `#screen-menu` | Trois sections séparées par un filet : **Jouer** (partie rapide, création, entrée par code — trois cartes `.primary` au même gabarit, la partie rapide seule au trait plein — puis la carte en retrait des équipes), **Amis**, et un pied de liens (`.menu-link` : back-office pour les administrateurs, déconnexion). Sous le titre, `#menu-identity` n'apparaît que si l'adresse n'est pas vérifiée, avec le renvoi du message |
 | `#menu-friends` | Le panneau « Amis » : `#friends-challenges`, `#friends-list`, `#friends-empty` — masqué tant que la liste n'est pas lue |
 | `#screen-waiting` | Le code du salon, sa copie, l'attente (adversaire, ami défié, partie d'un ami) et son annulation |
 | `#console` | Le bandeau de partie |
@@ -1195,7 +1199,7 @@ atteindre les composants `occ-*`.
 | `#command-form` / `#command-input` | La saisie |
 | `#command-log` | Compte rendu, coloré par `data-state="ok"` ou `"ko"` |
 | `#command-help` | Rappel de la grammaire |
-| `#leave-match` | Quitte la partie et revient au menu |
+| `#leave-match` | Quitte la partie et revient au menu ; une partie jouée et pas finie s'abandonne d'abord, après confirmation (`game.console.leaveConfirm`) |
 
 `applyPalette()` porte les variables de couleur, posées sur la racine du document. La règle
 `[hidden] { display: none !important }` est nécessaire : les `display: flex` de la feuille
@@ -1383,7 +1387,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/view/picking.test.ts` | Chaque case retrouvée depuis son centre à plusieurs angles et échelles, priorité au relief au premier plan, désignation par la falaise |
 | `apps/web/src/view/animation.test.ts` | Hauteurs relevées au départ, durée croissante mais bornée, interpolation conjointe position/hauteur, progression monotone, terminaison |
 | `apps/web/src/ui/flow.test.ts` | Départ sur le formulaire, menu ouvert à la connexion, retour au formulaire à la déconnexion **même en partie**, identité reconfirmée sans effet, code affiché dans l'attente, `hosting` en retard ignoré, **fenêtre d'acceptation ouverte depuis la seule attente rapide**, retour en attente ou au menu à sa chute, déploiement avant la partie et jamais après, équipes depuis le menu, attente d'un ami défié nommée, entrée en spectateur |
-| `apps/web/src/social/model.test.ts` | Présence allumée et éteinte, inconnu ignoré, **non-lus comptés pour les messages reçus seulement**, relecture demandée sur un changement de relation, un défi reçu par ami et retiré à l'annulation, défi envoyé oublié au refus, **défis d'un ancien ami écartés à la relecture**, libellé de présence, traduction des refus |
+| `apps/web/src/social/model.test.ts` | Présence allumée et éteinte, inconnu ignoré, **non-lus comptés pour les messages reçus seulement**, relecture demandée sur un changement de relation, un défi reçu par ami et retiré à l'annulation, défi envoyé oublié au refus, **défis d'un ancien ami écartés à la relecture**, libellé de présence, traduction des refus, **relation à un joueur lue dans la liste** |
 | `apps/web/src/game/selection.test.ts` | **Toute destination affichée est applicable par `core`**, exclusion des cases occupées, frappe sur place, machine à états complète de `resolveClick` |
 | `apps/web/src/ui/command.test.ts` | Grammaire complète et résolution coordonnée → pièce |
 | `apps/web/src/ui/messages.test.ts` | `describeTile()`, dont l'absence de fuite d'information sur les pièces |

@@ -1,5 +1,5 @@
 import type { TeamEntry } from "@occulis/core";
-import type { MeFeats, MeMatchDetail, MeMatchPage, MeProfile, MeSession, TeamPreset, TeamPresetList } from "@occulis/protocol";
+import type { MeCurrentMatch, MeFeats, MeMatchDetail, MeMatchPage, MeProfile, MeSession, TeamPreset, TeamPresetList } from "@occulis/protocol";
 import { messages } from "../i18n/current.js";
 import { authMessage, ROUTE_PATHS } from "../net/auth.js";
 import type { Outcome } from "../admin/api.js";
@@ -40,6 +40,7 @@ const send = <T>(path: string, body: unknown): Promise<Outcome<T>> =>
 
 export const profile = () => call<MeProfile>("/api/me");
 export const sessions = () => call<MeSession[]>("/api/me/sessions");
+export const currentMatch = () => call<MeCurrentMatch | null>("/api/me/current-match");
 export const matches = (offset: number) => call<MeMatchPage>(`/api/me/matches?limit=${PAGE_SIZE}&offset=${offset}`);
 export const match = (id: string) => call<MeMatchDetail>(`/api/me/matches/${encodeURIComponent(id)}`);
 

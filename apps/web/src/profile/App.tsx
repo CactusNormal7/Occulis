@@ -41,7 +41,7 @@ import { chooseLocale, initLocale } from "../i18n/browser.js";
 import { ROUTE_PATHS } from "../net/auth.js";
 import * as api from "./api.js";
 import * as friends from "../social/api.js";
-import { unreadTotal } from "../social/model.js";
+import { relationTo, unreadTotal } from "../social/model.js";
 import { ChatView, FriendMatchReplay, FriendView, FriendsView, SocialProvider, useSocial } from "./Friends.js";
 import { MatchReplayView, MatchTable, RecordCard } from "./parts.js";
 import {
@@ -691,6 +691,7 @@ function Matches({ offset, readOnly }: { offset: number; readOnly: boolean }) {
   const all = useMessages();
   const m = all.profile.matches;
   const notify = useToast();
+  const social = useSocial();
   const { loaded } = useLoad(`matches:${offset}`, () => api.matches(offset));
   return whenReady(loaded, (page) => (
     <Card title={m.title(page.total)}>
@@ -698,6 +699,7 @@ function Matches({ offset, readOnly }: { offset: number; readOnly: boolean }) {
         matches={page.matches}
         replayHref={(match) => profileHash({ view: "match", id: match.id })}
         readOnly={readOnly}
+        relationOf={(match) => relationTo(social.state, match.opponentId)}
         onAddFriend={(match) =>
           void friends.requestFriend(match.opponentId).then((outcome) => {
             if (!outcome.ok) notify(outcome.message, false);
@@ -707,6 +709,7 @@ function Matches({ offset, readOnly }: { offset: number; readOnly: boolean }) {
                   ? all.social.toasts.friends(match.opponent)
                   : all.social.toasts.requested(match.opponent),
               );
+            social.reload();
           })
         }
       />

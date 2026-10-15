@@ -9,11 +9,13 @@
     "component": "UiRoot"
   },
   "dtsPropsFor": {
-    "Button": "/** `default` : au trait discret. `primary` : la confirmation, trait franc. `danger` : le geste destructeur, teinte des refus. `ghost` : sans cadre, pour « Annuler ». Aucun bouton n'est plein. */\n  variant?: \"default\" | \"primary\" | \"danger\" | \"ghost\";\n  size?: \"sm\" | \"md\";\n  /** Une icône avant le libellé. */\n  icon?: \"eye\" | \"mail\" | \"shield\" | \"ban\" | \"unban\" | \"impersonate\" | \"logout\" | \"trash\" | \"key\" | \"pencil\" | \"plus\" | \"close\" | \"search\" | \"copy\" | \"previous\" | \"next\" | \"first\" | \"last\" | \"play\" | \"pause\" | \"rotateLeft\" | \"rotateRight\" | \"cube\" | \"userPlus\" | \"message\";\n  type?: \"button\" | \"submit\" | \"reset\";\n  disabled?: boolean;\n  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;\n  title?: string;\n  className?: string;\n  children?: React.ReactNode;",
-    "IconButton": "icon: \"eye\" | \"mail\" | \"shield\" | \"ban\" | \"unban\" | \"impersonate\" | \"logout\" | \"trash\" | \"key\" | \"pencil\" | \"plus\" | \"close\" | \"search\" | \"copy\" | \"previous\" | \"next\" | \"first\" | \"last\" | \"play\" | \"pause\" | \"rotateLeft\" | \"rotateRight\" | \"cube\" | \"userPlus\" | \"message\";\n  /** Le libellé accessible, montré en infobulle au survol. Obligatoire : une icône seule ne dit rien. */\n  label: string;\n  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;\n  /** Le geste est destructeur : la teinte des refus au survol. */\n  danger?: boolean;\n  /** Rend le bouton inactif et remplace l'infobulle par la raison. Préférer ceci à `disabled` seul. */\n  disabledReason?: string;\n  disabled?: boolean;\n  /** Ancre l'infobulle à droite quand le bouton touche le bord droit d'un conteneur. */\n  tipAlign?: \"center\" | \"end\";\n  type?: \"button\" | \"submit\";\n  className?: string;",
-    "TextField": "/** Le libellé, au-dessus du champ, en minuscules estompées. */\n  label: string;\n  /** Une précision sous le champ. */\n  hint?: React.ReactNode;\n  type?: \"text\" | \"email\" | \"password\" | \"search\" | \"number\";\n  value?: string;\n  defaultValue?: string;\n  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;\n  placeholder?: string;\n  name?: string;\n  autoComplete?: string;\n  required?: boolean;\n  disabled?: boolean;\n  className?: string;",
+    "Button": "/** `default` : au trait discret. `primary` : la confirmation, trait franc. `danger` : le geste destructeur, teinte des refus. `ghost` : sans cadre, pour « Annuler ». Aucun bouton n'est plein. */\n  variant?: \"default\" | \"primary\" | \"danger\" | \"ghost\";\n  size?: \"sm\" | \"md\";\n  /** Une icône avant le libellé. */\n  icon?: \"eye\" | \"eyeOff\" | \"check\" | \"user\" | \"userPlus\" | \"message\" | \"link\" | \"mail\" | \"shield\" | \"ban\" | \"unban\" | \"impersonate\" | \"logout\" | \"trash\" | \"key\" | \"pencil\" | \"plus\" | \"close\" | \"search\" | \"copy\" | \"previous\" | \"next\" | \"first\" | \"last\" | \"play\" | \"pause\" | \"rotateLeft\" | \"rotateRight\" | \"cube\";\n  type?: \"button\" | \"submit\" | \"reset\";\n  disabled?: boolean;\n  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;\n  title?: string;\n  className?: string;\n  children?: React.ReactNode;",
+    "IconButton": "icon: \"eye\" | \"eyeOff\" | \"check\" | \"user\" | \"userPlus\" | \"message\" | \"link\" | \"mail\" | \"shield\" | \"ban\" | \"unban\" | \"impersonate\" | \"logout\" | \"trash\" | \"key\" | \"pencil\" | \"plus\" | \"close\" | \"search\" | \"copy\" | \"previous\" | \"next\" | \"first\" | \"last\" | \"play\" | \"pause\" | \"rotateLeft\" | \"rotateRight\" | \"cube\";\n  /** Le libellé accessible, montré en infobulle au survol. Obligatoire : une icône seule ne dit rien. */\n  label: string;\n  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;\n  /** Le geste est destructeur : la teinte des refus au survol. */\n  danger?: boolean;\n  /** Rend le bouton inactif et remplace l'infobulle par la raison. Préférer ceci à `disabled` seul. */\n  disabledReason?: string;\n  disabled?: boolean;\n  /** Ancre l'infobulle à droite quand le bouton touche le bord droit d'un conteneur. */\n  tipAlign?: \"center\" | \"end\";\n  type?: \"button\" | \"submit\";\n  className?: string;",
+    "TextField": "/** Le libellé, au-dessus du champ, en minuscules estompées. */\n  label: string;\n  /** Une précision sous le champ. */\n  hint?: React.ReactNode;\n  /** Le refus propre à ce champ, sous lui, dans la teinte des refus. */\n  error?: string;\n  type?: \"text\" | \"email\" | \"password\" | \"search\" | \"number\";\n  value?: string;\n  defaultValue?: string;\n  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;\n  placeholder?: string;\n  name?: string;\n  autoComplete?: string;\n  required?: boolean;\n  disabled?: boolean;\n  className?: string;",
     "SelectField": "label: string;\n  options: readonly { value: string; label: string }[];\n  value?: string;\n  defaultValue?: string;\n  onChange?: (event: React.ChangeEvent<HTMLSelectElement>) => void;\n  name?: string;\n  disabled?: boolean;\n  className?: string;",
-    "Icon": "/** Le nom de l'icône. */\n  name: \"eye\" | \"mail\" | \"shield\" | \"ban\" | \"unban\" | \"impersonate\" | \"logout\" | \"trash\" | \"key\" | \"pencil\" | \"plus\" | \"close\" | \"search\" | \"copy\" | \"previous\" | \"next\" | \"first\" | \"last\" | \"play\" | \"pause\" | \"rotateLeft\" | \"rotateRight\" | \"cube\" | \"userPlus\" | \"message\";\n  /** Côté en pixels. 16 par défaut, la taille des boutons à icône. */\n  size?: number;\n  className?: string;"
+    "Icon": "/** Le nom de l'icône. */\n  name: \"eye\" | \"eyeOff\" | \"check\" | \"user\" | \"userPlus\" | \"message\" | \"link\" | \"mail\" | \"shield\" | \"ban\" | \"unban\" | \"impersonate\" | \"logout\" | \"trash\" | \"key\" | \"pencil\" | \"plus\" | \"close\" | \"search\" | \"copy\" | \"previous\" | \"next\" | \"first\" | \"last\" | \"play\" | \"pause\" | \"rotateLeft\" | \"rotateRight\" | \"cube\";\n  /** Côté en pixels. 16 par défaut, la taille des boutons à icône. */\n  size?: number;\n  className?: string;",
+    "PasswordField": "/** Le libellé, au-dessus du champ, en minuscules estompées. */\n  label: string;\n  /** `current-password` pour se connecter, `new-password` pour en choisir un. */\n  autoComplete: \"current-password\" | \"new-password\";\n  /** Une précision sous le champ. */\n  hint?: React.ReactNode;\n  /** Le refus propre à ce champ, sous lui, dans la teinte des refus. */\n  error?: string;\n  value?: string;\n  defaultValue?: string;\n  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;\n  placeholder?: string;\n  name?: string;\n  required?: boolean;\n  minLength?: number;\n  disabled?: boolean;\n  className?: string;",
+    "ProviderButton": "provider: \"google\";\n  /** Le libellé ; « Continue with Google » (selon la langue) par défaut. */\n  children?: React.ReactNode;\n  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;\n  disabled?: boolean;\n  type?: \"button\" | \"submit\";\n  className?: string;"
   },
   "overrides": {
     "Dialog": {
@@ -71,6 +73,24 @@
     "ToastStack": {
       "cardMode": "single",
       "viewport": "640x220"
+    },
+    "FormMessage": {
+      "cardMode": "column"
+    },
+    "PasswordField": {
+      "cardMode": "column"
+    },
+    "SettingEditor": {
+      "cardMode": "column"
+    },
+    "SettingRow": {
+      "cardMode": "column"
+    },
+    "ProviderButton": {
+      "cardMode": "column"
+    },
+    "MessageComposer": {
+      "cardMode": "column"
     }
   },
   "docsDir": "../../.design-sync/docs",

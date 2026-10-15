@@ -1,6 +1,6 @@
 import { SELF, env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import type { MeMatchDetail, MeMatchPage, MeProfile, MeSession } from "@occulis/protocol";
+import type { MeCurrentMatch, MeMatchDetail, MeMatchPage, MeProfile, MeSession } from "@occulis/protocol";
 import { PASSWORD, cookieFrom, post, signUp, unique } from "../test-helpers.js";
 
 /**
@@ -221,6 +221,29 @@ describe("profil : parties", () => {
     });
     return ((await response.json()) as { matchId: string }).matchId;
   }
+
+  it("rend sa partie en cours et son siège, pour s'y rasseoir après un rechargement", async () => {
+    const meHandle = unique("elise");
+    const cookie = await signUp(meHandle);
+    const opponentHandle = unique("fabien");
+    await signUp(opponentHandle);
+    const me = (await idsOf(meHandle)).player_id;
+    const opponent = (await idsOf(opponentHandle)).player_id;
+
+    expect(await (await get("/api/me/current-match", cookie)).json()).toBeNull();
+
+    const response = await SELF.fetch("https://occulis.test/api/matches", {
+      method: "POST",
+      body: JSON.stringify({ playerA: opponent, playerB: me }),
+    });
+    const started = (await response.json()) as { matchId: string; seats: { A: string; B: string } };
+
+    const current = (await (await get("/api/me/current-match", cookie)).json()) as MeCurrentMatch;
+    expect(current).toEqual({ matchId: started.matchId, player: "B", seat: started.seats.B });
+
+    await env.DB.prepare("UPDATE matches SET finished_at = ? WHERE id = ?").bind(Date.now(), started.matchId).run();
+    expect(await (await get("/api/me/current-match", cookie)).json()).toBeNull();
+  });
 
   it("ne liste que ses parties, et ne rejoue qu'une partie finie, vue de son camp", async () => {
     const meHandle = unique("blaise");
