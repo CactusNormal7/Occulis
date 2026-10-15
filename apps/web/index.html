@@ -46,16 +46,11 @@
     </nav>
 
     <main id="shell">
-      <!-- L'amorce : visible dès le HTML, avant tout script, jusqu'au retour de l'identité.
-           Un squelette de la charte, qui ne se dessine qu'après 150 ms — une réponse
-           rapide ne fait rien apparaître. -->
-      <section id="screen-boot" class="screen">
-        <div class="occ-skeleton occ-skeleton--card" role="status" aria-busy="true" aria-label="Loading…" data-i18n-label="ui.loading">
-          <span class="occ-skeleton__line"></span>
-          <span class="occ-skeleton__line"></span>
-          <span class="occ-skeleton__line"></span>
-          <span class="occ-skeleton__line"></span>
-        </div>
+      <!-- L'amorce : visible dès le HTML, avant tout script, jusqu'à ce que le premier écran
+           soit complet. Rien que la barre de chargement de la charte, après un délai : un
+           encadré d'attente serait lui-même un morceau qui paraît avant le reste. -->
+      <section id="screen-boot" class="screen" role="status" aria-busy="true" aria-label="Loading…" data-i18n-label="ui.loading">
+        <div class="occ-progress" data-active="true" aria-hidden="true"></div>
       </section>
 
       <!-- Compte : connexion, inscription, mot de passe oublié, réinitialisation. Un îlot

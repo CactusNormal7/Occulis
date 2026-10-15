@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import type { Locale } from "@occulis/i18n";
 import { type TeamEntry, rulesetFor, scenarioFor } from "@occulis/core";
 import type { TeamPreset, TeamPresetList } from "@occulis/protocol";
@@ -15,7 +15,7 @@ import {
   Note,
   PageHead,
   QuickBar,
-  Skeleton,
+  ProgressBar,
   TextField,
   ToastProvider,
   UiRoot,
@@ -24,6 +24,7 @@ import {
 } from "@occulis/ui";
 import * as api from "../profile/api.js";
 import { useLoad } from "../load/hooks.js";
+import { presets as presetsResource } from "../profile/resources.js";
 import { boardForScenario } from "../game/scenario.js";
 import { TeamBuilder } from "../team/TeamBuilder.js";
 import { type TeamDraft, emptyDraft, fromEntries, toEntries, verdict } from "../team/model.js";
@@ -44,7 +45,10 @@ export function TeamsApp({ locale, onBack }: TeamsAppProps) {
     <UiRoot locale={locale} fullPage>
       <ToastProvider>
         <main className="occ-page">
-          <Teams onBack={onBack} />
+          {/* Les équipes sont préchargées dès le menu : en temps normal, rien n'attend ici. */}
+          <Suspense fallback={<ProgressBar active />}>
+            <Teams onBack={onBack} />
+          </Suspense>
         </main>
       </ToastProvider>
     </UiRoot>
@@ -56,14 +60,13 @@ type Editing = { readonly id: string | undefined; readonly name: string; readonl
 function Teams({ onBack }: { onBack: () => void }) {
   const m = useMessages().team.presets;
   const notify = useToast();
-  const { loaded, reload } = useLoad("presets", api.presets);
+  const { loaded, reload } = useLoad(presetsResource);
   const [editing, setEditing] = useState<Editing>(undefined);
   const [deleting, setDeleting] = useState<TeamPreset | undefined>(undefined);
 
   if (loaded.state === "failed") {
     return <EmptyState error action={<Button onClick={onBack}>{m.back}</Button>}>{loaded.message}</EmptyState>;
   }
-  if (loaded.state === "loading") return <Skeleton card lines={4} />;
   const list = loaded.value;
 
   if (editing !== undefined) {

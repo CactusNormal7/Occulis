@@ -1,11 +1,11 @@
-import { useState, type ReactNode } from "react";
-import { Button, EmptyState, LocaleSwitch, ProgressBar, Skeleton, ToastProvider, TopBar, UiRoot, useMessages } from "@occulis/ui";
+import { Suspense, useState, type ReactNode } from "react";
+import { Button, EmptyState, LocaleSwitch, ProgressBar, ToastProvider, TopBar, UiRoot, useMessages } from "@occulis/ui";
 import { chooseLocale, initLocale } from "../i18n/browser.js";
-import { stopImpersonating, whoAmI, type Identity } from "../net/auth.js";
-import { useRoute } from "./hooks.js";
-import { useLoad, usePending } from "../load/hooks.js";
+import { stopImpersonating, type Identity } from "../net/auth.js";
+import { useHashRoute, useLoad, usePending } from "../load/hooks.js";
 import { MatchDetail } from "./MatchDetail.js";
-import { routeHash, sectionOf, type Route } from "./model.js";
+import { parseRoute, routeHash, sectionOf, type Route } from "./model.js";
+import { identity as identityResource, resourcesOf } from "./resources.js";
 import { MatchList, Overview, PlayerDetail, UserDetail, UserList } from "./views.js";
 
 /**
@@ -17,32 +17,34 @@ export function App() {
   const [locale, setLocale] = useState(initLocale);
   return (
     <UiRoot fullPage locale={locale}>
-      <Page
-        localeSwitch={
-          <LocaleSwitch
-            value={locale}
-            onChange={(next) => {
-              chooseLocale(next);
-              setLocale(next);
-            }}
-          />
-        }
-      />
+      {/* La seule frontière d'attente de la page : rien ne paraît avant que l'écran entier
+          — barre du haut comprise — ait ses données (« Chargement et premier rendu »). */}
+      <Suspense fallback={<ProgressBar active />}>
+        <Page
+          localeSwitch={
+            <LocaleSwitch
+              value={locale}
+              onChange={(next) => {
+                chooseLocale(next);
+                setLocale(next);
+              }}
+            />
+          }
+        />
+      </Suspense>
     </UiRoot>
   );
 }
 
 function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
   const m = useMessages().admin;
-  const { loaded } = useLoad("identity", async () => ({ ok: true, value: await whoAmI() }) as const);
-  const identity = loaded.state === "ready" ? loaded.value : undefined;
+  const { loaded } = useLoad(identityResource);
+  const identity: Identity = loaded.state === "ready" ? loaded.value : { signedIn: false };
   const pending = usePending();
 
-  const route = useRoute();
+  const route = useHashRoute(parseRoute, resourcesOf);
   const section = sectionOf(route);
-  // Les onglets se montrent avant la réponse : le cadre ne dépend d'aucune requête, et seul
-  // un refus connu les retire. Ils ne donnent accès à rien — la garde est au serveur.
-  const admin = identity === undefined || (identity.signedIn && identity.impersonating !== true && identity.admin === true);
+  const admin = identity.signedIn && identity.impersonating !== true && identity.admin === true;
 
   return (
     <ToastProvider>
@@ -62,12 +64,14 @@ function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
         end={
           <>
             {localeSwitch}
-            {identity?.handle !== undefined && <span>{identity.handle}</span>}
+            {identity.handle !== undefined && <span>{identity.handle}</span>}
             <a href="/">{m.backToGame}</a>
           </>
         }
       />
-      <main className="occ-page">{identity === undefined ? <Skeleton card lines={5} /> : <Gate identity={identity} route={route} />}</main>
+      <main className="occ-page">
+        <Gate identity={identity} route={route} />
+      </main>
     </ToastProvider>
   );
 }
@@ -86,9 +90,9 @@ function Gate({ identity, route }: { identity: Identity; route: Route }) {
   }
   if (identity.admin !== true) return <EmptyState>{m.adminsOnly}</EmptyState>;
 
-  // La clé rejoue l'animation d'entrée à chaque navigation.
+  // Une clé par route : l'écran suivant remplace le précédent d'un bloc, sans en garder l'état.
   return (
-    <div key={routeHash(route)} className="occ-stack occ-enter">
+    <div key={routeHash(route)} className="occ-stack">
       <View route={route} self={identity.handle ?? ""} />
     </div>
   );

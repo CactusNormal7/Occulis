@@ -31,7 +31,7 @@ Style your own layout glue with `var(--occ-*)` only:
 - motion `--occ-ease`, `--occ-fast`, `--occ-base`, `--occ-slow`;
 - `--occ-font-mono`, `--occ-bg`, `--occ-panel`.
 
-Helper classes: `occ-page`, `occ-stack` (vertical blocks), `occ-enter` (staggered entrance), `occ-label`, `occ-muted`, and `occ-actions-cell` (the last table cell holding a `QuickBar`).
+Helper classes: `occ-page`, `occ-stack` (vertical blocks), `occ-enter` (a single fade-in of the whole block, never staggered), `occ-label`, `occ-muted`, and `occ-actions-cell` (the last table cell holding a `QuickBar`).
 
 ## Composition
 

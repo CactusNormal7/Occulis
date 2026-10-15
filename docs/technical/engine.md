@@ -103,31 +103,40 @@ conteneur), et **le survol ne reconstruit que la couche `overlay`**.
 
 ## Chargement et premier rendu
 
-**La convention de tout le client : rien de blanc, rien de vide, rien qui saute.** Elle vaut
-pour tout écran à venir ; ses quatre règles et ce qui les porte :
+**La convention de tout le client : un écran paraît d'un seul tenant.** Aucune partie d'un
+écran ne s'affiche avant les autres — ni cadre vide, ni squelette, ni bloc qui arrive une
+seconde plus tard en poussant le reste. Elle vaut pour tout écran à venir ; ses règles et ce
+qui les porte :
 
-1. **Peinture immédiate.** Chaque page HTML porte en tête de `<head>`, juste après l'encodage,
-   le bloc de `criticalHead()` (`packages/ui/src/critical.ts`), injecté au build par le greffon
-   `occulis-critical-paint` de `vite.config.ts` : `color-scheme: dark`, `theme-color`, le fond
-   en ligne (depuis `BACKGROUND`), le fondu entre pages et les règles de spéculation. Sans lui,
-   le navigateur peint en blanc le temps de charger la feuille, et entre deux pages. **Aucune
-   couleur n'est écrite dans un `index.html`** ; une nouvelle page Vite reçoit le bloc d'office.
-2. **Le cadre d'abord.** Ce qui encadre une page (barre du haut et ses onglets, en-têtes,
-   barres d'outils) ne dépend d'aucune requête : il s'affiche au premier rendu, et seul un refus
-   connu le retire. Seule la zone de contenu attend.
-3. **Une seule façon de lire une donnée** : `useLoad(key, load)` (`load/hooks.tsx`), et
-   `whenReady(loaded, render, placeholder?)` pour la montrer. Jamais de `useEffect` + `fetch`
-   écrit à la main, jamais de `return null` pendant un chargement.
-   - Une clé déjà lue s'affiche **aussitôt** depuis le cache (`loadCache`, `load/cache.ts`),
-     dès le premier rendu, puis se relit (`refreshing: true`) — *stale-while-revalidate*.
-   - Une clé jamais lue montre sa place réservée : `<Skeleton>` de la charte (`card` et
-     `lines` pour approcher la forme attendue), invisible pendant 150 ms pour qu'une réponse
-     rapide ne fasse rien clignoter.
-   - Toute lecture en cours allume la `ProgressBar` de la page, par `usePending()`.
-   - Le cache est **en mémoire seulement**, par décision : rien de ce qu'un joueur a lu n'est
-     écrit sur le poste, et il meurt avec la page. Il sert donc les navigations par fragment
-     (`#/…`) et les îlots d'une même page, pas un rechargement complet.
-4. **Navigation douce entre pages.** `@view-transition { navigation: auto }` fond une page dans
+1. **Peinture immédiate du fond.** Chaque page HTML porte en tête de `<head>`, juste après
+   l'encodage, le bloc de `criticalHead()` (`packages/ui/src/critical.ts`), injecté au build
+   par le greffon `occulis-critical-paint` de `vite.config.ts` : `color-scheme: dark`,
+   `theme-color`, le fond en ligne (depuis `BACKGROUND`), le fondu entre pages et les règles
+   de spéculation. **Aucune couleur n'est écrite dans un `index.html`** ; une nouvelle page
+   Vite reçoit le bloc d'office.
+2. **Tout ce qu'un écran lit part en même temps.** Chaque page déclare, par route, les
+   ressources de son écran (`profile/resources.ts`, `admin/resources.ts` : `resourcesOf(route)`)
+   et les **précharge** avant même son premier rendu (`main.tsx`), puis à chaque changement de
+   route. Une ressource est une clé et sa lecture (`resource(key, load)`) ; le cache
+   (`loadCache`) n'en lance qu'une lecture à la fois, quel que soit le nombre de vues qui la
+   demandent.
+3. **Rien ne paraît avant que tout soit là.** Une vue lit par `useLoad(resource)`
+   (`load/hooks.tsx`), qui **suspend** tant que la ressource n'est jamais arrivée. La page a
+   **une seule frontière `Suspense`**, autour de tout l'écran — barre du haut comprise : la page
+   reste sur son fond jusqu'à ce que toutes ses vues aient leurs données, puis paraît en une
+   fois. Pendant l'attente, seule la `ProgressBar` de la charte, qui n'apparaît qu'après
+   0,4 s : une attente courte ne montre rien du tout.
+4. **Une navigation garde l'écran affiché.** `useHashRoute(parse, resourcesOf)` précharge la
+   route suivante puis la pose en **transition** (`startTransition`) : React garde l'écran
+   courant jusqu'à ce que le suivant soit complet, puis le remplace d'un bloc. Un écran déjà vu
+   revient aussitôt depuis le cache, puis se relit s'il a plus de `FRESH_MS` (3 s) —
+   *stale-while-revalidate*. `reload()` relit après une écriture en gardant l'écran.
+5. **Pas d'entrée en cascade.** `occ-enter` (charte) est un fondu du bloc entier, jamais de
+   ses parties l'une après l'autre ; les écrans du profil et du back-office se remplacent sans
+   animation. Un îlot React de la page du jeu est rendu **de façon synchrone** (`flushSync`,
+   `*/mount.tsx`) avant que `shell.ts` montre son écran : un panneau n'est jamais montré vide le
+   temps que React dessine son contenu.
+6. **Navigation douce entre pages.** `@view-transition { navigation: auto }` fond une page dans
    la suivante (coupé sous `prefers-reduced-motion`) ; les liens internes sont **préchargés au
    survol** (règles de spéculation `prefetch`, `eagerness: moderate`, hors `/api/*`, `/match/*`
    et `/mockups/*` — et pas `prerender`, qui exécuterait le script de la page et ouvrirait son
@@ -135,25 +144,39 @@ pour tout écran à venir ; ses quatre règles et ce qui les porte :
    lu par les assets de Cloudflare — un fichier existant est servi **avant** le Worker, qui ne
    peut donc pas poser ces en-têtes lui-même).
 
-La page du jeu y ajoute deux choses : l'**amorce** (`#screen-boot`, étape `boot` de
-`ui/flow.ts`), un squelette visible dès le HTML jusqu'au retour de `whoAmI()`, qui remplace
-l'ancien panneau de compte vide montré puis retiré ; et le **plateau chargé à part**
-(`scene/board.ts`) : PixiJS n'est ni téléchargé ni analysé avant d'afficher le menu.
+Le cache est **en mémoire seulement**, par décision : rien de ce qu'un joueur a lu n'est écrit
+sur le poste, et il meurt avec la page.
+
+**La page du jeu**, en DOM natif, applique la même règle à la main. L'identité (`whoAmI()`), la
+liste d'amis du menu (`friendsOverview`) et la partie à reprendre (`currentMatch()`) partent
+**ensemble** au démarrage de `main()`, sans attendre le canal social. L'**amorce**
+(`#screen-boot`, étape `boot` de `ui/flow.ts`) ne montre que la barre de chargement ; le menu ne
+paraît qu'une fois l'identité **et** la liste d'amis arrivées (`friendsBeforeMenu()`), le
+panneau Amis compris. Au-delà de `MENU_DEADLINE_MS` (2,5 s), le menu paraît sans la liste,
+plutôt que de ne pas paraître. Le formulaire de compte est dessiné avant que son écran soit
+montré. Le **plateau** est chargé à part (`scene/board.ts`) : PixiJS n'est ni téléchargé ni
+analysé avant d'afficher le menu ; il se charge au repos une fois le menu affiché, avec les
+équipes préparées, pour que l'écran des équipes s'ouvre complet.
 
 | Module | Rôle |
 |---|---|
-| `load/cache.ts` — `LoadCache` | `initial(key)` (valeur connue ou attente), `settle(key, outcome)` (une réussite entre au cache), `invalidate(prefix?)` |
-| `load/cache.ts` — `refreshing()` | Une relecture garde ce qui est affiché |
-| `load/cache.ts` — `PendingCount` | Le nombre de lectures en cours, et ses abonnés |
+| `load/cache.ts` — `resource()` | Une lecture nommée : une clé et sa fonction de lecture |
+| `load/cache.ts` — `LoadCache.request()` | Lit une ressource : reprend la lecture en cours, rend une réponse fraîche (`FRESH_MS`) sans relire sauf `force`, ne rejette jamais (un échec est une réponse) |
+| `load/cache.ts` — `LoadCache.preload()` | Lance plusieurs lectures à la fois, sans attendre |
+| `load/cache.ts` — `LoadCache.peek()`, `value()`, `set()`, `invalidate()`, `subscribe()` | État d'une clé (même objet tant qu'il n'a pas changé), dernière valeur réussie, valeur obtenue autrement, oubli, abonnement |
+| `load/cache.ts` — `loadedOf()` | L'état d'une clé arrivée, vu par une vue : `failed` ou `ready` (`refreshing` pendant une relecture) |
+| `load/cache.ts` — `PendingCount` | Le nombre de lectures en cours ; ses abonnés sont prévenus après coup (microtâche), une lecture pouvant démarrer pendant un rendu |
 | `load/cache.ts` — `loadCache`, `pendingLoads` | Les instances de la page |
-| `load/hooks.tsx` — `useLoad()` | Lit, relit (`reload`), jette une réponse arrivée après un changement de clé (elle entre quand même au cache, juste pour sa clé) |
-| `load/hooks.tsx` — `usePending()` | Vrai tant qu'une lecture est en cours |
-| `load/hooks.tsx` — `whenReady()` | Squelette (par défaut `<Skeleton card />`), erreur (`EmptyState`) ou rendu |
+| `load/hooks.tsx` — `useLoad()` | Lit une ressource ; **suspend** tant qu'elle n'est jamais arrivée, relit au montage si elle n'est plus fraîche ; `reload()` force la relecture |
+| `load/hooks.tsx` — `usePending()` | Vrai tant qu'une lecture est en cours : la `ProgressBar` le suit |
+| `load/hooks.tsx` — `whenReady()` | Le refus (`EmptyState`) ou le rendu d'une ressource arrivée |
+| `load/hooks.tsx` — `useHashRoute()` | La route du fragment ; un changement précharge la route suivante et passe en transition |
 
-Ce que le fil d'un ami et la liste d'amis lisent hors de `useLoad`, ils le lisent par les
-mêmes pièces : le fil (`ChatView`) se remontre depuis `loadCache` (`chat:<id>`) et compte dans
-`pendingLoads`, la liste (`SocialProvider`) est lue dès l'ouverture, sans attendre le canal
-social, puis relue à son ouverture pour ne rien perdre de ce qu'il aurait poussé.
+Le fil d'un ami (`ChatView`) lit sa première page par `useLoad(chat(id))`, puis y fond ce que
+le canal pousse, ce qu'on envoie et les messages plus anciens (`merged()`, sans doublon, dans
+l'ordre d'envoi). La liste d'amis du profil (`SocialProvider`) part de la valeur du cache — la
+page l'a attendue avant de paraître (`WithFriends`, pour un compte vérifié) — et se relit à
+chaque ouverture du canal social.
 
 ## Carte des modules
 
@@ -207,6 +230,7 @@ social, puis relue à son ouverture pour ne rien perdre de ce qu'il aurait pouss
 | `apps/web/src/profile/App.tsx` | Compte, sécurité, spectateurs, sessions, suppression, parties et replay de son point de vue | non |
 | `apps/web/src/profile/Friends.tsx` | Onglet Amis : état social partagé (`SocialProvider`), liste, recherche, demandes, bloqués, fiche, replay d'un ami, messages | non |
 | `apps/web/src/profile/parts.tsx` | Bilan, table d'historique et replay, communs à ses parties et à celles d'un ami | non |
+| `apps/web/src/profile/resources.ts` | Ce que lit chaque écran du profil (liste d'amis et équipes préparées comprises, partagées avec la page du jeu), et `resourcesOf(route)` pour le précharger | non |
 | `apps/web/src/profile/api.ts` | Appels `/api/me/*` et routes de compte de Better Auth | non |
 | `apps/web/src/profile/model.ts` | Routes du profil, messages d'arrivée, délai de pseudo, liaison retirable, images du replay | oui |
 | `apps/web/src/scene/board.ts` | `mountBoard()` : application Pixi, scène, gestes, boucle d'images — chargé par `import()` | non |
@@ -228,7 +252,7 @@ social, puis relue à son ouverture pour ne rien perdre de ce qu'il aurait pouss
 | `apps/web/src/admin/ReplayBoard.tsx` | Le canevas du rejeu, en composant React | non |
 | `apps/web/src/admin/actions.tsx` | Actions rapides d'un compte et leurs fenêtres | non |
 | `apps/web/src/admin/shared.tsx` | Pastilles d'état, résultat, table des parties | non |
-| `apps/web/src/admin/hooks.ts` | `useRoute()` | non |
+| `apps/web/src/admin/resources.ts` | Ce que lit chaque écran du back-office, et `resourcesOf(route)` pour le précharger | non |
 | `apps/web/src/admin/model.ts` | Routes du back-office et mise en mots des données | oui |
 | `apps/web/src/admin/api.ts` | Appels `/api/admin/*` et `/api/auth/admin/*` | non |
 | `apps/web/src/admin/replay.ts` | Rejeu : coups lus entre deux images, libellés, cadrage du plateau | oui |
@@ -655,7 +679,8 @@ d'avance suffirait à capter le futur compte Google de son propriétaire.
 
 Une **page à part**, `apps/web/profile/index.html`, servie sous `/profile/`, en React sur
 `@occulis/ui` comme le back-office, sans PixiJS ni classe propre. Elle charge `/api/me` ;
-un 401 affiche un lien vers `/sign-in`.
+un 401 affiche un lien vers `/sign-in`. Chaque route précharge ce qu'elle lit (`resources.ts`) et
+paraît en une fois, barre du haut comprise (« Chargement et premier rendu »).
 
 | Vue | Fragment | Contenu |
 |---|---|---|
@@ -1146,7 +1171,8 @@ de `@occulis/ui` gardent sa feuille.
 | `watch()` (interne) | Ouvre le canal de spectateur (`handlersFor(true)`) et arme l'échéance `WATCH_TIMEOUT_MS` |
 | `onSocial()` (interne) | Une poussée du canal social : `matched` assied, refus d'un défi ramène au menu, le reste passe par `social/model.ts` |
 | `syncSocial()` (interne) | Ouvre ou referme le canal social selon l'identité |
-| `reloadFriends()` (interne) | Relit `GET /api/friends` et redessine le panneau |
+| `reloadFriends(options)` (interne) | Relit la liste d'amis (`friendsOverview`, relecture forcée par défaut) et redessine le panneau |
+| `friendsBeforeMenu(force)` (interne) | Attend la liste d'amis avant de montrer le menu, au plus `MENU_DEADLINE_MS` |
 | `leave()` (interne) | Referme file, canal et partie, retire un défi en attente, vide la scène et rend la main au menu |
 | `ensureBoard()` (interne) | Charge `scene/board.ts` une seule fois et monte le plateau ; appelé par `sit()` et `watch()`. Un échec (pas de WebGL) laisse le menu utilisable |
 | `prewarmBoard()` (interne) | Une fois connecté, charge le plateau au repos (`requestIdleCallback`) |
@@ -1186,7 +1212,7 @@ atteindre les composants `occ-*`.
 |---|---|
 | `#app` | Hôte du canevas PixiJS — **masqué hors partie** |
 | `#shell` | Conteneur des écrans, transparent aux clics |
-| `#screen-boot` | L'amorce : un squelette visible dès le HTML, jusqu'au retour de l'identité |
+| `#screen-boot` | L'amorce : la barre de chargement, visible dès le HTML (après 0,4 s) jusqu'à ce que le premier écran soit complet |
 | `#screen-auth` / `#account-root` | Compte : l'hôte de l'îlot React (`account/`) |
 | `#impersonation` | Bandeau de session d'emprunt, au-dessus de tous les écrans — masqué hors usurpation |
 | `#account-corner` | Pseudo et lien vers le profil, en haut à droite — montré au seul menu |
@@ -1214,23 +1240,23 @@ composants de `@occulis/ui`** (`docs/technical/ui.md`). Elle ne charge ni PixiJS
 de jeu, et le jeu n'embarque rien d'elle. Elle n'a **ni classe ni feuille propres** : tout ce
 qui manquait à une vue (`Toolbar`, `Versus`…) a été ajouté à la charte, pas à la page.
 
-**La garde réelle est côté serveur.** `App` interroge `whoAmI()` (par `useLoad`) et n'affiche rien à qui n'est
-pas connecté ou pas administrateur — ses onglets se montrent pourtant dès le premier rendu, et
-seul un refus connu les retire, mais ce n'est qu'une politesse : chaque appel d'`api.ts`
+**La garde réelle est côté serveur.** `App` interroge `whoAmI()` (la ressource `identity`) et
+n'affiche ni onglets ni vue à qui n'est pas connecté ou pas administrateur, mais ce n'est
+qu'une politesse : chaque appel d'`api.ts`
 est revérifié par `handleAdmin()` ou par le greffon Better Auth (`docs/technical/server.md`,
 « `admin/` »). Pendant une usurpation, la page n'affiche que le bouton de retour.
 
 **Le routage tient dans le fragment** (`#/users/<id>`, `#/matches?status=ongoing`…) : la page
 reste un seul fichier statique, et une fiche se partage par son lien. `parseRoute()` et
 `routeHash()` (`model.ts`) sont inverses l'un de l'autre, ce que les tests vérifient ;
-`useRoute()` (`hooks.ts`) suit `hashchange`. `App` rend la vue sous une clé égale à la route,
-ce qui rejoue l'animation d'entrée (`occ-enter`) à chaque navigation.
+`useHashRoute(parseRoute, resourcesOf)` suit `hashchange`. `App` rend la vue sous une clé
+égale à la route : l'écran suivant remplace le précédent d'un bloc.
 
-**Les données passent par `useLoad(key, load)` et `whenReady()`** (`load/`, voir « Chargement
-et premier rendu ») : une réponse arrivée après un changement de `key` n'est pas affichée — une
-navigation rapide n'affiche jamais la vue d'avant —, une vue déjà vue revient aussitôt depuis le
-cache, et `reload()` relit depuis le serveur après chaque geste, pour que l'écran montre ce que
-la base contient et non ce qu'on vient d'envoyer.
+**Les données passent par les ressources de `resources.ts`, `useLoad()` et `whenReady()`**
+(`load/`, voir « Chargement et premier rendu ») : tout ce qu'une route lit est préchargé
+ensemble, la page paraît ou change d'écran une fois tout arrivé, une vue déjà vue revient
+aussitôt depuis le cache, et `reload()` relit depuis le serveur après chaque geste, pour que
+l'écran montre ce que la base contient et non ce qu'on vient d'envoyer.
 
 | Route | Vue (`views.tsx`, `MatchDetail.tsx`) | Contenu |
 |---|---|---|

@@ -46,13 +46,18 @@ import { mountDeployment, mountMatchFound } from "./prepare/mount.js";
 import type { DeploymentProps } from "./prepare/Deployment.js";
 import type { MatchFoundProps } from "./prepare/MatchFound.js";
 import { mountTeams } from "./teams/mount.js";
-import { currentMatch, presets as loadPresets } from "./profile/api.js";
+import { currentMatch } from "./profile/api.js";
 import { loadCache } from "./load/cache.js";
+import { friendsOverview, presets as presetsResource } from "./profile/resources.js";
 
 /** Racine de composition : elle câble les modules, elle n'en implémente aucun. */
 function main(): void {
-  // L'identité part avant tout le reste : c'est elle qui décide du premier écran.
+  // Tout ce que le premier écran montre part ensemble, avant le reste : l'identité, la
+  // liste d'amis du menu et une éventuelle partie à reprendre. Le menu ne paraît qu'une
+  // fois tout arrivé (« Chargement et premier rendu », docs/technical/engine.md).
   let identityRequest: Promise<Identity> | undefined = whoAmI();
+  loadCache.preload([friendsOverview]);
+  let matchRequest: ReturnType<typeof currentMatch> | undefined = currentMatch();
   applyPalette(document.documentElement);
   initLocale();
   translateDom(document);
@@ -165,12 +170,11 @@ function main(): void {
   const handlersFor = (spectating: boolean): MatchHandlers => {
     // Les équipes préparées déjà lues (l'écran des équipes les a peut-être chargées) servent
     // aussitôt ; elles se relisent pendant l'annonce, et l'écran reprend la réponse.
-    let presets: readonly TeamPreset[] = loadCache.get<TeamPresetList>("presets")?.presets ?? [];
+    let presets: readonly TeamPreset[] = loadCache.value<TeamPresetList>(presetsResource.key)?.presets ?? [];
     let lastRemaining: number | undefined;
     if (!spectating) {
-      void loadPresets().then((outcome) => {
+      void loadCache.request(presetsResource, { force: true }).then((outcome) => {
         if (!outcome.ok) return;
-        loadCache.set("presets", outcome.value);
         presets = outcome.value.presets;
         if (deploying !== undefined) {
           deploying = { ...deploying, presets };
@@ -278,12 +282,20 @@ function main(): void {
     friendsPanel.render(socialState, identity.signedIn && identity.emailVerified !== false);
   };
 
-  const reloadFriends = async (): Promise<void> => {
-    const outcome = await friends.overview();
+  const reloadFriends = async (options: { force?: boolean } = { force: true }): Promise<void> => {
+    const outcome = await loadCache.request(friendsOverview, options);
     if (!outcome.ok) return;
     socialState = withOverview(socialState, outcome.value);
     renderFriends();
   };
+
+  /**
+   * La liste d'amis, avant de montrer le menu : le panneau paraît avec le reste au lieu
+   * de pousser le menu une seconde plus tard. Au-delà de `MENU_DEADLINE_MS`, le menu paraît
+   * sans elle — mieux vaut un panneau en retard qu'un menu qui n'arrive pas.
+   */
+  const friendsBeforeMenu = (force: boolean): Promise<void> =>
+    Promise.race([reloadFriends({ force }), new Promise<void>((resolve) => setTimeout(resolve, MENU_DEADLINE_MS))]);
 
   const onSocial = (message: SocialServerMessage): void => {
     if (message.kind === "matched") {
@@ -515,7 +527,8 @@ function main(): void {
    */
   const resume = async (): Promise<void> => {
     if (stage.kind !== "menu" || channel !== undefined || queue !== undefined) return;
-    const outcome = await currentMatch();
+    const outcome = await (matchRequest ?? currentMatch());
+    matchRequest = undefined;
     if (!outcome.ok || outcome.value === null) return;
     if (stage.kind !== "menu" || channel !== undefined || queue !== undefined) return;
     sit(outcome.value.matchId, outcome.value.seat);
@@ -528,10 +541,17 @@ function main(): void {
     identityRequest = undefined;
     identity = await request;
     shell.setIdentity(identity);
+    // Le menu va paraître (premier écran, ou retour d'une connexion) : il attend sa liste
+    // d'amis. Celle de l'amorce est déjà partie ; après une connexion, elle est à relire.
+    const toMenu = identity.signedIn && (stage.kind === "boot" || stage.kind === "auth");
+    if (toMenu && identity.emailVerified !== false) await friendsBeforeMenu(stage.kind !== "boot");
     syncSocial();
     // Une déconnexion referme la partie en cours : sans session, ni la file ni le
     // Durable Object n'accepteraient plus rien de ce client.
     if (!identity.signedIn && stage.kind !== "auth" && stage.kind !== "boot") leave();
+    // Le formulaire est dessiné avant que son écran soit montré : le panneau ne paraît
+    // jamais vide.
+    if (!identity.signedIn) showAccount();
     go({ kind: "identity", signedIn: identity.signedIn });
 
     if (identity.signedIn) {
@@ -543,9 +563,7 @@ function main(): void {
       if (notice !== undefined) shell.notify(notice);
       arrival = undefined;
       void resume();
-      return;
     }
-    showAccount();
   };
   const showAccount = (): void => {
     renderAccount({
@@ -663,10 +681,18 @@ function main(): void {
   /** Le plateau se charge au repos, une fois le menu affiché : rien ne l'attend avant. */
   function prewarmBoard(): void {
     if (boardLoading !== undefined) return;
-    if (typeof requestIdleCallback === "function") requestIdleCallback(() => void ensureBoard());
-    else setTimeout(() => void ensureBoard(), 1);
+    const prewarm = (): void => {
+      void ensureBoard();
+      // L'écran des équipes s'ouvre alors complet, sans attente.
+      loadCache.preload([presetsResource]);
+    };
+    if (typeof requestIdleCallback === "function") requestIdleCallback(prewarm);
+    else setTimeout(prewarm, 1);
   }
 }
+
+/** Au-delà, le menu paraît sans attendre la liste d'amis. */
+const MENU_DEADLINE_MS = 2500;
 
 /** Au-delà, une partie qui n'a envoyé aucune vue au spectateur lui est refusée. */
 const WATCH_TIMEOUT_MS = 6000;
