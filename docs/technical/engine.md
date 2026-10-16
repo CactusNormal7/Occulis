@@ -216,7 +216,7 @@ chaque ouverture du canal social.
 | `apps/web/src/net/channel.ts` | Transport WebSocket et reconnexion | non |
 | `apps/web/src/net/backoff.ts` | Délai avant la n-ième tentative de reconnexion | oui |
 | `apps/web/src/ui/flow.ts` | Quel écran a lieu d'être : amorce, compte, menu, attente, partie | oui |
-| `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes ; un panneau qui paraît s'ouvre comme un œil (`revealWindow`), sauf le menu principal | non |
+| `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes ; un panneau qui paraît naît sous la souris (`revealWindow`), sauf le menu principal | non |
 | `apps/web/src/ui/settings.ts` | Les réglages d'affichage (design, langue) derrière l'engrenage | non |
 | `apps/web/src/account/AccountApp.tsx` | Écran de compte : connexion, inscription, oubli, réinitialisation, Google | non |
 | `apps/web/src/account/mount.tsx` | Monte l'îlot de compte dans `#account-root` | non |

@@ -21,7 +21,7 @@ composants.
 | `src/index.ts` | Point d'entrée : tokens et composants |
 | `src/cx.ts` | Assemblage de noms de classe |
 | `src/critical.ts` | `criticalHead()` et `withCriticalHead()` : le bloc de tête de chaque page HTML (sous-chemin `@occulis/ui/critical`) |
-| `src/window-reveal.ts` | `revealWindow()` : l'ouverture et la fermeture de toute fenêtre flottante (l'œil qui s'ouvre), et son calendrier pur (sous-chemin `@occulis/ui/reveal`, sans React) |
+| `src/window-reveal.ts` | `revealWindow()` : l'ouverture et la fermeture de toute fenêtre flottante (elle naît sous la souris), et son calendrier pur (sous-chemin `@occulis/ui/reveal`, sans React) |
 | `scripts/build-tokens.ts` | Écrit `generated/tokens.css` (`pnpm --filter @occulis/ui tokens`) |
 | `scripts/bundle-css.mjs` | Écrit `dist/styles.css` : tokens **inclus**, sans `@import` |
 | `tsup.config.ts` | Le build publié : `dist/index.js`, `dist/index.d.ts`, `dist/styles.css` |
@@ -126,12 +126,12 @@ Quelques comportements à connaître :
 
 - **`Dialog`** s'appuie sur `<dialog>` natif (focus piégé, Échap, page inerte). `onConfirm`
   rend `true` pour fermer, `false` pour rester ouverte sur un refus. Elle s'ouvre et se
-  referme comme un œil (`revealWindow`) ; la fermeture attend la fin de l'animation avant
+  referme sous la souris (`revealWindow`) ; la fermeture attend la fin de l'animation avant
   d'appeler `onClose`, et son voile tramé se pose en fondu.
 - **`IconButton`** exige un `label` ; `disabledReason` grise le bouton **et** remplace
   l'infobulle par la raison.
 - **`ToastProvider`** empile les messages en bas à droite ; un refus reste deux fois plus
-  longtemps qu'un succès. Chaque message s'ouvre et se referme d'un trait de sa propre
+  longtemps qu'un succès. Chaque message s'ouvre et se referme d'un cadre de sa propre
   couleur (`Toast`, interne : `revealWindow` à l'arrivée et au départ).
 - **`CountdownRing`** ne tient aucune horloge : l'appelant fait décroître `remainingMs`, et
   l'anneau glisse d'une valeur à l'autre en une seconde. Une animation CSS aurait été
@@ -195,33 +195,37 @@ Quelques comportements à connaître :
   `.design-sync/config.json` (`dtsPropsFor`).
 - Toutes les props optionnelles acceptent `undefined` (`exactOptionalPropertyTypes`).
 
-### `revealWindow()` — les fenêtres flottantes s'ouvrent comme un œil
+### `revealWindow()` — les fenêtres flottantes naissent sous la souris
 
 Toute fenêtre flottante du site — `Dialog` et `ToastStack` ici ; dans la page du jeu, les
 panneaux de compte et d'attente, le bandeau de partie, le bandeau d'usurpation et les
-réglages — s'ouvre du même geste : un trait de lumière d'un pixel se trace au milieu de la
-fenêtre, du centre vers les bords, un éclat en losange à chaque pointe ; puis il s'écarte en
-deux paupières qui dévoilent la fenêtre, leur bord frangé d'une trame un-sur-deux qui
-s'efface à mesure qu'elles s'ouvrent. La fermeture referme les paupières sur le trait, qui
-se résorbe en son centre. Les pages entières n'en usent pas, ni le menu principal du jeu.
+réglages — s'ouvre du même geste : un cadre d'un pixel part du point où se trouve le
+pointeur et s'étire jusqu'aux bords de la fenêtre en la dévoilant, en s'effaçant à mesure
+qu'il les rejoint. La fermeture le replie vers le pointeur. Si la dernière entrée vient du
+clavier, ou si le pointeur n'a jamais bougé, le geste part du centre. Les pages entières
+n'en usent pas, ni le menu principal du jeu.
 
 | Export | Rôle |
 |---|---|
 | `revealWindow(target, mode)` | Joue `"open"` ou `"close"` sur un élément affiché ; promesse tenue à la fin. Immédiate sous `prefers-reduced-motion` ou pour un élément sans taille ; interrompt une animation en cours sur le même élément |
-| `eyeAt(elapsed, mode)` | L'état de l'œil à un instant : étendue du trait, ouverture des paupières, éclat |
-| `OPEN_MS`, `CLOSE_MS` | Les durées (420 ms, 310 ms) |
+| `spreadAt(elapsed, mode)` | L'étendue à un instant, de 0 (un point) à 1 (la fenêtre entière) |
+| `originIn(width, height, pointer)` | Le point de départ en coordonnées locales : le pointeur ramené sur les bords, ou le centre s'il est `null` |
+| `frameAt(spread, origin, width, height)` | Le rectangle dévoilé, arrondi au pixel |
+| `OPEN_MS`, `CLOSE_MS` | Les durées (220 ms, 160 ms) |
 
-Le mécanisme : un `clip-path: inset(…)` suit les paupières (une bande de quatre pixels
-autour du trait tant qu'elles sont closes) ; le trait, ses éclats et la frange sont peints
-dans un canevas posé **dans** l'élément (et non sur la page, pour rester dans la couche du
-haut d'une `<dialog>` modale). Leur couleur est le `color` calculé de l'élément : l'os pour
-une fenêtre, la teinte d'un refus pour un message d'erreur. La taille est relue à chaque
-image : une fenêtre qui grandit en cours d'ouverture (un code qui arrive) reste juste. Le
-`clip-path` et le `position` en ligne de l'élément sont rendus à la fin.
+Le mécanisme : le module écoute `pointermove` et `pointerdown` sur `window` (en capture,
+passifs) pour connaître la dernière position du pointeur, et l'oublie à chaque `keydown`.
+`revealWindow` la lit une fois, au départ : le point reste fixe à l'écran même si la
+fenêtre grandit en cours d'ouverture (un code qui arrive). Un `clip-path: inset(…)` suit le
+rectangle ; le cadre est peint dans un canevas posé **dans** l'élément (et non sur la page,
+pour rester dans la couche du haut d'une `<dialog>` modale), de la couleur `color` calculée
+de l'élément : l'os pour une fenêtre, la teinte d'un refus pour un message d'erreur. La
+taille est relue à chaque image. Le `clip-path` et le `position` en ligne de l'élément sont
+rendus à la fin.
 
-Deux propositions ont précédé celle-ci, écartées par le porteur du projet : une nuée de
-carrés éclose du centre, puis un balayage de carrés depuis le coin le plus proche de la
-souris.
+Trois propositions ont précédé celle-ci, écartées par le porteur du projet : une nuée de
+carrés éclose du centre, un balayage de carrés depuis le coin le plus proche de la souris,
+puis un œil qui s'ouvre (trait de lumière et paupières tramées).
 
 ## La synchronisation vers Claude Design
 
@@ -233,13 +237,13 @@ catégories (`docs/<Nom>.md`), l'en-tête de conventions lu par l'agent de desig
 
 ## Tests
 
-27 tests, sous Node : `pnpm --filter @occulis/ui test`.
+36 tests, sous Node : `pnpm --filter @occulis/ui test`.
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
 | `src/tokens.test.ts` | `generated/tokens.css` identique à sa source, mêmes propriétés pour chaque thème, `styles.css` sans propriété indéfinie ni couleur en dur, conversion des couleurs, **alpha précomposé pour les courriers** |
 | `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition**, **langue fixée par `UiRoot` (et anglais par défaut)**, compte à rebours proportionnel et urgent, plaques dans la couleur de leur camp, ligne de choix marquée, fenêtre sans croix, **fil de messages : les siens marqués à part, texte échappé, état vide, longueur du champ**, squelette annoncé sans texte visible |
-| `src/window-reveal.test.ts` | Le trait d'abord, paupières closes ; ouverture continue jusqu'à la fenêtre entière ; fermeture des paupières puis résorption du trait ; fermeture plus rapide que l'ouverture |
+| `src/window-reveal.test.ts` | Ouverture continue d'un point à la fenêtre entière, fermeture jusqu'au point et plus rapide ; départ au pointeur ramené sur les bords, au centre sans pointeur ; rectangle qui contient toujours le point de départ |
 | `src/critical.test.ts` | **Fond et thème sombre sans variable** (la feuille n'est pas encore là), police pixel déclarée et préchargée, thème posé avant la première image, fondu coupé sous mouvement réduit, aucun préchargement de `/api/*` ni `/match/*` et jamais de `prerender`, **bloc placé après l'encodage et avant toute feuille** |
 
 Le rendu visuel n'est pas testé ici : il l'est par les aperçus vérifiés sur captures lors de

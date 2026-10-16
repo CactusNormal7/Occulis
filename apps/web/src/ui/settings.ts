@@ -9,7 +9,7 @@ import type { ThemeName } from "@occulis/ui/tokens";
  * langue — ni l'un ni l'autre n'est un geste de jeu.
  *
  * Non modale : Échap, l'engrenage ou un clic ailleurs la referment. Elle s'ouvre et se
- * referme comme un œil (`revealWindow`), comme toute fenêtre flottante du site.
+ * referme sous la souris (`revealWindow`), comme toute fenêtre flottante du site.
  */
 
 export interface SettingsElements {

@@ -1,63 +1,76 @@
 /**
- * L'ouverture et la fermeture d'une fenêtre flottante : **l'œil qui s'ouvre**. Un trait de
- * lumière d'un pixel se trace au milieu de la fenêtre, du centre vers les bords, deux
- * éclats à ses pointes ; puis il s'écarte en deux paupières qui dévoilent la fenêtre, leur
- * bord frangé d'une trame un-sur-deux qui s'efface à mesure qu'elles s'ouvrent. La
- * fermeture referme les paupières sur le trait, qui se résorbe en son centre.
+ * L'ouverture et la fermeture d'une fenêtre flottante : **elle naît sous la souris**. Un
+ * cadre d'un pixel part du point où se trouve le pointeur et s'étire jusqu'aux bords de la
+ * fenêtre, en la dévoilant ; il s'efface en arrivant. La fermeture le replie vers le
+ * pointeur. Sans pointeur connu — une fenêtre ouverte au clavier —, le geste part du centre.
  *
- * Le geste reprend le motif du jeu — Occulis, l'œil, la ligne de vue qui se déploie — et
- * sa matière : un pixel fin, une trame, l'os pour seule lumière (docs/design.md 8.1). Il est
- * partagé par toutes les fenêtres flottantes du site, pour qu'elles s'ouvrent du même
- * geste ; le menu principal et les pages entières n'en usent pas.
+ * Volontairement un seul geste, court, sans particule : la fenêtre doit paraître vite, et
+ * le lien avec la souris dit d'où elle vient (docs/design.md 8.1). Il est partagé par
+ * toutes les fenêtres flottantes du site ; le menu principal et les pages entières n'en
+ * usent pas.
  *
- * Deux moitiés : un calendrier **pur** (`eyeAt`), testé, et `revealWindow()`, qui le joue
- * sur un élément du DOM. La couleur du trait est celle du texte de l'élément (`color`) :
- * l'os pour une fenêtre, la teinte d'un refus pour un message d'erreur. Aucune valeur de
- * couleur ici.
+ * Deux moitiés : un calendrier **pur** (`spreadAt`, `frameAt`, `originIn`), testé, et
+ * `revealWindow()`, qui le joue sur un élément du DOM. La couleur du cadre est celle du
+ * texte de l'élément (`color`) : l'os pour une fenêtre, la teinte d'un refus pour un
+ * message d'erreur. Aucune valeur de couleur ici.
  */
 
-/** Le trait se trace, puis les paupières s'ouvrent, en se chevauchant un peu. */
-const LINE_MS = 150;
-const LIDS_MS = 300;
-const LIDS_AT = 120;
-/** À la fermeture, plus vite : les paupières se referment, puis le trait se résorbe. */
-const CLOSE_LIDS_MS = 200;
-const CLOSE_LINE_MS = 110;
-
-export const OPEN_MS = LIDS_AT + LIDS_MS;
-export const CLOSE_MS = CLOSE_LIDS_MS + CLOSE_LINE_MS;
+export const OPEN_MS = 220;
+export const CLOSE_MS = 160;
 
 function clamp01(t: number): number {
   return Math.min(1, Math.max(0, t));
 }
 
-function easeOutCubic(t: number): number {
-  return 1 - (1 - clamp01(t)) ** 3;
+/** L'étendue de la fenêtre, de 0 (un point sous la souris) à 1 (la fenêtre entière). */
+export function spreadAt(elapsed: number, mode: "open" | "close"): number {
+  if (mode === "open") return 1 - (1 - clamp01(elapsed / OPEN_MS)) ** 3;
+  return 1 - clamp01(elapsed / CLOSE_MS) ** 2;
 }
 
-function easeInOutSine(t: number): number {
-  return 0.5 - 0.5 * Math.cos(Math.PI * clamp01(t));
+export interface Point {
+  readonly x: number;
+  readonly y: number;
 }
 
-export interface EyeState {
-  /** L'étendue du trait, de 0 (un point au centre) à 1 (toute la largeur). */
-  readonly line: number;
-  /** L'ouverture des paupières, de 0 (fermées sur le trait) à 1 (fenêtre entière). */
-  readonly open: number;
-  /** L'éclat du trait et des bords de paupière, de 0 à 1. */
-  readonly glow: number;
+export interface Frame {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
 }
 
-/** L'œil `elapsed` millisecondes après le début de l'ouverture ou de la fermeture. */
-export function eyeAt(elapsed: number, mode: "open" | "close"): EyeState {
-  if (mode === "open") {
-    const line = easeOutCubic(elapsed / LINE_MS);
-    const open = easeInOutSine((elapsed - LIDS_AT) / LIDS_MS);
-    return { line, open, glow: elapsed >= OPEN_MS ? 0 : 1 - open ** 2 };
-  }
-  const open = 1 - easeInOutSine(elapsed / CLOSE_LIDS_MS);
-  const line = 1 - easeOutCubic((elapsed - CLOSE_LIDS_MS) / CLOSE_LINE_MS);
-  return { line, open, glow: elapsed >= CLOSE_MS ? 0 : 1 - open ** 2 };
+/**
+ * Le point de départ dans la fenêtre (`width` × `height`, coordonnées locales) : le
+ * pointeur ramené sur ses bords s'il est dehors, le centre s'il est inconnu.
+ */
+export function originIn(width: number, height: number, pointer: Point | null): Point {
+  if (pointer === null) return { x: width / 2, y: height / 2 };
+  return { x: Math.min(width, Math.max(0, pointer.x)), y: Math.min(height, Math.max(0, pointer.y)) };
+}
+
+/** Le rectangle dévoilé à l'étendue `spread`, arrondi au pixel. */
+export function frameAt(spread: number, origin: Point, width: number, height: number): Frame {
+  return {
+    left: Math.round(origin.x * (1 - spread)),
+    top: Math.round(origin.y * (1 - spread)),
+    right: Math.round(origin.x + (width - origin.x) * spread),
+    bottom: Math.round(origin.y + (height - origin.y) * spread),
+  };
+}
+
+/**
+ * La dernière position du pointeur, ou `null` si la dernière entrée vient du clavier : une
+ * fenêtre ouverte par Entrée ne doit pas jaillir d'une souris immobile à l'autre bout.
+ */
+let pointer: Point | null = null;
+if (typeof window !== "undefined") {
+  const track = (event: PointerEvent): void => {
+    pointer = { x: event.clientX, y: event.clientY };
+  };
+  window.addEventListener("pointermove", track, { capture: true, passive: true });
+  window.addEventListener("pointerdown", track, { capture: true, passive: true });
+  window.addEventListener("keydown", () => (pointer = null), { capture: true, passive: true });
 }
 
 const running = new WeakMap<HTMLElement, () => void>();
@@ -72,10 +85,10 @@ function prefersStill(): boolean {
  * l'élément. Sous `prefers-reduced-motion`, ou pour un élément sans taille, elle est tenue
  * tout de suite. Une animation en cours sur le même élément est interrompue.
  *
- * L'ouverture est un `clip-path: inset(…)` qui suit les paupières ; le trait, ses éclats et
- * la frange sont peints dans un canevas posé **dans** l'élément (et non sur la page, pour
- * rester dans la couche du haut d'une `<dialog>` modale). La fenêtre peut grandir en
- * cours d'ouverture (un code qui arrive) : tout suit sa taille à chaque image.
+ * Le dévoilement est un `clip-path: inset(…)` ; le cadre est peint dans un canevas posé
+ * **dans** l'élément (et non sur la page, pour rester dans la couche du haut d'une
+ * `<dialog>` modale). La fenêtre peut grandir en cours d'ouverture (un code qui arrive) :
+ * tout suit sa taille à chaque image, le point de départ restant fixe à l'écran.
  */
 export function revealWindow(target: HTMLElement, mode: "open" | "close" = "open"): Promise<void> {
   running.get(target)?.();
@@ -95,12 +108,14 @@ export function revealWindow(target: HTMLElement, mode: "open" | "close" = "open
   });
   const context = canvas.getContext("2d");
   const ink = style.color;
+  const from = pointer;
 
+  let box = first;
   let size = { width: 0, height: 0 };
   const fit = (): void => {
-    const current = target.getBoundingClientRect();
-    if (current.width === size.width && current.height === size.height) return;
-    size = { width: current.width, height: current.height };
+    box = target.getBoundingClientRect();
+    if (box.width === size.width && box.height === size.height) return;
+    size = { width: box.width, height: box.height };
     canvas.width = Math.round(size.width * ratio);
     canvas.height = Math.round(size.height * ratio);
     canvas.style.width = `${size.width}px`;
@@ -136,57 +151,21 @@ export function revealWindow(target: HTMLElement, mode: "open" | "close" = "open
       }
       fit();
       const { width, height } = size;
-      const eye = eyeAt(elapsed, mode);
-      const middle = Math.round(height / 2);
-      const aperture = Math.round((eye.open * height) / 2);
-      const top = middle - aperture;
-      const bottom = middle + aperture;
-      const half = Math.round((eye.line * width) / 2);
-      const left = Math.round(width / 2) - half;
-      const right = Math.round(width / 2) + half;
+      const spread = spreadAt(elapsed, mode);
+      const origin = originIn(width, height, from === null ? null : { x: from.x - box.left, y: from.y - box.top });
+      const shown = frameAt(spread, origin, width, height);
+      target.style.clipPath = `inset(${shown.top}px ${width - shown.right}px ${height - shown.bottom}px ${shown.left}px)`;
 
-      // Le masque : la bande du trait tant que les paupières sont closes, puis l'ouverture.
-      target.style.clipPath =
-        aperture <= 1
-          ? `inset(${middle - 2}px ${width - right}px ${height - middle - 2}px ${left}px)`
-          : `inset(${Math.max(0, top - 1)}px 0 ${Math.max(0, height - bottom - 1)}px 0)`;
-
-      if (context === null) {
-        frame = requestAnimationFrame(draw);
-        return;
-      }
-      context.setTransform(ratio, 0, 0, ratio, 0, 0);
-      context.clearRect(0, 0, width, height);
-      context.fillStyle = ink;
-
-      if (eye.glow > 0) {
-        if (aperture <= 1) {
-          // Le trait, son halo d'un pixel, et un éclat en losange à chaque pointe.
-          context.globalAlpha = eye.glow;
-          context.fillRect(left, middle, right - left, 1);
-          context.globalAlpha = eye.glow * 0.35;
-          context.fillRect(left, middle - 1, right - left, 1);
-          context.fillRect(left, middle + 1, right - left, 1);
-          context.globalAlpha = eye.glow;
-          for (const x of [left, right - 1]) {
-            context.fillRect(x - 1, middle - 1, 3, 3);
-            context.fillRect(x, middle - 2, 1, 5);
-            context.fillRect(x - 2, middle, 5, 1);
-          }
-        } else {
-          // Les bords des paupières, et leur frange tramée qui s'efface à l'ouverture.
-          context.globalAlpha = eye.glow;
-          context.fillRect(0, top, width, 1);
-          context.fillRect(0, bottom - 1, width, 1);
-          context.globalAlpha = eye.glow * 0.45;
-          for (let row = 1; row <= 4; row += 1) {
-            if (row === 3) context.globalAlpha = eye.glow * 0.2;
-            for (let x = row % 2; x < width; x += 2) {
-              context.fillRect(x, top + row, 1, 1);
-              context.fillRect(x, bottom - 1 - row, 1, 1);
-            }
-          }
-        }
+      if (context !== null) {
+        context.setTransform(ratio, 0, 0, ratio, 0, 0);
+        context.clearRect(0, 0, width, height);
+        // Le cadre s'efface à mesure qu'il rejoint les bords de la fenêtre.
+        context.globalAlpha = 1 - spread ** 3;
+        context.strokeStyle = ink;
+        context.lineWidth = 1;
+        const w = Math.max(1, shown.right - shown.left);
+        const h = Math.max(1, shown.bottom - shown.top);
+        context.strokeRect(shown.left + 0.5, shown.top + 0.5, w - 1, h - 1);
       }
       frame = requestAnimationFrame(draw);
     };

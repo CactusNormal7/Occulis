@@ -31,7 +31,7 @@ export interface DialogProps {
 
 /**
  * Une fenêtre modale sur `<dialog>` natif : focus piégé, Échap, page inerte derrière.
- * Elle s'ouvre et se referme comme un œil (`revealWindow`), sur un voile tramé qui se pose
+ * Elle s'ouvre et se referme sous la souris (`revealWindow`), sur un voile tramé qui se pose
  * en fondu ; un clic sur le voile la ferme aussi.
  */
 export function Dialog({

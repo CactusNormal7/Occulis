@@ -190,14 +190,16 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   une onde et des étincelles ; un adversaire qui entre dans la vue se matérialise. Tout est
   coupé sous « mouvement réduit ». Ces animations ne lisent que la vue que le serveur a
   transmise : elles mettent en scène l'information, elles n'en révèlent aucune.
-- **Toute fenêtre flottante s'ouvre comme un œil.** Une fenêtre qui n'est pas une page
+- **Toute fenêtre flottante naît sous la souris.** Une fenêtre qui n'est pas une page
   entière — fenêtre modale, message, réglages, panneaux de compte et d'attente, bandeau de
-  partie — s'ouvre par un trait de lumière d'un pixel qui se trace en son milieu, puis
-  s'écarte en deux paupières frangées de trame ; elle se referme sur ce trait. Le geste
-  reprend le motif du jeu — l'œil, la ligne de vue qui se déploie — et sa matière. Deux
-  propositions l'ont précédé, écartées par le porteur du projet : une nuée de petits carrés
-  blancs éclose du centre (trop chaotique), puis un balayage de carrés depuis le coin le plus
-  proche de la souris. **Le menu principal ne s'ouvre pas ainsi**, à sa demande : on y
+  partie — s'ouvre par un cadre d'un pixel qui part du pointeur et s'étire jusqu'à ses
+  bords en la dévoilant, puis s'efface ; elle se referme en se repliant vers le pointeur.
+  Ouverte au clavier, elle part de son centre. Le geste est volontairement simple et court
+  (220 ms) : il dit d'où vient la fenêtre, rien de plus. Trois propositions l'ont précédé,
+  écartées par le porteur du projet : une nuée de petits carrés blancs éclose du centre
+  (trop chaotique), un balayage de carrés depuis le coin le plus proche de la souris, puis
+  un « œil qui s'ouvre » (un trait de lumière qui s'écarte en deux paupières tramées) —
+  trop chargé ; la consigne retenue est la simplicité, et un départ de la souris. **Le menu principal ne s'ouvre pas ainsi**, à sa demande : on y
   revient sans cesse. Les pages entières gardent le fondu entre pages. Le design et la
   langue se règlent dans une petite fenêtre de **réglages**, ouverte par un engrenage à côté
   du lien vers le compte.

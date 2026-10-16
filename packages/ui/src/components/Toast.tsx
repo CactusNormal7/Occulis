@@ -18,7 +18,7 @@ const LEAVE_MS = CLOSE_MS + 20;
 
 /**
  * Les messages éphémères, empilés en bas à droite : ils ne poussent pas la page, s'ouvrent
- * et se referment comme un œil, d'un trait de leur couleur (`revealWindow`), et partent d'eux-mêmes — deux fois plus lentement pour un refus — ou au clic.
+ * et se referment sous la souris, d'un cadre de leur couleur (`revealWindow`), et partent d'eux-mêmes — deux fois plus lentement pour un refus — ou au clic.
  * `useToast()` les émet depuis n'importe quel descendant.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
