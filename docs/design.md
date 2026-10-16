@@ -190,17 +190,20 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   une onde et des étincelles ; un adversaire qui entre dans la vue se matérialise. Tout est
   coupé sous « mouvement réduit ». Ces animations ne lisent que la vue que le serveur a
   transmise : elles mettent en scène l'information, elles n'en révèlent aucune.
-- **Toute fenêtre flottante naît sous la souris.** Une fenêtre qui n'est pas une page
-  entière — fenêtre modale, message, réglages, panneaux de compte et d'attente, bandeau de
-  partie — s'ouvre par un cadre d'un pixel qui part du pointeur et s'étire jusqu'à ses
-  bords en la dévoilant, puis s'efface ; elle se referme en se repliant vers le pointeur.
-  Ouverte au clavier, elle part de son centre. Le geste est volontairement simple et court
-  (220 ms) : il dit d'où vient la fenêtre, rien de plus. Trois propositions l'ont précédé,
-  écartées par le porteur du projet : une nuée de petits carrés blancs éclose du centre
-  (trop chaotique), un balayage de carrés depuis le coin le plus proche de la souris, puis
-  un « œil qui s'ouvre » (un trait de lumière qui s'écarte en deux paupières tramées) —
-  trop chargé ; la consigne retenue est la simplicité, et un départ de la souris. **Le menu principal ne s'ouvre pas ainsi**, à sa demande : on y
-  revient sans cesse. Les pages entières gardent le fondu entre pages. Le design et la
+- **Une fenêtre qu'un clic ouvre se déplie.** Seules les fenêtres que le joueur ouvre
+  par un clic s'animent ainsi — réglages, fenêtres modales, messages qui suivent un geste.
+  Un cadre d'un pixel part d'un point et s'étire jusqu'aux bords de la fenêtre en la
+  dévoilant, puis s'efface ; à la fermeture, il se replie vers ce point. Le point est **la
+  souris** quand la fenêtre est posée à côté de ce qu'on a cliqué (les réglages sous
+  l'engrenage), **le centre de la fenêtre** sinon (une modale au milieu de l'écran, un
+  message dans son coin) ou quand on l'a ouverte au clavier. Le geste est volontairement
+  minimal et court (220 ms). Trois propositions l'ont précédé, écartées par le porteur du
+  projet : une nuée de petits carrés blancs éclose du centre (trop chaotique), un balayage de
+  carrés depuis le coin le plus proche de la souris, puis un « œil qui s'ouvre » (un trait de
+  lumière qui s'écarte en deux paupières tramées) — trop chargé. **Les écrans du parcours ne
+  s'ouvrent pas ainsi** — menu principal, compte, attente, bandeau de partie, bandeau
+  d'usurpation —, à sa demande : ce ne sont pas des fenêtres qu'on ouvre, et
+  l'on y revient sans cesse. Les pages entières gardent le fondu entre pages. Le design et la
   langue se règlent dans une petite fenêtre de **réglages**, ouverte par un engrenage à côté
   du lien vers le compte.
 - **Code couleur : le vide porte la matière, l'os porte la géométrie, les lueurs portent

@@ -1,13 +1,14 @@
 /**
- * L'ouverture et la fermeture d'une fenêtre flottante : **elle naît sous la souris**. Un
- * cadre d'un pixel part du point où se trouve le pointeur et s'étire jusqu'aux bords de la
- * fenêtre, en la dévoilant ; il s'efface en arrivant. La fermeture le replie vers le
- * pointeur. Sans pointeur connu — une fenêtre ouverte au clavier —, le geste part du centre.
+ * L'ouverture et la fermeture d'une fenêtre qu'un clic fait paraître : un cadre d'un pixel
+ * part d'un point et s'étire jusqu'aux bords de la fenêtre, en la dévoilant ; il s'efface
+ * en arrivant. La fermeture le replie vers ce point.
  *
- * Volontairement un seul geste, court, sans particule : la fenêtre doit paraître vite, et
- * le lien avec la souris dit d'où elle vient (docs/design.md 8.1). Il est partagé par
- * toutes les fenêtres flottantes du site ; le menu principal et les pages entières n'en
- * usent pas.
+ * Le point est **la souris** pour une fenêtre posée à côté de ce qu'on a cliqué (les
+ * réglages sous l'engrenage) : le geste dit d'où elle vient. Il est **le centre** de la
+ * fenêtre pour toutes les autres — une modale au milieu de l'écran, un message dans son
+ * coin —, et aussi quand la dernière entrée vient du clavier. Les écrans du parcours (menu,
+ * compte, attente, bandeau de partie) n'en usent pas : ce ne sont pas des fenêtres qu'on
+ * ouvre (docs/design.md 8.1).
  *
  * Deux moitiés : un calendrier **pur** (`spreadAt`, `frameAt`, `originIn`), testé, et
  * `revealWindow()`, qui le joue sur un élément du DOM. La couleur du cadre est celle du
@@ -80,7 +81,8 @@ function prefersStill(): boolean {
 }
 
 /**
- * Joue l'ouverture (`"open"`) ou la fermeture (`"close"`) sur `target`, déjà affiché.
+ * Joue l'ouverture (`"open"`) ou la fermeture (`"close"`) sur `target`, déjà affiché,
+ * depuis son centre ou depuis la souris (`from`).
  * Rend une promesse tenue à la fin ; la fermeture laisse à l'appelant le soin de masquer
  * l'élément. Sous `prefers-reduced-motion`, ou pour un élément sans taille, elle est tenue
  * tout de suite. Une animation en cours sur le même élément est interrompue.
@@ -90,7 +92,7 @@ function prefersStill(): boolean {
  * `<dialog>` modale). La fenêtre peut grandir en cours d'ouverture (un code qui arrive) :
  * tout suit sa taille à chaque image, le point de départ restant fixe à l'écran.
  */
-export function revealWindow(target: HTMLElement, mode: "open" | "close" = "open"): Promise<void> {
+export function revealWindow(target: HTMLElement, mode: "open" | "close" = "open", from: "center" | "pointer" = "center"): Promise<void> {
   running.get(target)?.();
   const first = target.getBoundingClientRect();
   if (prefersStill() || first.width === 0 || first.height === 0) return Promise.resolve();
@@ -108,7 +110,7 @@ export function revealWindow(target: HTMLElement, mode: "open" | "close" = "open
   });
   const context = canvas.getContext("2d");
   const ink = style.color;
-  const from = pointer;
+  const anchor = from === "pointer" ? pointer : null;
 
   let box = first;
   let size = { width: 0, height: 0 };
@@ -152,7 +154,7 @@ export function revealWindow(target: HTMLElement, mode: "open" | "close" = "open
       fit();
       const { width, height } = size;
       const spread = spreadAt(elapsed, mode);
-      const origin = originIn(width, height, from === null ? null : { x: from.x - box.left, y: from.y - box.top });
+      const origin = originIn(width, height, anchor === null ? null : { x: anchor.x - box.left, y: anchor.y - box.top });
       const shown = frameAt(spread, origin, width, height);
       target.style.clipPath = `inset(${shown.top}px ${width - shown.right}px ${height - shown.bottom}px ${shown.left}px)`;
 

@@ -8,8 +8,8 @@ import type { ThemeName } from "@occulis/ui/tokens";
  * à droite (`index.html`, `#settings`). Elle porte le design (docs/design.md 8.1) et la
  * langue — ni l'un ni l'autre n'est un geste de jeu.
  *
- * Non modale : Échap, l'engrenage ou un clic ailleurs la referment. Elle s'ouvre et se
- * referme sous la souris (`revealWindow`), comme toute fenêtre flottante du site.
+ * Non modale : Échap, l'engrenage ou un clic ailleurs la referment. Posée sous
+ * l'engrenage, elle s'ouvre depuis la souris et s'y replie (`revealWindow`).
  */
 
 export interface SettingsElements {
@@ -44,7 +44,7 @@ export function attachSettings({ elements, theme, locale, hint, chooseTheme, cho
     closing = false;
     panel.hidden = false;
     toggle.setAttribute("aria-expanded", "true");
-    void revealWindow(panel);
+    void revealWindow(panel, "open", "pointer");
     panel.querySelector<HTMLButtonElement>("button[aria-current='true']")?.focus({ preventScroll: true });
   };
 
@@ -56,7 +56,7 @@ export function attachSettings({ elements, theme, locale, hint, chooseTheme, cho
       return;
     }
     closing = true;
-    void revealWindow(panel, "close").then(() => {
+    void revealWindow(panel, "close", "pointer").then(() => {
       closing = false;
       panel.hidden = true;
     });

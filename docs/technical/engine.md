@@ -216,7 +216,7 @@ chaque ouverture du canal social.
 | `apps/web/src/net/channel.ts` | Transport WebSocket et reconnexion | non |
 | `apps/web/src/net/backoff.ts` | Délai avant la n-ième tentative de reconnexion | oui |
 | `apps/web/src/ui/flow.ts` | Quel écran a lieu d'être : amorce, compte, menu, attente, partie | oui |
-| `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes ; un panneau qui paraît naît sous la souris (`revealWindow`), sauf le menu principal | non |
+| `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes ; ils paraissent sans l'ouverture des fenêtres, réservée à celles qu'un clic ouvre | non |
 | `apps/web/src/ui/settings.ts` | Les réglages d'affichage (design, langue) derrière l'engrenage | non |
 | `apps/web/src/account/AccountApp.tsx` | Écran de compte : connexion, inscription, oubli, réinitialisation, Google | non |
 | `apps/web/src/account/mount.tsx` | Monte l'îlot de compte dans `#account-root` | non |
@@ -1261,7 +1261,7 @@ L'engrenage est montré partout sauf à l'amorce et sur les écrans pleine page 
 | Fonction | Rôle |
 |---|---|
 | `attachSettings()` | Branche l'engrenage et la fenêtre ; rend un `Settings` |
-| `open()`, `close()` (internes) | Montre la fenêtre et joue l'ouverture (`revealWindow`) ; joue la fermeture puis la masque. Échap, l'engrenage ou un clic hors de la fenêtre la ferment |
+| `open()`, `close()` (internes) | Montre la fenêtre et joue l'ouverture depuis la souris (`revealWindow(panel, "open", "pointer")`) ; joue la fermeture vers la souris puis la masque. Échap, l'engrenage ou un clic hors de la fenêtre la ferment |
 | `refresh()` | Marque le design et la langue en vigueur (`aria-current`), pose l'indication de chaque design |
 | `setAvailable()` | Montre ou cache l'engrenage ; le cacher referme la fenêtre sans animation |
 

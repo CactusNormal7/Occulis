@@ -21,7 +21,7 @@ composants.
 | `src/index.ts` | Point d'entrée : tokens et composants |
 | `src/cx.ts` | Assemblage de noms de classe |
 | `src/critical.ts` | `criticalHead()` et `withCriticalHead()` : le bloc de tête de chaque page HTML (sous-chemin `@occulis/ui/critical`) |
-| `src/window-reveal.ts` | `revealWindow()` : l'ouverture et la fermeture de toute fenêtre flottante (elle naît sous la souris), et son calendrier pur (sous-chemin `@occulis/ui/reveal`, sans React) |
+| `src/window-reveal.ts` | `revealWindow()` : l'ouverture et la fermeture d'une fenêtre qu'un clic ouvre, depuis son centre ou la souris, et son calendrier pur (sous-chemin `@occulis/ui/reveal`, sans React) |
 | `scripts/build-tokens.ts` | Écrit `generated/tokens.css` (`pnpm --filter @occulis/ui tokens`) |
 | `scripts/bundle-css.mjs` | Écrit `dist/styles.css` : tokens **inclus**, sans `@import` |
 | `tsup.config.ts` | Le build publié : `dist/index.js`, `dist/index.d.ts`, `dist/styles.css` |
@@ -126,7 +126,7 @@ Quelques comportements à connaître :
 
 - **`Dialog`** s'appuie sur `<dialog>` natif (focus piégé, Échap, page inerte). `onConfirm`
   rend `true` pour fermer, `false` pour rester ouverte sur un refus. Elle s'ouvre et se
-  referme sous la souris (`revealWindow`) ; la fermeture attend la fin de l'animation avant
+  referme depuis son centre (`revealWindow`) ; la fermeture attend la fin de l'animation avant
   d'appeler `onClose`, et son voile tramé se pose en fondu.
 - **`IconButton`** exige un `label` ; `disabledReason` grise le bouton **et** remplace
   l'infobulle par la raison.
@@ -195,19 +195,21 @@ Quelques comportements à connaître :
   `.design-sync/config.json` (`dtsPropsFor`).
 - Toutes les props optionnelles acceptent `undefined` (`exactOptionalPropertyTypes`).
 
-### `revealWindow()` — les fenêtres flottantes naissent sous la souris
+### `revealWindow()` — une fenêtre qu'un clic ouvre se déplie
 
-Toute fenêtre flottante du site — `Dialog` et `ToastStack` ici ; dans la page du jeu, les
-panneaux de compte et d'attente, le bandeau de partie, le bandeau d'usurpation et les
-réglages — s'ouvre du même geste : un cadre d'un pixel part du point où se trouve le
-pointeur et s'étire jusqu'aux bords de la fenêtre en la dévoilant, en s'effaçant à mesure
-qu'il les rejoint. La fermeture le replie vers le pointeur. Si la dernière entrée vient du
-clavier, ou si le pointeur n'a jamais bougé, le geste part du centre. Les pages entières
-n'en usent pas, ni le menu principal du jeu.
+Seules les fenêtres qu'un clic ouvre s'animent : `Dialog` et `ToastStack` ici, les réglages
+dans la page du jeu. Un cadre d'un pixel part d'un point et s'étire jusqu'aux bords de la
+fenêtre en la dévoilant, en s'effaçant à mesure qu'il les rejoint ; la fermeture le replie
+vers ce point. Le point est le **centre** de la fenêtre par défaut (une modale, un message)
+et la **souris** sur demande (`from = "pointer"`), pour une fenêtre posée à côté de ce
+qu'on a cliqué — les réglages sous l'engrenage. Même alors, si la dernière entrée vient du
+clavier ou si le pointeur n'a jamais bougé, le geste part du centre. Les écrans du parcours
+du jeu (menu, compte, attente, bandeau de partie, bandeau d'usurpation) et les pages
+entières n'en usent pas.
 
 | Export | Rôle |
 |---|---|
-| `revealWindow(target, mode)` | Joue `"open"` ou `"close"` sur un élément affiché ; promesse tenue à la fin. Immédiate sous `prefers-reduced-motion` ou pour un élément sans taille ; interrompt une animation en cours sur le même élément |
+| `revealWindow(target, mode, from)` | Joue `"open"` ou `"close"` sur un élément affiché, depuis `"center"` (défaut) ou `"pointer"` ; promesse tenue à la fin. Immédiate sous `prefers-reduced-motion` ou pour un élément sans taille ; interrompt une animation en cours sur le même élément |
 | `spreadAt(elapsed, mode)` | L'étendue à un instant, de 0 (un point) à 1 (la fenêtre entière) |
 | `originIn(width, height, pointer)` | Le point de départ en coordonnées locales : le pointeur ramené sur les bords, ou le centre s'il est `null` |
 | `frameAt(spread, origin, width, height)` | Le rectangle dévoilé, arrondi au pixel |
@@ -215,7 +217,7 @@ n'en usent pas, ni le menu principal du jeu.
 
 Le mécanisme : le module écoute `pointermove` et `pointerdown` sur `window` (en capture,
 passifs) pour connaître la dernière position du pointeur, et l'oublie à chaque `keydown`.
-`revealWindow` la lit une fois, au départ : le point reste fixe à l'écran même si la
+`revealWindow` la lit une fois, au départ, quand `from` vaut `"pointer"` : le point reste fixe à l'écran même si la
 fenêtre grandit en cours d'ouverture (un code qui arrive). Un `clip-path: inset(…)` suit le
 rectangle ; le cadre est peint dans un canevas posé **dans** l'élément (et non sur la page,
 pour rester dans la couche du haut d'une `<dialog>` modale), de la couleur `color` calculée

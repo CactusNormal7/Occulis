@@ -2,7 +2,6 @@ import type { Identity } from "../net/auth.js";
 import type { QueueSeeking, Stage } from "./flow.js";
 import { describeIdentity, describeWaiting } from "./messages.js";
 import { messages } from "../i18n/current.js";
-import { revealWindow } from "@occulis/ui/reveal";
 
 /**
  * Les écrans : compte, menu, attente, partie. Un seul est visible à la fois.
@@ -15,17 +14,9 @@ import { revealWindow } from "@occulis/ui/reveal";
  * L'écran de compte n'est ici qu'un conteneur montré ou masqué : son contenu est
  * l'îlot React de `src/account/`, sur la charte.
  *
- * Un panneau flottant qui paraît — compte, attente, bandeau de partie, bandeau
- * d'usurpation — naît sous la souris (`revealWindow`), d'un seul tenant : c'est
- * le panneau entier qui se forme, jamais ses morceaux l'un après l'autre. Le menu
- * principal fait exception, sur demande du porteur du projet : c'est le lieu où l'on
- * revient sans cesse, il paraît sans cérémonie.
+ * Ces écrans paraissent sans l'ouverture des fenêtres (`revealWindow`), sur demande du
+ * porteur du projet : elle est réservée aux fenêtres qu'un clic ouvre (docs/design.md 8.1).
  */
-
-/** Joue l'ouverture sur `element` s'il vient de paraître. */
-function revealIfShown(element: HTMLElement, wasHidden: boolean, target: HTMLElement | null = element): void {
-  if (wasHidden && !element.hidden && target !== null) void revealWindow(target);
-}
 export interface ShellElements {
   readonly boot: HTMLElement;
   readonly auth: HTMLElement;
@@ -133,7 +124,6 @@ export function attachShell(options: ShellOptions): Shell {
   });
 
   const render = (stage: Stage): void => {
-    const was = { auth: e.auth.hidden, waiting: e.waiting.hidden, hud: e.hud.hidden };
     e.boot.hidden = stage.kind !== "boot";
     e.auth.hidden = stage.kind !== "auth";
     e.menu.hidden = stage.kind !== "menu";
@@ -145,9 +135,6 @@ export function attachShell(options: ShellOptions): Shell {
     e.hud.hidden = stage.kind !== "game";
     onMenu = stage.kind === "menu";
     showCorner();
-    revealIfShown(e.auth, was.auth, e.auth.querySelector<HTMLElement>(".panel"));
-    revealIfShown(e.waiting, was.waiting, e.waiting.querySelector<HTMLElement>(".panel"));
-    revealIfShown(e.hud, was.hud);
 
     if (stage.kind === "menu") {
       e.joinCode.value = "";
@@ -178,9 +165,7 @@ export function attachShell(options: ShellOptions): Shell {
     e.cornerName.textContent = identity.handle ?? "";
     showCorner();
     e.resend.hidden = !identity.signedIn || identity.emailVerified !== false;
-    const impersonationWasHidden = e.impersonation.hidden;
     e.impersonation.hidden = identity.impersonating !== true;
-    revealIfShown(e.impersonation, impersonationWasHidden);
     e.impersonated.textContent = identity.handle ?? "";
   };
 

@@ -1,17 +1,17 @@
 # Graph Report - Occulis  (2026-10-16)
 
 ## Corpus Check
-- 468 files · ~232,431 words
+- 468 files · ~232,465 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 10 file(s) not represented in the graph (top: (none) 4, .css 3, .example 1)
 
 ## Summary
-- 3104 nodes · 7886 edges · 250 communities (115 shown, 135 thin omitted)
+- 3103 nodes · 7881 edges · 248 communities (114 shown, 134 thin omitted)
 - Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 190 edges (avg confidence: 0.92)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `322b6dd6`
+- Built from commit: `24b1f913`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -31,9 +31,9 @@
 - social/api.ts
 - Points ouverts (récapitulatif)
 - Le moteur de rendu et le client — `apps/web`
-- messages
-- Occulis — Document de conception (récapitulatif d'itération)
 - main.ts
+- Occulis — Document de conception (récapitulatif d'itération)
+- PlayerId
 - social/queries.ts
 - /graphify skill trigger (.claude/CLAUDE.md)
 - Outillage et CI/CD — `tooling/infra`, `.github`
@@ -42,7 +42,7 @@
 - players table
 - apps/server tsconfig.json
 - cache.ts
-- protocol/src/index.ts
+- core/src/index.ts
 - Points ouverts d'infrastructure
 - Piliers de design non négociables
 - Visibilité vs Portée
@@ -57,7 +57,7 @@
 - Le serveur — `apps/server`
 - ui/package.json
 - Occulis
-- Friends.tsx
+- social/model.ts
 - Occulis — Mise en place de l'infrastructure
 - engine.md
 - look
@@ -67,7 +67,7 @@
 - .claude/CLAUDE.md
 - auth/mail.ts
 - profile/App.tsx
-- scene.ts
+- overlay.ts
 - better-auth.ts
 - server/package.json
 - infra/package.json
@@ -77,28 +77,27 @@
 - package.json
 - devDependencies
 - Occulis project overview
-- core/src/index.ts
-- components.test.tsx
+- iso.ts
 - MatchDO.load
 - replay-canvas.ts
-- config.ts
+- ref_node_fs
 - One branch = one full hosted environment
-- MatchDetail.tsx
+- replay.ts
 - mockup.js
 - docs/architecture.md (infra/server architecture reference)
 - infra/src/actions.ts
-- Les composants
+- Composition
 - piece-type.ts
 - protocol/package.json
 - window-reveal.ts
 - server/src/index.ts
-- shell.ts
-- reveal.ts
+- Identity
+- scene.ts
 - src/team.ts
 - core/package.json
-- components/TopBar.tsx
+- Les composants
 - admin/queries.ts
-- PlayerId
+- MatchDO
 - admin/api.ts
 - compilerOptions
 - compilerOptions
@@ -108,13 +107,13 @@
 - compilerOptions
 - net/auth.ts
 - admin/main.tsx
-- vite.config.ts
-- components/IconButton.tsx
+- en/index.ts
+- components/Badge.tsx
 - compilerOptions
-- match-channel.ts
+- protocol/src/index.ts
 - core/tsconfig.json
 - protocol/tsconfig.json
-- Locale
+- coord.ts
 - Maquettes des écrans
 - Occulis
 - profile/api.ts
@@ -128,7 +127,7 @@
 - EDGE_NEIGHBOURS (const)
 - iso.test.ts suite
 - picking.test.ts suite
-- Deployment.tsx
+- TeamsApp.tsx
 - cx
 - Field.tsx
 - TeamBuilder.tsx
@@ -148,33 +147,34 @@
 - action: Exécuter une requête SQL
 - action: Statut
 - action: Logs en direct
+- parts.tsx
 - fr/index.ts
 - me/feats.ts
 - social-do.ts
-- handle.ts
+- Friends.tsx
 - profile/resources.ts
 - admin/resources.ts
-- TeamsApp.tsx
+- me.integration.test.ts
 - current.ts
 - password.ts
 - i18n/package.json
 - ref_react
-- animation.ts
-- scene/board.ts
-- Locale.tsx
+- openChannel
+- paging.ts
+- relations.ts
 - i18n/tsconfig.json
-- parts.tsx
+- preparation.integration.test.ts
 - rating.ts
 - Occulis — Estimation des coûts
-- `view/iso.ts` — projection et géométrie
 - tokens.ts
-- PendingCount
-- TeamEntry
+- config.ts
+- src/social.ts
+- Sélection des branches hébergées
 - settings.ts
+- auth/routes.ts
+- 5. Ligne de vue (LOS), hauteur, fog of war
+- components/Person.tsx
 - La charte graphique — `packages/ui`
-- Chat.tsx
-- PlacementCanvas
-- @occulis/infra
 
 ## God Nodes (most connected - your core abstractions)
 1. `Coord` - 75 edges
@@ -206,39 +206,39 @@
 ## Hyperedges (group relationships)
 - **CI checks → target resolution → deploy pipeline** — github_workflows_ci_checks_job, github_workflows_ci_target_job, github_workflows_ci_deploy_job, github_deploy_environments_manifest [INFERRED 0.85]
 
-## Communities (250 total, 135 thin omitted)
+## Communities (248 total, 134 thin omitted)
 
 ### Community 2 - "cli.tsx"
-Cohesion: 0.11
-Nodes (25): ink, Structure, ACTIONS, Level, action, COLOR_CODE, COLOR_CODE, consoleLog() (+17 more)
+Cohesion: 0.10
+Nodes (27): ink, Navigation, @occulis/infra, Structure, À distance (sans poste local allumé), Level, action, COLOR_CODE (+19 more)
 
 ### Community 4 - "La logique de jeu — `packages/core`"
 Cohesion: 0.04
 Nodes (38): Module actions.ts : coups légaux et résolution, Module los.ts : raycast Bresenham, géométrie seule, Module movement.ts : verticalité et portée de mêlée, Un type de pièce = une classe (données/comportement séparés), `ActionError`, `actions.ts` — coups légaux et résolution, `Board.fromAscii()`, `board.ts` — le plateau (+30 more)
 
 ### Community 5 - "Coord"
-Cohesion: 0.08
-Nodes (31): PlacedPiece, PlacementState, Board, Tile, TileSpec, areAdjacent(), chebyshevDistance(), Coord (+23 more)
+Cohesion: 0.10
+Nodes (23): Move, PlacedPiece, PlacementState, Board, Tile, TileSpec, areAdjacent(), chebyshevDistance() (+15 more)
 
 ### Community 6 - "technical/README.md"
 Cohesion: 0.32
 Nodes (4): Coûts hors hébergement (signature, Steam, domaine), Chiffrage plan Workers Paid, pnpm infra (TUI Ink), Séparation comment/pourquoi dans la doc technique
 
 ### Community 7 - "ref_vitest"
-Cohesion: 0.09
-Nodes (19): signUpAdmin(), get(), idsOf(), impersonate(), jar(), nextAddress(), profile(), signIn() (+11 more)
+Cohesion: 0.11
+Nodes (11): signUpAdmin(), Someone, cookieFrom(), PASSWORD, SESSION_COOKIE, signUp(), unique(), verifyEmail() (+3 more)
 
 ### Community 8 - "AccountApp.tsx"
-Cohesion: 0.14
-Nodes (33): AccountApp(), AccountAppProps, Forgot(), GoogleEntry(), NoticeLine(), Register(), Reset(), RouteLink() (+25 more)
+Cohesion: 0.16
+Nodes (30): AccountApp(), AccountAppProps, Forgot(), GoogleEntry(), NoticeLine(), Register(), Reset(), RouteLink() (+22 more)
 
 ### Community 10 - "compilerOptions"
 Cohesion: 0.12
 Nodes (15): compilerOptions, declaration, declarationMap, esModuleInterop, exactOptionalPropertyTypes, forceConsistentCasingInFileNames, isolatedModules, lib (+7 more)
 
 ### Community 11 - "views.tsx"
-Cohesion: 0.08
-Nodes (45): Act, BanDialog(), DeleteDialog(), ICONS, ImpersonateDialog(), Open, QuickActions(), QuickActionsProps (+37 more)
+Cohesion: 0.07
+Nodes (48): Act, BanDialog(), DeleteDialog(), ICONS, ImpersonateDialog(), Open, QuickActions(), QuickActionsProps (+40 more)
 
 ### Community 12 - "scripts"
 Cohesion: 0.22
@@ -258,43 +258,43 @@ Nodes (4): Phase de déploiement, Fog of war confirmé, Points ouverts (récapit
 
 ### Community 17 - "Le moteur de rendu et le client — `apps/web`"
 Cohesion: 0.05
-Nodes (40): `admin/` — le back-office, Carte des modules, Ce que le client fait, et ne fait pas, Clic contre glissé, Conditions de réémission, `game/hypothesis.ts` — la position telle que le joueur peut la croire, `game/movement-diff.ts` — ce que la vue a fait bouger, `game/online-match.ts` — la partie arbitrée par le serveur (+32 more)
+Nodes (44): `admin/` — le back-office, Carte des modules, Ce que le client fait, et ne fait pas, Clic contre glissé, `cliffQuads()` et l'ordre du peintre, Conditions de réémission, `game/hypothesis.ts` — la position telle que le joueur peut la croire, `game/movement-diff.ts` — ce que la vue a fait bouger (+36 more)
 
-### Community 18 - "messages"
-Cohesion: 0.21
-Nodes (15): messages(), attachConsole(), ConsoleElements, GameConsole, describeActionError(), describeFault(), describeMove(), describeOutcome() (+7 more)
+### Community 18 - "main.ts"
+Cohesion: 0.09
+Nodes (39): messages(), element(), intentOf(), main(), prewarmBoard(), signOut(), openSocial(), SocialChannel (+31 more)
 
 ### Community 19 - "Occulis — Document de conception (récapitulatif d'itération)"
-Cohesion: 0.08
-Nodes (25): 10. Récapitulatif — points ouverts à trancher (à date de ce document), 1. Pitch, 2. Piliers de design (non négociables, validés), 3.1 Attaque de mêlée (règle de base, toutes les pièces), 3.2 Attaque à distance (capacité spéciale, certaines pièces seulement), 3.3 Point ouvert non résolu, 3. Règles de capture — état validé, 4. Pièges (+17 more)
+Cohesion: 0.10
+Nodes (20): 10. Récapitulatif — points ouverts à trancher (à date de ce document), 1. Pitch, 2. Piliers de design (non négociables, validés), 3.1 Attaque de mêlée (règle de base, toutes les pièces), 3.2 Attaque à distance (capacité spéciale, certaines pièces seulement), 3.3 Point ouvert non résolu, 3. Règles de capture — état validé, 4. Pièges (+12 more)
 
-### Community 20 - "main.ts"
-Cohesion: 0.15
-Nodes (12): arrivalNotice(), flag(), element(), intentOf(), main(), prewarmBoard(), showIslands(), signOut() (+4 more)
+### Community 20 - "PlayerId"
+Cohesion: 0.14
+Nodes (14): OnlineMatch, SeatedContext, QueueSeat, Action, PlayerView, PlayerId, ActionRecord, WireView (+6 more)
 
 ### Community 21 - "social/queries.ts"
-Cohesion: 0.08
-Nodes (48): CHAT_PAGE_SIZE, checkMessage(), MAX_MESSAGE_LENGTH, MESSAGE_RETENTION_MS, MESSAGE_WINDOW_MS, MessageCheck, MessageError, MESSAGES_PER_WINDOW (+40 more)
+Cohesion: 0.10
+Nodes (40): CHAT_PAGE_SIZE, checkMessage(), MAX_MESSAGE_LENGTH, MESSAGE_RETENTION_MS, MESSAGE_WINDOW_MS, MessageCheck, MessageError, MESSAGES_PER_WINDOW (+32 more)
 
 ### Community 23 - "Outillage et CI/CD — `tooling/infra`, `.github`"
 Cohesion: 0.10
 Nodes (21): `checks` — les vérifications, Concurrence, `config.ts` — chemins et conventions, « Créer un environnement de branche », `deploy` — le déploiement, `deploy-manifest.ts` — édition du manifeste, `git.ts`, `.github/deploy-environments.json` — le mécanisme de sélection (+13 more)
 
 ### Community 28 - "cache.ts"
-Cohesion: 0.20
-Nodes (8): Entry, FRESH_MS, Loaded, loadedOf(), Outcome, pendingLoads, controlled(), useLoad()
+Cohesion: 0.15
+Nodes (9): Entry, FRESH_MS, Loaded, loadedOf(), Outcome, PendingCount, pendingLoads, controlled() (+1 more)
 
-### Community 29 - "protocol/src/index.ts"
-Cohesion: 0.10
-Nodes (23): ABSENCE_MS, cardOf(), DEPLOYMENT_MS, deployed(), seat(), LockedTeams, MatchConfig, ensurePlayers() (+15 more)
+### Community 29 - "core/src/index.ts"
+Cohesion: 0.12
+Nodes (19): ABSENCE_MS, cardOf(), DEPLOYMENT_MS, deployed(), seat(), LockedTeams, MatchConfig, ensurePlayers() (+11 more)
 
 ### Community 35 - "me/queries.ts"
-Cohesion: 0.09
-Nodes (40): readLog(), availableProviders(), guardCaller(), setShowcase(), createPreset(), deletePreset(), listPresets(), readPreset() (+32 more)
+Cohesion: 0.13
+Nodes (27): readLog(), availableProviders(), guardCaller(), deletePreset(), setDefaultPreset(), changeHandle(), HANDLE_COOLDOWN_MS, HandleChange (+19 more)
 
 ### Community 49 - "Occulis — Architecture technique"
-Cohesion: 0.11
-Nodes (17): CI/CD (ci.yml, deploy-environments.json), Quatre environnements, 1. Cible de distribution, 2. Hébergement : Cloudflare Worker + Durable Objects, 3. Base de données : D1, 4. Environnements, 5. CI/CD, 6. Coûts (+9 more)
+Cohesion: 0.20
+Nodes (10): 1. Cible de distribution, 2. Hébergement : Cloudflare Worker + Durable Objects, 3. Base de données : D1, 5. CI/CD, 6. Coûts, 7. Points ouverts, Conséquence : versionner les règles par partie, Le log d'actions est la source de vérité (+2 more)
 
 ### Community 50 - "Le serveur — `apps/server`"
 Cohesion: 0.06
@@ -308,9 +308,9 @@ Nodes (39): dependencies, @occulis/i18n, description, devDependencies, react, re
 Cohesion: 0.25
 Nodes (8): Commandes, Conventions, graphify, Infrastructure et CI/CD, Modules de `packages/core`, Occulis, Stack et architecture, État du projet
 
-### Community 53 - "Friends.tsx"
-Cohesion: 0.10
-Nodes (36): Blocked(), ChatView(), FriendList(), FriendMatchReplay(), FriendsView(), FriendView(), merged(), Requests() (+28 more)
+### Community 53 - "social/model.ts"
+Cohesion: 0.12
+Nodes (21): SocialContext, SocialProvider(), challenged(), EMPTY_SOCIAL, mapFriends(), readAll(), receive(), relationTo() (+13 more)
 
 ### Community 54 - "Occulis — Mise en place de l'infrastructure"
 Cohesion: 0.22
@@ -321,36 +321,36 @@ Cohesion: 0.15
 Nodes (5): Le dossier dit la dépendance (view/game purs vs scene/input/ui), Pipeline gestes/saisie → application → rendu, Cycle d'une action (load → applyAction → observe → log → broadcast), WireView / encodeView() protocole réseau, Client et serveur pas encore connectés
 
 ### Community 56 - "look"
-Cohesion: 0.14
-Nodes (23): arc(), at(), boardRadius(), drawSigil(), glyph(), drawBeam(), drawPiece(), PiecePaint (+15 more)
+Cohesion: 0.12
+Nodes (27): Board, mountBoard(), arc(), at(), boardRadius(), drawSigil(), glyph(), drawBeam() (+19 more)
 
 ### Community 57 - "Documentation technique"
 Cohesion: 0.33
 Nodes (6): Carte du système, Documentation technique, L'état réel du câblage, Les cinq documents, Périmètre — et ce que ces documents ne sont pas, Règle de maintenance
 
 ### Community 58 - "fog.ts"
-Cohesion: 0.11
-Nodes (37): Occupant, ConsoleOptions, Action, ActionError, applyAction(), destinationsFor(), legalActions(), MoveAction (+29 more)
+Cohesion: 0.12
+Nodes (36): Occupant, applyAction(), destinationsFor(), legalActions(), MoveAction, occupancyWithout(), replay(), ReplayError (+28 more)
 
 ### Community 59 - "web/package.json"
 Cohesion: 0.06
 Nodes (34): dependencies, @occulis/core, @occulis/i18n, @occulis/protocol, @occulis/ui, pixi.js, react, react-dom (+26 more)
 
 ### Community 61 - "auth/mail.ts"
-Cohesion: 0.24
-Nodes (17): changeEmailLetter(), COLORS, compose(), Content, deleteAccountLetter(), escapeHtml(), ESCAPES, html() (+9 more)
+Cohesion: 0.29
+Nodes (15): changeEmailLetter(), COLORS, compose(), Content, deleteAccountLetter(), escapeHtml(), ESCAPES, html() (+7 more)
 
 ### Community 62 - "profile/App.tsx"
-Cohesion: 0.13
-Nodes (31): Account(), DangerZone(), Editing, EditorProps, EmailEditor(), FeatsCard(), Frame(), Gate() (+23 more)
+Cohesion: 0.11
+Nodes (30): Account(), DangerZone(), Editing, EditorProps, EmailEditor(), FeatsCard(), Frame(), Gate() (+22 more)
 
-### Community 63 - "scene.ts"
-Cohesion: 0.14
-Nodes (31): Selection, drawHover(), drawLanding(), drawSelection(), lerp(), scaled(), topOf(), ditherPattern() (+23 more)
+### Community 63 - "overlay.ts"
+Cohesion: 0.27
+Nodes (20): drawHover(), drawLanding(), drawSelection(), lerp(), scaled(), topOf(), clamp01(), easeInOutSine() (+12 more)
 
 ### Community 64 - "better-auth.ts"
-Cohesion: 0.15
-Nodes (20): database, directory, env, ACCOUNT_MUTATIONS, ADMIN_ROLE, buildAuth(), claimDerivedHandle(), claimHandle() (+12 more)
+Cohesion: 0.10
+Nodes (32): database, directory, env, ACCOUNT_MUTATIONS, ADMIN_ROLE, buildAuth(), claimDerivedHandle(), claimHandle() (+24 more)
 
 ### Community 65 - "server/package.json"
 Cohesion: 0.06
@@ -361,12 +361,12 @@ Cohesion: 0.07
 Nodes (28): ink-text-input, tsx, @types/node, bin, occulis-infra, dependencies, ink, ink-text-input (+20 more)
 
 ### Community 68 - "online-match.ts"
-Cohesion: 0.13
-Nodes (10): hypothesisFrom(), Movement, movementBetween(), OnlineMatch, ClickOutcome, resolveClick(), selectionFor(), coordEquals() (+2 more)
+Cohesion: 0.20
+Nodes (8): hypothesisFrom(), Movement, movementBetween(), ClickOutcome, resolveClick(), selectionFor(), coordEquals(), pieceAt()
 
 ### Community 69 - "components/App.tsx"
 Cohesion: 0.16
-Nodes (20): ActionContext, ActionDef, App(), envItems(), InteractiveOutcome, Phase, Props, tomlBadge() (+12 more)
+Nodes (20): ActionContext, ActionDef, ACTIONS, App(), envItems(), InteractiveOutcome, Phase, Props (+12 more)
 
 ### Community 70 - "selection.test.ts"
 Cohesion: 0.19
@@ -384,29 +384,25 @@ Nodes (9): devDependencies, @cloudflare/workers-types, eslint, eslint-config-pre
 Cohesion: 0.17
 Nodes (10): @occulis/server package.json, apps/server (Cloudflare Worker + DO), apps/web (Vite + PixiJS rendering), docs/costs.md (infra cost estimates), docs/design.md (game design reference), Occulis project overview, packages/core (pure game logic), docs/setup.md (install procedure) (+2 more)
 
-### Community 75 - "core/src/index.ts"
-Cohesion: 0.11
-Nodes (33): attachControls(), ControlsOptions, Drag, DragKind, dragKindOf(), isTyping(), sameCoord(), Camera (+25 more)
+### Community 75 - "iso.ts"
+Cohesion: 0.10
+Nodes (37): attachControls(), ControlsOptions, Drag, DragKind, dragKindOf(), isTyping(), sameCoord(), Camera (+29 more)
 
 ### Community 77 - "MatchDO.load"
 Cohesion: 0.57
 Nodes (7): MatchDO.appendToLog(), MatchDO.broadcastViews(), MatchDO.config(), MatchDO.load(), MatchDO.play(), MatchDO.send(), MatchDO.webSocketMessage()
 
 ### Community 78 - "replay-canvas.ts"
-Cohesion: 0.23
-Nodes (33): mountReplay(), draw(), centerOffset(), fitScale(), ditherOf(), Drawable, drawPiece(), fillQuad() (+25 more)
-
-### Community 79 - "config.ts"
-Cohesion: 0.16
-Nodes (8): styles, dbName(), envFlag(), FIXED_DB_NAMES, here, isBranchEnv(), slugifyBranch(), FIXTURE
+Cohesion: 0.26
+Nodes (30): mountReplay(), draw(), centerOffset(), fitScale(), movesBetween(), ditherOf(), Drawable, drawPiece() (+22 more)
 
 ### Community 80 - "One branch = one full hosted environment"
 Cohesion: 0.50
 Nodes (4): deploy-environments.json manifest, Branches déployées, Branches déployées README, CI target-environment resolution job
 
-### Community 81 - "MatchDetail.tsx"
-Cohesion: 0.13
-Nodes (16): MatchDetail(), Replay(), describeAction(), seatHandle(), ReplayCanvas, clampFrame(), describeEntry(), frameLabel() (+8 more)
+### Community 81 - "replay.ts"
+Cohesion: 0.16
+Nodes (8): ReplayCanvas, Perspective, match, ReplayBoard(), ReplayBoardProps, METRICS, AdminFrame, AdminMatchDetail
 
 ### Community 82 - "mockup.js"
 Cohesion: 0.22
@@ -420,13 +416,13 @@ Nodes (3): match_actions table, matches table, docs/architecture.md (infra/serve
 Cohesion: 0.14
 Nodes (24): guardPlaceholder(), stream(), PLACEHOLDER, ROOT, SERVER_DIR, TOML, commitPaths(), currentBranch() (+16 more)
 
-### Community 85 - "Les composants"
-Cohesion: 0.09
-Nodes (32): Composition, Les composants, `revealWindow()` — les fenêtres flottantes naissent sous la souris, Card(), CardColumn(), CardGrid(), CardProps, Dialog() (+24 more)
+### Community 85 - "Composition"
+Cohesion: 0.11
+Nodes (19): Composition, Banner(), BannerProps, EmptyState(), EmptyStateProps, Card(), CardColumn(), CardGrid() (+11 more)
 
 ### Community 86 - "piece-type.ts"
-Cohesion: 0.15
-Nodes (18): Slot, Adjacency, ConfigurablePieceType, PieceProfile, PieceKind, PieceRole, PieceType, MovementProfile (+10 more)
+Cohesion: 0.19
+Nodes (15): Slot, ConfigurablePieceType, PieceProfile, PieceKind, PieceRole, PieceType, MovementProfile, VisionProfile (+7 more)
 
 ### Community 87 - "protocol/package.json"
 Cohesion: 0.11
@@ -434,39 +430,35 @@ Nodes (17): dependencies, @occulis/core, devDependencies, typescript, vitest, @o
 
 ### Community 88 - "window-reveal.ts"
 Cohesion: 0.14
-Nodes (17): DialogProps, Note(), Notify, ToastContext, ToastMessage, ToastStackProps, clamp01(), CLOSE_MS (+9 more)
+Nodes (22): Setup, `revealWindow()` — une fenêtre qu'un clic ouvre se déplie, Dialog(), Notify, Toast(), ToastContext, ToastMessage, ToastProvider() (+14 more)
 
 ### Community 89 - "server/src/index.ts"
-Cohesion: 0.13
-Nodes (23): Auth, isImpersonated(), Caller, Account, currentAccount(), handleAuth(), ACCOUNT_PATHS, createMatch() (+15 more)
+Cohesion: 0.16
+Nodes (19): currentAccount(), handleAuth(), ACCOUNT_PATHS, createMatch(), fetch(), hasAuthSecret(), joinQueue(), joinSocial() (+11 more)
 
-### Community 91 - "shell.ts"
-Cohesion: 0.14
-Nodes (15): Identity, advance(), FlowEvent, QueueSeeking, Seeking, Stage, START, waiting (+7 more)
-
-### Community 92 - "reveal.ts"
-Cohesion: 0.24
-Nodes (12): easeInOutSine(), crestAt(), distanceToSources(), lightAt(), LightMap, progress(), relight(), RevealTiming (+4 more)
+### Community 92 - "scene.ts"
+Cohesion: 0.08
+Nodes (34): Selection, BoardHooks, ditherPattern(), Drawable, INSTANT, isTile(), occupantsOf(), sameCoord() (+26 more)
 
 ### Community 93 - "src/team.ts"
 Cohesion: 0.09
-Nodes (26): Piece, REGISTRY, DEMO, MAP, PIECES, DEFAULT_SCENARIO, REGISTRY, DEPLOYMENT (+18 more)
+Nodes (24): Piece, REGISTRY, DEMO, MAP, PIECES, DEFAULT_SCENARIO, REGISTRY, DEPLOYMENT (+16 more)
 
 ### Community 94 - "core/package.json"
 Cohesion: 0.13
 Nodes (14): devDependencies, typescript, vitest, typescript, vitest, main, name, private (+6 more)
 
-### Community 95 - "components/TopBar.tsx"
-Cohesion: 0.13
-Nodes (12): Banner(), BannerProps, EmptyState(), EmptyStateProps, Button, ButtonProps, ProgressBar(), TopBar() (+4 more)
+### Community 95 - "Les composants"
+Cohesion: 0.11
+Nodes (21): Invariants à ne pas casser, Les composants, DefinitionList(), Fact, FactStrip(), LocaleSwitch(), useMessages(), Stat() (+13 more)
 
 ### Community 96 - "admin/queries.ts"
-Cohesion: 0.09
-Nodes (31): DEFAULT_PAGE_SIZE, integer(), MatchFilter, MatchStatus, MAX_PAGE_SIZE, Page, parseMatchFilter(), parsePage() (+23 more)
+Cohesion: 0.12
+Nodes (24): annotate(), frameOf(), listMatches(), MATCH_COLUMNS, MatchRow, readMatch(), readPlayer(), readStats() (+16 more)
 
-### Community 97 - "PlayerId"
-Cohesion: 0.21
-Nodes (7): absenceKey(), locksFor(), MatchDO, spectatorView(), watchTag(), MatchMemory, PlayerId
+### Community 97 - "MatchDO"
+Cohesion: 0.20
+Nodes (6): absenceKey(), locksFor(), MatchDO, spectatorView(), watchTag(), MatchMemory
 
 ### Community 98 - "admin/api.ts"
 Cohesion: 0.13
@@ -481,12 +473,12 @@ Cohesion: 0.18
 Nodes (10): compilerOptions, declaration, declarationMap, module, moduleResolution, noEmit, types, extends (+2 more)
 
 ### Community 101 - "command.ts"
-Cohesion: 0.19
+Cohesion: 0.21
 Nodes (11): Command, CommandFault, parseCommand(), parseCoord(), RESIGN_WORDS, actionFor(), expectMove(), faultOf() (+3 more)
 
 ### Community 102 - "social.integration.test.ts"
-Cohesion: 0.15
-Nodes (15): ProfileRow, befriend(), call(), get(), json(), listen(), matchOf(), social() (+7 more)
+Cohesion: 0.19
+Nodes (8): befriend(), call(), get(), json(), listen(), matchOf(), social(), ChatPage
 
 ### Community 103 - "sky.ts"
 Cohesion: 0.27
@@ -497,28 +489,24 @@ Cohesion: 0.18
 Nodes (10): compilerOptions, allowImportingTsExtensions, jsx, lib, noEmit, outDir, rootDir, extends (+2 more)
 
 ### Community 105 - "net/auth.ts"
-Cohesion: 0.27
-Nodes (12): authMessage(), codeMessage(), failure(), JSON_HEADERS, linkGoogle(), post(), redirectMessage(), redirectTo() (+4 more)
-
-### Community 106 - "admin/main.tsx"
-Cohesion: 0.13
-Nodes (5): host, host, setLook(), applyTheme(), storedTheme()
-
-### Community 107 - "vite.config.ts"
 Cohesion: 0.20
-Nodes (7): criticalPaint(), MIME, MOCKUPS_DIR, PAGES, resolveWithin(), serveMockups(), vite
+Nodes (17): authMessage(), AuthOutcome, codeMessage(), failure(), JSON_HEADERS, linkGoogle(), post(), redirectMessage() (+9 more)
 
-### Community 108 - "components/IconButton.tsx"
-Cohesion: 0.15
-Nodes (10): Occulis UI — conventions, The three rules of the art direction, Tokens and classes, Badge(), BadgeProps, BadgeRow(), IconButton(), IconButtonProps (+2 more)
+### Community 107 - "en/index.ts"
+Cohesion: 0.12
+Nodes (12): account, admin, auth, feats, game, en, mail, prepare (+4 more)
+
+### Community 108 - "components/Badge.tsx"
+Cohesion: 0.22
+Nodes (7): Occulis UI — conventions, The three rules of the art direction, Tokens and classes, Badge(), BadgeProps, BadgeRow(), QuickBar()
 
 ### Community 109 - "compilerOptions"
 Cohesion: 0.22
 Nodes (8): compilerOptions, jsx, lib, noEmit, types, extends, include, ../../tsconfig.base.json
 
-### Community 110 - "match-channel.ts"
-Cohesion: 0.08
-Nodes (33): FIRST_RETRY_MS, MAX_RETRY_MS, retryDelay(), Channel, ChannelOptions, ChannelStatus, openChannel(), connect() (+25 more)
+### Community 110 - "protocol/src/index.ts"
+Cohesion: 0.10
+Nodes (30): ChannelStatus, connect(), connectToMatch(), DeploymentContext, MatchChannel, MatchHandlers, watchMatch(), joinQueue() (+22 more)
 
 ### Community 112 - "core/tsconfig.json"
 Cohesion: 0.29
@@ -528,9 +516,9 @@ Nodes (6): compilerOptions, outDir, rootDir, extends, include, ../../tsconfig.ba
 Cohesion: 0.29
 Nodes (6): compilerOptions, outDir, rootDir, extends, include, ../../tsconfig.base.json
 
-### Community 114 - "Locale"
-Cohesion: 0.24
-Nodes (9): ACCEPT_TOTAL_MS, DEPLOYMENT_TOTAL_MS, Content(), MatchFound(), MatchFoundProps, TeamsAppProps, Locale, LocaleSwitchProps (+1 more)
+### Community 114 - "coord.ts"
+Cohesion: 0.13
+Nodes (11): Adjacency, DIAGONAL_STEPS, OCTILE_STEPS, ORTHOGONAL_STEPS, Clairvoyant, FLAT, ORIGIN, Sentinel (+3 more)
 
 ### Community 115 - "Maquettes des écrans"
 Cohesion: 0.33
@@ -541,48 +529,52 @@ Cohesion: 0.33
 Nodes (6): Commandes, Documentation, Démarrage rapide, Environnements, Occulis, Organisation
 
 ### Community 117 - "profile/api.ts"
-Cohesion: 0.14
-Nodes (24): call(), changeEmail(), changeHandle(), changePassword(), createPreset(), currentMatch(), deletePreset(), feats() (+16 more)
+Cohesion: 0.15
+Nodes (23): call(), changeEmail(), changeHandle(), changePassword(), createPreset(), deletePreset(), feats(), match() (+15 more)
 
 ### Community 119 - "presets.ts"
-Cohesion: 0.12
-Nodes (12): defaultTeam(), Input, isValid(), PRESET_LIMIT, PresetError, PresetResult, PresetRow, readInput() (+4 more)
+Cohesion: 0.18
+Nodes (14): createPreset(), Input, isValid(), listPresets(), PRESET_LIMIT, PresetError, PresetResult, PresetRow (+6 more)
 
-### Community 140 - "Deployment.tsx"
-Cohesion: 0.23
-Nodes (12): boardForScenario(), useRemaining(), Content(), Deployment(), AUTO_SEND_MS, initialTeam(), presetTeam(), remainingAt() (+4 more)
+### Community 140 - "TeamsApp.tsx"
+Cohesion: 0.10
+Nodes (26): boardForScenario(), useRemaining(), ACCEPT_TOTAL_MS, DEPLOYMENT_TOTAL_MS, Content(), Deployment(), Content(), MatchFound() (+18 more)
 
 ### Community 149 - "cx"
 Cohesion: 0.08
-Nodes (27): ChoiceList(), ChoiceRow(), ChoiceRowProps, CountdownRing(), CountdownRingProps, MoveEntry, MoveList(), MoveListProps (+19 more)
+Nodes (28): Button, ButtonProps, ChoiceList(), ChoiceRow(), ChoiceRowProps, CountdownRing(), CountdownRingProps, IconButton() (+20 more)
 
 ### Community 150 - "Field.tsx"
-Cohesion: 0.09
-Nodes (27): Avertissements connus, Décisions et contournements, Notes de synchronisation — Occulis UI, Préparer un re-sync, Re-sync risks, InlineEdit(), InlineEditProps, PasswordField() (+19 more)
+Cohesion: 0.07
+Nodes (33): Avertissements connus, Décisions et contournements, Notes de synchronisation — Occulis UI, Préparer un re-sync, Re-sync risks, InlineEdit(), InlineEditProps, PasswordField() (+25 more)
 
 ### Community 172 - "TeamBuilder.tsx"
-Cohesion: 0.20
-Nodes (20): autoFill(), clear(), clickTile(), emptyDraft(), firstUnplaced(), fromEntries(), isComplete(), placedCount() (+12 more)
+Cohesion: 0.14
+Nodes (19): autoFill(), clear(), clickTile(), firstUnplaced(), isComplete(), placedCount(), remove(), ROLES (+11 more)
 
 ### Community 186 - "Notes d'implémentation — interprétations à valider"
 Cohesion: 0.50
 Nodes (4): Correctifs notables, Décisions volontairement non implémentées, Interprétations encodées, Notes d'implémentation — interprétations à valider
 
+### Community 199 - "parts.tsx"
+Cohesion: 0.05
+Nodes (19): MatchDetail(), Replay(), winRate(), clampFrame(), describeEntry(), frameLabel(), asBoardFrames(), describeMyResult() (+11 more)
+
 ### Community 200 - "fr/index.ts"
-Cohesion: 0.07
-Nodes (28): account, admin, auth, feats, game, en, mail, prepare (+20 more)
+Cohesion: 0.16
+Nodes (16): account, admin, auth, feats, game, fr, mail, prepare (+8 more)
 
 ### Community 201 - "me/feats.ts"
 Cohesion: 0.19
-Nodes (17): parseJson(), readPlayerCard(), FEAT_IDS, FeatId, isFeatId(), PlayerStats, RULES, SHOWCASE_SIZE (+9 more)
+Nodes (18): parseJson(), readPlayerCard(), FEAT_IDS, FeatId, isFeatId(), PlayerStats, RULES, SHOWCASE_SIZE (+10 more)
 
 ### Community 202 - "social-do.ts"
-Cohesion: 0.16
-Nodes (11): callSocial(), openSocial(), pushTo(), SocialDO, socialOf(), friendIds(), SocialContext, Challenge (+3 more)
+Cohesion: 0.17
+Nodes (9): callSocial(), openSocial(), pushTo(), SocialDO, socialOf(), friendIds(), SocialClientMessage, SocialServerMessage (+1 more)
 
-### Community 203 - "handle.ts"
-Cohesion: 0.25
-Nodes (12): anonymousHandle(), checkHandle(), DELETED_PREFIXES, fold(), handleBase(), handleCandidates(), HandleCheck, HandleError (+4 more)
+### Community 203 - "Friends.tsx"
+Cohesion: 0.29
+Nodes (17): Blocked(), ChatView(), FriendList(), FriendMatchReplay(), FriendsView(), FriendView(), merged(), Requests() (+9 more)
 
 ### Community 205 - "profile/resources.ts"
 Cohesion: 0.27
@@ -592,13 +584,13 @@ Nodes (13): resource, chat(), feats, friend(), friendMatch(), friendMatches(), f
 Cohesion: 0.38
 Nodes (10): MatchStatus, identity, match(), matches(), overview, player(), resourcesOf(), user() (+2 more)
 
-### Community 207 - "TeamsApp.tsx"
-Cohesion: 0.24
-Nodes (8): toEntries(), verdict(), Editing, Editor(), Teams(), TeamsApp(), Trigger(), Usage()
+### Community 207 - "me.integration.test.ts"
+Cohesion: 0.23
+Nodes (9): get(), idsOf(), impersonate(), jar(), nextAddress(), profile(), signIn(), nextAddress() (+1 more)
 
 ### Community 208 - "current.ts"
-Cohesion: 0.12
-Nodes (18): chooseLocale(), initLocale(), translateDom(), currentLocale(), listeners, onLocaleChange(), setLocale(), App() (+10 more)
+Cohesion: 0.09
+Nodes (27): App(), chooseLocale(), initLocale(), translateDom(), currentLocale(), listeners, onLocaleChange(), setLocale() (+19 more)
 
 ### Community 209 - "password.ts"
 Cohesion: 0.31
@@ -609,28 +601,28 @@ Cohesion: 0.12
 Nodes (15): description, devDependencies, typescript, vitest, typescript, vitest, main, name (+7 more)
 
 ### Community 211 - "ref_react"
-Cohesion: 0.10
-Nodes (13): Hero(), HeroProps, Icon(), ICON_NAMES, IconName, IconProps, ICONS, Shape (+5 more)
+Cohesion: 0.08
+Nodes (16): MessageComposer(), MessageComposerProps, MessageThread(), MessageThreadProps, ThreadMessage, DialogProps, Note(), Hero() (+8 more)
 
-### Community 212 - "animation.ts"
-Cohesion: 0.26
-Nodes (8): advance(), AnimatedPosition, easeInOutCubic(), lagging(), liftOf(), positionOf(), startMove(), BOARD
+### Community 212 - "openChannel"
+Cohesion: 0.31
+Nodes (6): FIRST_RETRY_MS, MAX_RETRY_MS, retryDelay(), Channel, ChannelOptions, openChannel()
 
-### Community 213 - "scene/board.ts"
-Cohesion: 0.27
-Nodes (8): Board, BoardHooks, mountBoard(), SceneInput, MoveAnimation, ART_PIXEL, breath(), pixelResolution()
+### Community 213 - "paging.ts"
+Cohesion: 0.36
+Nodes (8): DEFAULT_PAGE_SIZE, integer(), MatchFilter, MatchStatus, MAX_PAGE_SIZE, Page, parseMatchFilter(), parsePage()
 
-### Community 214 - "Locale.tsx"
-Cohesion: 0.22
-Nodes (6): Invariants à ne pas casser, DEFAULT_LOCALE, LocaleContext, LocaleSwitch(), useLocale(), useMessages()
+### Community 214 - "relations.ts"
+Cohesion: 0.24
+Nodes (8): MAX_PENDING_REQUESTS, RelationFacts, relationOf(), RequestDecision, RequestError, NONE, WatchError, WatchFacts
 
 ### Community 215 - "i18n/tsconfig.json"
 Cohesion: 0.29
 Nodes (6): compilerOptions, outDir, rootDir, extends, include, ../../tsconfig.base.json
 
-### Community 216 - "parts.tsx"
-Cohesion: 0.10
-Nodes (12): winRate(), describeMyResult(), MatchReplayView(), MatchReplayViewProps, MatchTable(), MatchTableProps, MyResult(), RecordCard() (+4 more)
+### Community 216 - "preparation.integration.test.ts"
+Cohesion: 0.22
+Nodes (3): defaultTeam(), MeProfile, TeamPresetList
 
 ### Community 217 - "rating.ts"
 Cohesion: 0.53
@@ -640,38 +632,42 @@ Nodes (4): expectedScore(), INITIAL_RATING, K_FACTOR, ratingChanges()
 Cohesion: 0.50
 Nodes (4): Coûts hors hébergement, L'hibernation est une condition, pas une optimisation, Non chiffré, Occulis — Estimation des coûts
 
-### Community 219 - "`view/iso.ts` — projection et géométrie"
-Cohesion: 0.50
-Nodes (4): `cliffQuads()` et l'ordre du peintre, La projection elle-même, `tileQuad()` — pourquoi les quatre coins sont projetés séparément, `view/iso.ts` — projection et géométrie
-
 ### Community 220 - "tokens.ts"
-Cohesion: 0.13
-Nodes (24): applyPalette(), Fichiers, Les tokens, criticalHead(), PIXEL_FONT_URL, THEME_STORAGE_KEY, withCriticalHead(), BACKGROUND (+16 more)
+Cohesion: 0.08
+Nodes (36): setLook(), applyPalette(), SettingsOptions, applyTheme(), criticalPaint(), MIME, MOCKUPS_DIR, PAGES (+28 more)
 
-### Community 227 - "TeamEntry"
-Cohesion: 0.50
-Nodes (5): DeploymentContext, DeploymentState, DeploymentProps, TeamEntry, TeamPreset
+### Community 226 - "config.ts"
+Cohesion: 0.33
+Nodes (7): dbName(), DEPLOY_MANIFEST, envFlag(), FIXED_DB_NAMES, here, isBranchEnv(), slugifyBranch()
+
+### Community 227 - "src/social.ts"
+Cohesion: 0.39
+Nodes (7): ProfileRow, MeRecord, ChatMessage, FriendProfile, FriendRequest, PlayerSearchResult, SocialPlayer
+
+### Community 228 - "Sélection des branches hébergées"
+Cohesion: 0.25
+Nodes (7): CI/CD (ci.yml, deploy-environments.json), Quatre environnements, 4. Environnements, Sélection des branches hébergées, Procédure d'installation (local → recette → prod), .github/deploy-environments.json (mécanisme de sélection), Catalogue ACTIONS de tooling/infra
 
 ### Community 229 - "settings.ts"
-Cohesion: 0.29
-Nodes (4): Settings, SettingsElements, SettingsOptions, ThemeName
+Cohesion: 0.24
+Nodes (5): attachSettings(), Settings, SettingsElements, storedTheme(), isThemeName()
+
+### Community 230 - "auth/routes.ts"
+Cohesion: 0.47
+Nodes (4): Auth, isImpersonated(), Caller, Account
+
+### Community 245 - "5. Ligne de vue (LOS), hauteur, fog of war"
+Cohesion: 0.40
+Nodes (5): 5.1 Décision fondatrice, 5.2 Distinction fondamentale : Visibilité ≠ Portée, 5.3 Règles de hauteur (mêlée / adjacence), 5.4 Fog of war — confirmé, 5. Ligne de vue (LOS), hauteur, fog of war
 
 ### Community 247 - "La charte graphique — `packages/ui`"
-Cohesion: 0.29
-Nodes (7): Setup, La charte graphique — `packages/ui`, La feuille de style, La synchronisation vers Claude Design, Tests, useToast(), UiRoot()
-
-### Community 248 - "Chat.tsx"
-Cohesion: 0.29
-Nodes (5): MessageComposer(), MessageComposerProps, MessageThread(), MessageThreadProps, ThreadMessage
-
-### Community 252 - "@occulis/infra"
-Cohesion: 0.50
-Nodes (3): Navigation, @occulis/infra, À distance (sans poste local allumé)
+Cohesion: 0.40
+Nodes (5): La charte graphique — `packages/ui`, La feuille de style, La synchronisation vers Claude Design, Tests, UiRoot()
 
 ## Knowledge Gaps
 - **736 isolated node(s):** `entries`, `printWidth`, `trailingComma`, `name`, `version` (+731 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1140 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **135 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **134 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -683,10 +679,10 @@ _Questions this graph is uniquely positioned to answer:_
 - **What connects `entries`, `printWidth`, `trailingComma` to the rest of the system?**
   _736 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `cli.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.10984848484848485 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09682539682539683 - nodes in this community are weakly interconnected._
 - **Why does `Occulis project overview` connect `Occulis project overview` to `docs/architecture.md (infra/server architecture reference)`, `technical/README.md`?**
   _High betweenness centrality (0.054) - this node is a cross-community bridge._
 - **Should `La logique de jeu — `packages/core`` be split into smaller, more focused modules?**
   _Cohesion score 0.04081632653061224 - nodes in this community are weakly interconnected._
 - **Should `Coord` be split into smaller, more focused modules?**
-  _Cohesion score 0.07924984875983061 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.10303030303030303 - nodes in this community are weakly interconnected._
