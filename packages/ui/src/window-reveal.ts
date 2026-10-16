@@ -82,7 +82,8 @@ function prefersStill(): boolean {
 
 /**
  * Joue l'ouverture (`"open"`) ou la fermeture (`"close"`) sur `target`, déjà affiché,
- * depuis son centre ou depuis la souris (`from`).
+ * depuis son centre ou depuis la souris (`from`). `speed` ralentit le geste (`0.25`, quatre
+ * fois plus lent) : le design system du back-office s'en sert pour le montrer au ralenti.
  * Rend une promesse tenue à la fin ; la fermeture laisse à l'appelant le soin de masquer
  * l'élément. Sous `prefers-reduced-motion`, ou pour un élément sans taille, elle est tenue
  * tout de suite. Une animation en cours sur le même élément est interrompue.
@@ -92,7 +93,12 @@ function prefersStill(): boolean {
  * `<dialog>` modale). La fenêtre peut grandir en cours d'ouverture (un code qui arrive) :
  * tout suit sa taille à chaque image, le point de départ restant fixe à l'écran.
  */
-export function revealWindow(target: HTMLElement, mode: "open" | "close" = "open", from: "center" | "pointer" = "center"): Promise<void> {
+export function revealWindow(
+  target: HTMLElement,
+  mode: "open" | "close" = "open",
+  from: "center" | "pointer" = "center",
+  { speed = 1 }: { speed?: number } = {},
+): Promise<void> {
   running.get(target)?.();
   const first = target.getBoundingClientRect();
   if (prefersStill() || first.width === 0 || first.height === 0) return Promise.resolve();
@@ -146,7 +152,7 @@ export function revealWindow(target: HTMLElement, mode: "open" | "close" = "open
     running.set(target, finish);
 
     const draw = (now: number): void => {
-      const elapsed = now - start;
+      const elapsed = (now - start) * speed;
       if (elapsed >= total) {
         finish();
         return;

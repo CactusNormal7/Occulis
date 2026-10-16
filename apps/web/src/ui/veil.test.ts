@@ -7,7 +7,7 @@ import { VEIL_MS, VEIL_SWAP_MS } from "./veil.js";
  * échoue à la moindre retouche, pour qu'elle ne passe jamais par mégarde. Le modifier exige
  * son accord explicite.
  */
-const css = readFileSync(new URL("./ui.css", import.meta.url), "utf8");
+const css = readFileSync(new URL("./veil.css", import.meta.url), "utf8");
 
 const LOCKED = `.theme-veil {
   position: fixed;

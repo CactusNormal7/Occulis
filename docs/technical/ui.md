@@ -50,6 +50,7 @@ et à la CI (`pnpm -r build`).
 | `cssColor(color, alpha)` | Entier → `rgb(r g b / a)` |
 | `hexColor(color, alpha, over)` | Entier → `#rrggbb`, l'alpha **précomposé** sur le fond : le format des courriers HTML du serveur, que la moitié des clients de messagerie lisent sans transparence |
 | `cssVariables(theme)` | Nom `--occ-*` → valeur pour un thème (par défaut, celui par défaut) |
+| `paletteVariables(palette)` | Les mêmes propriétés pour une palette quelconque : `cssVariables()` s'en sert, et le design system du back-office pour une palette retouchée à la main |
 | `tokensStylesheet()` | Le texte exact de `generated/tokens.css` : le thème par défaut sur `:root`, puis chaque thème sous `:root[data-theme="…"]` |
 
 `cssVariables()` dérive en plus quelques lueurs (`--occ-camp-a-glow`, `--occ-camp-b-glow`,
@@ -121,6 +122,7 @@ l'attribut `data-tip`. Toutes les animations s'éteignent sous `prefers-reduced-
 | Données | `StatTile`, `StatTileGrid`, `Stat`, `StatGrid`, `FactStrip`, `DefinitionList`, `Table`, `Pager`, `List`, `ListRow`, `MoveList` |
 | Fenêtres | `Dialog` (`cancelLabel`, et `dismissible={false}` : ni croix, ni Échap, ni voile — pour une question qui attend une réponse) |
 | Messages | `MessageThread` (fil entre deux personnes), `MessageComposer` (champ d'écriture) |
+| Vitrine (`Showcase.tsx`) | Les briques d'une page qui montre la charte — le design system du back-office : `CodeBlock` (code en monospace système, défilant), `Swatch` (échantillon, modifiable avec `onChange` par le sélecteur de couleur du système) et `SwatchGrid`, `Specimen` (un token montré par son effet), `Stage` (cadre d'un aperçu vivant, titre et actions), `Prose` (texte rédigé : titres, listes, code), `NavList` (table des matières par sections), `AsideLayout` (colonne étroite collante et contenu) |
 
 Quelques comportements à connaître :
 
@@ -209,7 +211,7 @@ entières n'en usent pas.
 
 | Export | Rôle |
 |---|---|
-| `revealWindow(target, mode, from)` | Joue `"open"` ou `"close"` sur un élément affiché, depuis `"center"` (défaut) ou `"pointer"` ; promesse tenue à la fin. Immédiate sous `prefers-reduced-motion` ou pour un élément sans taille ; interrompt une animation en cours sur le même élément |
+| `revealWindow(target, mode, from, { speed })` | Joue `"open"` ou `"close"` sur un élément affiché, depuis `"center"` (défaut) ou `"pointer"`, à la vitesse `speed` (1 par défaut ; le design system la ralentit) ; promesse tenue à la fin. Immédiate sous `prefers-reduced-motion` ou pour un élément sans taille ; interrompt une animation en cours sur le même élément |
 | `spreadAt(elapsed, mode)` | L'étendue à un instant, de 0 (un point) à 1 (la fenêtre entière) |
 | `originIn(width, height, pointer)` | Le point de départ en coordonnées locales : le pointeur ramené sur les bords, ou le centre s'il est `null` |
 | `frameAt(spread, origin, width, height)` | Le rectangle dévoilé, arrondi au pixel |
@@ -239,12 +241,12 @@ catégories (`docs/<Nom>.md`), l'en-tête de conventions lu par l'agent de desig
 
 ## Tests
 
-36 tests, sous Node : `pnpm --filter @occulis/ui test`.
+37 tests, sous Node : `pnpm --filter @occulis/ui test`.
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
 | `src/tokens.test.ts` | `generated/tokens.css` identique à sa source, mêmes propriétés pour chaque thème, `styles.css` sans propriété indéfinie ni couleur en dur, conversion des couleurs, **alpha précomposé pour les courriers** |
-| `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition**, **langue fixée par `UiRoot` (et anglais par défaut)**, compte à rebours proportionnel et urgent, plaques dans la couleur de leur camp, ligne de choix marquée, fenêtre sans croix, **fil de messages : les siens marqués à part, texte échappé, état vide, longueur du champ**, squelette annoncé sans texte visible |
+| `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition**, **langue fixée par `UiRoot` (et anglais par défaut)**, compte à rebours proportionnel et urgent, plaques dans la couleur de leur camp, ligne de choix marquée, fenêtre sans croix, **fil de messages : les siens marqués à part, texte échappé, état vide, longueur du champ**, squelette annoncé sans texte visible, **vitrine : code échappé, échantillon modifiable seulement avec `onChange`, lien courant marqué** |
 | `src/window-reveal.test.ts` | Ouverture continue d'un point à la fenêtre entière, fermeture jusqu'au point et plus rapide ; départ au pointeur ramené sur les bords, au centre sans pointeur ; rectangle qui contient toujours le point de départ |
 | `src/critical.test.ts` | **Fond et thème sombre sans variable** (la feuille n'est pas encore là), police pixel déclarée et préchargée, thème posé avant la première image, fondu coupé sous mouvement réduit, aucun préchargement de `/api/*` ni `/match/*` et jamais de `prerender`, **bloc placé après l'encodage et avant toute feuille** |
 

@@ -78,3 +78,18 @@ export {
   type SettingRowProps,
   type SettingEditorProps,
 } from "./components/Setting.js";
+export {
+  AsideLayout,
+  CodeBlock,
+  NavList,
+  Prose,
+  Specimen,
+  Stage,
+  Swatch,
+  SwatchGrid,
+  type CodeBlockProps,
+  type NavSection,
+  type SpecimenProps,
+  type StageProps,
+  type SwatchProps,
+} from "./components/Showcase.js";

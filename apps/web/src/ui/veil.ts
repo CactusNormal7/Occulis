@@ -1,6 +1,6 @@
 /**
  * Le voile tramé : un damier d'un pixel sur deux, couleur du vide, qui balaie l'écran de
- * gauche à droite (ui.css, `.theme-veil`). Ce qui change sous lui change pendant qu'il
+ * gauche à droite (`veil.css`, `.theme-veil`). Ce qui change sous lui change pendant qu'il
  * couvre : on ne voit jamais la bascule, seulement le passage du voile.
  *
  * Il sert au changement de thème, pour lequel il a été conçu, et à l'entrée dans la
@@ -9,6 +9,7 @@
  * `veil.test.ts`. Une autre transition qui voudrait s'en écarter prend sa propre classe,
  * elle ne retouche pas celle-ci.
  */
+import "./veil.css";
 
 /** Le temps du balayage entier : le voile entre, couvre, puis sort à droite. */
 export const VEIL_MS = 520;

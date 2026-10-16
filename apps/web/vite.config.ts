@@ -128,7 +128,24 @@ const PAGES = {
   profile: fileURLToPath(new URL("profile/index.html", import.meta.url)),
 };
 
+/**
+ * Le design system du back-office (`src/admin/design/`) monte les aperçus de la charte là
+ * où la synchronisation vers Claude Design les range, dans `.design-sync/previews/`, hors
+ * de tout paquet : aucun `node_modules` ni `tsconfig.json` ne les y attend. D'où trois
+ * réglages, sans effet sur le reste du client :
+ * - `@occulis/ui` et React se résolvent depuis cette application (`alias`, `dedupe`) —
+ *   un second React casserait les hooks ;
+ * - le JSX est compilé par le runtime automatique, celui que `"jsx": "react-jsx"` impose
+ *   déjà à `src/`.
+ */
+const UI_ENTRY = fileURLToPath(new URL("../../packages/ui/src/index.ts", import.meta.url));
+
 export default defineConfig(({ mode }) => ({
   plugins: [criticalPaint(), serveMockups(), ...(mode === MOCKUPS_MODE ? [embedMockups()] : [])],
+  resolve: {
+    alias: [{ find: /^@occulis\/ui$/, replacement: UI_ENTRY }],
+    dedupe: ["react", "react-dom"],
+  },
+  esbuild: { jsx: "automatic" },
   build: { rollupOptions: { input: PAGES } },
 }));

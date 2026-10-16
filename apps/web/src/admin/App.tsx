@@ -2,10 +2,10 @@ import { Suspense, useState, type ReactNode } from "react";
 import { Button, EmptyState, LocaleSwitch, ProgressBar, ToastProvider, TopBar, UiRoot, useMessages } from "@occulis/ui";
 import { chooseLocale, initLocale } from "../i18n/browser.js";
 import { stopImpersonating, type Identity } from "../net/auth.js";
-import { useHashRoute, useLoad, usePending } from "../load/hooks.js";
+import { useHashRoute, useLoad, usePending, whenReady } from "../load/hooks.js";
 import { MatchDetail } from "./MatchDetail.js";
 import { parseRoute, routeHash, sectionOf, type Route } from "./model.js";
-import { identity as identityResource, resourcesOf } from "./resources.js";
+import { designSystem, identity as identityResource, resourcesOf } from "./resources.js";
 import { MatchList, Overview, PlayerDetail, UserDetail, UserList } from "./views.js";
 
 /**
@@ -58,6 +58,7 @@ function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
                 { href: "#/", label: m.tabs.overview, current: section === "overview" },
                 { href: "#/users", label: m.tabs.accounts, current: section === "users" },
                 { href: "#/matches", label: m.tabs.matches, current: section === "matches" },
+                { href: "#/design", label: m.tabs.design, current: section === "design" },
               ]
             : []
         }
@@ -112,5 +113,13 @@ function View({ route, self }: { route: Route; self: string }) {
       return <MatchList status={route.status} offset={route.offset} />;
     case "match":
       return <MatchDetail id={route.id} />;
+    case "design":
+      return <Design route={route} />;
   }
+}
+
+/** Le design system, une fois sa page arrivée (`designSystem`, chargée à part). */
+function Design({ route }: { route: Extract<Route, { view: "design" }> }) {
+  const { loaded } = useLoad(designSystem);
+  return whenReady(loaded, ({ DesignSystem }) => <DesignSystem route={route} />);
 }

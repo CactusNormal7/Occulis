@@ -42,13 +42,13 @@ qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 | `prepare/` | Les îlots d'avant-partie : fenêtre d'acceptation et déploiement (annonce de l'adversaire comprise) | React, DOM sauf `model.ts` |
 | `teams/` | Les équipes préparées, depuis le menu | React, DOM et réseau |
 | `canvas/` | Les primitives du plateau en Canvas 2D, partagées par le rejeu et le déploiement | DOM (canevas) |
-| `admin/` | Le back-office, page à part sous `/admin/`, en React sur `@occulis/ui` | React, DOM et réseau sauf `model.ts` et `replay.ts` |
+| `admin/` | Le back-office, page à part sous `/admin/`, en React sur `@occulis/ui`, design system compris (`design/`) | React, DOM et réseau sauf `model.ts`, `replay.ts`, `design/catalog.ts` et `design/tweaks.ts` |
 | `load/` | La lecture des données des vues React : cache, `useLoad`, `whenReady` | React sauf `cache.ts` |
 | racine | `main.ts` (composition) et `theme.ts` (tokens de DA) | — |
 
 Les modules de `view/`, `game/` et `net/session.ts` sont purs : c'est là que vivent tous
 les tests, avec `ui/flow.ts`, `ui/command.ts`, `ui/messages.ts`, `account/model.ts`,
-`profile/model.ts`, `admin/model.ts` et `load/cache.ts`. `net/channel.ts` est la
+`profile/model.ts`, `admin/model.ts`, `admin/design/catalog.ts`, `admin/design/tweaks.ts` et `load/cache.ts`. `net/channel.ts` est la
 seule exception de son dossier — il ouvre le socket, et rien d'autre.
 
 ## Le pipeline, de bout en bout
@@ -217,7 +217,7 @@ chaque ouverture du canal social.
 | `apps/web/src/net/backoff.ts` | Délai avant la n-ième tentative de reconnexion | oui |
 | `apps/web/src/ui/flow.ts` | Quel écran a lieu d'être : amorce, compte, menu, attente, partie | oui |
 | `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes ; ils paraissent sans l'ouverture des fenêtres, réservée à celles qu'un clic ouvre, et le passage du menu à l'attente se fait sous le voile tramé | non |
-| `apps/web/src/ui/veil.ts` | Le voile tramé qui balaie l'écran pendant une bascule : changement de thème, entrée dans la recherche ou la création d'une partie | non |
+| `apps/web/src/ui/veil.ts` | Le voile tramé qui balaie l'écran pendant une bascule : changement de thème, entrée dans la recherche ou la création d'une partie ; sa feuille est `ui/veil.css` | non |
 | `apps/web/src/ui/settings.ts` | Les réglages d'affichage (design, langue) derrière l'engrenage | non |
 | `apps/web/src/account/AccountApp.tsx` | Écran de compte : connexion, inscription, oubli, réinitialisation, Google | non |
 | `apps/web/src/account/mount.tsx` | Monte l'îlot de compte dans `#account-root` | non |
@@ -272,6 +272,15 @@ chaque ouverture du canal social.
 | `apps/web/src/admin/api.ts` | Appels `/api/admin/*` et `/api/auth/admin/*` | non |
 | `apps/web/src/admin/replay.ts` | Rejeu : coups lus entre deux images, libellés, cadrage du plateau | oui |
 | `apps/web/src/admin/replay-canvas.ts` | Rejeu : le plateau dessiné en Canvas 2D, avec la géométrie du jeu | non |
+| `apps/web/src/admin/design/DesignSystem.tsx` | Le design system : sous-navigation, retouches (thème, palette, vitesse) posées sur le document | non |
+| `apps/web/src/admin/design/Foundations.tsx` | Tokens : palette retouchable, os par alpha, typographie, écarts, mouvement, propriétés CSS | non |
+| `apps/web/src/admin/design/Components.tsx` | Catalogue des composants : aperçus montés en vrai, code, commentaire, props | non |
+| `apps/web/src/admin/design/Motion.tsx` | Animations rejouables et ralenties, durées du plateau, animations CSS déclarées | non |
+| `apps/web/src/admin/design/Conventions.tsx` | Conventions de l'agent de design et section 8.1 du design doc, rendues depuis le Markdown | non |
+| `apps/web/src/admin/design/sources.ts` | Les sources lues au build (`import.meta.glob`, `?raw`) et assemblées en catalogue | non |
+| `apps/web/src/admin/design/catalog.ts` | Lecture des sources : catégorie, exemples, commentaires et props, animations CSS, notes d'une table, Markdown | oui |
+| `apps/web/src/admin/design/tweaks.ts` | Palette retouchée : couleurs par chemin, remplacement, écart, format de `tokens.ts` | oui |
+| `apps/web/src/admin/design/context.tsx` | Les retouches partagées par les pages (`useTweaks`) | non |
 
 ---
 
@@ -1254,7 +1263,8 @@ le choix se fait dans les réglages (`ui/settings.ts`) : un clic fait passer le 
 ## `ui/veil.ts` — le voile tramé
 
 Un damier d'un pixel sur deux, couleur du vide, balaie l'écran de gauche à droite en 520 ms
-(`.theme-veil` dans `ui.css`) : il entre, couvre tout, puis sort à droite. Ce qui doit
+(`.theme-veil` dans `ui/veil.css`, importée par `veil.ts` : le design system du back-office
+la rejoue sans charger la feuille du jeu) : il entre, couvre tout, puis sort à droite. Ce qui doit
 changer change sous lui, à 200 ms, quand l'écran est couvert.
 
 | Export | Rôle |
@@ -1412,6 +1422,7 @@ l'écran montre ce que la base contient et non ce qu'on vient d'envoyer.
 | `#/players/<id>` | `PlayerDetail` | Profil de jeu — y compris ceux **sans compte**, créés par `POST /api/matches` — et tout son historique |
 | `#/matches?status=&offset=` | `MatchList` | Toutes, en cours ou terminées (`Segmented` en liens), paginées |
 | `#/matches/<id>` | `MatchDetail` | `Versus`, `FactStrip` ; la liste des coups, et sous elle **le plateau rejoué** |
+| `#/design`, `#/design/components/<Nom>`, `#/design/motion`, `#/design/conventions` | `DesignSystem` (`design/`) | **Le design system** : fondations, composants, animations, conventions — voir plus bas |
 
 **Les actions rapides** (`QuickActions`, `actions.tsx`) sont une rangée d'`IconButton`, la même
 dans la liste et sur la fiche : vérification de l'adresse, rôle, suspension ou levée,
@@ -1453,6 +1464,44 @@ couleur du camp, arrivée dans la teinte de la sélection. `fitScale()` (`replay
 échelle qui tient **aux quatre quarts de tour**, pour que le plateau ne change pas de taille en
 tournant. Les positions viennent du serveur (`frames`) : le client ne rejoue rien, il n'a pas
 les rulesets versionnés.
+
+### Le design system
+
+Un onglet du back-office, **réservé aux administrateurs comme le reste** (`Gate`) : la charte
+montrée par ses propres sources, avec des retouches à chaud. Il **ne lit pas le projet Claude
+Design** mais ce dont la synchronisation le tire — `.design-sync/previews/` (les aperçus),
+`.design-sync/docs/` (la catégorie de chaque composant), `.design-sync/conventions.md`,
+`packages/ui/src/components/` (commentaires et props) — plus la section 8.1 du design doc, les
+deux feuilles (`ui/ui.css`, `packages/ui/src/styles.css`) et la table `MOTION_FX` de
+`theme.ts`. La page montre donc ce qui est construit, au commit près, sans re-synchronisation.
+
+**Chargement.** `sources.ts` rassemble ces fichiers au build : les aperçus sont **montés**
+(`import.meta.glob`, `eager`) et lus en texte (`?raw`), si bien que le code affiché est celui
+qui rend l'aperçu d'à côté. Le tout forme un morceau à part, `DesignSystem` : la ressource
+`designSystem` (`resources.ts`) l'importe, et `resourcesOf()` la précharge avec l'identité —
+l'onglet paraît d'un seul tenant, comme les autres, et le reste du back-office ne télécharge
+pas les aperçus. Les copies d'iCloud (`Button 2.tsx`) sont écartées (`isCopy()`).
+
+**Les aperçus vivent hors de tout paquet** : `vite.config.ts` résout pour eux `@occulis/ui`
+(`alias`) et React (`dedupe`) depuis l'application, et compile le JSX par le runtime
+automatique (`esbuild.jsx`). Un aperçu doit donc se rendre seul, sous `UiRoot` et
+`ToastProvider` — c'est déjà la règle de la synchronisation.
+
+| Page | Contenu |
+|---|---|
+| Fondations | La palette du thème montré, **chaque couleur modifiable** (`Swatch` avec `onChange`) ; l'os par alpha ; la typographie ; les écarts ; les durées de la charte sur un point qui traverse sa piste ; toutes les propriétés CSS, recalculées par `paletteVariables()` |
+| Composants | Navigation par catégorie (`NavList`) ; pour le composant choisi, son commentaire et son fichier, chacun de ses aperçus dans un `Stage` avec son code, et ses props (`componentDocs()`). Un aperçu qui lève est remplacé par son message (`Contained`). Une fenêtre modale ne se monte qu'à la demande, et Échap ou un clic sur son voile la démonte (`OverlayHost`) : son `onClose` d'aperçu ne fait rien |
+| Animations | L'ouverture des fenêtres (centre, souris, message, modale) ; **le voile tramé**, rejoué avec sa vraie feuille (`ui/veil.css`) et montré verrouillé ; l'entrée d'un bloc ; le compte à rebours et l'annonce de l'adversaire ; les durées du plateau (`fieldNotes()` sur `MOTION_FX`) et ses courbes (`view/easing.ts`, tracées avec un point qui les parcourt) ; les animations CSS déclarées par les deux feuilles (`cssAnimations()`) |
+| Conventions | `conventions.md` et la section 8.1 du design doc, rendus par `markdownBlocks()` — le sous-ensemble de Markdown que ces fichiers emploient |
+
+**Les retouches** (`DesignSystem`, partagées par `useTweaks()`) ne s'écrivent nulle part : le
+thème montré (changé sous le voile tramé, comme dans le jeu) et la palette retouchée sont posés
+sur `<html>` — `data-theme` et les propriétés de `paletteVariables()` en style en ligne — puis
+rendus tels qu'ils étaient en quittant la section. « Copier pour tokens.ts » met dans le
+presse-papiers l'entrée de `THEMES` correspondante (`paletteSource()`), à coller à la main :
+`tokens.ts` reste la seule source des couleurs. La **vitesse** ralentit toutes les animations
+CSS de la page (`playbackRate`, posé sur celles qui tournent et sur chacune qui démarre) ;
+`revealWindow` (`speed`), le compte à rebours et les courbes la lisent eux-mêmes.
 
 ## `vite.config.ts` — le service des maquettes
 
@@ -1550,7 +1599,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 
 ## Tests
 
-222 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+238 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
@@ -1558,7 +1607,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/view/camera.test.ts` | Le point sous le curseur reste immobile au zoom, bornes d'échelle, convergence exacte de l'aimantation |
 | `apps/web/src/view/picking.test.ts` | Chaque case retrouvée depuis son centre à plusieurs angles et échelles, priorité au relief au premier plan, désignation par la falaise |
 | `apps/web/src/view/animation.test.ts` | Hauteurs relevées au départ, durée croissante mais bornée, interpolation conjointe position/hauteur, progression monotone, terminaison |
-| `apps/web/src/ui/veil.test.ts` | **Le voile tramé inchangé** : règle `.theme-veil` et keyframes identiques à la copie figée, durées de 520 et 200 ms |
+| `apps/web/src/ui/veil.test.ts` | **Le voile tramé inchangé** : règle `.theme-veil` et keyframes de `veil.css` identiques à la copie figée, durées de 520 et 200 ms |
 | `apps/web/src/ui/flow.test.ts` | Départ sur le formulaire, menu ouvert à la connexion, retour au formulaire à la déconnexion **même en partie**, identité reconfirmée sans effet, code affiché dans l'attente, `hosting` en retard ignoré, **fenêtre d'acceptation ouverte depuis la seule attente rapide**, retour en attente ou au menu à sa chute, déploiement avant la partie et jamais après, équipes depuis le menu, attente d'un ami défié nommée, entrée en spectateur |
 | `apps/web/src/social/model.test.ts` | Présence allumée et éteinte, inconnu ignoré, **non-lus comptés pour les messages reçus seulement**, relecture demandée sur un changement de relation, un défi reçu par ami et retiré à l'annulation, défi envoyé oublié au refus, **défis d'un ancien ami écartés à la relecture**, libellé de présence, traduction des refus, **relation à un joueur lue dans la liste** |
 | `apps/web/src/game/selection.test.ts` | **Toute destination affichée est applicable par `core`**, exclusion des cases occupées, frappe sur place, machine à états complète de `resolveClick` |
@@ -1569,7 +1618,9 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/game/movement-diff.test.ts` | Le déplacement lu entre deux vues, y compris celui de l'adversaire ; une pièce qui entre ou sort de la LOS n'est pas animée |
 | `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, code de salon retenu, code refusé sans siège, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré, **déploiement annoncé puis verrous suivis, effacé à la première vue**, proposition ouverte, acceptations suivies, chute rapportée, compteur de spectateurs, spectateur assis sur le camp suivi sans jeton |
 | `apps/web/src/net/backoff.test.ts` | Croissance exponentielle, plafond, robustesse à une tentative absurde |
-| `apps/web/src/admin/model.test.ts` | Routes du back-office lues et réécrites à l'identique, fiche rangée sous sa liste, résultat nommé par le siège, coups, dates ISO et millisecondes, pagination, **durée de suspension illisible refusée plutôt que lue comme définitive**, actions rapides fermées sur soi-même, sur un administrateur et sur un compte suspendu, initiales, taux de victoire, résumé du navigateur d'une session |
+| `apps/web/src/admin/model.test.ts` | Routes du back-office lues et réécrites à l'identique, pages du design system et repli sur ses fondations, fiche rangée sous sa liste, résultat nommé par le siège, coups, dates ISO et millisecondes, pagination, **durée de suspension illisible refusée plutôt que lue comme définitive**, actions rapides fermées sur soi-même, sur un administrateur et sur un compte suspendu, initiales, taux de victoire, résumé du navigateur d'une session |
+| `apps/web/src/admin/design/catalog.test.ts` | Copies d'iCloud écartées, catégorie lue dans l'en-tête, exemples découpés par export, commentaire et props d'un composant (interface, type en ligne, **`forwardRef`**), constantes non composants ignorées, animations CSS avec leur commentaire mais sans titre de section ni règle qui les éteint, notes d'une table groupées sous leur commentaire, section du design doc isolée, Markdown découpé en titres, paragraphes, listes et code |
+| `apps/web/src/admin/design/tweaks.test.ts` | Couleurs énumérées dans l'ordre de la palette, remplacement sans toucher l'original, aller-retour du format du sélecteur, **palette écrite comme une entrée de `THEMES`** |
 | `apps/web/src/admin/replay.test.ts` | Pièce déplacée retrouvée entre deux images et elle seule, coup écrit comme l'historique de la maquette, libellé d'image avec camp et joueur, navigation bornée, **plateau centré et contenu dans son cadre aux quatre quarts de tour** |
 | `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, compte suspendu, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut et distinguée du délai de pseudo, retours de Google et des liens expirés, mot de passe ayant fuité |
 | `apps/web/src/account/model.test.ts` | Parcours ↔ URL dans les deux sens, connexion par défaut, jeton lu, **jeton et erreurs retirés de l'URL**, adresse confirmée, compte supprimé, lien expiré du bon type, refus de liaison Google expliqué, **refus rattaché au bon champ, jamais pour des identifiants faux**, indication de longueur, **anciens noms de paramètres encore reconnus** |

@@ -203,7 +203,16 @@ export function hexColor(color: number, alpha = 1, over: number = BACKGROUND): s
  * `styles.css`.
  */
 export function cssVariables(theme: ThemeName = DEFAULT_THEME): Record<string, string> {
-  const { background, surface, ink, terrain, camp, state, sky } = THEMES[theme] as Palette;
+  return paletteVariables(THEMES[theme]);
+}
+
+/**
+ * Les propriétés CSS d'une palette quelconque. `cssVariables()` la sert pour chaque thème ;
+ * le design system du back-office s'en sert pour une palette retouchée à la main, qu'il
+ * pose à chaud sur la page sans rien écrire nulle part.
+ */
+export function paletteVariables(palette: Palette): Record<string, string> {
+  const { background, surface, ink, terrain, camp, state, sky } = palette;
   return {
     "--occ-bg": cssColor(background),
     "--occ-surface": cssColor(surface),

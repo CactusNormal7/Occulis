@@ -46,8 +46,20 @@ describe("routes du back-office", () => {
       { view: "matches", status: "finished", offset: 25 },
       { view: "match", id: "m-1" },
       { view: "player", id: "p-1" },
+      { view: "design", page: "foundations", component: null },
+      { view: "design", page: "motion", component: null },
+      { view: "design", page: "components", component: null },
+      { view: "design", page: "components", component: "Button" },
     ];
     for (const route of routes) expect(parseRoute(routeHash(route))).toEqual(route);
+  });
+
+  it("lit les pages du design system, et retombe sur ses fondations", () => {
+    expect(parseRoute("#/design")).toEqual({ view: "design", page: "foundations", component: null });
+    expect(parseRoute("#/design/inconnue")).toEqual({ view: "design", page: "foundations", component: null });
+    expect(parseRoute("#/design/components/Dialog")).toEqual({ view: "design", page: "components", component: "Dialog" });
+    expect(parseRoute("#/design/motion/Dialog")).toEqual({ view: "design", page: "motion", component: null });
+    expect(sectionOf({ view: "design", page: "conventions", component: null })).toBe("design");
   });
 
   it("range une fiche sous sa liste", () => {

@@ -14,9 +14,15 @@ export type Route =
   | { readonly view: "user"; readonly id: string }
   | { readonly view: "matches"; readonly status: MatchStatus | null; readonly offset: number }
   | { readonly view: "match"; readonly id: string }
-  | { readonly view: "player"; readonly id: string };
+  | { readonly view: "player"; readonly id: string }
+  | { readonly view: "design"; readonly page: DesignPage; readonly component: string | null };
 
 export type MatchStatus = "ongoing" | "finished";
+
+/** Les pages du design system (`#/design/…`). */
+export type DesignPage = "foundations" | "components" | "motion" | "conventions";
+
+const DESIGN_PAGES: readonly DesignPage[] = ["foundations", "components", "motion", "conventions"];
 
 /**
  * La route vit dans le fragment (`#/users/…`) : la page reste un seul fichier statique,
@@ -26,7 +32,7 @@ export function parseRoute(hash: string): Route {
   const [path = "", query = ""] = hash.replace(/^#\/?/, "").split("?");
   const parameters = new URLSearchParams(query);
   const offset = Math.max(Number.parseInt(parameters.get("offset") ?? "0", 10) || 0, 0);
-  const [section, id] = path.split("/").map(decodeURIComponent);
+  const [section, id, sub] = path.split("/").map(decodeURIComponent);
 
   if (section === "users") {
     if (id !== undefined && id.length > 0) return { view: "user", id };
@@ -42,6 +48,11 @@ export function parseRoute(hash: string): Route {
     };
   }
   if (section === "players" && id !== undefined && id.length > 0) return { view: "player", id };
+  if (section === "design") {
+    const page = DESIGN_PAGES.find((candidate) => candidate === id) ?? "foundations";
+    const component = page === "components" && sub !== undefined && sub.length > 0 ? sub : null;
+    return { view: "design", page, component };
+  }
   return { view: "overview" };
 }
 
@@ -59,6 +70,10 @@ export function routeHash(route: Route): string {
       return `#/matches/${encodeURIComponent(route.id)}`;
     case "player":
       return `#/players/${encodeURIComponent(route.id)}`;
+    case "design":
+      if (route.page === "foundations") return "#/design";
+      if (route.component !== null) return `#/design/components/${encodeURIComponent(route.component)}`;
+      return `#/design/${route.page}`;
   }
 }
 
@@ -72,9 +87,10 @@ function query(values: Record<string, string | number>): string {
 }
 
 /** L'onglet allumé pour une route : une fiche reste rangée sous sa liste. */
-export function sectionOf(route: Route): "overview" | "users" | "matches" {
+export function sectionOf(route: Route): "overview" | "users" | "matches" | "design" {
   if (route.view === "users" || route.view === "user" || route.view === "player") return "users";
   if (route.view === "matches" || route.view === "match") return "matches";
+  if (route.view === "design") return "design";
   return "overview";
 }
 

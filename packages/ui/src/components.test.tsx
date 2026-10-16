@@ -1,10 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
+  AsideLayout,
   Badge,
   Banner,
   Button,
   Card,
+  CodeBlock,
   ChipGroup,
   ChoiceList,
   ChoiceRow,
@@ -22,18 +24,24 @@ import {
   MessageComposer,
   MessageThread,
   MoveList,
+  NavList,
   Pager,
   PasswordField,
   Person,
   PlayerPlate,
   ProviderButton,
+  Prose,
   Reveal,
   Segmented,
   Skeleton,
   SettingEditor,
   SettingList,
   SettingRow,
+  Specimen,
+  Stage,
   StatTile,
+  Swatch,
+  SwatchGrid,
   Table,
   TextField,
   TileAvatar,
@@ -256,5 +264,38 @@ describe("préparation d'une partie", () => {
     expect(lines.match(/occ-skeleton__line/g)).toHaveLength(4);
     expect(lines).not.toContain("occ-skeleton--card");
     expect(html(<Skeleton card />)).toContain("occ-skeleton--card");
+  });
+
+  it("montre la charte : code échappé, échantillon modifiable ou non, lien courant marqué", () => {
+    const code = html(<CodeBlock label="tsx">{"<UiRoot />"}</CodeBlock>);
+    expect(code).toContain("&lt;UiRoot /&gt;");
+    expect(code).toContain('class="occ-label">tsx');
+
+    expect(html(<Swatch name="camp.A" color="var(--occ-camp-a)" value="camp A" />)).not.toContain("<input");
+    const editable = html(<Swatch name="camp.A" color="var(--occ-camp-a)" value="camp A" edited onChange={() => undefined} />);
+    expect(editable).toContain('type="color"');
+    expect(editable).toContain('aria-label="camp.A"');
+    expect(editable).toContain("occ-swatch--edited");
+
+    const nav = html(<NavList sections={[{ label: "Actions", items: [{ href: "#a", label: "Button", current: true }, { href: "#b", label: "Icon" }] }]} />);
+    expect(nav).toContain('href="#a" aria-current="page"');
+    expect(nav).not.toContain('href="#b" aria-current');
+
+    const page = html(
+      <AsideLayout aside={<span>nav</span>}>
+        <Stage title="Variants" actions={<span>code</span>}>
+          <Prose>
+            <SwatchGrid>
+              <Specimen name="--occ-space-1" value="4px">
+                <span />
+              </Specimen>
+            </SwatchGrid>
+          </Prose>
+        </Stage>
+      </AsideLayout>,
+    );
+    for (const name of ["occ-aside-layout__aside", "occ-stage__actions", "occ-prose", "occ-swatch-grid", "occ-specimen__value"]) {
+      expect(page).toContain(name);
+    }
   });
 });
