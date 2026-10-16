@@ -337,7 +337,10 @@ body::after {
   color: var(--ink);
 }
 
-/* Le changement de thème : un voile tramé qui balaie l'écran, le temps que tout se repeigne. */
+/* Le voile tramé (ui/veil.ts) : il balaie l'écran le temps que tout se repeigne — changement
+   de thème, entrée dans la recherche ou la création d'une partie. Acté tel quel par le porteur
+   du projet (docs/design.md 8.1) et verrouillé par ui/veil.test.ts : ne pas le retoucher en
+   passant. */
 .theme-veil {
   position: fixed;
   inset: 0;

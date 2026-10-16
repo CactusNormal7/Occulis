@@ -216,7 +216,8 @@ chaque ouverture du canal social.
 | `apps/web/src/net/channel.ts` | Transport WebSocket et reconnexion | non |
 | `apps/web/src/net/backoff.ts` | Délai avant la n-ième tentative de reconnexion | oui |
 | `apps/web/src/ui/flow.ts` | Quel écran a lieu d'être : amorce, compte, menu, attente, partie | oui |
-| `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes ; ils paraissent sans l'ouverture des fenêtres, réservée à celles qu'un clic ouvre | non |
+| `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes ; ils paraissent sans l'ouverture des fenêtres, réservée à celles qu'un clic ouvre, et le passage du menu à l'attente se fait sous le voile tramé | non |
+| `apps/web/src/ui/veil.ts` | Le voile tramé qui balaie l'écran pendant une bascule : changement de thème, entrée dans la recherche ou la création d'une partie | non |
 | `apps/web/src/ui/settings.ts` | Les réglages d'affichage (design, langue) derrière l'engrenage | non |
 | `apps/web/src/account/AccountApp.tsx` | Écran de compte : connexion, inscription, oubli, réinitialisation, Google | non |
 | `apps/web/src/account/mount.tsx` | Monte l'îlot de compte dans `#account-root` | non |
@@ -1246,9 +1247,32 @@ Les épaisseurs sont en **pixels du plateau** (`view/pixel.ts`), jamais en pixel
 
 Le bloc critique (`criticalHead()`) a déjà posé `data-theme` avant la première image, ce
 qui fait paraître toute page dans le bon thème. `main.ts` applique le thème au démarrage ;
-le choix se fait dans les réglages (`ui/settings.ts`) : un clic pose un voile tramé qui
-balaie l'écran (`.theme-veil`), puis applique le thème et réécrit la palette CSS
+le choix se fait dans les réglages (`ui/settings.ts`) : un clic fait passer le voile tramé
+(`sweepVeil()`, `ui/veil.ts`), sous lequel le thème est appliqué et la palette CSS réécrite
 (`applyPalette()`).
+
+## `ui/veil.ts` — le voile tramé
+
+Un damier d'un pixel sur deux, couleur du vide, balaie l'écran de gauche à droite en 520 ms
+(`.theme-veil` dans `ui.css`) : il entre, couvre tout, puis sort à droite. Ce qui doit
+changer change sous lui, à 200 ms, quand l'écran est couvert.
+
+| Export | Rôle |
+|---|---|
+| `sweepVeil(swap)` | Pose le voile, appelle `swap` à `VEIL_SWAP_MS`, retire le voile après `VEIL_MS`. Sous mouvement réduit : pas de voile, `swap` tout de suite |
+| `VEIL_MS`, `VEIL_SWAP_MS` | 520 ms, 200 ms |
+
+Deux usages : le changement de thème (`main.ts`, `chooseTheme`) et l'entrée dans l'attente
+depuis le menu — recherche rapide, création, code rejoint, ami défié (`shell.ts`). Dans ce
+second cas, `render()` ne montre pas tout de suite le nouvel écran : le menu reste affiché
+jusqu'à ce que le voile le couvre, puis `show()` applique **la dernière étape reçue** entre-
+temps (un code qui arrive, une proposition), pour que le voile ne découvre jamais un écran
+périmé. Toute autre bascule d'écran reste immédiate.
+
+**Ce geste est acté tel quel par le porteur du projet** (docs/design.md 8.1). `veil.test.ts`
+compare la règle `.theme-veil` et ses keyframes, au caractère près, à une copie figée, et
+vérifie les deux durées : une retouche, même de passage, fait échouer la suite. Une autre
+transition qui voudrait s'en écarter prend sa propre classe.
 
 ## `ui/settings.ts` — les réglages d'affichage
 
@@ -1526,7 +1550,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 
 ## Tests
 
-178 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+222 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
@@ -1534,6 +1558,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/view/camera.test.ts` | Le point sous le curseur reste immobile au zoom, bornes d'échelle, convergence exacte de l'aimantation |
 | `apps/web/src/view/picking.test.ts` | Chaque case retrouvée depuis son centre à plusieurs angles et échelles, priorité au relief au premier plan, désignation par la falaise |
 | `apps/web/src/view/animation.test.ts` | Hauteurs relevées au départ, durée croissante mais bornée, interpolation conjointe position/hauteur, progression monotone, terminaison |
+| `apps/web/src/ui/veil.test.ts` | **Le voile tramé inchangé** : règle `.theme-veil` et keyframes identiques à la copie figée, durées de 520 et 200 ms |
 | `apps/web/src/ui/flow.test.ts` | Départ sur le formulaire, menu ouvert à la connexion, retour au formulaire à la déconnexion **même en partie**, identité reconfirmée sans effet, code affiché dans l'attente, `hosting` en retard ignoré, **fenêtre d'acceptation ouverte depuis la seule attente rapide**, retour en attente ou au menu à sa chute, déploiement avant la partie et jamais après, équipes depuis le menu, attente d'un ami défié nommée, entrée en spectateur |
 | `apps/web/src/social/model.test.ts` | Présence allumée et éteinte, inconnu ignoré, **non-lus comptés pour les messages reçus seulement**, relecture demandée sur un changement de relation, un défi reçu par ami et retiré à l'annulation, défi envoyé oublié au refus, **défis d'un ancien ami écartés à la relecture**, libellé de présence, traduction des refus, **relation à un joueur lue dans la liste** |
 | `apps/web/src/game/selection.test.ts` | **Toute destination affichée est applicable par `core`**, exclusion des cases occupées, frappe sur place, machine à états complète de `resolveClick` |

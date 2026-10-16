@@ -203,9 +203,19 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   lumière qui s'écarte en deux paupières tramées) — trop chargé. **Les écrans du parcours ne
   s'ouvrent pas ainsi** — menu principal, compte, attente, bandeau de partie, bandeau
   d'usurpation —, à sa demande : ce ne sont pas des fenêtres qu'on ouvre, et
-  l'on y revient sans cesse. Les pages entières gardent le fondu entre pages. Le design et la
+  l'on y revient sans cesse. **Une exception : l'entrée dans la recherche ou la
+  création d'une partie** passe sous le voile tramé du changement de thème (ci-dessous).
+  Les pages entières gardent le fondu entre pages. Le design et la
   langue se règlent dans une petite fenêtre de **réglages**, ouverte par un engrenage à côté
   du lien vers le compte.
+- **Le voile tramé est acté — ne pas y toucher.** Changer de thème fait passer sur l'écran un
+  voile tramé (un pixel sur deux, couleur du vide) qui le balaie de gauche à droite en
+  520 ms ; tout se repeint sous lui. Le porteur du projet l'a jugé **très bien : discret,
+  bien que très visible**, et a demandé qu'on le garde tel quel et qu'il ne change jamais au
+  détour d'une autre modification. C'est la référence des transitions : l'entrée dans la
+  recherche ou la création d'une partie le reprend à l'identique (le menu bascule sur
+  l'attente sous le voile). Sa feuille et ses durées sont verrouillées par un test
+  (`apps/web/src/ui/veil.test.ts`) ; le changer demande son accord explicite.
 - **Code couleur : le vide porte la matière, l'os porte la géométrie, les lueurs portent
   l'état de jeu.** Le terrain est fait de faces sombres et pleines, aux arêtes d'os ; le fog
   of war et la hauteur se lisent par la **valeur** (le dessus s'éclaircit avec la hauteur,

@@ -100,9 +100,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/main.ts": {
-    "mtime": 1792094114.2671869,
-    "seen": 1792094668.5518641,
-    "ast_hash": "b10101b6524e2c8a9db97a79f1e29b43",
+    "mtime": 1792179067.511363,
+    "seen": 1792179215.143318,
+    "ast_hash": "211abb8c7ec13f705c431790fbcc9502",
     "semantic_hash": ""
   },
   "apps/web/src/scene/overlay.ts": {
@@ -508,9 +508,9 @@
     "semantic_hash": "907b5ef3dd6efc6c41112fb93eb0460d"
   },
   "CLAUDE.md": {
-    "mtime": 1792178546.506344,
-    "seen": 1792178675.591758,
-    "ast_hash": "28dd1be046a49be22ef9f157a07ecadf",
+    "mtime": 1792179173.856156,
+    "seen": 1792179215.1477098,
+    "ast_hash": "c9a4dfefc8e1ae37f4a2f0a931079bf7",
     "semantic_hash": ""
   },
   "apps/web/index.html": {
@@ -532,9 +532,9 @@
     "semantic_hash": "78cc7b07546553156ffa12e97870c466"
   },
   "docs/design.md": {
-    "mtime": 1792178557.7629936,
-    "seen": 1792178675.591858,
-    "ast_hash": "67fb2d966f7104f8f98b554670f61126",
+    "mtime": 1792179173.8564193,
+    "seen": 1792179215.147813,
+    "ast_hash": "4d7f0909d3aed83808d2617872a3e352",
     "semantic_hash": ""
   },
   "docs/implementation-notes.md": {
@@ -562,9 +562,9 @@
     "semantic_hash": ""
   },
   "docs/technical/engine.md": {
-    "mtime": 1792178557.7637057,
-    "seen": 1792178675.5920079,
-    "ast_hash": "87005d2b236f0e73bd9b1e6fda9e4ed9",
+    "mtime": 1792179173.855901,
+    "seen": 1792179215.1479669,
+    "ast_hash": "1ee97bbcf3a30ecdcd1cb903d30dd86d",
     "semantic_hash": ""
   },
   "docs/technical/infra.md": {
@@ -931,9 +931,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/ui/shell.ts": {
-    "mtime": 1792178524.0949216,
-    "seen": 1792178675.5882611,
-    "ast_hash": "bbb41416442168c02719e8e9e767e6ad",
+    "mtime": 1792179067.5310519,
+    "seen": 1792179215.144186,
+    "ast_hash": "72296978dd8d649000ed15a1ec32ea10",
     "semantic_hash": ""
   },
   "apps/web/vite.config.ts": {
@@ -2860,6 +2860,18 @@
     "mtime": 1792178514.5136821,
     "seen": 1792178675.590435,
     "ast_hash": "a70b930f4726eed1867c3ac768c51b89",
+    "semantic_hash": ""
+  },
+  "apps/web/src/ui/veil.test.ts": {
+    "mtime": 1792179105.6326718,
+    "seen": 1792179215.144203,
+    "ast_hash": "2eec21f7b62f1f9b81be507ba3d2fa14",
+    "semantic_hash": ""
+  },
+  "apps/web/src/ui/veil.ts": {
+    "mtime": 1792179056.4858186,
+    "seen": 1792179215.1442041,
+    "ast_hash": "b7a2309bf23821ccc0b801da9855011d",
     "semantic_hash": ""
   }
 }

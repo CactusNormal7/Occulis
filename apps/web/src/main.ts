@@ -39,6 +39,7 @@ import { type GameConsole, attachConsole } from "./ui/console.js";
 import { applyPalette } from "./ui/palette.js";
 import { applyTheme, storedTheme } from "./ui/theme-choice.js";
 import { attachSettings } from "./ui/settings.js";
+import { sweepVeil } from "./ui/veil.js";
 import { resendVerification, signOut, stopImpersonating, whoAmI, type Identity } from "./net/auth.js";
 import { chooseLocale, initLocale, translateDom } from "./i18n/browser.js";
 import { currentLocale, messages, onLocaleChange } from "./i18n/current.js";
@@ -110,16 +111,12 @@ function main(): void {
     locale: currentLocale,
     hint: (theme) => messages().ui.theme.hints[theme],
     chooseTheme: (theme) => {
-      // Un voile tramé balaie l'écran pendant que tout se repeint (ui.css, `.theme-veil`).
-      const veil = document.createElement("div");
-      veil.className = "theme-veil";
-      document.body.append(veil);
-      window.setTimeout(() => veil.remove(), 600);
-      window.setTimeout(() => {
+      // Un voile tramé balaie l'écran pendant que tout se repeint (ui/veil.ts).
+      sweepVeil(() => {
         applyTheme(theme);
         applyPalette(document.documentElement);
         settings.refresh();
-      }, 200);
+      });
     },
     chooseLocale,
   });
