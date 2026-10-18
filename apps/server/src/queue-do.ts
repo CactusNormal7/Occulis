@@ -308,7 +308,14 @@ export class QueueDO extends DurableObject<Env> {
   }
 
   private send(ws: WebSocket, message: QueueServerMessage): void {
-    ws.send(JSON.stringify(message));
+    // Un socket en train de se fermer lève ici. Sans cette garde, `seat()` s'arrêterait
+    // au premier joueur parti : l'autre, déjà retiré de la file, ne recevrait jamais son
+    // siège et perdrait la partie par forfait d'absence.
+    try {
+      ws.send(JSON.stringify(message));
+    } catch {
+      // Rien à dire à qui s'en va.
+    }
   }
 }
 

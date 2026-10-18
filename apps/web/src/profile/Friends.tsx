@@ -510,7 +510,8 @@ export function FriendView({ id, offset, readOnly }: { id: string; offset: numbe
 
 export function FriendMatchReplay({ id, matchId }: { id: string; matchId: string }) {
   const { loaded } = useLoad(R.friendMatch(id, matchId));
-  const name = friendOf(useSocial().state, id)?.handle ?? useMessages().social.friend.someone;
+  const m = useMessages().social;
+  const name = friendOf(useSocial().state, id)?.handle ?? m.friend.someone;
   return whenReady(loaded, (match) => (
     <MatchReplayView match={match} back={{ href: profileHash({ view: "friend", id, offset: 0 }), label: name }} friend={name} />
   ));

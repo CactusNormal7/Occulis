@@ -219,7 +219,7 @@ Catalogue dans `ACTIONS` (`tooling/infra/src/actions.ts`). Chaque `ActionDef` d�
 | **Supprimer un environnement de branche** | Voir ci-dessous — **n'importe quelle cible, depuis n'importe quelle branche** |
 | Appliquer les migrations | `wrangler d1 migrations apply` |
 | Lancer le serveur en local | `build:local` du client, migrations locales, puis `wrangler dev` (interactive) |
-| Déployer | `wrangler deploy --env …` |
+| Déployer | Typecheck, lint et tests, build du client, migrations, puis `wrangler deploy --env …` — **la première étape en échec annule la suite** |
 | Exécuter une requête SQL | `wrangler d1 execute` avec saisie libre |
 | Décrire une base | `wrangler d1 info` |
 | Logs en direct | `wrangler tail` (interactive) |

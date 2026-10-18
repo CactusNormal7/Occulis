@@ -357,9 +357,12 @@ export const ACTIONS: ActionDef[] = [
         if (code !== 0) return ctx.log(`Gate « ${script} » en échec — déploiement annulé.`, "fail");
       }
       ctx.log("Build du client", "step");
-      await runStreaming("pnpm", ["--filter", "@occulis/web", "build"], ROOT, (l) =>
+      const build = await runStreaming("pnpm", ["--filter", "@occulis/web", "build"], ROOT, (l) =>
         ctx.log(l, "raw"),
       );
+      // Un build raté laisse un apps/web/dist périmé ou partiel : le déployer servirait
+      // un client qui ne correspond plus au Worker.
+      if (build.code !== 0) return ctx.log("Build du client en échec — déploiement annulé.", "fail");
       // Migrations avant déploiement : un Worker servi contre un schéma non migré
       // échoue à la première requête.
       ctx.log("Migrations", "step");

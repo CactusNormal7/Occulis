@@ -393,7 +393,9 @@ mono-threading écarte tant que tout se décide au même endroit. Une intention 
 efface donc la précédente (`forget()`), file d'attente **et** salons.
 
 L'appariement et l'entrée par code aboutissent au même `seat()` : une partie créée par
-`startMatch()`, un jeton par camp, et un `matched` envoyé à chacun. Dans un salon,
+`startMatch()`, un jeton par camp, et un `matched` envoyé à chacun — **même si l'un des
+deux sockets se ferme à ce moment** : `send()` avale l'erreur d'un socket mourant, comme
+dans le `MatchDO`, faute de quoi l'autre joueur ne recevrait jamais son siège. Dans un salon,
 **l'hôte tient le camp A et l'arrivant le camp B**. La file rapide crée une partie
 **classée**, un salon une partie qui ne l'est pas.
 
