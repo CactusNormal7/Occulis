@@ -8,10 +8,5 @@ pnpm-lock.yaml
 # Synchronisé avec Claude Design (.design-sync/NOTES.md) et outillage tiers.
 .design-sync/
 .claude/
-# Le voile du changement de thème est verrouillé par le porteur du projet (veil.test.ts) :
-# même un reformatage n'y entre pas sans sa demande.
-apps/web/src/ui/veil.ts
-apps/web/src/ui/veil.css
-apps/web/src/ui/veil.test.ts
 # Doublons de la synchronisation iCloud.
 **/* 2.*
