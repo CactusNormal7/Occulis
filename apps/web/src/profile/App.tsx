@@ -200,6 +200,8 @@ function Account({ profile, reload }: { profile: MeProfile; reload: () => void }
     if (arrival !== undefined) notify(arrival.text, arrival.ok);
     if (location.search.length > 0) history.replaceState(null, "", `${location.pathname}${location.hash}`);
     if (location.hash === "#security") document.getElementById("security")?.scrollIntoView();
+    // Au montage seulement : c'est l'URL d'arrivée qu'on lit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /** Un éditeur a abouti : on l'annonce, on le referme, et on relit le compte. */

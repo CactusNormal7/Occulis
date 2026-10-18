@@ -58,6 +58,14 @@ Node (version lue dans `.nvmrc`), pnpm, `pnpm install --frozen-lockfile`, puis d
 `pnpm -r test` n'exécute que les paquets déclarant un script `test` — aujourd'hui tous.
 Ajouter des tests à un paquet suffit donc à les voir passer ici, **sans toucher au workflow**.
 
+**Ce que `pnpm lint` exige** (`eslint.config.js`, **zéro avertissement** : `--max-warnings 0`) :
+les règles recommandées de typescript-eslint ; sur les sources, trois règles qui lisent les
+types — promesse ni attendue ni marquée `void`, promesse passée là où une fonction synchrone
+est attendue, `switch` non exhaustif sur une union ; les règles des hooks React
+(`rules-of-hooks`, `exhaustive-deps`, chaque exception justifiée en commentaire) ; les
+frontières de CLAUDE.md (`core` n'importe rien, le protocole que `core`, les modules purs du
+client ni Pixi ni React) ; et aucune couleur en dur hors de `tokens.ts`.
+
 **Ce que `pnpm typecheck` lit.** Chaque paquet étend `tsconfig.base.json` (strict, et qui
 exclut les doublons iCloud `* 2.*`). Les fichiers lancés par Node — configurations de Vite,
 Vitest et tsup, scripts comme `apps/server/scripts/generate-schema.mts` — sont vérifiés par un

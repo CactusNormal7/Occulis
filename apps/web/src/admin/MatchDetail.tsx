@@ -63,6 +63,9 @@ function Replay({ match: m }: { match: AdminMatchDetail }) {
     pin(index);
   };
 
+  // Sans liste : la lecture se réarme à chaque rendu, donc repart de zéro dès que l'image
+  // affichée change, quelle qu'en soit la cause.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!playing) return;
     if (pinned >= count - 1) {

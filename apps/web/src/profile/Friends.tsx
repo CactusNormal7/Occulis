@@ -114,6 +114,9 @@ export function SocialProvider({ enabled, children }: { enabled: boolean; childr
       },
     );
     return () => channel.close();
+    // Un canal par activation : le rouvrir à chaque nouvelle identité de `notify` ou de
+    // `reload` couperait le WebSocket à chaque rendu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
   const context: SocialContext = {
@@ -546,6 +549,8 @@ export function ChatView({ id, readOnly }: { id: string; readOnly: boolean }) {
     setMessages((current) => merged(page.messages, current));
     setHasMore(page.hasMore);
     markRead();
+    // Chaque page relue, et elle seule : `markRead` est recréée à chaque rendu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   useEffect(() => {
@@ -557,6 +562,8 @@ export function ChatView({ id, readOnly }: { id: string; readOnly: boolean }) {
       if (incoming.sender === id) markRead();
     });
     return unlisten;
+    // Un abonnement par fil ; `listen` et `markRead` changent d'identité à chaque rendu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const older = () => {

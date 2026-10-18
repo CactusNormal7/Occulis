@@ -28,6 +28,8 @@ export function useLoad<T>(resource: Resource<T>): { loaded: Loaded<T>; reload: 
     void loadCache.request(latest.current);
   }, [key]);
 
+  // `key` sans être lue : un `reload` neuf par ressource, comme l'effet ci-dessus.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const reload = useCallback(() => void loadCache.request(latest.current, { force: true }), [key]);
 
   // Une promesse qui ne rejette jamais : React rend de nouveau la vue à son arrivée.
@@ -64,6 +66,9 @@ export function useHashRoute<R>(parse: (hash: string) => R, resourcesOf: (route:
     };
     window.addEventListener("hashchange", update);
     return () => window.removeEventListener("hashchange", update);
+    // Un seul écouteur pour la vie de la page : `parse` et `resourcesOf` sont des
+    // fonctions de module, que chaque rendu repasse sans qu'elles changent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return route;
 }

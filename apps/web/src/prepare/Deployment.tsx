@@ -77,6 +77,8 @@ function Content({ player, scenario, board, rulesetVersion, deployment, received
   // celui par défaut remplace l'équipe de la carte.
   useEffect(() => {
     if (!touched) setDraft(fromEntries(ruleset, initialTeam(presets, scenario, rulesetVersion, player, deployment.defaultTeam)));
+    // L'arrivée des presets seule : une mise à jour des verrous ne doit pas réécrire le brouillon.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presets]);
 
   const edit = (next: TeamDraft): void => {

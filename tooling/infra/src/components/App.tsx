@@ -69,6 +69,8 @@ export function App({ onInteractive, onQuit }: Props): React.ReactElement {
         .filter((e) => e !== "local")
         .map(tomlBadge)
         .join("   ·   "),
+    // `phase` sans être lue : c'est le retour au menu qui doit relire la liste.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [phase],
   );
 

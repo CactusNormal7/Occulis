@@ -69,7 +69,10 @@ export function describeRejection(rejection: Rejection): string {
     case "outside-zone":
     case "same-tile":
       return describeTeamError(rejection);
-    default:
+    case "game-over":
+    case "unknown-piece":
+    case "not-your-piece":
+    case "unreachable":
       return describeActionError(rejection);
   }
 }
