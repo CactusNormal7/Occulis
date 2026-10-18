@@ -9,6 +9,7 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "infra": "pnpm --filter @occulis/infra start",
     "local": "pnpm --filter @occulis/infra start dev"
   },

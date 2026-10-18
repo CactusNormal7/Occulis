@@ -53,7 +53,12 @@ Déclenché sur `push` de **toute** branche et sur toute `pull_request`.
 ### `checks` — les vérifications
 
 Node (version lue dans `.nvmrc`), pnpm, `pnpm install --frozen-lockfile`, puis dans l'ordre :
-`pnpm typecheck` → `pnpm lint` → `pnpm test` → `pnpm build`.
+`pnpm typecheck` → `pnpm lint` → `pnpm format:check` → `pnpm test` → `pnpm build`.
+
+**Le format** est celui de Prettier (`.prettierrc.json`, largeur 100) : `pnpm format` réécrit,
+`pnpm format:check` vérifie. `.prettierignore` exclut ce que git suit sans qu'on le formate
+(fichiers générés, lockfile, manifeste réécrit par `pnpm infra`, `.design-sync/`, le voile
+verrouillé). Le commit du reformatage initial est listé dans `.git-blame-ignore-revs`.
 
 `pnpm -r test` n'exécute que les paquets déclarant un script `test` — aujourd'hui tous.
 Ajouter des tests à un paquet suffit donc à les voir passer ici, **sans toucher au workflow**.

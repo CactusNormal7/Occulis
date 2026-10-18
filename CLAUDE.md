@@ -24,7 +24,8 @@ pnpm dev          # lance apps/web (Vite) — les maquettes sont servies sur /mo
 pnpm test         # tests de tous les paquets qui en déclarent (Vitest)
 pnpm local        # serveur complet en local : build:local + migrations locales + wrangler dev (= pnpm infra → « Lancer le serveur en local »), /mockups et /lab compris
 pnpm typecheck
-pnpm lint
+pnpm lint         # zéro avertissement toléré
+pnpm format       # Prettier ; la CI vérifie par pnpm format:check
 pnpm infra        # TUI Cloudflare (tooling/infra) — bases D1, migrations, déploiement
 ```
 

@@ -38,7 +38,8 @@ partie rapide ou un salon privé par code.
 | `pnpm dev`       | Serveur de développement du client (`apps/web`)                                                                                                                        |
 | `pnpm test`      | Tests Vitest de tous les paquets                                                                                                                                       |
 | `pnpm typecheck` | Vérification TypeScript stricte                                                                                                                                        |
-| `pnpm lint`      | ESLint                                                                                                                                                                 |
+| `pnpm lint`      | ESLint, zéro avertissement toléré                                                                                                                                      |
+| `pnpm format`    | Prettier sur tout le dépôt (`pnpm format:check` pour vérifier seulement, comme la CI)                                                                                  |
 | `pnpm build`     | Build de tous les paquets                                                                                                                                              |
 | `pnpm local`     | Serveur complet en local (client, Worker, Durable Objects, D1) sur `http://localhost:8787` — l'action « Lancer le serveur en local » de `pnpm infra`, sans le menu     |
 | `pnpm infra`     | TUI Cloudflare : bases D1, migrations, environnements, déploiement ; `pnpm infra <action>` lance directement une action sans risque (`dev`, `status`, `list`, `login`) |

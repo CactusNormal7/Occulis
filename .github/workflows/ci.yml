@@ -33,6 +33,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Format
+        run: pnpm format:check
+
       # `pnpm -r test` n'exécute que les paquets qui déclarent un script `test`.
       # Ajouter des tests à apps/server ou apps/web suffira donc à les voir passer
       # ici, sans toucher à ce workflow.
