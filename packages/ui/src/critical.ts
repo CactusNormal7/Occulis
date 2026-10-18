@@ -15,9 +15,12 @@ import { BACKGROUND, THEMES, THEME_NAMES, cssColor, hexColor } from "./tokens.js
  * - Le thème choisi (`THEMES`) : un script en ligne le relit du stockage et le pose sur
  *   `<html data-theme>` avant la première image, et le fond de chaque thème est écrit en
  *   ligne. Sans cela, une page s'ouvrirait dans le thème par défaut pour basculer ensuite.
- * - Les règles de spéculation : un lien interne survolé est préchargé. `prefetch` et non
- *   `prerender` — une page pré-rendue exécuterait son script, et ouvrirait donc le canal
- *   de présence d'une page que le joueur n'a pas encore ouverte.
+ * - Les règles de spéculation : un lien interne survolé est préchargé. Le profil et le
+ *   back-office sont même **pré-rendus** : leur écran dépend de données, et le fondu entre
+ *   pages partirait sinon vers un écran encore vide (`apps/web/src/load/page.tsx`). Leur
+ *   canal de présence attend l'activation de la page (`net/channel.ts`) : pré-rendre ne
+ *   doit pas annoncer le joueur sur une page qu'il n'a pas ouverte. Le jeu, lui, reste
+ *   préchargé seulement — sa page ouvre bien plus qu'un canal.
  *
  * Injecté au build par `apps/web/vite.config.ts` : le HTML ne contient aucune couleur
  * écrite à la main, et ce fichier n'en contient aucune qui ne vienne de `tokens.ts`.
@@ -41,6 +44,7 @@ export function criticalHead(): string {
     "@media (prefers-reduced-motion:reduce){@view-transition{navigation:none}}",
   ].join("");
   const speculation = {
+    prerender: [{ where: { href_matches: ["/profile/*", "/admin/*"] }, eagerness: "moderate" }],
     prefetch: [
       {
         where: {

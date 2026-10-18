@@ -62,6 +62,7 @@ import {
   tabOf,
   type ProfileRoute,
 } from "./model.js";
+import { ScreenReady } from "../load/page.js";
 
 /**
  * La page de profil, servie sous `/profile/` : le pendant du back-office, pour son propre
@@ -78,6 +79,7 @@ export function App() {
       {/* La seule frontière d'attente de la page : rien ne paraît avant que l'écran entier
           — barre du haut comprise — ait ses données (« Chargement et premier rendu »). */}
       <Suspense fallback={<ProgressBar active />}>
+        <ScreenReady />
         <Page
           localeSwitch={
             <LocaleSwitch

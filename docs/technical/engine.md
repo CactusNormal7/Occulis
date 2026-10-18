@@ -144,8 +144,22 @@ qui les porte :
 6. **Navigation douce entre pages.** `@view-transition { navigation: auto }` fond une page dans
    la suivante (coupé sous `prefers-reduced-motion`) ; les liens internes sont **préchargés au
    survol** (règles de spéculation `prefetch`, `eagerness: moderate`, hors `/api/*`, `/match/*`
-   et `/mockups/*` — et pas `prerender`, qui exécuterait le script de la page et ouvrirait son
-   canal de présence) ; les fichiers hachés de `/assets/` se gardent un an (`public/_headers`,
+   et `/mockups/*`).
+   **Le profil et le back-office sont pré-rendus** (`prerender`, même survol). Le fondu part de
+   la **première image** de la page d'arrivée, prête ou non : avec la latence du réseau, il
+   fondait le jeu vers un écran encore vide (les données pas arrivées), puis l'écran entier
+   surgissait — un clignotement. Pré-rendue, la page est complète au clic. Son script a
+   tourné en arrière-plan, mais `net/channel.ts` n'ouvre aucun WebSocket tant que
+   `document.prerendering` est vrai : la connexion attend `prerenderingchange`, pour ne pas
+   annoncer le joueur sur une page qu'il n'a pas ouverte. Quand la page n'a pas été
+   pré-rendue (clic sans survol, pré-rendu refusé), `guardPageReveal()` (`load/page.tsx`)
+   **annule le fondu** si l'écran n'est pas complet à la première image — `ScreenReady`,
+   posé dans la frontière `Suspense`, ne marque l'écran qu'une fois monté, et la police doit
+   être chargée : une coupure franche plutôt qu'un fondu vers le vide. Pour entendre
+   `pagereveal` à temps, le script d'entrée de ces deux pages bloque le rendu
+   (`blocking="render"`), attribut que Vite retire au build et que `keepRenderBlocking()`
+   (`vite.config.ts`) repose. Le jeu n'est que préchargé : sa page ouvre bien plus qu'un canal.
+   Les fichiers hachés de `/assets/` se gardent un an (`public/_headers`,
    lu par les assets de Cloudflare — un fichier existant est servi **avant** le Worker, qui ne
    peut donc pas poser ces en-têtes lui-même).
 

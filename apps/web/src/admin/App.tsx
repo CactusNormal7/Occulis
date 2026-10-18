@@ -16,6 +16,7 @@ import { MatchDetail } from "./MatchDetail.js";
 import { parseRoute, routeHash, sectionOf, type Route } from "./model.js";
 import { designSystem, identity as identityResource, resourcesOf } from "./resources.js";
 import { MatchList, Overview, PlayerDetail, UserDetail, UserList } from "./views.js";
+import { ScreenReady } from "../load/page.js";
 
 /**
  * La racine du back-office. La vérification du rôle faite ici n'est qu'une politesse :
@@ -29,6 +30,7 @@ export function App() {
       {/* La seule frontière d'attente de la page : rien ne paraît avant que l'écran entier
           — barre du haut comprise — ait ses données (« Chargement et premier rendu »). */}
       <Suspense fallback={<ProgressBar active />}>
+        <ScreenReady />
         <Page
           localeSwitch={
             <LocaleSwitch

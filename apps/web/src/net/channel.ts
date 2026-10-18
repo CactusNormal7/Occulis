@@ -68,7 +68,19 @@ export function openChannel<TIn, TOut>(options: ChannelOptions<TIn, TOut>): Chan
     });
   };
 
-  connect();
+  // Une page pré-rendue au survol de son lien (`criticalHead()`) n'est pas encore ouverte :
+  // se connecter maintenant annoncerait le joueur sur une page qu'il n'a pas choisie.
+  if (document.prerendering === true) {
+    document.addEventListener(
+      "prerenderingchange",
+      () => {
+        if (!abandoned) connect();
+      },
+      { once: true },
+    );
+  } else {
+    connect();
+  }
 
   return {
     send: (message) => {

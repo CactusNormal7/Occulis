@@ -21,6 +21,8 @@
       acceptent de lui rendre.
     -->
     <div id="admin"></div>
-    <script type="module" src="/src/admin/main.tsx"></script>
+    <!-- Bloque le rendu jusqu'à son exécution : il doit écouter `pagereveal` avant la
+         première image (`load/page.tsx`). -->
+    <script type="module" blocking="render" src="/src/admin/main.tsx"></script>
   </body>
 </html>
