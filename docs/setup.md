@@ -184,9 +184,6 @@ la fusion ou l'effacement de la branche concernée.
 - Le rattachement d'une URL aux previews de branche (`occulis-<branche>.0kl.fr`) : le bloc
   `routes` avec `custom_domain = true` est désormais généré par branche, mais l'attache
   n'a pas encore été vérifiée bout en bout sur un vrai preview (point ouvert 2).
-- `POST /api/matches` ne vérifie aujourd'hui aucune identité — c'est le chemin des parties
-  privées et des tests. L'authentification, elle, est en place : voir la section
-  « `auth/` » de [technical/server.md](technical/server.md).
 - **Les secrets ne sont pas provisionnés par la CI** : ils se posent une fois par
   environnement, à la main.
 

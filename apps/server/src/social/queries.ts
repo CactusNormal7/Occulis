@@ -202,8 +202,8 @@ function requestOf(row: RequestRow): FriendRequest {
 }
 
 /**
- * Recherche par préfixe de pseudo. Ni soi, ni les profils sans compte (anonymisés ou
- * créés par `POST /api/matches`), ni ceux qui vous ont bloqué.
+ * Recherche par préfixe de pseudo. Ni soi, ni les profils sans compte (anonymisés),
+ * ni ceux qui vous ont bloqué.
  */
 export async function searchPlayers(
   db: D1Database,

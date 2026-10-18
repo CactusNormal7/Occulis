@@ -2,7 +2,8 @@ import { SELF, env, runDurableObjectAlarm, runInDurableObject } from "cloudflare
 import { describe, expect, it } from "vitest";
 import type { ClientMessage, ServerMessage } from "@occulis/protocol";
 import { PROTOCOL_VERSION } from "@occulis/protocol";
-import { type StartedMatch, startMatch } from "./match-setup.js";
+import type { StartedMatch } from "./match-setup.js";
+import { startTestMatch } from "./test-helpers.js";
 import { ABSENCE_MS, DEPLOYMENT_MS } from "./match-do.js";
 
 /**
@@ -19,13 +20,8 @@ import { ABSENCE_MS, DEPLOYMENT_MS } from "./match-do.js";
  * l'hibernation et multiplie le coût par ~20 000 (docs/costs.md) — ferait taire ces
  * gestionnaires, et tout ce fichier échouerait.
  */
-async function createMatch(): Promise<StartedMatch> {
-  const response = await SELF.fetch("https://occulis.test/api/matches", {
-    method: "POST",
-    body: JSON.stringify({ playerA: `anne-${crypto.randomUUID()}`, playerB: `boris-${crypto.randomUUID()}` }),
-  });
-  expect(response.status).toBe(200);
-  return (await response.json()) as StartedMatch;
+function createMatch(): Promise<StartedMatch> {
+  return startTestMatch(`anne-${crypto.randomUUID()}`, `boris-${crypto.randomUUID()}`);
 }
 
 /** Un joueur connecté, dont on peut attendre un message d'un type donné. */
@@ -93,6 +89,20 @@ describe("MatchDO dans workerd", () => {
       });
       expect(response.status).toBe(403);
     }
+  });
+
+  it("ne crée aucune partie ni aucun profil sur une requête anonyme", async () => {
+    const [playerA, playerB] = [`anne-${crypto.randomUUID()}`, `boris-${crypto.randomUUID()}`];
+    const response = await SELF.fetch("https://occulis.test/api/matches", {
+      method: "POST",
+      body: JSON.stringify({ playerA, playerB }),
+    });
+
+    expect(response.status).toBe(404);
+    const created = await env.DB.prepare("SELECT COUNT(*) AS n FROM players WHERE id IN (?, ?)")
+      .bind(playerA, playerB)
+      .first<{ n: number }>();
+    expect(created?.n).toBe(0);
   });
 
   it("ouvre la partie par le déploiement : zones, équipe par défaut, cartes des joueurs", async () => {
@@ -344,7 +354,7 @@ describe("MatchDO dans workerd", () => {
 
   it("fait varier l'Elo des deux joueurs à la fin d'une partie classée", async () => {
     const [anne, boris] = [`anne-${crypto.randomUUID()}`, `boris-${crypto.randomUUID()}`];
-    const match = await startMatch(env, anne, boris, { rated: true });
+    const match = await startTestMatch(anne, boris, { rated: true });
     const { a, b } = await deployed(match);
     await a.awaitKind("view");
     a.drain();

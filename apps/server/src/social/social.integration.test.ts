@@ -11,7 +11,8 @@ import {
   type ServerMessage,
   type SocialServerMessage,
 } from "@occulis/protocol";
-import { post, signUp, unique } from "../test-helpers.js";
+import { post, signUp, startTestMatch, unique } from "../test-helpers.js";
+import type { StartedMatch } from "../match-setup.js";
 
 /**
  * Le système d'amis dans workerd : les routes, le canal social et le spectateur.
@@ -184,11 +185,7 @@ describe("amis : fiche, historique et replay", () => {
     const stranger = await someone("chloe");
     await befriend(anne, boris);
 
-    const created = await SELF.fetch(`${ORIGIN}/api/matches`, {
-      method: "POST",
-      body: JSON.stringify({ playerA: boris.id, playerB: stranger.id }),
-    });
-    const { matchId } = await json<{ matchId: string }>(created);
+    const { matchId } = await startTestMatch(boris.id, stranger.id);
     await env.DB.batch([
       env.DB.prepare("INSERT INTO match_actions (match_id, seq, action) VALUES (?, 0, ?)").bind(
         matchId,
@@ -300,12 +297,8 @@ describe("amis : présence et défi", () => {
 });
 
 describe("amis : spectateur", () => {
-  async function matchOf(a: Someone, b: Someone): Promise<{ matchId: string; seats: { A: string; B: string } }> {
-    const response = await SELF.fetch(`${ORIGIN}/api/matches`, {
-      method: "POST",
-      body: JSON.stringify({ playerA: a.id, playerB: b.id }),
-    });
-    return json(response);
+  function matchOf(a: Someone, b: Someone): Promise<StartedMatch> {
+    return startTestMatch(a.id, b.id);
   }
 
   const watch = (matchId: string, side: string, cookie: string) =>

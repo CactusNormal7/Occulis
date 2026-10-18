@@ -1,7 +1,6 @@
 import { QUEUE_SINGLETON } from "./queue-do.js";
 import { buildAuth } from "./auth/better-auth.js";
 import { currentAccount, handleAuth } from "./auth/routes.js";
-import { startMatch } from "./match-setup.js";
 import { handleAdmin } from "./admin/routes.js";
 import { handleMe } from "./me/routes.js";
 import { handleSocial } from "./social/routes.js";
@@ -82,10 +81,6 @@ export default {
     const social = await handleSocial(auth, env, request, url);
     if (social !== undefined) return social;
 
-    if (url.pathname === "/api/matches" && request.method === "POST") {
-      return createMatch(request, env);
-    }
-
     if (url.pathname === "/api/queue") return joinQueue(request, env, auth, url);
     if (url.pathname === "/api/social") return joinSocial(request, env, auth, url);
 
@@ -120,8 +115,8 @@ export default {
       env.DB.prepare("DELETE FROM rate_limits WHERE lastRequest < ?").bind(Date.now() - DAY_MS),
       // Un profil sans compte ni partie : ce que laisse une inscription qui échoue
       // entre la création du profil et celle du compte (`databaseHooks.user.create`).
-      // Les profils créés sans compte par `POST /api/matches` ont des parties, et ceux
-      // des comptes supprimés aussi s'ils ont joué : seuls les orphelins inutiles partent.
+      // Ceux des comptes supprimés ont des parties s'ils ont joué : seuls les orphelins
+      // inutiles partent.
       env.DB.prepare(
         `DELETE FROM players WHERE created_at < ?
            AND NOT EXISTS (SELECT 1 FROM users WHERE users.player_id = players.id)
@@ -239,11 +234,4 @@ async function watchMatch(
   const forwarded = new URL("https://do/watch");
   forwarded.searchParams.set("side", side);
   return env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(new Request(forwarded, request));
-}
-
-/** Création directe d'une partie, hors file d'attente — parties privées et tests. */
-async function createMatch(request: Request, env: Env): Promise<Response> {
-  const { playerA, playerB } = (await request.json()) as { playerA: string; playerB: string };
-  const match = await startMatch(env, playerA, playerB);
-  return Response.json(match);
 }

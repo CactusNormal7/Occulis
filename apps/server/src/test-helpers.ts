@@ -1,5 +1,6 @@
 import { SELF, env } from "cloudflare:test";
 import { expect } from "vitest";
+import { type StartedMatch, startMatch } from "./match-setup.js";
 
 /**
  * Les outils partagés des suites d'intégration (authentification, back-office, profil).
@@ -83,3 +84,17 @@ export async function verifyEmail(email: string): Promise<void> {
   await env.DB.prepare("UPDATE users SET email_verified = 1 WHERE email = ?").bind(email).run();
 }
 
+/**
+ * Une partie directe entre deux profils, créés au besoin sans compte. Aucune route ne
+ * le permet — la file et les défis n'apparient que des joueurs connectés —, mais la
+ * plupart des suites n'ont besoin que d'une partie, pas de deux comptes.
+ */
+export async function startTestMatch(
+  playerA: string,
+  playerB: string,
+  options?: { readonly rated: boolean },
+): Promise<StartedMatch> {
+  const profile = env.DB.prepare("INSERT OR IGNORE INTO players (id, handle, created_at) VALUES (?, ?, ?)");
+  await env.DB.batch([playerA, playerB].map((id) => profile.bind(id, id, Date.now())));
+  return startMatch(env, playerA, playerB, options);
+}

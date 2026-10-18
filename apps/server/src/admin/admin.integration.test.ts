@@ -1,7 +1,7 @@
 import { SELF, env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type { AdminMatchDetail, AdminMatchPage, AdminPlayer, AdminStats } from "@occulis/protocol";
-import { PASSWORD, cookieFrom, post, signUp, unique } from "../test-helpers.js";
+import { PASSWORD, cookieFrom, post, signUp, startTestMatch, unique } from "../test-helpers.js";
 import { CURRENT_RULESET_VERSION, DEFAULT_SCENARIO, deployTeams, rulesetFor, scenarioFor } from "@occulis/core";
 
 /**
@@ -43,11 +43,7 @@ async function userIdOf(handle: string): Promise<{ id: string; player_id: string
 }
 
 async function startMatch(playerA: string, playerB: string): Promise<string> {
-  const response = await SELF.fetch("https://occulis.test/api/matches", {
-    method: "POST",
-    body: JSON.stringify({ playerA, playerB }),
-  });
-  return ((await response.json()) as { matchId: string }).matchId;
+  return (await startTestMatch(playerA, playerB)).matchId;
 }
 
 describe("back-office : contrôle d'accès", () => {

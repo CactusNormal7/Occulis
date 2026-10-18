@@ -1419,7 +1419,7 @@ l'écran montre ce que la base contient et non ce qu'on vient d'envoyer.
 | `#/` | `Overview` | Les huit compteurs de `/api/admin/stats`, les dernières parties, les derniers inscrits |
 | `#/users?q=&offset=` | `UserList` | Recherche (par adresse si la saisie contient `@`, par pseudo sinon), table paginée avec les **actions rapides** de chaque compte, création en fenêtre modale |
 | `#/users/<id>` | `UserDetail` | `Hero` (insigne, pastilles, actions rapides), bandeau de suspension ; en deux colonnes : profil de jeu et dernières parties, puis édition (pseudo, adresse, mot de passe) et sessions |
-| `#/players/<id>` | `PlayerDetail` | Profil de jeu — y compris ceux **sans compte**, créés par `POST /api/matches` — et tout son historique |
+| `#/players/<id>` | `PlayerDetail` | Profil de jeu — y compris ceux **sans compte**, laissés par un compte supprimé — et tout son historique |
 | `#/matches?status=&offset=` | `MatchList` | Toutes, en cours ou terminées (`Segmented` en liens), paginées |
 | `#/matches/<id>` | `MatchDetail` | `Versus`, `FactStrip` ; la liste des coups, et sous elle **le plateau rejoué** |
 | `#/design`, `#/design/components/<Nom>`, `#/design/motion`, `#/design/conventions` | `DesignSystem` (`design/`) | **Le design system** : fondations, composants, animations, conventions — voir plus bas |

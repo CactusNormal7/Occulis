@@ -111,7 +111,6 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 | `/api/admin/*` | `GET`/`POST` | `handleAdmin()` — **401 sans session, 403 sans le rôle `admin`**, 403 sur un `POST` d'une autre origine |
 | `/api/me`, `/api/me/*` | `GET`/`POST` | `handleMe()` — **401 sans session**, 403 sur un `POST` d'une autre origine **ou sous usurpation** |
 | `/api/friends*`, `/api/players/search`, `/api/blocks*` | `GET`/`POST`/`DELETE` | `handleSocial()` — mêmes gardes que `/api/me` (`guardCaller()`), plus **403 `EMAIL_UNVERIFIED`** sans adresse vérifiée ; voir « `social/` » |
-| `/api/matches` | `POST` | `createMatch()` — partie directe, hors file d'attente |
 | `/api/queue` | WebSocket | `joinQueue()` — **401 sans session, 403 sans adresse vérifiée** |
 | `/api/social?surface=game\|profile` | WebSocket | `joinSocial()` — **401 sans session, 403 sans adresse vérifiée** ; ouvre le `SocialDO` du joueur de la session |
 | `/api/auth/*`, `/api/admin/*`, `/api/me*`, `/api/queue`, `/api/social`, routes d'amis, `/match/:id/watch` sans `AUTH_SECRET` | toute | **503** — garde-fou `hasAuthSecret()`, avant toute construction de Better Auth |
@@ -140,7 +139,6 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 | `handleAdmin()` | `apps/server/src/admin/routes.ts` | Garde de rôle, puis routage de `/api/admin/*` |
 | `handleAuth()` | `apps/server/src/auth/routes.ts` | `/api/auth/me`, puis délégation |
 | `sendLetter()` | `apps/server/src/auth/mail.ts` | Resend, ou journalisation sans clé |
-| `createMatch()` | `apps/server/src/index.ts` | Lit `playerA`/`playerB`, délègue à `startMatch()` |
 | `startMatch()` | `apps/server/src/match-setup.ts` | Identifiant, jetons de siège, cartes des joueurs, ligne `matches` (avec `rated`), `POST /init` ; `{ rated }` vaut vrai pour la file rapide seule |
 | `readPlayerCard()` | `apps/server/src/cards.ts` | Profil de jeu → `PlayerCard`, lue une fois à la création de la partie |
 
@@ -148,12 +146,13 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 forcément la même instance de DO, sans annuaire ni coordination.
 
 `startMatch()` enchaîne : `crypto.randomUUID()` pour l'identifiant **et pour chacun des
-deux jetons de siège**, `ensurePlayers()` — un `INSERT OR IGNORE` dans `players`, **bouchon
-en attendant l'authentification** : sans lui la contrainte de clé étrangère de `matches`
-fait échouer toute création de partie, ce qu'aucun test unitaire ne voyait — un `INSERT`
-dans `matches` (avec `CURRENT_RULESET_VERSION` et
+deux jetons de siège**, les deux cartes de joueur, un `INSERT` dans `matches` (avec `CURRENT_RULESET_VERSION` et
 `DEFAULT_SCENARIO`), puis un `POST /init` vers le DO pour y déposer la configuration.
-Il répond `{ matchId, seats }`.
+Il répond `{ matchId, seats }`. Ses seuls appelants sont la file (`QueueDO.seat()`) et
+l'acceptation d'un défi (`SocialDO`) : **aucune route ne crée de partie**, et les deux
+joueurs ont donc toujours un profil — la clé étrangère de `matches` le vérifie. Les
+suites d'intégration passent par `startTestMatch()` (`test-helpers.ts`), qui crée au
+besoin des profils sans compte avant d'appeler `startMatch()`.
 
 `crypto.randomUUID()` et `Date.now()` sont utilisés **ici, dans le Worker** — pas dans
 `packages/core`. L'invariant de déterminisme ne porte que sur `core` : l'identifiant et
@@ -334,7 +333,7 @@ L'ordre compte : **le log est écrit avant la diffusion**. Un client ne voit don
 état que la source de vérité ignore.
 
 **L'Elo** (`rating.ts`) ne bouge qu'à la clôture d'une partie **classée** — la file rapide ;
-un salon privé ou `POST /api/matches` ne l'est pas (`MatchConfig.rated`). `recordOutcome()`
+un salon privé ou un défi entre amis ne l'est pas (`MatchConfig.rated`). `recordOutcome()`
 relit les deux Elo à ce moment-là, calcule des variations opposées (K = 32, départ 1200) et
 écrit d'un même lot la clôture, `rating_change_a/b` et les deux `players.elo` (par
 incrément) : un Elo qui bougerait sans que la partie soit close, ou l'inverse, ne se
@@ -467,7 +466,7 @@ même compte ; le retrait n'a pas lieu, et l'hôte reste joignable.
 | Quel camp jouez-vous ? | Le jeton de siège | `seating.ts`, résolu dans le `MatchDO` |
 
 La seconde ne dépend pas de la première : une partie reste jouable par qui détient le
-jeton, ce qui laisse ouverte la possibilité d'une partie privée sans compte.
+jeton. Seules la file et les défis le distribuent, toujours à des joueurs connectés.
 
 **L'identité passée à la file d'attente vient du cookie, jamais de la requête.** Le
 Worker résout le compte, puis réécrit `?player=<id>` dans l'URL transmise au `QueueDO`.
@@ -1212,7 +1211,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `seating.test.ts` | Node | Jeton → camp, refus d'un jeton inconnu ou vide, autorité de tour |
 | `pairing.test.ts` | Node | File d'attente, remplacement d'une attente en double, appariement du plus ancien |
 | `rooms.test.ts` | Node | Codes sans caractères confondables et déterministes, saisie normalisée, salon rendu à l'hôte qui revient, salon consommé une seule fois, code libre au tirage suivant |
-| `match-do.integration.test.ts` | workerd | 403 sans jeton, **annonce du déploiement** (zones, équipe par défaut, cartes, temps restant), **coup refusé pendant le déploiement, équipe invalide ou illisible refusée**, **verrou annoncé aux deux camps et seconde équipe refusée**, **démarrage à deux équipes sans fuite de pièce adverse**, `setup` écrit en base, **échéance par l'alarme qui pose l'équipe par défaut**, refus hors tour, **abandon hors tour estampillé du siège**, **forfait d'un siège absent au-delà de `ABSENCE_MS`**, **retour à temps qui efface l'absence**, coup appliqué + écrit au log + diffusé, clôture en base sans Elo pour une partie privée, **Elo des deux joueurs à la fin d'une partie classée**, refus de protocole |
+| `match-do.integration.test.ts` | workerd | 403 sans jeton, **aucune partie ni aucun profil créé par une requête anonyme**, **annonce du déploiement** (zones, équipe par défaut, cartes, temps restant), **coup refusé pendant le déploiement, équipe invalide ou illisible refusée**, **verrou annoncé aux deux camps et seconde équipe refusée**, **démarrage à deux équipes sans fuite de pièce adverse**, `setup` écrit en base, **échéance par l'alarme qui pose l'équipe par défaut**, refus hors tour, **abandon hors tour estampillé du siège**, **forfait d'un siège absent au-delà de `ABSENCE_MS`**, **retour à temps qui efface l'absence**, coup appliqué + écrit au log + diffusé, clôture en base sans Elo pour une partie privée, **Elo des deux joueurs à la fin d'une partie classée**, refus de protocole |
 | `rating.test.ts` | Node | Espérance à Elo égal, variations opposées, victoire du moins bien classé mieux payée |
 | `feats/feats.test.ts` | Node | Statistiques dans l'ordre des fins (plus longue série), aucun fait sans partie, déblocage par seuil dans l'ordre du catalogue, **exhibition limitée aux faits débloqués, sans doublon, trois au plus** |
 | `legacy-routes.test.ts` | Node | Anciennes adresses françaises → anglaises, jeton conservé, paramètres renommés, adresses actuelles intactes |
@@ -1319,10 +1318,6 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
   reçoit, mais c'est un écart à l'intention initiale des routes du projet.
 - **La signature de `sendLetter()` ignore les rebonds.** Un envoi refusé par Resend est
   journalisé, sans que personne ne l'apprenne.
-- **`POST /api/matches` n'exige aucun compte** et crée au besoin des lignes `players`
-  sans compte associé (`ensurePlayers`), pour qu'une partie privée ou un test démarre
-  sans inscription. Ce n'est pas un chemin d'inscription — ces lignes n'ont ni mot de
-  passe ni moyen de se connecter — mais c'est une porte ouverte à surveiller.
 - **Aucun classement** — l'Elo existe (`rating.ts`), mais rien ne range les joueurs entre eux.
 - **Aucune modération des messages privés** : ni signalement, ni lecture par le
   back-office. Le blocage et la purge à 90 jours sont les seuls recours.

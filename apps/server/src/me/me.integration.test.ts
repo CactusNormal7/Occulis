@@ -1,7 +1,7 @@
 import { SELF, env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type { MeCurrentMatch, MeMatchDetail, MeMatchPage, MeProfile, MeSession } from "@occulis/protocol";
-import { PASSWORD, cookieFrom, post, signUp, unique } from "../test-helpers.js";
+import { PASSWORD, cookieFrom, post, signUp, startTestMatch, unique } from "../test-helpers.js";
 
 /**
  * La page de profil dans workerd. Ce qu'on éprouve d'abord, c'est le cloisonnement :
@@ -215,11 +215,7 @@ describe("profil : sessions", () => {
 
 describe("profil : parties", () => {
   async function matchBetween(a: string, b: string): Promise<string> {
-    const response = await SELF.fetch("https://occulis.test/api/matches", {
-      method: "POST",
-      body: JSON.stringify({ playerA: a, playerB: b }),
-    });
-    return ((await response.json()) as { matchId: string }).matchId;
+    return (await startTestMatch(a, b)).matchId;
   }
 
   it("rend sa partie en cours et son siège, pour s'y rasseoir après un rechargement", async () => {
@@ -232,11 +228,7 @@ describe("profil : parties", () => {
 
     expect(await (await get("/api/me/current-match", cookie)).json()).toBeNull();
 
-    const response = await SELF.fetch("https://occulis.test/api/matches", {
-      method: "POST",
-      body: JSON.stringify({ playerA: opponent, playerB: me }),
-    });
-    const started = (await response.json()) as { matchId: string; seats: { A: string; B: string } };
+    const started = await startTestMatch(opponent, me);
 
     const current = (await (await get("/api/me/current-match", cookie)).json()) as MeCurrentMatch;
     expect(current).toEqual({ matchId: started.matchId, player: "B", seat: started.seats.B });

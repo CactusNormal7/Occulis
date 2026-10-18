@@ -25,7 +25,6 @@ export async function startMatch(
   const matchId = crypto.randomUUID();
   const seats: Seats = { A: crypto.randomUUID(), B: crypto.randomUUID() };
 
-  await ensurePlayers(env, playerA, playerB);
   const [cardA, cardB] = await Promise.all([readPlayerCard(env.DB, playerA), readPlayerCard(env.DB, playerB)]);
 
   const config: MatchConfig = {
@@ -50,22 +49,4 @@ export async function startMatch(
   );
 
   return { matchId, seats };
-}
-
-/**
- * Garantit l'existence des deux lignes `players` que `matches` référence.
- *
- * Le matchmaking n'en a plus besoin : l'inscription crée le profil de jeu en même
- * temps que le compte, et `/api/queue` n'accepte qu'un joueur authentifié. Reste la
- * création directe d'une partie (`POST /api/matches`), qui n'exige aucun compte pour
- * qu'une partie privée ou un test puisse démarrer sans en créer.
- *
- * Ce n'est donc pas un chemin d'inscription : les lignes créées ici n'ont ni compte,
- * ni mot de passe, ni moyen de se connecter.
- */
-async function ensurePlayers(env: Env, ...ids: readonly string[]): Promise<void> {
-  const statement = env.DB.prepare(
-    "INSERT OR IGNORE INTO players (id, handle, created_at) VALUES (?, ?, ?)",
-  );
-  await env.DB.batch(ids.map((id) => statement.bind(id, id, Date.now())));
 }
