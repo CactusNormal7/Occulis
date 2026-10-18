@@ -11,7 +11,15 @@ export default [
     // `ds-bundle/` et `.ds-sync/` sont la sortie et les scripts de la synchronisation vers
     // Claude Design (.design-sync/NOTES.md) : du code tiers et généré, ignoré par git, que
     // la CI ne voit jamais.
-    ignores: ["**/dist/**", "**/node_modules/**", "**/.wrangler/**", "ds-bundle/**", ".ds-sync/**"],
+    ignores: [
+      "**/dist/**",
+      "**/node_modules/**",
+      "**/.wrangler/**",
+      "ds-bundle/**",
+      ".ds-sync/**",
+      // Doublons de la synchronisation iCloud (voir .gitignore) : jamais des sources.
+      "**/* 2.*",
+    ],
   },
   {
     files: ["**/*.ts", "**/*.tsx"],

@@ -14,5 +14,8 @@
     "isolatedModules": true,
     "declaration": true,
     "declarationMap": true
-  }
+  },
+  // Doublons créés par la synchronisation iCloud du Bureau (« fichier 2.ts ») : ignorés
+  // par git, ils restaient compilés en local et y faisaient échouer le typecheck.
+  "exclude": ["**/* 2.*", "**/node_modules", "**/dist"]
 }
