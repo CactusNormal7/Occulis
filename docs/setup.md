@@ -55,6 +55,10 @@ pnpm exec wrangler whoami    # confirme le compte et affiche l'Account ID
 
 Noter l'**Account ID** : il servira en secret GitHub à l'étape 5.
 
+Pour travailler avec Claude Code, construire aussi la carte du code, qui n'est pas
+versionnée : `pipx install graphifyy` puis `graphify update .` — détail dans
+[graphify.md](graphify.md).
+
 ## 2. Développement local
 
 Aucune ressource cloud n'est nécessaire. `wrangler dev` émule D1 et les Durable Objects

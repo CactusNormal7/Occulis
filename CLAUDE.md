@@ -103,7 +103,7 @@ Non implémenté volontairement, car listé comme ouvert en section 10 du design
 
 ## graphify
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships. It is built locally on each machine and never committed (`graphify-out/` is gitignored); setup and usage are in [docs/graphify.md](docs/graphify.md). If graphify-out/graph.json is missing, build it with `graphify update .`.
 
 Rules:
 - For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.

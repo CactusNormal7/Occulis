@@ -74,6 +74,7 @@ Deux invariants à ne pas casser :
 | Qu'a-t-il fallu interpréter faute de décision ? | [docs/implementation-notes.md](docs/implementation-notes.md) |
 | Comment installer et déployer ? | [docs/setup.md](docs/setup.md) |
 | Combien ça coûte ? | [docs/costs.md](docs/costs.md) |
+| Comment installer et utiliser la carte du code (graphify) ? | [docs/graphify.md](docs/graphify.md) |
 
 ## Environnements
 
