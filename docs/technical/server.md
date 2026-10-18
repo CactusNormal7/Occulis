@@ -187,16 +187,18 @@ désigne les fichiers du déploiement courant. Vérifié sous `wrangler dev`.
 | `greetSpectator()` | privée | `hello` → `watching`, puis la vue du camp suivi — **aucune pendant le déploiement** ; toute autre chose → `rejected` `unknown-seat` |
 | `announceSpectators()` | privée | Envoie `spectators { count }` aux sockets du camp suivi |
 | `watchedBy()` | privée | Tag `watch:A` / `watch:B` → camp suivi, sinon `undefined` |
-| `alarm()` | publique | Deux échéances sur une alarme : le déploiement échu pose l'équipe par défaut de qui n'a rien verrouillé et ouvre la partie ; puis `forfeitAbsent()` ; enfin `scheduleAlarm()` |
-| `forfeitAbsent()` | privée | Le siège absent depuis `ABSENCE_MS` (30 s) et toujours sans socket abandonne (`{ kind: "resign", player }` par `commit()`) — le premier parti si les deux le sont ; efface les absences |
-| `scheduleAlarm()` | privée | Recale l'alarme sur la prochaine échéance : celle du déploiement **seule** pendant la phase (une absence échue y sonnerait en boucle), sinon la plus proche absence |
+| `alarm()` | publique | D'abord la clôture en attente (`unrecorded-outcome`), s'il y en a une ; puis deux échéances sur une alarme : le déploiement échu pose l'équipe par défaut de qui n'a rien verrouillé et ouvre la partie ; puis `forfeitAbsent()` ; enfin `scheduleAlarm()` |
+| `forfeitAbsent()` | privée | Sous `exclusive()`. Le siège absent depuis `ABSENCE_MS` (30 s) et toujours sans socket abandonne (`{ kind: "resign", player }` par `commit()`) — le premier parti si les deux le sont ; efface les absences |
+| `scheduleAlarm()` | privée | Recale l'alarme sur la prochaine échéance : celle du déploiement **seule** pendant la phase (une absence échue y sonnerait en boucle), sinon la plus proche absence ; une clôture en attente la ramène à `OUTCOME_RETRY_MS` (5 s) |
 | `deploy()` | privée | Lit, valide et verrouille une équipe ; ouvre la partie quand les deux le sont |
-| `start()` | privée | `deployTeams()`, écrit les pièces de départ (DO **et** `matches.setup`), fait compter l'absence d'un siège sans socket, réarme l'alarme, diffuse les vues |
+| `start()` | privée | `deployTeams()`, écrit les pièces de départ dans `matches.setup` **puis** dans le DO (c'est le `setup` du DO qui clôt la phase : un échec de D1 la laisse ouverte, et l'alarme retente), fait compter l'absence d'un siège sans socket, réarme l'alarme, diffuse les vues |
 | `sendDeployment()` | privée | Le message `deployment` d'un camp : sa zone, celle d'en face, son équipe par défaut, le temps restant, les verrous, les deux cartes |
 | `deploying()` | privée | Vrai sur une carte à déploiement tant que les pièces ne sont pas posées |
-| `play()` | privée | Refuse pendant le déploiement ; estampille l'abandon, refuse un déplacement hors tour, puis `commit()` |
-| `commit()` | privée | Applique une action autorisée (`advanceMemory()`), journalise, clôt si besoin, rediffuse ; rend l'`ActionError` d'un refus |
-| `recordOutcome()` | privée | Clôt la partie ; **classée**, fait varier l'Elo des deux joueurs dans le même lot |
+| `exclusive()` | privée | File les coups un par un : pendant un `await` sur D1, les *input gates* laissent entrer un autre message |
+| `play()` | privée | Sous `exclusive()`. Refuse pendant le déploiement ; estampille l'abandon, refuse un déplacement hors tour, puis `commit()` |
+| `commit()` | privée | Applique une action autorisée (`advanceMemory()`), journalise, **puis seulement** avance le cache, clôt si besoin, rediffuse ; rend l'`ActionError` d'un refus |
+| `closeMatch()` | privée | Marque `unrecorded-outcome`, appelle `recordOutcome()`, efface la marque ; en cas d'échec, l'alarme retentera |
+| `recordOutcome()` | privée | Clôt la partie ; **classée**, fait varier l'Elo des deux joueurs dans le même lot. **Rejouable** : chaque écriture exige une partie encore ouverte |
 | `appendToLog()` | privée | `INSERT` dans `match_actions` |
 | `broadcastViews()` | privée | Envoie à chaque joueur son `viewFor()`, et à ses spectateurs la même vue par `spectatorView()` |
 | `send()` | privée | Sérialise un `ServerMessage` |
@@ -325,19 +327,26 @@ webSocketMessage  ──►  play(action, player, ws)
                          ├─ advanceMemory(live, action) @occulis/core
                          │     └─ échec ──► send({ kind: "rejected", error })  ← à l'émetteur seul
                          ├─ appendToLog(action, seq)    INSERT dans match_actions
-                         ├─ recordOutcome()             si la partie s'achève : UPDATE matches (+ Elo si classée)
+                         ├─ this.live = …               le cache n'avance qu'après l'écriture
+                         ├─ closeMatch()                si la partie s'achève : UPDATE matches (+ Elo si classée)
                          └─ broadcastViews()            un viewFor() par joueur
 ```
 
-L'ordre compte : **le log est écrit avant la diffusion**. Un client ne voit donc jamais un
-état que la source de vérité ignore.
+L'ordre compte : **le log est écrit avant que le cache avance, et avant la diffusion**. Si
+l'`INSERT` échoue, l'erreur remonte et l'état reste celui que le log décrit : un cache en
+avance sur D1 rejouerait, après hibernation, un log décalé d'un coup (« Corrupted log »).
+Tout `play()` passe par `exclusive()`, qui file les coups un par un : les *input gates* d'un
+DO ne couvrent que son propre stockage, et un second message entré pendant l'`await` sur D1
+se validerait sinon contre la même position.
 
 **L'Elo** (`rating.ts`) ne bouge qu'à la clôture d'une partie **classée** — la file rapide ;
 un salon privé ou un défi entre amis ne l'est pas (`MatchConfig.rated`). `recordOutcome()`
 relit les deux Elo à ce moment-là, calcule des variations opposées (K = 32, départ 1200) et
-écrit d'un même lot la clôture, `rating_change_a/b` et les deux `players.elo` (par
-incrément) : un Elo qui bougerait sans que la partie soit close, ou l'inverse, ne se
-rattraperait jamais. Aucun classement n'en est tiré (pilier « pas de leaderboard »).
+écrit d'un même lot les deux `players.elo` (par incrément), puis la clôture et
+`rating_change_a/b` : un Elo qui bougerait sans que la partie soit close, ou l'inverse, ne
+se rattraperait jamais. Chaque écriture du lot exige une partie encore ouverte (`finished_at
+IS NULL`), la clôture venant en dernier : retenter le lot (`closeMatch()`, puis `alarm()`)
+ne compte jamais l'Elo deux fois. Aucun classement n'en est tiré (pilier « pas de leaderboard »).
 
 `seq` est l'index du coup dans `state.history` **avant** application : la première action
 porte `seq = 0`. Il ne dépend donc plus de `turn` — deux notions qui coïncident aujourd'hui
@@ -1213,7 +1222,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `seating.test.ts` | Node | Jeton → camp, refus d'un jeton inconnu ou vide, autorité de tour |
 | `pairing.test.ts` | Node | File d'attente, remplacement d'une attente en double, appariement du plus ancien |
 | `rooms.test.ts` | Node | Codes sans caractères confondables et déterministes, saisie normalisée, salon rendu à l'hôte qui revient, salon consommé une seule fois, code libre au tirage suivant |
-| `match-do.integration.test.ts` | workerd | 403 sans jeton, **coup mal formé ignoré sans rien écrire au log**, **aucune partie ni aucun profil créé par une requête anonyme**, **annonce du déploiement** (zones, équipe par défaut, cartes, temps restant), **coup refusé pendant le déploiement, équipe invalide ou illisible refusée**, **verrou annoncé aux deux camps et seconde équipe refusée**, **démarrage à deux équipes sans fuite de pièce adverse**, `setup` écrit en base, **échéance par l'alarme qui pose l'équipe par défaut**, refus hors tour, **abandon hors tour estampillé du siège**, **forfait d'un siège absent au-delà de `ABSENCE_MS`**, **retour à temps qui efface l'absence**, coup appliqué + écrit au log + diffusé, clôture en base sans Elo pour une partie privée, **Elo des deux joueurs à la fin d'une partie classée**, refus de protocole |
+| `match-do.integration.test.ts` | workerd | 403 sans jeton, **mêmes vues après éviction du cache (rejeu depuis D1)**, **clôture retentée sans double Elo**, **coup mal formé ignoré sans rien écrire au log**, **aucune partie ni aucun profil créé par une requête anonyme**, **annonce du déploiement** (zones, équipe par défaut, cartes, temps restant), **coup refusé pendant le déploiement, équipe invalide ou illisible refusée**, **verrou annoncé aux deux camps et seconde équipe refusée**, **démarrage à deux équipes sans fuite de pièce adverse**, `setup` écrit en base, **échéance par l'alarme qui pose l'équipe par défaut**, refus hors tour, **abandon hors tour estampillé du siège**, **forfait d'un siège absent au-delà de `ABSENCE_MS`**, **retour à temps qui efface l'absence**, coup appliqué + écrit au log + diffusé, clôture en base sans Elo pour une partie privée, **Elo des deux joueurs à la fin d'une partie classée**, refus de protocole |
 | `rating.test.ts` | Node | Espérance à Elo égal, variations opposées, victoire du moins bien classé mieux payée |
 | `feats/feats.test.ts` | Node | Statistiques dans l'ordre des fins (plus longue série), aucun fait sans partie, déblocage par seuil dans l'ordre du catalogue, **exhibition limitée aux faits débloqués, sans doublon, trois au plus** |
 | `legacy-routes.test.ts` | Node | Anciennes adresses françaises → anglaises, jeton conservé, paramètres renommés, adresses actuelles intactes |

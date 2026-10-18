@@ -79,6 +79,12 @@ const DEPLOYMENT_GRACE_MS = 2_000;
  */
 export const ABSENCE_MS = 30_000;
 
+/** Délai avant de retenter l'écriture d'une clôture que D1 a refusée (`closeMatch()`). */
+const OUTCOME_RETRY_MS = 5_000;
+
+/** Une fin acquise au log mais pas encore inscrite dans `matches` (`closeMatch()`). */
+const UNRECORDED = "unrecorded-outcome";
+
 function absenceKey(player: PlayerId): string {
   return `absent:${player}`;
 }
@@ -98,6 +104,19 @@ type LockedTeams = Partial<Record<PlayerId, readonly TeamEntry[]>>;
  */
 export class MatchDO extends DurableObject<Env> {
   private live: MatchMemory | null = null;
+
+  /**
+   * Les coups passent un par un. Le DO est mono-threadé, mais ses *input gates* ne
+   * couvrent que son propre stockage : pendant un `await` sur D1, un autre message peut
+   * entrer, et deux coups se valideraient contre la même position.
+   */
+  private turns: Promise<unknown> = Promise.resolve();
+
+  private exclusive<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.turns.then(task, task);
+    this.turns = run.catch(() => undefined);
+    return run;
+  }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -290,6 +309,10 @@ export class MatchDO extends DurableObject<Env> {
    */
   async alarm(): Promise<void> {
     const now = Date.now();
+    if (await this.ctx.storage.get<boolean>(UNRECORDED)) {
+      await this.recordOutcome((await this.load()).state);
+      await this.ctx.storage.delete(UNRECORDED);
+    }
     if (await this.deploying()) {
       const deadline = (await this.ctx.storage.get<number>("deadline")) ?? 0;
       const deployment = (await this.scenario()).deployment;
@@ -306,7 +329,11 @@ export class MatchDO extends DurableObject<Env> {
    * Le premier siège absent depuis `ABSENCE_MS` abandonne ; si les deux le sont, c'est
    * celui parti le premier. Une partie déjà finie n'a plus d'absence à suivre.
    */
-  private async forfeitAbsent(now: number): Promise<void> {
+  private forfeitAbsent(now: number): Promise<void> {
+    return this.exclusive(() => this.forfeitIfDue(now));
+  }
+
+  private async forfeitIfDue(now: number): Promise<void> {
     const live = await this.load();
     const since = await this.absences();
     if (live.state.outcome === null) {
@@ -342,6 +369,7 @@ export class MatchDO extends DurableObject<Env> {
         if (at !== undefined) next = Math.min(next ?? Infinity, at + ABSENCE_MS);
       }
     }
+    if (await this.ctx.storage.get<boolean>(UNRECORDED)) next = Math.min(next ?? Infinity, Date.now() + OUTCOME_RETRY_MS);
     if (next === undefined) await this.ctx.storage.deleteAlarm();
     else await this.ctx.storage.setAlarm(next);
   }
@@ -385,6 +413,11 @@ export class MatchDO extends DurableObject<Env> {
    * Pose les deux équipes et ouvre la partie. Les pièces de départ sont écrites en D1
    * (`matches.setup`) autant que dans le DO : c'est avec elles que le log se rejoue —
    * pour reconstruire l'état ici comme pour le replay du back-office et du profil.
+   *
+   * D1 d'abord : c'est le `setup` du DO qui clôt le déploiement (`deploying()`). Si D1
+   * échoue, la partie reste en déploiement et l'alarme retentera ; dans l'ordre inverse,
+   * le DO jouerait des pièces que les replays ne connaîtraient jamais. Retenter est sans
+   * risque, `deployTeams()` rendant les mêmes pièces pour les mêmes équipes.
    */
   private async start(teams: Readonly<Record<PlayerId, readonly TeamEntry[]>>): Promise<void> {
     const config = await this.config();
@@ -393,10 +426,10 @@ export class MatchDO extends DurableObject<Env> {
     const pieces = deployTeams(rulesetFor(config.rulesetVersion), deployment, teams);
     if (!pieces.ok) throw new Error(`MatchDO: invalid team for ${pieces.error.player}: ${pieces.error.error.code}`);
 
-    await this.ctx.storage.put("setup", pieces.value);
     await this.env.DB.prepare("UPDATE matches SET setup = ? WHERE id = ?")
       .bind(JSON.stringify(pieces.value), config.matchId)
       .run();
+    await this.ctx.storage.put("setup", pieces.value);
     this.live = null;
     // Un siège qui ne s'est jamais connecté — ou plus depuis le déploiement — n'a laissé
     // aucune fermeture à compter : son absence part de l'ouverture de la partie.
@@ -411,7 +444,11 @@ export class MatchDO extends DurableObject<Env> {
     await this.broadcastViews();
   }
 
-  private async play(action: Action, player: PlayerId, from: WebSocket): Promise<void> {
+  private play(action: Action, player: PlayerId, from: WebSocket): Promise<void> {
+    return this.exclusive(() => this.playNow(action, player, from));
+  }
+
+  private async playNow(action: Action, player: PlayerId, from: WebSocket): Promise<void> {
     if (await this.deploying()) {
       this.send(from, { kind: "rejected", error: { code: "wrong-phase" } });
       return;
@@ -432,18 +469,39 @@ export class MatchDO extends DurableObject<Env> {
     if (error !== undefined) this.send(from, { kind: "rejected", error });
   }
 
-  /** Applique une action déjà autorisée : log, clôture éventuelle, diffusion. */
+  /**
+   * Applique une action déjà autorisée : log, clôture éventuelle, diffusion. Toujours
+   * appelée sous `exclusive()`.
+   *
+   * Le cache n'avance qu'une fois le coup écrit en D1 : si l'écriture échoue, l'erreur
+   * remonte et l'état reste celui que le log décrit — sans quoi le DO jouerait sur une
+   * position que le rejeu, après hibernation, ne retrouverait pas (« Corrupted log »).
+   */
   private async commit(live: MatchMemory, action: Action): Promise<ActionError | undefined> {
     const advanced = advanceMemory(live, action);
     if (!advanced.ok) return advanced.error;
 
-    const seq = live.state.history.length;
+    await this.appendToLog(action, live.state.history.length);
     this.live = advanced.value;
 
-    await this.appendToLog(action, seq);
-    if (advanced.value.state.outcome !== null) await this.recordOutcome(advanced.value.state);
+    if (advanced.value.state.outcome !== null) await this.closeMatch(advanced.value.state);
     await this.broadcastViews();
     return undefined;
+  }
+
+  /**
+   * La fin est déjà au log, donc acquise ; reste à l'inscrire dans `matches`. Si D1 la
+   * refuse, l'alarme la retente : une partie finie qui resterait « en cours » en base ne
+   * serait jamais rattrapée, `forfeitAbsent()` ignorant les parties déjà closes.
+   */
+  private async closeMatch(state: GameState): Promise<void> {
+    await this.ctx.storage.put(UNRECORDED, true);
+    try {
+      await this.recordOutcome(state);
+      await this.ctx.storage.delete(UNRECORDED);
+    } catch {
+      await this.scheduleAlarm();
+    }
   }
 
   /**
@@ -465,13 +523,20 @@ export class MatchDO extends DurableObject<Env> {
    * écrites d'un même lot : un Elo qui bougerait sans que la partie soit close, ou
    * l'inverse, ne se rattraperait jamais. Les Elo sont lus juste avant, au moment de la
    * fin, et non à la création : ce sont eux qui ont pu bouger entre-temps.
+   *
+   * Rejouable : chaque écriture est conditionnée à une partie encore ouverte, et le lot
+   * s'exécute dans l'ordre, la clôture en dernier. Une seconde tentative, après une
+   * première qui aurait abouti sans que sa réponse arrive, ne change donc rien.
    */
   private async recordOutcome(state: GameState): Promise<void> {
     const config = await this.config();
     const db = this.env.DB;
     const finish = (changes: { a: number; b: number } | null) =>
       db
-        .prepare("UPDATE matches SET finished_at = ?, outcome = ?, rating_change_a = ?, rating_change_b = ? WHERE id = ?")
+        .prepare(
+          `UPDATE matches SET finished_at = ?, outcome = ?, rating_change_a = ?, rating_change_b = ?
+           WHERE id = ? AND finished_at IS NULL`,
+        )
         .bind(Date.now(), JSON.stringify(state.outcome), changes?.a ?? null, changes?.b ?? null, config.matchId);
 
     if (config.rated !== true || config.players === undefined || state.outcome === null) {
@@ -485,8 +550,11 @@ export class MatchDO extends DurableObject<Env> {
       .all<{ id: string; elo: number }>();
     const elo = (id: string) => rows.results.find((row) => row.id === id)?.elo ?? 1200;
     const changes = ratingChanges(elo(A), elo(B), state.outcome.winner === "A" ? 1 : 0);
-    const bump = db.prepare("UPDATE players SET elo = elo + ? WHERE id = ?");
-    await db.batch([finish(changes), bump.bind(changes.a, A), bump.bind(changes.b, B)]);
+    const bump = db.prepare(
+      `UPDATE players SET elo = elo + ? WHERE id = ?
+         AND EXISTS (SELECT 1 FROM matches WHERE id = ? AND finished_at IS NULL)`,
+    );
+    await db.batch([bump.bind(changes.a, A, config.matchId), bump.bind(changes.b, B, config.matchId), finish(changes)]);
   }
 
   private async sendDeployment(ws: WebSocket, player: PlayerId): Promise<void> {

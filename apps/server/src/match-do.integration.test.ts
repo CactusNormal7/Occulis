@@ -396,6 +396,56 @@ describe("MatchDO dans workerd", () => {
     b.socket.close();
   });
 
+  it("retente une clôture non inscrite sans compter l'Elo deux fois", async () => {
+    const [anne, boris] = [`anne-${crypto.randomUUID()}`, `boris-${crypto.randomUUID()}`];
+    const match = await startTestMatch(anne, boris, { rated: true });
+    const { a, b } = await deployed(match);
+    await a.awaitKind("view");
+    a.drain();
+    a.send({ kind: "action", action: { kind: "resign" } });
+    await a.awaitKind("view");
+
+    // Comme si D1 avait répondu en erreur après avoir pourtant écrit le lot.
+    const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
+    await runInDurableObject(stub, async (_instance, state) => {
+      await state.storage.put("unrecorded-outcome", true);
+      await state.storage.setAlarm(Date.now());
+    });
+    expect(await runDurableObjectAlarm(stub)).toBe(true);
+
+    const elo = async (id: string) => (await env.DB.prepare("SELECT elo FROM players WHERE id = ?").bind(id).first<{ elo: number }>())?.elo;
+    expect(await elo(anne)).toBe(1184);
+    expect(await elo(boris)).toBe(1216);
+    expect(await runInDurableObject(stub, (_instance, state) => state.storage.get("unrecorded-outcome"))).toBeUndefined();
+
+    a.socket.close();
+    b.socket.close();
+  });
+
+  it("rend les mêmes vues après éviction, l'état n'étant qu'un cache du log", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    await a.awaitKind("view");
+    await b.awaitKind("view");
+    a.drain();
+    b.drain();
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    const before = { A: (await a.awaitKind("view")).view, B: (await b.awaitKind("view")).view };
+
+    // Ce que l'hibernation fait au DO : la mémoire tombe, le stockage et D1 restent.
+    const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
+    await runInDurableObject(stub, (instance) => {
+      (instance as unknown as { live: unknown }).live = null;
+    });
+    a.send({ kind: "hello", protocol: PROTOCOL_VERSION });
+
+    expect((await a.awaitKind("view")).view).toEqual(before.A);
+    expect((await b.awaitKind("view")).view).toEqual(before.B);
+
+    a.socket.close();
+    b.socket.close();
+  });
+
   it("ferme la connexion d'un client au protocole incompatible", async () => {
     const match = await createMatch();
     const response = await SELF.fetch(`https://occulis.test/match/${match.matchId}?seat=${match.seats.A}`, {
