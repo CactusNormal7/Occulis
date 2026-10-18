@@ -4,7 +4,7 @@ Ce document est une synthèse d'une session de brainstorming critique. Il captur
 
 ## 1. Pitch
 
-Un jeu de plateau tactique compétitif 1v1 en ligne, en vue isométrique 2D, à l'esthétique minimaliste filaire ("supra minimaliste, style traits, très chill"). Il reprend le squelette conceptuel des échecs — une pièce maîtresse (roi) à protéger, victoire par mat quand elle n'a plus aucune parade — mais casse le plateau plat 8x8 au profit d'une carte à géométrie libre, avec hauteur, murs, ligne de vue (LOS) et fog of war façon Dofus/XCOM. Les pièces ont des capacités au-delà du simple mouvement échiquéen.
+Un jeu de plateau tactique compétitif 1v1 en ligne, en vue isométrique 2D, en pixel art léger, mystique et cryptique (section 8.1 — l'intention de départ, « supra minimaliste, style traits, très chill », a été refondue à la demande du porteur du projet). Il reprend le squelette conceptuel des échecs — une pièce maîtresse (roi) à protéger, victoire par mat quand elle n'a plus aucune parade — mais casse le plateau plat 8x8 au profit d'une carte à géométrie libre, avec hauteur, murs, ligne de vue (LOS) et fog of war façon Dofus/XCOM. Les pièces ont des capacités au-delà du simple mouvement échiquéen.
 
 Nom du projet : Occulis (voir section 8 — nom retenu avec réserve documentée).
 
@@ -159,24 +159,79 @@ Le seuil de la seconde règle n'est **pas** un équilibrage : aucun roster n'est
 
 ### 8.1 Direction artistique et caméra — décisions provisoires
 
-Ces quatre points ont été arrêtés lors de l'implémentation du moteur de rendu. Ils sont
-explicitement **provisoires** : aucun design system n'est encore posé, et le porteur du
-projet a indiqué que le code couleur évoluerait. Ils sont consignés ici pour que le code
-ne soit pas la seule trace d'une décision de DA.
+Ces points ont été arrêtés lors de l'implémentation du moteur de rendu, puis la direction
+artistique a été refondue à la demande du porteur du projet. Ils restent **provisoires**,
+et sont consignés ici pour que le code ne soit pas la seule trace d'une décision de DA.
 
-- **Code couleur : le blanc porte la géométrie, la couleur porte l'état de jeu.** Tout le
-  terrain est blanc ; le fog of war, la hauteur et l'infranchissabilité se lisent par alpha
-  et par épaisseur de trait, jamais par teinte. La couleur est réservée à l'information de
-  partie (camps, et plus tard sélection, coups légaux, menace). Conséquence directe : un
-  trait coloré signifie toujours quelque chose. La contrainte est verrouillée
+- **Direction : un pixel art léger, mystique et cryptique.** Inspirations données par le
+  porteur du projet : *Animal Well*, *Helix: Descent n Ascent*, *Void Stranger* et
+  *Octopath Traveler*. On en retient : des pixels **visibles mais très fins** (un pixel du
+  plateau couvre deux pixels physiques, quel que soit l'écran) ; des animations
+  **jamais saccadées**, à la manière d'Octopath — la matière est en pixels, le mouvement et
+  la lumière restent continus (glissements interpolés à chaque image, lueurs qui respirent,
+  vignettage en pleine résolution par-dessus le plateau) ; des noirs profonds et un os, avec des lueurs saturées et rares, à la manière d'Helix et de Void Stranger ; et un
+  décor cryptique qui ne veut rien dire — un sceau gravé sous le plateau qui tourne très
+  lentement, des poussières en suspension. Ce qui a été écarté : le pixel art « gros
+  grain », et toute animation par paliers.
+- **Plusieurs propositions, comparées par le porteur du projet.** Trois thèmes coexistent,
+  choisis depuis le menu et en pleine partie (bouton « Design ») : *Obsidienne* (le noir de
+  Void Stranger, neutre et sévère), *Reliquaire* (le noir chaud d'Animal Well, or ancien,
+  lucioles, sceau tournant) et *Astral* (le ciel d'Helix, constellations, étoiles filantes,
+  nuées). Retours du porteur ayant motivé cette étape : le fond doit être **plus noir et
+  moins bleuté** que la première refonte (violet-noir, écartée) ; **la voûte d'étoiles est
+  retenue** comme marqueur du ton cryptique et poétique, présente dans les trois ; **le sceau
+  qui tourne autour du plateau reste à juger** — il n'est allumé que dans Reliquaire. Le
+  choix entre les trois n'est pas tranché.
+- **Chaque action s'anime comme dans un jeu d'action.** Rien n'apparaît ni ne disparaît
+  d'un coup : la ligne de vue se **déploie** depuis les pièces en vague, case par case, et se
+  retire d'un bloc ; le plateau monte du vide à l'entrée de la partie ; une pièce
+  sélectionnée s'élève sous une colonne de lumière et ses destinations s'ouvrent en
+  cascade ; un déplacement est un saut en arc suivi d'images rémanentes, qui retombe dans
+  une onde et des étincelles ; un adversaire qui entre dans la vue se matérialise. Tout est
+  coupé sous « mouvement réduit ». Ces animations ne lisent que la vue que le serveur a
+  transmise : elles mettent en scène l'information, elles n'en révèlent aucune.
+- **Une fenêtre qu'un clic ouvre se déplie.** Seules les fenêtres que le joueur ouvre
+  par un clic s'animent ainsi — réglages, fenêtres modales, messages qui suivent un geste.
+  Un cadre d'un pixel part d'un point et s'étire jusqu'aux bords de la fenêtre en la
+  dévoilant, puis s'efface ; à la fermeture, il se replie vers ce point. Le point est **la
+  souris** quand la fenêtre est posée à côté de ce qu'on a cliqué (les réglages sous
+  l'engrenage), **le centre de la fenêtre** sinon (une modale au milieu de l'écran, un
+  message dans son coin) ou quand on l'a ouverte au clavier. Le geste est volontairement
+  minimal et court (220 ms). Trois propositions l'ont précédé, écartées par le porteur du
+  projet : une nuée de petits carrés blancs éclose du centre (trop chaotique), un balayage de
+  carrés depuis le coin le plus proche de la souris, puis un « œil qui s'ouvre » (un trait de
+  lumière qui s'écarte en deux paupières tramées) — trop chargé. **Les écrans du parcours ne
+  s'ouvrent pas ainsi** — menu principal, compte, attente, bandeau de partie, bandeau
+  d'usurpation —, à sa demande : ce ne sont pas des fenêtres qu'on ouvre, et
+  l'on y revient sans cesse. **Une exception : l'entrée dans la recherche ou la
+  création d'une partie** passe sous le voile tramé du changement de thème (ci-dessous).
+  Les pages entières gardent le fondu entre pages. Le design et la
+  langue se règlent dans une petite fenêtre de **réglages**, ouverte par un engrenage à côté
+  du lien vers le compte.
+- **Le voile tramé est acté — ne pas y toucher.** Changer de thème fait passer sur l'écran un
+  voile tramé (un pixel sur deux, couleur du vide) qui le balaie de gauche à droite en
+  520 ms ; tout se repeint sous lui. Le porteur du projet l'a jugé **très bien : discret,
+  bien que très visible**, et a demandé qu'on le garde tel quel et qu'il ne change jamais au
+  détour d'une autre modification. C'est la référence des transitions : l'entrée dans la
+  recherche ou la création d'une partie le reprend à l'identique (le menu bascule sur
+  l'attente sous le voile). Sa feuille et ses durées sont verrouillées par un test
+  (`apps/web/src/ui/veil.test.ts`) ; le changer demande son accord explicite.
+- **Code couleur : le vide porte la matière, l'os porte la géométrie, les lueurs portent
+  l'état de jeu.** Le terrain est fait de faces sombres et pleines, aux arêtes d'os ; le fog
+  of war et la hauteur se lisent par la **valeur** (le dessus s'éclaircit avec la hauteur,
+  une case hors de vue est assombrie et tramée un pixel sur deux), jamais par une teinte.
+  La couleur est réservée à l'information de partie (camps, sélection, coups légaux,
+  menace) : une lueur signifie toujours quelque chose. La contrainte est verrouillée
   mécaniquement — une règle ESLint interdit toute valeur de couleur hors de
   `packages/ui/src/tokens.ts`, seul détenteur du code couleur, que le rendu PixiJS
   (`apps/web/src/theme.ts`) et la charte d'interface (`@occulis/ui`) partagent.
-- **Rendu filaire par défaut, sans remplissage.** Les faces des cases ne sont pas remplies ;
-  seule la case survolée reçoit un aplat blanc de faible opacité. En l'absence de surfaces
-  opaques, le volume est restitué par une atténuation des traits en profondeur. Le
-  remplissage existe comme token à opacité nulle : repasser à des faces opaques, et
-  retrouver une occlusion par surface, ne demande que de relever cette valeur.
+- **Faces pleines, et non plus filaire.** Le rendu filaire des débuts a été abandonné avec
+  la refonte : les faces opaques rétablissent l'occlusion par surface (une pièce derrière
+  un relief est cachée par une matière, plus seulement par l'ordre des traits), et c'est
+  la lumière — face de falaise éclairée à gauche, d'ombre à droite — qui restitue le volume.
+- **Une police pixel pour toute l'interface** (Tiny5, licence OFL), à des tailles multiples
+  de 8 pour rester nette. Elle est servie par le client et préchargée avec le HTML : c'est la
+  seule ressource que le premier écran attend, et il paraît directement dans cette police.
 - **Rotation libre avec aimantation.** La rotation se fait au drag (bouton droit ou milieu),
   de façon continue, et s'aimante sur le quart de tour le plus proche au relâchement ; les
   flèches gauche/droite conservent le quart de tour direct. Conformément à la section 8, la
@@ -207,7 +262,7 @@ ne soit pas la seule trace d'une décision de DA.
 - **Caméra : zoom et déplacement.** Molette pour zoomer vers le curseur, drag gauche pour
   déplacer la vue. Le facteur de zoom vit dans la projection et non dans la transformation
   du conteneur de rendu, afin que l'épaisseur des traits reste constante à l'écran quel que
-  soit le niveau de zoom — exigence propre à une DA filaire.
+  soit le niveau de zoom — une arête reste large d'un seul pixel du plateau.
 
 
 ## 9. Nom du projet

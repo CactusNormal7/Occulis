@@ -11,9 +11,9 @@ export interface UiRootProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * La racine de toute interface Occulis : fond, encre, police monospace et taille de base.
- * Sans elle, les composants restent fonctionnels mais héritent de la typographie et du
- * fond de la page hôte.
+ * La racine de toute interface Occulis : encre, police pixel et taille de base, et le fond
+ * pour une page entière. Sans elle, les composants restent fonctionnels mais héritent de
+ * la typographie et du fond de la page hôte.
  */
 export function UiRoot({ fullPage = false, locale, className, ...rest }: UiRootProps) {
   const root = <div className={cx("occ-root", fullPage && "occ-root--page", className)} lang={locale} {...rest} />;

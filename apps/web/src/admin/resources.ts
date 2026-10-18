@@ -44,6 +44,13 @@ export const matches = (status: MatchStatus | null, offset: number) =>
 
 export const match = (id: string) => resource(`match:${id}`, () => api.match(id));
 
+/**
+ * La page du design system, chargée à part : elle embarque tous les aperçus de la charte et
+ * les sources qu'elle montre, que le reste du back-office n'a pas à télécharger. Comme une
+ * lecture, elle part avec l'écran et le fait attendre en entier.
+ */
+export const designSystem = resource("design-system", async () => ({ ok: true as const, value: await import("./design/DesignSystem.js") }));
+
 export function resourcesOf(route: Route): readonly Resource<unknown>[] {
   switch (route.view) {
     case "overview":
@@ -58,5 +65,7 @@ export function resourcesOf(route: Route): readonly Resource<unknown>[] {
       return [identity, matches(route.status, route.offset)];
     case "match":
       return [identity, match(route.id)];
+    case "design":
+      return [identity, designSystem];
   }
 }

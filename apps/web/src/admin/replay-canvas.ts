@@ -1,7 +1,7 @@
 import type { Board, Coord } from "@occulis/core";
 import type { AdminFrame } from "@occulis/protocol";
-import { METRICS, PIECES, PLAYERS, STATE } from "../theme.js";
-import { type Drawable, drawPiece, fillQuad, strokeQuad, terrainDrawables } from "../canvas/paint.js";
+import { METRICS, look } from "../theme.js";
+import { type Drawable, drawPiece, fillQuad, fitPixelCanvas, strokeQuad, terrainDrawables } from "../canvas/paint.js";
 import { cssColor } from "@occulis/ui/tokens";
 import { type Camera, createCamera, pivotOf, settle, toProjection, turn } from "../view/camera.js";
 import { type MoveAnimation, advance, positionOf, startMove } from "../view/animation.js";
@@ -53,11 +53,9 @@ export function mountReplay(canvas: HTMLCanvasElement, board: Board, frames: rea
       observer.disconnect();
       return;
     }
-    const ratio = window.devicePixelRatio || 1;
-    const { width, height } = canvas.getBoundingClientRect();
-    if (width === 0 || height === 0) return;
-    canvas.width = Math.round(width * ratio);
-    canvas.height = Math.round(height * ratio);
+    const size = fitPixelCanvas(canvas);
+    if (size === undefined) return;
+    const { width, height } = size;
     camera = { ...camera, viewport: { x: width, y: height }, scale: fitScale(board, base, width, height, PADDING) };
     draw();
   };
@@ -109,7 +107,7 @@ export function mountReplay(canvas: HTMLCanvasElement, board: Board, frames: rea
         // Au-dessus de sa propre case dans l'ordre du peintre, jamais derrière elle.
         depth: { ...depthOf(coord, height, proj), height: height + 0.5 },
         paint: () =>
-          drawPiece(context, project(coord, height, proj), piece.owner, seen ? PIECES.alphaVisible : PIECES.alphaGhost, proj),
+          drawPiece(context, project(coord, height, proj), piece.owner, seen ? look().pieces.alphaVisible : look().pieces.alphaGhost, proj),
       });
     }
 
@@ -123,23 +121,23 @@ export function mountReplay(canvas: HTMLCanvasElement, board: Board, frames: rea
     for (const move of moves) {
       const fromHeight = board.heightAt(move.from) ?? 0;
       const toHeight = board.heightAt(move.to) ?? 0;
-      context.setLineDash([4, 4]);
-      strokeQuad(context, tileQuad(move.from, fromHeight, proj), cssColor(STATE.selection, 0.7), 1.5);
+      context.setLineDash([2 / ratio, 2 / ratio]);
+      strokeQuad(context, tileQuad(move.from, fromHeight, proj), cssColor(look().state.selection, 0.7), 1);
       const a = project(move.from, fromHeight, proj);
       const b = project(move.to, toHeight, proj);
       context.beginPath();
       context.moveTo(a.x, a.y);
       context.lineTo(b.x, b.y);
-      context.strokeStyle = cssColor(PLAYERS[move.owner], 0.6);
-      context.lineWidth = 1.5;
+      context.strokeStyle = cssColor(look().players[move.owner], 0.6);
+      context.lineWidth = 1 / ratio;
       context.stroke();
       context.setLineDash([]);
     }
 
     for (const move of moves) {
       const quad = tileQuad(move.to, board.heightAt(move.to) ?? 0, proj);
-      fillQuad(context, quad, cssColor(STATE.selection, 0.1));
-      strokeQuad(context, quad, cssColor(STATE.selection), 2);
+      fillQuad(context, quad, cssColor(look().state.selection, 0.1));
+      strokeQuad(context, quad, cssColor(look().state.selection), 1);
     }
   }
 

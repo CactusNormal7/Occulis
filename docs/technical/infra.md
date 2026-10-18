@@ -91,11 +91,24 @@ ne l'est pas** — d'où `cancel-in-progress` restreint à `pull_request`.
 Lancée par `pnpm infra`. Interface Ink (React dans le terminal) qui pilote wrangler, édite
 `wrangler.toml` et le manifeste, et enchaîne les commandes git.
 
+**Sans le menu** : `pnpm infra <id>` lance directement l'action d'identifiant `<id>`
+(`runDirect()` dans `cli.tsx`), pourvu qu'elle soit marquée `direct` (`ActionDef.direct`) :
+aujourd'hui `status`, `list`, `dev` et `login` — aucune qui crée, déploie ou pousse. Sinon la
+commande refuse, liste les actions directes et sort en code 2 ; une action qui a journalisé
+un échec sort en code 1. `pnpm local` est le raccourci de `pnpm infra dev`, « Lancer le
+serveur en local ». Une action directe se termine d'elle-même au lieu de `process.exit` :
+sortie en tube, un `exit` immédiat tronquerait ses derniers messages.
+
+« Lancer le serveur en local » s'arrête à la première étape en échec ou interrompue (un
+Ctrl+C pendant le build ne lance ni les migrations ni wrangler sur un dist partiel).
+`runInherited()` et `runWranglerInherited()` rendent 130 pour un enfant tué par un signal,
+qui n'a pas de code de sortie.
+
 ### Modules
 
 | Fichier | Rôle |
 |---|---|
-| `tooling/infra/src/cli.tsx` | Point d'entrée : montage Ink, restauration du terminal, boucle des commandes interactives |
+| `tooling/infra/src/cli.tsx` | Point d'entrée : montage Ink, restauration du terminal, boucle des commandes interactives, action directe (`pnpm infra <id>`) |
 | `tooling/infra/src/components/App.tsx` | Menu, sélection d'environnement, saisie, exécution |
 | `tooling/infra/src/components/SelectList.tsx` | Liste sélectionnable (clavier et souris) |
 | `tooling/infra/src/components/OutputPane.tsx` | Panneau de sortie en flux |
@@ -215,8 +228,9 @@ Catalogue dans `ACTIONS` (`tooling/infra/src/actions.ts`). Chaque `ActionDef` d�
 
 « Lancer le serveur en local » construit le client avec **`build:local` et non `build`** : le
 Worker ne sert que `../web/dist`, et seul le build local y dépose les maquettes de
-`docs/mockups/`, accessibles sous `/mockups` (voir l'invariant 16 de
-[engine.md](engine.md)). Le déploiement, lui, reste sur `build` — les maquettes ne partent
+`docs/mockups/`, accessibles sous `/mockups`, et le labo de la refonte sous `/lab/` (voir
+l'invariant 16 de [engine.md](engine.md)) — le serveur local sert donc les mêmes pages que
+`pnpm dev`. Le déploiement, lui, reste sur `build` — les maquettes ne partent
 jamais en production.
 
 Deux garde-fous transverses : `guardPlaceholder()` refuse d'agir tant que le

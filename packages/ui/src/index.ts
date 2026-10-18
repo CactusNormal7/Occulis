@@ -4,6 +4,7 @@
  * et du fond de la page hôte.
  */
 export * from "./tokens.js";
+export { revealWindow } from "./window-reveal.js";
 export { Icon, ICON_NAMES, type IconName, type IconProps } from "./components/Icon.js";
 export { UiRoot, type UiRootProps } from "./components/UiRoot.js";
 export {
@@ -77,3 +78,18 @@ export {
   type SettingRowProps,
   type SettingEditorProps,
 } from "./components/Setting.js";
+export {
+  AsideLayout,
+  CodeBlock,
+  NavList,
+  Prose,
+  Specimen,
+  Stage,
+  Swatch,
+  SwatchGrid,
+  type CodeBlockProps,
+  type NavSection,
+  type SpecimenProps,
+  type StageProps,
+  type SwatchProps,
+} from "./components/Showcase.js";

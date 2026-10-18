@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { criticalHead, withCriticalHead } from "./critical.js";
-import { BACKGROUND, cssColor } from "./tokens.js";
+import { PIXEL_FONT_URL, THEME_STORAGE_KEY, criticalHead, withCriticalHead } from "./critical.js";
+import { BACKGROUND, THEMES, THEME_NAMES, cssColor } from "./tokens.js";
 
 describe("criticalHead", () => {
   const head = criticalHead();
@@ -9,6 +9,20 @@ describe("criticalHead", () => {
     expect(head).toContain('<meta name="color-scheme" content="dark" />');
     expect(head).toContain(`background:${cssColor(BACKGROUND)}`);
     expect(head).not.toContain("var(");
+  });
+
+  it("déclare et précharge la police pixel avant toute feuille", () => {
+    expect(head).toContain(`<link rel="preload" href="${PIXEL_FONT_URL}" as="font"`);
+    expect(head).toContain('font-family:"Tiny5"');
+    expect(head).toContain("font-display:block");
+  });
+
+  it("pose le thème choisi et son fond avant la première image", () => {
+    expect(head).toContain(`localStorage.getItem("${THEME_STORAGE_KEY}")`);
+    for (const theme of THEME_NAMES) {
+      expect(head).toContain(`html[data-theme="${theme}"]`);
+      expect(head).toContain(cssColor(THEMES[theme].background));
+    }
   });
 
   it("enchaîne les pages par un fondu, sauf mouvement réduit", () => {

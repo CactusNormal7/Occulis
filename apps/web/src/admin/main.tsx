@@ -4,6 +4,7 @@ import { App } from "./App.js";
 import { loadCache } from "../load/cache.js";
 import { parseRoute } from "./model.js";
 import { resourcesOf } from "./resources.js";
+import { applyTheme, storedTheme } from "../ui/theme-choice.js";
 
 /**
  * Le back-office, servi sous `/admin/` — une page à part, en React sur les composants de
@@ -11,6 +12,9 @@ import { resourcesOf } from "./resources.js";
  */
 // Tout ce que l'écran d'arrivée lira part avant même le premier rendu, en parallèle.
 loadCache.preload(resourcesOf(parseRoute(location.hash)));
+
+// Le replay se dessine dans le design choisi depuis le jeu (`ui/theme-choice.ts`).
+applyTheme(storedTheme());
 
 const host = document.getElementById("admin");
 if (host === null) throw new Error("element #admin missing from admin/index.html");

@@ -40,7 +40,8 @@ partie rapide ou un salon privé par code.
 | `pnpm typecheck` | Vérification TypeScript stricte |
 | `pnpm lint` | ESLint |
 | `pnpm build` | Build de tous les paquets |
-| `pnpm infra` | TUI Cloudflare : bases D1, migrations, environnements, déploiement |
+| `pnpm local` | Serveur complet en local (client, Worker, Durable Objects, D1) sur `http://localhost:8787` — l'action « Lancer le serveur en local » de `pnpm infra`, sans le menu |
+| `pnpm infra` | TUI Cloudflare : bases D1, migrations, environnements, déploiement ; `pnpm infra <action>` lance directement une action sans risque (`dev`, `status`, `list`, `login`) |
 
 ## Organisation
 

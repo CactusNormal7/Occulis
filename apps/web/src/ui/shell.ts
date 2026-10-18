@@ -2,6 +2,7 @@ import type { Identity } from "../net/auth.js";
 import type { QueueSeeking, Stage } from "./flow.js";
 import { describeIdentity, describeWaiting } from "./messages.js";
 import { messages } from "../i18n/current.js";
+import { sweepVeil } from "./veil.js";
 
 /**
  * Les écrans : compte, menu, attente, partie. Un seul est visible à la fois.
@@ -13,6 +14,11 @@ import { messages } from "../i18n/current.js";
  *
  * L'écran de compte n'est ici qu'un conteneur montré ou masqué : son contenu est
  * l'îlot React de `src/account/`, sur la charte.
+ *
+ * Ces écrans paraissent sans l'ouverture des fenêtres (`revealWindow`), réservée aux
+ * fenêtres qu'un clic ouvre (docs/design.md 8.1). Une seule bascule s'anime : du menu vers
+ * l'attente — recherche ou création d'une partie —, sous le voile tramé du changement de
+ * thème (`sweepVeil`). Le menu reste à l'écran jusqu'à ce que le voile le couvre.
  */
 export interface ShellElements {
   readonly boot: HTMLElement;
@@ -120,7 +126,11 @@ export function attachShell(options: ShellOptions): Shell {
     });
   });
 
-  const render = (stage: Stage): void => {
+  /** Les écrans à montrer pour `stage` — appliqués tout de suite, ou sous le voile. */
+  let shown: Stage | undefined;
+  let veiled: Stage | undefined;
+  const show = (stage: Stage): void => {
+    shown = stage;
     e.boot.hidden = stage.kind !== "boot";
     e.auth.hidden = stage.kind !== "auth";
     e.menu.hidden = stage.kind !== "menu";
@@ -132,6 +142,22 @@ export function attachShell(options: ShellOptions): Shell {
     e.hud.hidden = stage.kind !== "game";
     onMenu = stage.kind === "menu";
     showCorner();
+  };
+
+  const render = (stage: Stage): void => {
+    if (veiled !== undefined) {
+      // Le voile passe déjà : c'est l'étape la plus récente qu'il découvrira.
+      veiled = stage;
+    } else if (shown?.kind === "menu" && stage.kind === "waiting") {
+      veiled = stage;
+      sweepVeil(() => {
+        const latest = veiled;
+        veiled = undefined;
+        if (latest !== undefined) show(latest);
+      });
+    } else {
+      show(stage);
+    }
 
     if (stage.kind === "menu") {
       e.joinCode.value = "";

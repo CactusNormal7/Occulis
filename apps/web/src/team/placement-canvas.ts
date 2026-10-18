@@ -1,8 +1,8 @@
 import type { Board, Coord, PieceKind, PlayerId } from "@occulis/core";
-import { INK, cssColor } from "@occulis/ui/tokens";
-import { type Drawable, drawPiece, fillQuad, strokeQuad, terrainDrawables } from "../canvas/paint.js";
+import { FONT, cssColor } from "@occulis/ui/tokens";
+import { type Drawable, drawPiece, fillQuad, fitPixelCanvas, strokeQuad, terrainDrawables } from "../canvas/paint.js";
 import { centerOffset, fitScale } from "../admin/replay.js";
-import { METRICS, PIECES, PLAYERS, STATE } from "../theme.js";
+import { METRICS, look } from "../theme.js";
 import { type Camera, createCamera, pivotOf, settle, toProjection, turn } from "../view/camera.js";
 import { compareDepth, depthOf, project, tileQuad } from "../view/iso.js";
 import { tileAt } from "../view/picking.js";
@@ -61,11 +61,9 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
       observer.disconnect();
       return;
     }
-    const ratio = window.devicePixelRatio || 1;
-    const { width, height } = canvas.getBoundingClientRect();
-    if (width === 0 || height === 0) return;
-    canvas.width = Math.round(width * ratio);
-    canvas.height = Math.round(height * ratio);
+    const size = fitPixelCanvas(canvas);
+    if (size === undefined) return;
+    const { width, height } = size;
     camera = { ...camera, viewport: { x: width, y: height }, scale: fitScale(board, base, width, height, PADDING) };
     draw();
   };
@@ -126,8 +124,8 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
 
     const own = new Set(current.zone.map((coord) => `${coord.x},${coord.y}`));
     const theirs = new Set(current.opponentZone.map((coord) => `${coord.x},${coord.y}`));
-    const camp = PLAYERS[current.side];
-    const other = PLAYERS[current.side === "A" ? "B" : "A"];
+    const camp = look().players[current.side];
+    const other = look().players[current.side === "A" ? "B" : "A"];
 
     const drawables: Drawable[] = terrainDrawables(context, board, proj, () => true, (coord, height) => {
       const key = `${coord.x},${coord.y}`;
@@ -136,12 +134,12 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
         fillQuad(context, quad, cssColor(camp, 0.1));
         strokeQuad(context, quad, cssColor(camp, 0.55), 1);
       } else if (theirs.has(key)) {
-        context.setLineDash([3, 4]);
+        context.setLineDash([2 / ratio, 2 / ratio]);
         strokeQuad(context, quad, cssColor(other, 0.35), 1);
         context.setLineDash([]);
       }
       if (hovered !== undefined && hovered.x === coord.x && hovered.y === coord.y) {
-        strokeQuad(context, quad, own.has(key) ? cssColor(STATE.selection) : cssColor(INK, 0.4), 2);
+        strokeQuad(context, quad, own.has(key) ? cssColor(look().state.selection) : cssColor(look().palette.ink, 0.4), 2);
       }
     });
 
@@ -150,13 +148,14 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
       drawables.push({
         depth: { ...depthOf(piece.coord, height, proj), height: height + 0.5 },
         paint: () => {
-          const color = piece.selected ? cssColor(STATE.selection) : cssColor(camp, PIECES.alphaVisible);
-          const top = drawPiece(context, project(piece.coord, height, proj), current.side, PIECES.alphaVisible, proj, color);
-          context.fillStyle = color;
-          context.font = `${Math.max(9, Math.round(11 * proj.scale))}px ui-monospace, monospace`;
+          const tint = piece.selected ? look().state.selection : camp;
+          const top = drawPiece(context, project(piece.coord, height, proj), current.side, look().pieces.alphaVisible, proj, tint);
+          context.fillStyle = cssColor(tint);
+          // Tiny5 n'est nette qu'à 8 pixels du tampon, ou un multiple.
+          context.font = `${8 / ratio}px ${FONT.pixel}`;
           context.textAlign = "center";
           context.textBaseline = "bottom";
-          context.fillText(current.initialOf(piece.kind), top.x, top.y - 2);
+          context.fillText(current.initialOf(piece.kind), top.x, top.y - 2 / ratio);
         },
       });
     }

@@ -37,10 +37,12 @@ import { type Selection, resolveClick } from "./game/selection.js";
 import type { Board } from "./scene/board.js";
 import { type GameConsole, attachConsole } from "./ui/console.js";
 import { applyPalette } from "./ui/palette.js";
+import { applyTheme, storedTheme } from "./ui/theme-choice.js";
+import { attachSettings } from "./ui/settings.js";
+import { sweepVeil } from "./ui/veil.js";
 import { resendVerification, signOut, stopImpersonating, whoAmI, type Identity } from "./net/auth.js";
 import { chooseLocale, initLocale, translateDom } from "./i18n/browser.js";
 import { currentLocale, messages, onLocaleChange } from "./i18n/current.js";
-import { isLocale } from "@occulis/i18n";
 import type { TeamPreset, TeamPresetList } from "@occulis/protocol";
 import { mountDeployment, mountMatchFound } from "./prepare/mount.js";
 import type { DeploymentProps } from "./prepare/Deployment.js";
@@ -58,6 +60,7 @@ function main(): void {
   let identityRequest: Promise<Identity> | undefined = whoAmI();
   loadCache.preload([friendsOverview]);
   let matchRequest: ReturnType<typeof currentMatch> | undefined = currentMatch();
+  applyTheme(storedTheme());
   applyPalette(document.documentElement);
   initLocale();
   translateDom(document);
@@ -99,12 +102,30 @@ function main(): void {
    */
   let pending = false;
 
-  const localeSwitch = element<HTMLElement>("locale-switch");
+  const settings = attachSettings({
+    elements: {
+      toggle: element<HTMLButtonElement>("settings-toggle"),
+      panel: element<HTMLElement>("settings"),
+    },
+    theme: storedTheme,
+    locale: currentLocale,
+    hint: (theme) => messages().ui.theme.hints[theme],
+    chooseTheme: (theme) => {
+      // Un voile tramé balaie l'écran pendant que tout se repeint (ui/veil.ts).
+      sweepVeil(() => {
+        applyTheme(theme);
+        applyPalette(document.documentElement);
+        settings.refresh();
+      });
+    },
+    chooseLocale,
+  });
   const go = (event: Parameters<typeof advance>[1]): void => {
     stage = advance(stage, event);
     shell.render(stage);
-    // Hors des écrans pleine page et de la partie seulement : il y couvrirait le contenu.
-    localeSwitch.hidden = stage.kind === "game" || stage.kind === "deploying" || stage.kind === "teams";
+    // Hors des écrans pleine page seulement, partie comprise : c'est sur le plateau qu'un
+    // design se juge.
+    settings.setAvailable(stage.kind !== "deploying" && stage.kind !== "teams" && stage.kind !== "boot");
   };
 
   /**
@@ -576,27 +597,17 @@ function main(): void {
   };
   void refresh();
 
-  const markLocale = (): void => {
-    for (const button of localeSwitch.querySelectorAll<HTMLButtonElement>("button[data-locale]")) {
-      button.setAttribute("aria-current", String(button.dataset["locale"] === currentLocale()));
-    }
-  };
-  localeSwitch.addEventListener("click", (event) => {
-    const chosen = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-locale]")?.dataset["locale"];
-    if (isLocale(chosen)) chooseLocale(chosen);
-  });
   // Tout ce qui est déjà écrit est réécrit : le HTML statique, l'écran courant, l'identité,
   // l'îlot de compte. Les messages déjà affichés (`notify`) gardent leur langue d'origine.
   onLocaleChange(() => {
     translateDom(document);
-    markLocale();
+    settings.refresh();
     shell.render(stage);
     shell.setIdentity(identity);
     gameConsole.refresh();
     showIslands();
     if (!identity.signedIn) showAccount();
   });
-  markLocale();
 
   gameConsole = attachConsole({
     elements: {

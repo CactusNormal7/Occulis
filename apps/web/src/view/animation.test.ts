@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Board } from "@occulis/core";
-import { advance, positionOf, startMove } from "./animation.js";
+import { advance, lagging, liftOf, positionOf, startMove } from "./animation.js";
 
 /** Une butte de hauteur 3 en (2,0), pour vérifier l'interpolation verticale. */
 const BOARD = Board.fromAscii(["0030"]);
@@ -19,7 +19,7 @@ describe("startMove", () => {
     const absurd = startMove("p", { x: 0, y: 0 }, { x: 400, y: 0 }, BOARD);
 
     expect(long.duration).toBeGreaterThan(short.duration);
-    expect(absurd.duration).toBeLessThanOrEqual(500);
+    expect(absurd.duration).toBeLessThanOrEqual(700);
   });
 });
 
@@ -67,5 +67,22 @@ describe("advance", () => {
     const animation = startMove("p", { x: 0, y: 0 }, { x: 1, y: 0 }, BOARD);
     expect(advance(animation, animation.duration)).toBeUndefined();
     expect(advance(animation, animation.duration + 1000)).toBeUndefined();
+  });
+});
+
+describe("liftOf et lagging", () => {
+  const board = Board.fromAscii(["0000", "0000"]);
+  const animation = startMove("p1" as never, { x: 0, y: 0 }, { x: 3, y: 0 }, board);
+
+  it("fait flotter la pièce à mi-course seulement", () => {
+    expect(liftOf(animation, 0.5)).toBe(0);
+    expect(liftOf({ ...animation, elapsed: animation.duration / 2 }, 0.5)).toBeCloseTo(0.5);
+    expect(liftOf({ ...animation, elapsed: animation.duration }, 0.5)).toBeCloseTo(0);
+  });
+
+  it("place une image rémanente en retard, jamais avant le départ", () => {
+    const later = { ...animation, elapsed: 100 };
+    expect(lagging(later, 40).elapsed).toBe(60);
+    expect(lagging(later, 400).elapsed).toBe(0);
   });
 });

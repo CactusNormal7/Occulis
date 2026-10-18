@@ -77,6 +77,16 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
   const { elements, match, play, pending, watching, spectators } = options;
   const { form, input, log, status, readout, help } = elements;
 
+  /**
+   * Rejoue l'animation d'un compte rendu qui change (ui.css, `data-fresh`) : un message neuf
+   * se lit comme neuf, même s'il ressemble au précédent.
+   */
+  const freshen = (element: HTMLElement): void => {
+    element.removeAttribute("data-fresh");
+    void element.offsetWidth;
+    element.setAttribute("data-fresh", "");
+  };
+
   const refresh = (): void => {
     const current = match();
     if (current === undefined) {
@@ -87,10 +97,15 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
     // Un spectateur n'a aucun coup à saisir : le champ disparaît plutôt que de refuser.
     form.hidden = friend !== undefined;
     help.hidden = friend !== undefined;
-    status.textContent =
+    const next =
       friend === undefined
         ? describeTurn(current.state.turn, current.activePlayer, current.player, spectators())
         : describeWatching(current.state.turn, current.activePlayer, current.player, friend);
+    if (next === status.textContent) return;
+    status.textContent = next;
+    // Le trait qui revient au joueur se signale plus fort qu'un simple changement de ligne.
+    status.dataset["yours"] = String(friend === undefined && current.activePlayer === current.player);
+    freshen(status);
   };
 
   const showTile = (coord: Coord | undefined): void => {
@@ -103,6 +118,7 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
   const report = (message: string, accepted: boolean): void => {
     log.textContent = message;
     log.dataset["state"] = accepted ? "ok" : "ko";
+    freshen(log);
   };
 
   const playAction = (action: Action): boolean => {

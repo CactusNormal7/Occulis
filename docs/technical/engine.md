@@ -1,8 +1,9 @@
 # Le moteur de rendu et le client — `apps/web`
 
-Rendu isométrique filaire en dessin procédural : aucun sprite, aucune texture, aucun
-moteur 3D. Tout est tracé en traits par `Graphics` de PixiJS 8, à partir des coordonnées
-logiques de `packages/core`. Toute partie est arbitrée par le serveur : le client porte les
+Rendu isométrique en pixel art léger, en dessin procédural : aucun sprite, aucune image,
+aucun moteur 3D. Tout est tracé par `Graphics` de PixiJS 8, à partir des coordonnées
+logiques de `packages/core`, dans un tampon plus petit que l'écran puis agrandi au plus
+proche voisin — le pixel se voit, fin, et le mouvement reste continu (`view/pixel.ts`). Toute partie est arbitrée par le serveur : le client porte les
 écrans de compte et de menu, l'entrée en partie, puis le plateau — à la souris ou au
 clavier.
 
@@ -41,13 +42,13 @@ qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 | `prepare/` | Les îlots d'avant-partie : fenêtre d'acceptation et déploiement (annonce de l'adversaire comprise) | React, DOM sauf `model.ts` |
 | `teams/` | Les équipes préparées, depuis le menu | React, DOM et réseau |
 | `canvas/` | Les primitives du plateau en Canvas 2D, partagées par le rejeu et le déploiement | DOM (canevas) |
-| `admin/` | Le back-office, page à part sous `/admin/`, en React sur `@occulis/ui` | React, DOM et réseau sauf `model.ts` et `replay.ts` |
+| `admin/` | Le back-office, page à part sous `/admin/`, en React sur `@occulis/ui`, design system compris (`design/`) | React, DOM et réseau sauf `model.ts`, `replay.ts`, `design/catalog.ts` et `design/tweaks.ts` |
 | `load/` | La lecture des données des vues React : cache, `useLoad`, `whenReady` | React sauf `cache.ts` |
 | racine | `main.ts` (composition) et `theme.ts` (tokens de DA) | — |
 
 Les modules de `view/`, `game/` et `net/session.ts` sont purs : c'est là que vivent tous
 les tests, avec `ui/flow.ts`, `ui/command.ts`, `ui/messages.ts`, `account/model.ts`,
-`profile/model.ts`, `admin/model.ts` et `load/cache.ts`. `net/channel.ts` est la
+`profile/model.ts`, `admin/model.ts`, `admin/design/catalog.ts`, `admin/design/tweaks.ts` et `load/cache.ts`. `net/channel.ts` est la
 seule exception de son dossier — il ouvre le socket, et rien d'autre.
 
 ## Le pipeline, de bout en bout
@@ -93,13 +94,14 @@ sur le rendu.
         ├─► advance()          ── avance l'animation, handOver() à son terme
         │
         └─► Scene.render()     ── scene/scene.ts
-                 ├── root.position ← origin        (pan : simple translation)
-                 ├── world   si projection / plateau / vue changés, ou animation en cours
-                 └── overlay si survol ou sélection changés, ou projection
+                 ├── board.position ← origin       (pan : translation, arrondie au pixel)
+                 ├── track()                       (retient les instants : vue, sélection, survol, retombée)
+                 └── sky, ground, world, overlay, ambient — redessinés à chaque image
 ```
 
 Le point structurant : **le pan ne reconstruit aucune géométrie** (translation du
-conteneur), et **le survol ne reconstruit que la couche `overlay`**.
+conteneur), et toute animation est une fonction de l'horloge de la scène et d'instants
+retenus — jamais un état qu'on fait évoluer image par image.
 
 ## Chargement et premier rendu
 
@@ -111,8 +113,9 @@ qui les porte :
 1. **Peinture immédiate du fond.** Chaque page HTML porte en tête de `<head>`, juste après
    l'encodage, le bloc de `criticalHead()` (`packages/ui/src/critical.ts`), injecté au build
    par le greffon `occulis-critical-paint` de `vite.config.ts` : `color-scheme: dark`,
-   `theme-color`, le fond en ligne (depuis `BACKGROUND`), le fondu entre pages et les règles
-   de spéculation. **Aucune couleur n'est écrite dans un `index.html`** ; une nouvelle page
+   `theme-color`, le fond en ligne (depuis `BACKGROUND`), la police pixel déclarée en
+   `font-display: block` et préchargée — un écran ne paraît jamais dans la police de
+   secours pour basculer ensuite —, le fondu entre pages et les règles de spéculation. **Aucune couleur n'est écrite dans un `index.html`** ; une nouvelle page
    Vite reçoit le bloc d'office.
 2. **Tout ce qu'un écran lit part en même temps.** Chaque page déclare, par route, les
    ressources de son écran (`profile/resources.ts`, `admin/resources.ts` : `resourcesOf(route)`)
@@ -185,12 +188,19 @@ chaque ouverture du canal social.
 | `apps/web/src/main.ts` | Racine de composition : câble tout, charge le plateau à part | non |
 | `apps/web/src/load/cache.ts` | Cache des lectures, état d'une lecture, compteur des lectures en cours | oui |
 | `apps/web/src/load/hooks.tsx` | `useLoad()`, `usePending()`, `whenReady()` | non |
-| `apps/web/public/_headers` | Cache d'un an des fichiers hachés de `/assets/` | — |
+| `apps/web/public/_headers` | Cache d'un an des fichiers hachés de `/assets/`, d'une semaine de la police | — |
+| `apps/web/public/fonts/` | La police pixel Tiny5 (sous-ensemble latin) et sa licence OFL, à adresse fixe | — |
 | `apps/web/src/theme.ts` | Tokens de DA — **seul fichier contenant une couleur** | oui |
 | `apps/web/src/view/iso.ts` | Projection isométrique et géométrie des cases | oui |
 | `apps/web/src/view/camera.ts` | État de caméra et ses transitions | oui |
 | `apps/web/src/view/picking.ts` | Point à l'écran → case du plateau | oui |
 | `apps/web/src/view/animation.ts` | Interpolation d'un déplacement de pièce | oui |
+| `apps/web/src/view/pixel.ts` | Le grain du plateau (`pixelResolution()`), arrondi à la grille, mélange de couleurs, respiration | oui |
+| `apps/web/src/view/easing.ts` | Les courbes d'animation | oui |
+| `apps/web/src/view/reveal.ts` | La lumière de chaque case, animée : vague de ligne de vue | oui |
+| `apps/web/src/view/effects.ts` | Entrée du plateau, cascade, retombée, matérialisation | oui |
+| `apps/web/src/view/matter.ts` | La teinte du dessus d'une case, selon sa hauteur et sa visibilité | oui |
+| `apps/web/src/view/ambient.ts` | Poussières, lucioles, étoiles, constellations, étoiles filantes : à graine, fonctions du temps | oui |
 | `apps/web/src/game/online-match.ts` | La partie arbitrée par le serveur, vue du client | oui |
 | `apps/web/src/game/hypothesis.ts` | `PlayerView` → position telle que le joueur peut la croire | oui |
 | `apps/web/src/game/movement-diff.ts` | Ce que deux vues successives ont fait bouger | oui |
@@ -206,7 +216,9 @@ chaque ouverture du canal social.
 | `apps/web/src/net/channel.ts` | Transport WebSocket et reconnexion | non |
 | `apps/web/src/net/backoff.ts` | Délai avant la n-ième tentative de reconnexion | oui |
 | `apps/web/src/ui/flow.ts` | Quel écran a lieu d'être : amorce, compte, menu, attente, partie | oui |
-| `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes | non |
+| `apps/web/src/ui/shell.ts` | Les écrans hors partie : affichage et gestes ; ils paraissent sans l'ouverture des fenêtres, réservée à celles qu'un clic ouvre, et le passage du menu à l'attente se fait sous le voile tramé | non |
+| `apps/web/src/ui/veil.ts` | Le voile tramé qui balaie l'écran pendant une bascule : changement de thème, entrée dans la recherche ou la création d'une partie ; sa feuille est `ui/veil.css` | non |
+| `apps/web/src/ui/settings.ts` | Les réglages d'affichage (design, langue) derrière l'engrenage | non |
 | `apps/web/src/account/AccountApp.tsx` | Écran de compte : connexion, inscription, oubli, réinitialisation, Google | non |
 | `apps/web/src/account/mount.tsx` | Monte l'îlot de compte dans `#account-root` | non |
 | `apps/web/src/account/model.ts` | Parcours ↔ URL, messages de retour, refus rattachés à leur champ, indication de longueur | oui |
@@ -234,8 +246,11 @@ chaque ouverture du canal social.
 | `apps/web/src/profile/api.ts` | Appels `/api/me/*` et routes de compte de Better Auth | non |
 | `apps/web/src/profile/model.ts` | Routes du profil, messages d'arrivée, délai de pseudo, liaison retirable, images du replay | oui |
 | `apps/web/src/scene/board.ts` | `mountBoard()` : application Pixi, scène, gestes, boucle d'images — chargé par `import()` | non |
-| `apps/web/src/scene/scene.ts` | Couches PixiJS et détection de changement | non |
-| `apps/web/src/scene/terrain.ts` | Géométrie d'une case | non |
+| `apps/web/src/scene/scene.ts` | Couches PixiJS, trames et détection de changement | non |
+| `apps/web/src/scene/ground.ts` | Le sceau gravé sous le plateau | non |
+| `apps/web/src/scene/sky.ts` | La voûte derrière le plateau et les particules devant | non |
+| `apps/web/src/ui/theme-choice.ts` | Le thème choisi : stockage, document, rendu | non |
+| `apps/web/src/scene/terrain.ts` | Faces et arêtes d'une case | non |
 | `apps/web/src/scene/pieces.ts` | Silhouette d'une pièce | non |
 | `apps/web/src/scene/overlay.ts` | Survol et sélection | non |
 | `apps/web/src/input/controls.ts` | Gestes du canevas → intentions | non |
@@ -257,6 +272,15 @@ chaque ouverture du canal social.
 | `apps/web/src/admin/api.ts` | Appels `/api/admin/*` et `/api/auth/admin/*` | non |
 | `apps/web/src/admin/replay.ts` | Rejeu : coups lus entre deux images, libellés, cadrage du plateau | oui |
 | `apps/web/src/admin/replay-canvas.ts` | Rejeu : le plateau dessiné en Canvas 2D, avec la géométrie du jeu | non |
+| `apps/web/src/admin/design/DesignSystem.tsx` | Le design system : sous-navigation, retouches (thème, palette, vitesse) posées sur le document | non |
+| `apps/web/src/admin/design/Foundations.tsx` | Tokens : palette retouchable, os par alpha, typographie, écarts, mouvement, propriétés CSS | non |
+| `apps/web/src/admin/design/Components.tsx` | Catalogue des composants : aperçus montés en vrai, code, commentaire, props | non |
+| `apps/web/src/admin/design/Motion.tsx` | Animations rejouables et ralenties, durées du plateau, animations CSS déclarées | non |
+| `apps/web/src/admin/design/Conventions.tsx` | Conventions de l'agent de design et section 8.1 du design doc, rendues depuis le Markdown | non |
+| `apps/web/src/admin/design/sources.ts` | Les sources lues au build (`import.meta.glob`, `?raw`) et assemblées en catalogue | non |
+| `apps/web/src/admin/design/catalog.ts` | Lecture des sources : catégorie, exemples, commentaires et props, animations CSS, notes d'une table, Markdown | oui |
+| `apps/web/src/admin/design/tweaks.ts` | Palette retouchée : couleurs par chemin, remplacement, écart, format de `tokens.ts` | oui |
+| `apps/web/src/admin/design/context.tsx` | Les retouches partagées par les pages (`useTweaks`) | non |
 
 ---
 
@@ -277,8 +301,8 @@ interface IsoProjection {
 ```
 
 `scale` vit **dans la projection** et non dans la transformation du conteneur PixiJS :
-avec `root.scale`, les traits s'épaissiraient avec le zoom, ce qu'une DA filaire ne
-supporte pas. Le coût est une réémission de géométrie pendant l'animation de zoom —
+avec `root.scale`, les traits s'épaissiraient avec le zoom, alors qu'une arête doit rester
+large d'un seul pixel du plateau. Le coût est une réémission de géométrie pendant l'animation de zoom —
 négligeable à cette échelle.
 
 | Fonction | Rôle |
@@ -331,7 +355,7 @@ même fichier : c'est là le vrai risque de désynchronisation.
 ### `cliffQuads()` et l'ordre du peintre
 
 `cliffQuads()` n'émet une face verticale que si la case **domine** son voisin : deux cases
-de même hauteur ne produisent aucune arête interne, et le filaire garde une silhouette
+de même hauteur ne produisent aucune arête interne, et le relief garde une silhouette
 nette au lieu de devenir un maillage.
 
 `depthOf()` renvoie `{ plane, height }` où `plane = rx + ry` après rotation.
@@ -873,7 +897,8 @@ l'exécution, et les pluriels s'écrivent dans la fonction.
   `UiRoot locale={…}`. Chaque page la passe : l'îlot de compte la reçoit en propriété
   (`AccountAppProps.locale`), le profil et le back-office la tiennent dans un état et
   offrent un `LocaleSwitch` dans leur barre du haut.
-- Dans la page du jeu, `#locale-switch` (en haut à gauche, hors partie) change la langue ;
+- Dans la page du jeu, la langue se change dans les réglages (`ui/settings.ts`, engrenage en
+  haut à droite) ;
   `main.ts` réécrit alors tout ce qui est affiché — HTML statique, écran courant, identité,
   îlot de compte. Un message déjà affiché (`notify`) garde sa langue d'origine.
 
@@ -940,9 +965,13 @@ chaque équipe ; un preset que de nouvelles règles rendent caduc reste listé, 
 ## `canvas/paint.ts` — le plateau en Canvas 2D
 
 Les primitives communes au rejeu (`admin/replay-canvas.ts`) et au placement :
-`terrainDrawables()` (le relief avec l'atténuation en profondeur du jeu, et un crochet pour
-peindre une zone ou un survol **dans l'ordre du peintre**), `drawPiece()` (la silhouette de
-`scene/pieces.ts`), `strokeQuad()`, `fillQuad()`.
+`fitPixelCanvas()` (dimensionne le tampon au grain du plateau, `pixelResolution()`, et pose
+`image-rendering: pixelated`), `terrainDrawables()` (faces pleines, trame du fog et
+atténuation en profondeur du jeu, avec un crochet pour peindre une zone ou un survol **dans
+l'ordre du peintre**), `drawPiece()` (la silhouette de `scene/pieces.ts` ; une pièce sous
+`PIECES.alphaVisible` y est un fantôme, contour seul), `strokeQuad()` (épaisseur en pixels
+du plateau), `fillQuad()`. La trame du fog est un `CanvasPattern` de deux pixels sur deux,
+mis à l'échelle d'un pixel du tampon et gardé par contexte.
 
 ## `ui/messages.ts` — tous les textes
 
@@ -972,9 +1001,10 @@ une position hors LOS. Un test le verrouille.
 
 ## `ui/palette.ts` et `ui/console.ts`
 
-`applyPalette()` convertit les tokens entiers de `theme.ts` en propriétés personnalisées
-CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--panel`, `--accepted`, `--refused`)
-pour les écrans du jeu ; la conversion est `cssColor()` de `@occulis/ui/tokens`. Le back-office
+`applyPalette()` pose sur la racine du document toutes les propriétés `--occ-*` de la
+charte pour le thème en vigueur (`cssVariables(look().name)`), puis convertit ses tokens en propriétés
+personnalisées CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--panel`,
+`--accepted`, `--refused`) pour les écrans du jeu ; la conversion est `cssColor()` de `@occulis/ui/tokens`. Le back-office
 n'en dépend pas : il lit les `--occ-*` de la feuille de `@occulis/ui`, posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
 `ui.css`.**
 
@@ -984,7 +1014,8 @@ compte et le menu ont leurs écrans (`shell.ts`).
 | Fonction | Rôle |
 |---|---|
 | `attachConsole()` | Installe le formulaire et rend un `GameConsole` |
-| `refresh()` (interne) | Réécrit la ligne d'état ; cache la saisie et son aide à un spectateur (`watching()`) |
+| `refresh()` (interne) | Réécrit la ligne d'état ; cache la saisie et son aide à un spectateur (`watching()`). Une ligne neuve est animée (`freshen()`), plus fort quand le trait revient au joueur (`data-yours`) |
+| `freshen()` (interne) | Rejoue l'animation d'une ligne neuve (`data-fresh`) : elle se trace en luisant ; un refus tremble d'un pixel |
 | `showTile()` (interne) | Écrit la lecture d'une case désignée au clic |
 | `report()` (interne) | Écrit un compte rendu et son état `ok`/`ko` |
 | `playAction()` (interne) | Joue une action **et la rapporte** ; rend `true` si acceptée — refusée d'emblée à un spectateur |
@@ -1044,108 +1075,233 @@ commande ferait pivoter le plateau.
 
 ---
 
-## `scene/scene.ts` — couches, tri et animation
+## `scene/board.ts` et `scene/scene.ts` — couches, tri et animation
 
-**Deux couches, et deux seulement.**
+`mountBoard()` initialise PixiJS **sans anticrénelage**, à la résolution
+`pixelResolution(devicePixelRatio)` (`view/pixel.ts`) avec `autoDensity`, et pose
+`image-rendering: pixelated` sur le canevas : le tampon fait la moitié de l'écran en pixels
+physiques, et le navigateur l'agrandit au plus proche voisin. Un pixel du plateau couvre
+donc toujours **deux pixels physiques** (`ART_PIXEL`). À chaque image, il passe la taille de
+l'écran et `prefers-reduced-motion`, et recale le fond du canevas sur le vide du thème en
+vigueur (`look().palette.background`) : changer de thème en pleine partie ne demande rien
+d'autre.
 
-- **`world`** réunit terrain et pièces. Elles doivent partager un **unique ordre du
-  peintre** pour qu'une pièce derrière un relief soit réellement masquée.
-- **`overlay`** porte survol et sélection, dessinés par-dessus.
+**Cinq couches, toutes redessinées à chaque image** — presque tout y est animé, et un
+plateau de quelques dizaines de cases se redessine en une fraction de milliseconde :
+
+- **`sky`** (coordonnées d'écran) : la voûte du thème (`scene/sky.ts`) ;
+- **`ground`** (dans `board`) : le sceau (`scene/ground.ts`), pour les thèmes qui l'allument ;
+- **`world`** (dans `board`) : terrain et pièces, qui doivent partager un **unique ordre du
+  peintre** pour qu'une pièce derrière un relief soit réellement masquée ;
+- **`overlay`** (dans `board`) : survol, sélection, retombées ;
+- **`ambient`** (coordonnées d'écran) : les particules en suspension (`scene/sky.ts`).
+
+La scène tient `px`, la taille d'un pixel du plateau en unités logiques (`1 / resolution`) :
+toutes les épaisseurs en sont des multiples. Elle tient aussi son horloge (`time`), qui
+n'avance pas sous mouvement réduit, et une trame un-sur-deux par couleur (`dither()`,
+`ditherPattern()`).
+
+**Toute l'animation est une fonction de `time` et de quelques instants retenus** par
+`Scene.track()`, que les modules purs de `view/` (`reveal.ts`, `effects.ts`, `easing.ts`)
+convertissent en état d'effet :
+
+| Déclencheur | Ce que `track()` retient | Effet |
+|---|---|---|
+| Nouveau `Board` (début de partie) | `introStart` ; lumière, apparitions et retombées remises à zéro | Les cases montent du vide en vague du fond vers l'avant (`introOf()`), le sceau se trace, les pièces se matérialisent sur leur case posée |
+| Nouvelle `PlayerView` | `light` ← `relight()` ; les pièces adverses nouvellement vues dans `appeared` | La ligne de vue se déploie depuis les pièces, case par case ; un adversaire qui entre dans la vue se matérialise (`materializeAt()`) |
+| Nouvelle pièce sélectionnée | `selectedAt` | La pièce s'élève, une colonne de lumière la désigne, ses destinations s'ouvrent en cascade (`cascadeOf()`) |
+| Nouvelle case survolée | `hoveredAt` | Le réticule se referme sur la case |
+| Fin d'un déplacement | une `Landing` (case, hauteur, couleur du camp, instant) | Onde au sol et étincelles (`landingAt()`, `sparksOf()`) |
+| Un adversaire sort de la vue | sa dernière image dans `vanished` | Elle se dissout en montant sur son fantôme (`MOTION_FX.vanishMs`) |
+| Le trait revient au joueur | `turnAt` | L'œil de ses pièces bat une fois, en vague du fond vers l'avant (`turnPulse()`) |
+| La partie est finie (`view.outcome`) | `light` ← `relight()` vers une vue vide | Le plateau s'éteint ; la position finale reste lisible dans l'ombre |
+
+Pendant un déplacement, la pièce suit un arc (`liftOf()`), son œil s'illumine, et
+`MOTION_FX.trail` images rémanentes la suivent (`lagging()`), dessinées en fantômes tramés.
+
+Sous `prefers-reduced-motion`, `track()` et le dessin passent des durées nulles
+(`INSTANT`) : tout effet est immédiatement à son terme, rien ne bouge.
 
 | Fonction | Rôle |
 |---|---|
-| `Scene.render()` | Positionne le conteneur, décide quelle couche réémettre |
-| `Scene.drawWorld()` (privée) | Terrain et pièces triés ensemble par profondeur |
-| `Scene.drawOverlay()` (privée) | Sélection puis survol |
-| `sameProjection()` (privée) | Compare champ à champ deux `IsoProjection` |
-| `sameHover()` (privée) | Compare deux survols, `undefined` compris |
-| `occupantsOf()` (privée) | `PlayerView` → identité, case, couleur et opacité par occupant |
+| `mountBoard()` | Application Pixi au grain du plateau, scène, gestes, boucle d'images, fond du thème |
+| `Scene.render()` | Avance l'horloge, positionne `board`, appelle `track()`, puis dessine les cinq couches |
+| `Scene.track()` (privée) | Retient les instants qui déclenchent un effet (tableau ci-dessus) |
+| `Scene.drawWorld()` (privée) | Terrain, pièces et images rémanentes triés ensemble par profondeur |
+| `Scene.drawOverlay()` (privée) | Sélection, survol, retombées |
+| `Scene.dither()` (privée) | La trame d'une couleur, créée une fois |
+| `ditherPattern()` (privée) | Texture de trame → `FillPattern` |
+| `occupantsOf()` (privée) | `PlayerView` → identité, case, couleur, fantôme ou non, adverse ou non, par occupant |
 | `isTile()` (privée) | Discrimine les deux formes de `Drawable` |
+| `turnPulse()` (privée) | L'éclat d'un œil quand le trait revient, selon le temps écoulé |
 
-### Conditions de réémission
-
-- **`world`** : projection changée (rotation ou zoom), `Board` ou `PlayerView` changés
-  **par identité de référence** — d'où le cache de vues de `Match` — **ou animation en
-  cours**. Une pièce qui glisse change de position à chaque image.
-- **`overlay`** : survol changé, sélection changée (par identité), ou projection.
-- **Le pan ne déclenche rien** : il n'affecte que `root.position`.
+Le pan n'affecte que `board.position`, arrondie à la grille des pixels du plateau (`snap()`)
+pour que la trame ne scintille pas en glissant.
 
 ### La liste unique de `Drawable`
 
-Cases et pièces sont poussées dans **un seul tableau**, puis triées ensemble par
-`compareDepth()`. Les cases sont poussées en premier : le tri de JavaScript étant stable,
-à profondeur égale une pièce se dessine donc toujours **après** la case qui la porte.
+Cases, pièces et images rémanentes sont poussées dans **un seul tableau**, puis triées
+ensemble par `compareDepth()`. Les cases sont poussées en premier : le tri de JavaScript étant
+stable, à profondeur égale une pièce se dessine donc toujours **après** la case qui la porte.
 
-C'est ce qui rend l'animation possible. Une pièce en mouvement n'est plus attachée à une
-case : sa position est celle que renvoie `positionOf()`, **fractionnaire**, et sa
-profondeur est calculée depuis cette position. Elle se glisse donc d'elle-même à la bonne
-place dans l'ordre du peintre au fil de son déplacement, et passe correctement derrière
-puis devant les reliefs qu'elle croise.
+**La profondeur d'une pièce est celle de la case sur laquelle elle se tient**
+(`standingDepth()`, `view/iso.ts`) : la case la plus proche de sa position, fractionnaire en
+cours de déplacement, un demi-niveau au-dessus. Calculée depuis la position exacte, une pièce
+qui glissait vers l'avant passait derrière la case qu'elle allait atteindre — dessinée après
+elle — et semblait s'enfoncer sous le sol. Rattachée à sa case, elle bascule dans l'ordre du
+peintre au moment où elle en change, et passe correctement derrière puis devant les reliefs
+qu'elle croise. L'arc d'un saut est un décalage d'affichage seulement.
 
 `occupantsOf()` insère les fantômes **avant** les pièces réellement vues, pour qu'une
 pièce présente l'emporte sur un souvenir situé sur la même case.
 
 ---
 
-## `scene/terrain.ts`, `scene/pieces.ts`, `scene/overlay.ts`
+## `scene/terrain.ts`, `scene/pieces.ts`, `scene/overlay.ts`, `scene/ground.ts`, `scene/sky.ts`
 
 Ce sont des **fonctions**, pas des classes : elles écrivent dans un `Graphics` qu'on leur
-passe. C'est précisément ce qui permet à `scene.ts` de tout entrelacer dans un seul ordre
-du peintre.
+passe. Toutes lisent le thème en vigueur par `look()`.
 
 | Fonction | Emplacement | Rôle |
 |---|---|---|
-| `drawTile()` | `scene/terrain.ts` | Falaises puis face supérieure d'une case |
-| `depthAlpha()` (privée) | `scene/terrain.ts` | Proximité normalisée → opacité |
-| `drawPiece()` | `scene/pieces.ts` | Tige verticale + tête en losange |
-| `markTile()` (privée) | `scene/overlay.ts` | Aplat + contour d'une case, falaises en option |
-| `drawHover()` | `scene/overlay.ts` | Surbrillance de la case survolée |
-| `drawSelection()` | `scene/overlay.ts` | Destinations, puis la pièce |
+| `drawTile()` | `scene/terrain.ts` | Falaises **tournées vers la caméra** (face éclairée à gauche, d'ombre à droite), dessus plein, trame selon l'éclairage, arête qui luit au passage de la vague ; décalée et estompée pendant l'entrée |
+| `facesCamera()` (privée) | `scene/terrain.ts` | Une falaise dont l'arête haute est dans la moitié basse du dessus ; une face arrière, pleine, déborderait sous le relief |
+| `depthAlpha()` (privée) | `scene/terrain.ts` | Proximité normalisée → opacité des arêtes |
+| `drawPiece()` | `scene/pieces.ts` | Colonne de lumière (sélection), ombre, obélisque à deux faces, halo et œil (qui s'élève et s'illumine) ; fantôme : contour et trame |
+| `drawBeam()` (privée) | `scene/pieces.ts` | La colonne de lumière, en bandes d'un pixel qui s'effacent vers le haut |
+| `drawHover()` | `scene/overlay.ts` | Voile et réticule qui se referme sur la case survolée, falaises soulignées |
+| `drawSelection()` | `scene/overlay.ts` | Destinations en cascade (aplat qui respire, gemme qui jaillit), puis la case de la pièce |
+| `drawLanding()` | `scene/overlay.ts` | Deux ondes au sol et une couronne d'étincelles |
+| `drawSigil()` | `scene/ground.ts` | Trois cercles tracés progressivement (`drawn`), graduations et glyphes, projetés dans le plan du sol |
+| `boardRadius()` | `scene/ground.ts` | Rayon du plateau autour du pivot, en cases |
+| `drawSky()` | `scene/sky.ts` | Nuées tramées, constellations, étoiles qui scintillent, étoile filante — selon l'atmosphère du thème |
+| `drawMotes()` | `scene/sky.ts` | Poussière d'os qui monte, ou lucioles qui errent et luisent |
 
-L'opacité d'une case est le produit de trois facteurs, dans `drawTile()` :
+L'opacité des **arêtes** d'une case, dans `drawTile()` :
 
 ```
-alpha = (visible ? alphaVisible : alphaFogged)
+alpha = (alphaFogged + (alphaVisible − alphaFogged) × lumière + front × 0.45)
       × (passable ? 1 : impassableFactor)
-      × depthAlpha(proximité)
+      × depthAlpha(proximité) × opacité d'entrée
 ```
 
-`drawSelection()` dessine les destinations, **puis** la case d'origine — pour que celle-ci
-reste lisible quand des destinations la jouxtent.
+`lumière` (0 → 1) et `front` viennent de `view/reveal.ts`. Le relief se lit **par la
+valeur** : le dessus s'éclaircit avec la hauteur (`topColor()`), et une case hors de vue
+est assombrie et tramée — le relief reste lisible (implementation-notes 10).
 
-`drawPiece()` dérive ses proportions de la projection, ce qui la fait suivre le zoom sans
-réglage séparé. Aucun type de `packages/core/src/pieces/` ne porte de champ visuel : la
-correspondance `kind` → forme appartient donc à ce module. Le roster n'étant pas acté,
-**toutes les pièces partagent aujourd'hui la même silhouette**.
+Aucun type de `packages/core/src/pieces/` ne porte de champ visuel : la correspondance
+`kind` → forme appartient à `scene/pieces.ts`. Le roster n'étant pas acté, **toutes les
+pièces partagent aujourd'hui la même silhouette**.
+
+## `view/` — les modules purs du rendu animé
+
+| Fonction | Emplacement | Rôle |
+|---|---|---|
+| `pixelResolution()` | `view/pixel.ts` | `devicePixelRatio / ART_PIXEL` : la résolution qui fait d'un pixel du plateau deux pixels physiques |
+| `snap()`, `mixColor()`, `breath()` | `view/pixel.ts` | Arrondi à la grille, mélange de couleurs, pulsation en cosinus |
+| `topColor(height, light)` | `view/matter.ts` | Teinte du dessus, continue entre hors de vue (0) et en vue (1) |
+| `clamp01()`, `easeOutCubic()`, `easeInOutSine()`, `easeOutBack()`, `phase()` | `view/easing.ts` | Les courbes ; `easeOutBack` dépasse sa cible avant de s'y poser |
+| `relight()` | `view/reveal.ts` | Nouvel éclairage après un changement de vue : chaque case part de son éclairage courant, avec un retard par case de distance à la plus proche pièce qui voit (vague qui se déploie ; extinction plus rapide et d'un bloc) |
+| `lightAt()`, `crestAt()`, `settling()` | `view/reveal.ts` | Éclairage d'une case à un instant, front de la vague, transition en cours |
+| `introOf()`, `introLength()` | `view/effects.ts` | Entrée d'une case selon son rang de profondeur |
+| `cascadeOf()` | `view/effects.ts` | Ouverture d'une destination selon sa distance à la pièce sélectionnée |
+| `sparksOf()`, `landingAt()` | `view/effects.ts` | Étincelles d'une retombée et état de la retombée |
+| `materializeAt()` | `view/effects.ts` | Matérialisation : opacité, chute de quelques pixels, éclat de l'œil |
+| `liftOf()`, `lagging()` | `view/animation.ts` | Arc d'un déplacement ; la même animation en retard (image rémanente) |
+| `standingDepth()` | `view/iso.ts` | Profondeur d'une pièce : celle de la case qui la porte |
+| `createMotes()`, `moteAt()`, `fireflyAt()` | `view/ambient.ts` | Nuée à graine ; poussière qui monte, luciole qui erre |
+| `createStars()`, `starAlpha()`, `constellationsOf()`, `shootingStarAt()` | `view/ambient.ts` | La voûte, son scintillement, ses segments, une étoile filante par période |
+
+La vague de lumière ne lit que la vue transmise : elle anime ce que le serveur a envoyé,
+elle ne révèle rien d'autre.
 
 ---
 
-## `theme.ts` — le code couleur
+## `theme.ts` — le code couleur et les thèmes
 
 Code couleur acté dans `docs/design.md` section 8.1, **provisoire**. Les **valeurs** de couleur
-(`BACKGROUND`, camps, états) viennent de `@occulis/ui/tokens`, seule source du projet
-(`docs/technical/ui.md`) ; `theme.ts` les reprend et y ajoute ce qui n'appartient qu'au rendu
-PixiJS — métriques, alphas, épaisseurs :
+viennent de `@occulis/ui/tokens` (`THEMES`, une `Palette` par thème) ; `theme.ts` y ajoute ce
+qui n'appartient qu'au rendu.
 
-> Le blanc porte la géométrie, la couleur porte l'état de jeu.
+> Le vide porte la matière, l'os porte la géométrie, les lueurs portent l'état de jeu.
 
-| Groupe | Contenu |
+| Export | Contenu |
 |---|---|
-| `BACKGROUND` | Fond du canevas — celui des pages HTML vient du même token, par `criticalHead()` |
+| `look()` | Le thème en vigueur, calculé une fois par thème : `palette`, `atmosphere`, `geometry`, `hover`, `players`, `state`, `selection`, `pieces`, `sigil` |
+| `setLook(name)` | Change de thème ; le rendu le lit à l'image suivante |
+| `Look` | Le type de `look()` |
 | `METRICS` | `tileWidth` 72, `tileHeight` 36, `heightUnit` 22 |
-| `GEOMETRY` | Trait du terrain : opacités visible/fog/infranchissable, atténuation en profondeur, épaisseurs, remplissage |
-| `HOVER` | Aplat et contour de la case survolée |
-| `PLAYERS` | Couleurs de camp A et B — **provisoires** |
-| `STATE` | `selection`, `legalMove`, `threat` consommés ; `climb` réservé |
-| `SELECTION` | Couleurs, épaisseurs et opacités du marquage de sélection |
-| `PIECES` | Opacités visible/fantôme, épaisseur, proportions de la silhouette |
+| `MOTION_FX` | Durées et amplitudes de toutes les animations du plateau |
 
-`STATE.legalMove` est **délibérément distinct des deux couleurs de camp** : une case mise
-en avant ne doit jamais se confondre avec une pièce.
+L'**atmosphère** d'un thème (`ATMOSPHERES`) dit ce qu'il allume au-delà de sa palette : le
+sceau (`sigil`), les particules (`motes` : poussière, lucioles ou rien), la densité de la
+voûte (`stars`), les constellations, les étoiles filantes, les nuées.
 
-Le rendu est **filaire par défaut** : `GEOMETRY.fillAlpha` vaut 0. La géométrie des faces
-est pourtant bien émise et triée — repasser à des faces opaques ne demande que de relever
-cette seule valeur.
+| Thème | Palette | Atmosphère |
+|---|---|---|
+| `obsidian` (défaut) | Noir neutre, matière grise, os froid, camps glace et rouge | Voûte moyenne, étoiles filantes, poussière |
+| `reliquary` | Noir brun, matière brune, os doré, camps vert luciole et braise | Sceau tournant, lucioles, voûte clairsemée |
+| `astral` | Noir à peine prune, matière violette, camps cyan et magenta | Voûte dense, constellations, étoiles filantes, nuées |
+
+`STATE.legalMove` est **délibérément distinct des deux couleurs de camp** dans chaque thème.
+Les épaisseurs sont en **pixels du plateau** (`view/pixel.ts`), jamais en pixels CSS.
+
+## `ui/theme-choice.ts` — le choix du joueur
+
+| Fonction | Rôle |
+|---|---|
+| `storedTheme()` | Le thème relu du stockage (`THEME_STORAGE_KEY`), ou celui par défaut |
+| `nextTheme()` | Le suivant dans la liste, en boucle |
+| `applyTheme()` | Stockage, `<html data-theme>`, `setLook()` |
+
+Le bloc critique (`criticalHead()`) a déjà posé `data-theme` avant la première image, ce
+qui fait paraître toute page dans le bon thème. `main.ts` applique le thème au démarrage ;
+le choix se fait dans les réglages (`ui/settings.ts`) : un clic fait passer le voile tramé
+(`sweepVeil()`, `ui/veil.ts`), sous lequel le thème est appliqué et la palette CSS réécrite
+(`applyPalette()`).
+
+## `ui/veil.ts` — le voile tramé
+
+Un damier d'un pixel sur deux, couleur du vide, balaie l'écran de gauche à droite en 520 ms
+(`.theme-veil` dans `ui/veil.css`, importée par `veil.ts` : le design system du back-office
+la rejoue sans charger la feuille du jeu) : il entre, couvre tout, puis sort à droite. Ce qui doit
+changer change sous lui, à 200 ms, quand l'écran est couvert.
+
+| Export | Rôle |
+|---|---|
+| `sweepVeil(swap)` | Pose le voile, appelle `swap` à `VEIL_SWAP_MS`, retire le voile après `VEIL_MS`. Sous mouvement réduit : pas de voile, `swap` tout de suite |
+| `VEIL_MS`, `VEIL_SWAP_MS` | 520 ms, 200 ms |
+
+Deux usages : le changement de thème (`main.ts`, `chooseTheme`) et l'entrée dans l'attente
+depuis le menu — recherche rapide, création, code rejoint, ami défié (`shell.ts`). Dans ce
+second cas, `render()` ne montre pas tout de suite le nouvel écran : le menu reste affiché
+jusqu'à ce que le voile le couvre, puis `show()` applique **la dernière étape reçue** entre-
+temps (un code qui arrive, une proposition), pour que le voile ne découvre jamais un écran
+périmé. Toute autre bascule d'écran reste immédiate.
+
+**Ce geste est acté tel quel par le porteur du projet** (docs/design.md 8.1). `veil.test.ts`
+compare la règle `.theme-veil` et ses keyframes, au caractère près, à une copie figée, et
+vérifie les deux durées : une retouche, même de passage, fait échouer la suite. Une autre
+transition qui voudrait s'en écarter prend sa propre classe.
+
+## `ui/settings.ts` — les réglages d'affichage
+
+Une fenêtre flottante non modale (`#settings`), ouverte par l'engrenage `#settings-toggle`
+en haut à droite (`#corner-tools`, à côté du lien vers le compte). Elle porte le **design**
+(trois choix, chacun avec son échantillon, son nom et une ligne de ton) et la **langue**.
+L'engrenage est montré partout sauf à l'amorce et sur les écrans pleine page (déploiement,
+équipes), **partie comprise** — c'est sur le plateau qu'un design se juge.
+
+| Fonction | Rôle |
+|---|---|
+| `attachSettings()` | Branche l'engrenage et la fenêtre ; rend un `Settings` |
+| `open()`, `close()` (internes) | Montre la fenêtre et joue l'ouverture depuis la souris (`revealWindow(panel, "open", "pointer")`) ; joue la fermeture vers la souris puis la masque. Échap, l'engrenage ou un clic hors de la fenêtre la ferment |
+| `refresh()` | Marque le design et la langue en vigueur (`aria-current`), pose l'indication de chaque design |
+| `setAvailable()` | Montre ou cache l'engrenage ; le cacher referme la fenêtre sans animation |
+
+Le choix lui-même est délégué à `main.ts` (`chooseTheme`, `chooseLocale`) : ce module ne
+connaît ni le stockage ni le rendu. Le profil et le back-office appliquent le thème stocké au démarrage,
+pour que leurs rejeux en Canvas 2D en suivent les couleurs.
 
 ### La règle est mécanique, pas conventionnelle
 
@@ -1266,6 +1422,7 @@ l'écran montre ce que la base contient et non ce qu'on vient d'envoyer.
 | `#/players/<id>` | `PlayerDetail` | Profil de jeu — y compris ceux **sans compte**, créés par `POST /api/matches` — et tout son historique |
 | `#/matches?status=&offset=` | `MatchList` | Toutes, en cours ou terminées (`Segmented` en liens), paginées |
 | `#/matches/<id>` | `MatchDetail` | `Versus`, `FactStrip` ; la liste des coups, et sous elle **le plateau rejoué** |
+| `#/design`, `#/design/components/<Nom>`, `#/design/motion`, `#/design/conventions` | `DesignSystem` (`design/`) | **Le design system** : fondations, composants, animations, conventions — voir plus bas |
 
 **Les actions rapides** (`QuickActions`, `actions.tsx`) sont une rangée d'`IconButton`, la même
 dans la liste et sur la fiche : vérification de l'adresse, rôle, suspension ou levée,
@@ -1307,6 +1464,44 @@ couleur du camp, arrivée dans la teinte de la sélection. `fitScale()` (`replay
 échelle qui tient **aux quatre quarts de tour**, pour que le plateau ne change pas de taille en
 tournant. Les positions viennent du serveur (`frames`) : le client ne rejoue rien, il n'a pas
 les rulesets versionnés.
+
+### Le design system
+
+Un onglet du back-office, **réservé aux administrateurs comme le reste** (`Gate`) : la charte
+montrée par ses propres sources, avec des retouches à chaud. Il **ne lit pas le projet Claude
+Design** mais ce dont la synchronisation le tire — `.design-sync/previews/` (les aperçus),
+`.design-sync/docs/` (la catégorie de chaque composant), `.design-sync/conventions.md`,
+`packages/ui/src/components/` (commentaires et props) — plus la section 8.1 du design doc, les
+deux feuilles (`ui/ui.css`, `packages/ui/src/styles.css`) et la table `MOTION_FX` de
+`theme.ts`. La page montre donc ce qui est construit, au commit près, sans re-synchronisation.
+
+**Chargement.** `sources.ts` rassemble ces fichiers au build : les aperçus sont **montés**
+(`import.meta.glob`, `eager`) et lus en texte (`?raw`), si bien que le code affiché est celui
+qui rend l'aperçu d'à côté. Le tout forme un morceau à part, `DesignSystem` : la ressource
+`designSystem` (`resources.ts`) l'importe, et `resourcesOf()` la précharge avec l'identité —
+l'onglet paraît d'un seul tenant, comme les autres, et le reste du back-office ne télécharge
+pas les aperçus. Les copies d'iCloud (`Button 2.tsx`) sont écartées (`isCopy()`).
+
+**Les aperçus vivent hors de tout paquet** : `vite.config.ts` résout pour eux `@occulis/ui`
+(`alias`) et React (`dedupe`) depuis l'application, et compile le JSX par le runtime
+automatique (`esbuild.jsx`). Un aperçu doit donc se rendre seul, sous `UiRoot` et
+`ToastProvider` — c'est déjà la règle de la synchronisation.
+
+| Page | Contenu |
+|---|---|
+| Fondations | La palette du thème montré, **chaque couleur modifiable** (`Swatch` avec `onChange`) ; l'os par alpha ; la typographie ; les écarts ; les durées de la charte sur un point qui traverse sa piste ; toutes les propriétés CSS, recalculées par `paletteVariables()` |
+| Composants | Navigation par catégorie (`NavList`) ; pour le composant choisi, son commentaire et son fichier, chacun de ses aperçus dans un `Stage` avec son code, et ses props (`componentDocs()`). Un aperçu qui lève est remplacé par son message (`Contained`). Une fenêtre modale ne se monte qu'à la demande, et Échap ou un clic sur son voile la démonte (`OverlayHost`) : son `onClose` d'aperçu ne fait rien |
+| Animations | L'ouverture des fenêtres (centre, souris, message, modale) ; **le voile tramé**, rejoué avec sa vraie feuille (`ui/veil.css`) et montré verrouillé ; l'entrée d'un bloc ; le compte à rebours et l'annonce de l'adversaire ; les durées du plateau (`fieldNotes()` sur `MOTION_FX`) et ses courbes (`view/easing.ts`, tracées avec un point qui les parcourt) ; les animations CSS déclarées par les deux feuilles (`cssAnimations()`) |
+| Conventions | `conventions.md` et la section 8.1 du design doc, rendus par `markdownBlocks()` — le sous-ensemble de Markdown que ces fichiers emploient |
+
+**Les retouches** (`DesignSystem`, partagées par `useTweaks()`) ne s'écrivent nulle part : le
+thème montré (changé sous le voile tramé, comme dans le jeu) et la palette retouchée sont posés
+sur `<html>` — `data-theme` et les propriétés de `paletteVariables()` en style en ligne — puis
+rendus tels qu'ils étaient en quittant la section. « Copier pour tokens.ts » met dans le
+presse-papiers l'entrée de `THEMES` correspondante (`paletteSource()`), à coller à la main :
+`tokens.ts` reste la seule source des couleurs. La **vitesse** ralentit toutes les animations
+CSS de la page (`playbackRate`, posé sur celles qui tournent et sur chacune qui démarre) ;
+`revealWindow` (`speed`), le compte à rebours et les courbes la lisent eux-mêmes.
 
 ## `vite.config.ts` — le service des maquettes
 
@@ -1350,6 +1545,17 @@ Trois points qui se sont révélés à l'usage et qu'il ne faut pas défaire :
   `NODE_ENV` et produirait un bundle différent de celui qui est déployé — or le serveur local
   sert précisément à tester celui-là. Sous `--mode mockups`, le bundle est identique au bundle
   de production, au dossier `mockups/` près.
+
+**Le labo de la refonte graphique** (`lab/index.html`, `LAB_PAGE`) suit la même règle que les
+maquettes : `pnpm dev` le sert sous `/lab/` (Vite sert toute page HTML de sa racine), le build
+ne l'ajoute à ses entrées que sous `--mode mockups`. Le greffon `occulis-lab-redirect`
+(`serve`) renvoie `/lab` vers `/lab/` : sans la barre finale, le repli SPA servirait la page du
+jeu, noire sans serveur derrière. La page ne fait que monter
+`packages/ui/previews/main.tsx` (`lab/main.ts`) ; le client ne l'importe jamais. Elle **appelle**
+`mountLab()` au lieu d'importer le module pour son effet : `@occulis/ui` se déclare sans effet
+de bord hors CSS (`sideEffects`), et Rollup élaguait l'import — la page construite, servie par
+wrangler, restait noire quand `pnpm dev`, qui n'élague rien, l'affichait. Voir
+`ui.md`, « Le labo de la refonte ».
 
 Sous wrangler, Cloudflare applique son `html_handling` par défaut : `/mockups` redirige en 307
 vers `/mockups/`, et `/mockups/partie.html` vers `/mockups/partie`. Les liens relatifs des
@@ -1404,7 +1610,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 
 ## Tests
 
-178 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+238 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
@@ -1412,6 +1618,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/view/camera.test.ts` | Le point sous le curseur reste immobile au zoom, bornes d'échelle, convergence exacte de l'aimantation |
 | `apps/web/src/view/picking.test.ts` | Chaque case retrouvée depuis son centre à plusieurs angles et échelles, priorité au relief au premier plan, désignation par la falaise |
 | `apps/web/src/view/animation.test.ts` | Hauteurs relevées au départ, durée croissante mais bornée, interpolation conjointe position/hauteur, progression monotone, terminaison |
+| `apps/web/src/ui/veil.test.ts` | **Le voile tramé inchangé** : règle `.theme-veil` et keyframes de `veil.css` identiques à la copie figée, durées de 520 et 200 ms |
 | `apps/web/src/ui/flow.test.ts` | Départ sur le formulaire, menu ouvert à la connexion, retour au formulaire à la déconnexion **même en partie**, identité reconfirmée sans effet, code affiché dans l'attente, `hosting` en retard ignoré, **fenêtre d'acceptation ouverte depuis la seule attente rapide**, retour en attente ou au menu à sa chute, déploiement avant la partie et jamais après, équipes depuis le menu, attente d'un ami défié nommée, entrée en spectateur |
 | `apps/web/src/social/model.test.ts` | Présence allumée et éteinte, inconnu ignoré, **non-lus comptés pour les messages reçus seulement**, relecture demandée sur un changement de relation, un défi reçu par ami et retiré à l'annulation, défi envoyé oublié au refus, **défis d'un ancien ami écartés à la relecture**, libellé de présence, traduction des refus, **relation à un joueur lue dans la liste** |
 | `apps/web/src/game/selection.test.ts` | **Toute destination affichée est applicable par `core`**, exclusion des cases occupées, frappe sur place, machine à états complète de `resolveClick` |
@@ -1422,7 +1629,9 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/game/movement-diff.test.ts` | Le déplacement lu entre deux vues, y compris celui de l'adversaire ; une pièce qui entre ou sort de la LOS n'est pas animée |
 | `apps/web/src/net/session.test.ts` | Enchaînement file → siège → vues, code de salon retenu, code refusé sans siège, reconstruction du `Set` de cases visibles, refus retenu puis effacé, message hors partie ignoré, **déploiement annoncé puis verrous suivis, effacé à la première vue**, proposition ouverte, acceptations suivies, chute rapportée, compteur de spectateurs, spectateur assis sur le camp suivi sans jeton |
 | `apps/web/src/net/backoff.test.ts` | Croissance exponentielle, plafond, robustesse à une tentative absurde |
-| `apps/web/src/admin/model.test.ts` | Routes du back-office lues et réécrites à l'identique, fiche rangée sous sa liste, résultat nommé par le siège, coups, dates ISO et millisecondes, pagination, **durée de suspension illisible refusée plutôt que lue comme définitive**, actions rapides fermées sur soi-même, sur un administrateur et sur un compte suspendu, initiales, taux de victoire, résumé du navigateur d'une session |
+| `apps/web/src/admin/model.test.ts` | Routes du back-office lues et réécrites à l'identique, pages du design system et repli sur ses fondations, fiche rangée sous sa liste, résultat nommé par le siège, coups, dates ISO et millisecondes, pagination, **durée de suspension illisible refusée plutôt que lue comme définitive**, actions rapides fermées sur soi-même, sur un administrateur et sur un compte suspendu, initiales, taux de victoire, résumé du navigateur d'une session |
+| `apps/web/src/admin/design/catalog.test.ts` | Copies d'iCloud écartées, catégorie lue dans l'en-tête, exemples découpés par export, commentaire et props d'un composant (interface, type en ligne, **`forwardRef`**), constantes non composants ignorées, animations CSS avec leur commentaire mais sans titre de section ni règle qui les éteint, notes d'une table groupées sous leur commentaire, section du design doc isolée, Markdown découpé en titres, paragraphes, listes et code |
+| `apps/web/src/admin/design/tweaks.test.ts` | Couleurs énumérées dans l'ordre de la palette, remplacement sans toucher l'original, aller-retour du format du sélecteur, **palette écrite comme une entrée de `THEMES`** |
 | `apps/web/src/admin/replay.test.ts` | Pièce déplacée retrouvée entre deux images et elle seule, coup écrit comme l'historique de la maquette, libellé d'image avec camp et joueur, navigation bornée, **plateau centré et contenu dans son cadre aux quatre quarts de tour** |
 | `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, compte suspendu, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut et distinguée du délai de pseudo, retours de Google et des liens expirés, mot de passe ayant fuité |
 | `apps/web/src/account/model.test.ts` | Parcours ↔ URL dans les deux sens, connexion par défaut, jeton lu, **jeton et erreurs retirés de l'URL**, adresse confirmée, compte supprimé, lien expiré du bon type, refus de liaison Google expliqué, **refus rattaché au bon champ, jamais pour des identifiants faux**, indication de longueur, **anciens noms de paramètres encore reconnus** |

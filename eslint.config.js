@@ -36,7 +36,14 @@ export default [
     // composants de la charte. La règle rend la contrainte mécanique plutôt que
     // conventionnelle ; les feuilles de style sont gardées par un test du paquet. Le serveur
     // y est soumis aussi : ses courriers HTML portent des couleurs, prises aux tokens.
-    files: ["apps/web/src/**/*.{ts,tsx}", "apps/server/src/**/*.ts", "packages/ui/src/**/*.{ts,tsx}"],
+    // Les aperçus de la charte et la page du labo dessinent du SVG : ils y sont soumis aussi.
+    files: [
+      "apps/web/src/**/*.{ts,tsx}",
+      "apps/web/lab/**/*.ts",
+      "apps/server/src/**/*.ts",
+      "packages/ui/src/**/*.{ts,tsx}",
+      "packages/ui/previews/**/*.{ts,tsx}",
+    ],
     rules: {
       "no-restricted-syntax": [
         "error",

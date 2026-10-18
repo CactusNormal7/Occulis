@@ -1,0 +1,519 @@
+/*
+ * Le labo de la refonte graphique (docs/design/refonte-graphique.md) : la feuille des
+ * composants proposés (`occ-glyph`, `occ-cipher`, `occ-frieze`, `occ-paper`) et de la page
+ * d'aperçus (`occ-lab-*`). Aucun écran ne la charge.
+ *
+ * Mêmes règles que `styles.css`, gardées par les mêmes tests : aucune couleur en dur, rien
+ * que des propriétés `--occ-*` définies par `tokens.ts`. Toute distance passe par
+ * `--occ-dist-*` (multipliée par l'amplitude du niveau d'intensité), toute durée par
+ * `--occ-dur-*` (multipliée par le tempo), toute boucle décorative s'arrête sur
+ * `--occ-motion-loop`. Rien ne s'anime hors de `transform` et `opacity`.
+ */
+
+@import "../generated/proposed-tokens.css";
+
+/* ---- Glyphes -------------------------------------------------------------------------- */
+
+/* Un glyphe au trait d'un pixel, net : ni lissage, ni épaississement au zoom. */
+.occ-glyph {
+  display: block;
+  width: calc(var(--occ-cipher-unit) * 10);
+  height: calc(var(--occ-cipher-unit) * 12);
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--occ-cipher-stroke);
+  stroke-linecap: square;
+  shape-rendering: crispEdges;
+}
+
+.occ-glyph * {
+  vector-effect: non-scaling-stroke;
+}
+
+.occ-glyph__dot {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* ---- Texte chiffré --------------------------------------------------------------------- */
+
+.occ-cipher {
+  position: relative;
+}
+
+/* Le texte réel, pour un lecteur d'écran : hors de la vue, jamais hors de l'arbre. */
+.occ-cipher__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.occ-cipher__word {
+  white-space: nowrap;
+}
+
+/* La lettre et son glyphe dans la même case : la largeur ne change jamais pendant le
+   déchiffrement, rien ne bouge autour. */
+.occ-cipher__cell {
+  display: inline-grid;
+  place-items: center;
+}
+
+.occ-cipher__cell > * {
+  grid-area: 1 / 1;
+  transition: opacity var(--occ-dur-fast) linear;
+}
+
+.occ-cipher__cell .occ-glyph {
+  color: var(--occ-cipher-ink);
+}
+
+.occ-cipher__cell[data-state="plain"] .occ-glyph,
+.occ-cipher__cell:not([data-state="plain"]) .occ-cipher__letter {
+  opacity: 0;
+}
+
+/* Un glyphe qui se brouille luit un instant : c'est lui qu'on regarde. */
+.occ-cipher__cell[data-state="scramble"] .occ-glyph {
+  color: var(--occ-ink);
+  transition: none;
+}
+
+/* ---- Frise ----------------------------------------------------------------------------- */
+
+.occ-frieze {
+  color: var(--occ-cipher-ink-faint);
+}
+
+.occ-frieze--row {
+  display: inline-flex;
+  gap: var(--occ-space-1);
+}
+
+/* La couronne : chaque glyphe tourné vers le centre, sur un cercle de `--frieze-radius`. */
+.occ-frieze--ring {
+  --frieze-radius: var(--occ-space-16);
+  position: relative;
+  display: block;
+  width: calc(var(--frieze-radius) * 2 + var(--occ-space-6));
+  aspect-ratio: 1;
+}
+
+.occ-frieze--ring .occ-frieze__cell {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  transform: rotate(calc(var(--frieze-index) * 1turn / var(--frieze-count)))
+    translateY(calc(var(--frieze-radius) * -1));
+}
+
+/* ---- Papier ---------------------------------------------------------------------------- */
+
+.occ-paper {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+.occ-paper--invert {
+  mix-blend-mode: difference;
+}
+
+/* Sous `still`, l'inversion entière paraît et s'en va en fondu : aucune propagation. */
+.occ-paper[data-still] {
+  transition: opacity var(--occ-dur-base) linear;
+}
+
+.occ-paper[data-still="out"] {
+  opacity: 0;
+}
+
+/* ---- Page du labo ---------------------------------------------------------------------- */
+
+.occ-lab {
+  display: grid;
+  gap: var(--occ-space-12);
+  padding-block: var(--occ-space-8) var(--occ-space-16);
+}
+
+.occ-lab-knobs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--occ-space-4) var(--occ-space-6);
+  padding: var(--occ-space-3) var(--occ-space-4);
+  background: var(--occ-panel);
+  border-bottom: 1px solid var(--occ-ink-line);
+}
+
+.occ-lab-knob {
+  display: grid;
+  gap: var(--occ-space-1);
+  color: var(--occ-ink-dim);
+}
+
+.occ-lab-knob input[type="range"] {
+  width: calc(var(--occ-space-16) * 2);
+  accent-color: currentColor;
+}
+
+.occ-lab-section {
+  display: grid;
+  gap: var(--occ-space-6);
+  scroll-margin-top: var(--occ-space-16);
+}
+
+.occ-lab-section > header {
+  display: grid;
+  gap: var(--occ-space-2);
+  max-width: 72ch;
+  line-height: var(--occ-leading-loose);
+}
+
+.occ-lab-section > header p {
+  margin: 0;
+  color: var(--occ-ink-soft);
+}
+
+.occ-lab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--occ-space-16) * 5), 1fr));
+  gap: var(--occ-space-4);
+}
+
+.occ-lab-note {
+  margin: 0;
+  color: var(--occ-ink-dim);
+  line-height: var(--occ-leading-loose);
+}
+
+.occ-lab-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--occ-space-3);
+}
+
+/* Une table d'alphabet : un glyphe agrandi trois fois au-dessus de sa lettre. */
+.occ-lab-alphabet {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--occ-space-12), 1fr));
+  gap: var(--occ-space-3) var(--occ-space-2);
+}
+
+.occ-lab-alphabet figure {
+  --occ-cipher-unit: 3px;
+  display: grid;
+  justify-items: center;
+  gap: var(--occ-space-1);
+  margin: 0;
+  color: var(--occ-ink);
+}
+
+.occ-lab-alphabet figcaption {
+  color: var(--occ-ink-dim);
+}
+
+/* Un titre : le glyphe à deux pixels par pas, à la hauteur des capitales de la police à
+   32 px. Plus grand, la case du glyphe élargit celle de la lettre et la chaîne s'espace. */
+.occ-lab-display {
+  --occ-cipher-unit: 2px;
+  font-size: var(--occ-text-xxl);
+  line-height: var(--occ-leading-tight);
+  letter-spacing: var(--occ-caps);
+  text-transform: uppercase;
+}
+
+/* Une scène d'aperçu à proportion fixe, positionnée pour accueillir le calque de papier. */
+.occ-lab-screen {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--occ-ink-line);
+  background: var(--occ-bg);
+}
+
+.occ-lab-screen__content {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--occ-space-6);
+  padding: var(--occ-space-6);
+  text-align: center;
+}
+
+.occ-lab-screen--clickable {
+  cursor: crosshair;
+}
+
+/* Une pile de durées : chaque barre traverse sa piste à la durée et à la courbe de son token. */
+.occ-lab-track {
+  position: relative;
+  height: var(--occ-space-2);
+  border-bottom: 1px solid var(--occ-ink-line);
+}
+
+.occ-lab-track span {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: var(--occ-space-2);
+  height: var(--occ-space-2);
+  background: var(--occ-ink);
+}
+
+.occ-lab-track[data-run="true"] span {
+  left: calc(100% - var(--occ-space-2));
+  transition-property: left;
+}
+
+/* ---- Plateau prototype ----------------------------------------------------------------- */
+
+.occ-lab-board {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  user-select: none;
+}
+
+.occ-lab-board * {
+  vector-effect: non-scaling-stroke;
+}
+
+.occ-lab-tile {
+  fill: var(--occ-matter);
+  stroke: var(--occ-ink-line);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.occ-lab-wall__top {
+  fill: var(--occ-matter-peak);
+  stroke: var(--occ-ink-faint);
+}
+
+.occ-lab-wall__left {
+  fill: var(--occ-matter);
+  stroke: var(--occ-ink-faint);
+}
+
+.occ-lab-wall__right {
+  fill: var(--occ-shade);
+  stroke: var(--occ-ink-faint);
+}
+
+.occ-lab-dither {
+  fill: var(--occ-bg);
+}
+
+/* Le fog : la case assombrie et tramée un pixel sur deux. Il se retire en vague (retard par
+   distance, `--delay`), revient d'un bloc. */
+.occ-lab-fog {
+  opacity: 1;
+  transition: opacity var(--occ-dur-base) var(--occ-ease-in);
+  pointer-events: none;
+}
+
+.occ-lab-fog[data-seen="true"] {
+  opacity: 0;
+  transition-duration: var(--occ-dur-slow);
+  transition-timing-function: var(--occ-ease-out);
+  transition-delay: var(--delay, 0ms);
+}
+
+.occ-lab-hit {
+  fill: transparent;
+  stroke: none;
+  cursor: pointer;
+}
+
+.occ-lab-hover {
+  fill: none;
+  stroke: var(--occ-ink-soft);
+  opacity: 0;
+  transition: opacity var(--occ-dur-fast) linear;
+  pointer-events: none;
+}
+
+.occ-lab-cell:hover .occ-lab-hover {
+  opacity: 1;
+}
+
+.occ-lab-dest {
+  fill: none;
+  stroke: var(--occ-legal);
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: occ-lab-open var(--occ-dur-base) var(--occ-ease-out) var(--delay, 0ms) backwards;
+}
+
+.occ-lab-selected {
+  fill: none;
+  stroke: var(--occ-selection);
+  pointer-events: none;
+}
+
+/* Une pièce : son trait dans la couleur de son camp, son corps dans le vide — elle cache ce
+   qui est derrière elle, comme sur le plateau. */
+.occ-lab-piece {
+  fill: var(--occ-bg);
+  stroke-width: 1;
+  stroke-linejoin: miter;
+  pointer-events: none;
+}
+
+.occ-lab-piece--A {
+  stroke: var(--occ-camp-a);
+}
+
+.occ-lab-piece--B {
+  stroke: var(--occ-camp-b);
+}
+
+.occ-lab-piece__body {
+  transition: transform var(--occ-dur-fast) var(--occ-ease-out);
+}
+
+.occ-lab-piece--lifted .occ-lab-piece__body {
+  transform: translateY(calc(var(--occ-dist-lift) * -1));
+}
+
+.occ-lab-piece--trail {
+  opacity: 0.25;
+}
+
+.occ-lab-piece--enter {
+  animation: occ-lab-materialize var(--occ-dur-slow) var(--occ-ease-out) var(--delay, 0ms) backwards;
+}
+
+/* Un adversaire sorti de la vue laisse un fantôme : sa dernière position connue, en pointillé. */
+.occ-lab-ghost {
+  fill: none;
+  stroke: var(--occ-ink-faint);
+  stroke-dasharray: 1 2;
+  pointer-events: none;
+}
+
+.occ-lab-ripple {
+  fill: none;
+  stroke: var(--occ-ink);
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: occ-lab-ripple var(--occ-dur-slow) var(--occ-ease-out) forwards;
+}
+
+.occ-lab-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--occ-space-6);
+  color: var(--occ-ink-dim);
+}
+
+.occ-lab-legend figure {
+  display: grid;
+  justify-items: center;
+  gap: var(--occ-space-1);
+  margin: 0;
+}
+
+/* ---- File d'attente prototype ---------------------------------------------------------- */
+
+.occ-lab-queue {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.occ-lab-queue > * {
+  grid-area: 1 / 1;
+}
+
+.occ-lab-queue .occ-frieze--ring {
+  animation: occ-lab-turn calc(var(--occ-dur-breath) * 12) linear infinite;
+  animation-play-state: var(--occ-motion-loop);
+  transition:
+    scale var(--occ-dur-slow) var(--occ-ease-in),
+    opacity var(--occ-dur-slow) linear;
+}
+
+.occ-lab-queue[data-found="true"] .occ-frieze--ring {
+  scale: calc(1 - 0.5 * var(--occ-motion-amplitude));
+  opacity: 0;
+}
+
+/* L'œil au centre : un anneau cranté qui respire. */
+.occ-lab-eye {
+  width: var(--occ-space-12);
+  height: var(--occ-space-12);
+  border: 1px solid var(--occ-ink-soft);
+  clip-path: var(--pixel-notch);
+  display: grid;
+  place-items: center;
+  animation: occ-lab-breathe var(--occ-dur-breath) ease-in-out infinite alternate;
+  animation-play-state: var(--occ-motion-loop);
+}
+
+.occ-lab-eye::after {
+  content: "";
+  width: var(--occ-space-2);
+  height: var(--occ-space-2);
+  background: var(--occ-ink);
+}
+
+.occ-lab-queue[data-found="true"] .occ-lab-eye {
+  border-color: var(--occ-camp-b);
+}
+
+@keyframes occ-lab-open {
+  from {
+    opacity: 0;
+    transform: scale(calc(1 - 0.4 * var(--occ-motion-amplitude)));
+  }
+}
+
+@keyframes occ-lab-materialize {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--occ-dist-rise) * -1));
+  }
+}
+
+@keyframes occ-lab-ripple {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(calc(1 + 0.8 * var(--occ-motion-amplitude)));
+  }
+}
+
+@keyframes occ-lab-turn {
+  to {
+    rotate: 1turn;
+  }
+}
+
+@keyframes occ-lab-breathe {
+  from {
+    opacity: 0.55;
+  }
+}

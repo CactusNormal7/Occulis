@@ -29,21 +29,60 @@
       <button id="stop-impersonating" type="button" data-i18n="game.impersonation.stop">Back to my account</button>
     </aside>
 
-    <!-- Le compte, en haut à droite : le lien vers le profil n'est pas un geste de jeu, il
-         n'a pas sa place parmi les entrées du menu. Montré au seul écran de menu. -->
-    <a id="account-corner" href="/profile/" aria-label="My profile" data-i18n-label="game.myProfile" hidden>
-      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-        <circle cx="12" cy="8" r="4" />
-        <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
-      </svg>
-      <span id="account-corner-name"></span>
-    </a>
+    <!-- En haut à droite, hors des gestes de jeu : le compte (au seul écran de menu) et
+         l'engrenage des réglages d'affichage (partout sauf les écrans pleine page, partie
+         comprise — c'est sur le plateau qu'un design se juge). -->
+    <div id="corner-tools">
+      <a id="account-corner" href="/profile/" aria-label="My profile" data-i18n-label="game.myProfile" hidden>
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+        </svg>
+        <span id="account-corner-name"></span>
+      </a>
+      <button
+        id="settings-toggle"
+        type="button"
+        aria-label="Settings"
+        data-i18n-label="ui.settings.label"
+        aria-expanded="false"
+        aria-controls="settings"
+        hidden
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <circle cx="12" cy="12" r="3.2" />
+          <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" />
+        </svg>
+      </button>
 
-    <!-- Le choix de langue, hors partie seulement : en partie, il n'y a rien à relire. -->
-    <nav id="locale-switch" aria-label="Language" data-i18n-label="ui.language" hidden>
-      <button type="button" data-locale="en" lang="en">EN</button>
-      <button type="button" data-locale="fr" lang="fr">FR</button>
-    </nav>
+      <!-- Les réglages : une fenêtre flottante, non modale, qui s'ouvre depuis la souris
+           (`revealWindow`). Échap, l'engrenage ou un clic ailleurs la referment. -->
+      <section id="settings" role="dialog" aria-labelledby="settings-title" hidden>
+        <h2 id="settings-title" data-i18n="ui.settings.title">Settings</h2>
+        <div class="settings__group" role="group" aria-labelledby="settings-design">
+          <h3 id="settings-design" data-i18n="ui.theme.label">Design</h3>
+          <button type="button" class="settings__choice" data-theme-choice="obsidian">
+            <i aria-hidden="true"></i>
+            <span><strong data-i18n="ui.theme.names.obsidian">Obsidian</strong><small data-i18n="ui.theme.hints.obsidian">Black and bone, cold glows — the severe one</small></span>
+          </button>
+          <button type="button" class="settings__choice" data-theme-choice="reliquary">
+            <i aria-hidden="true"></i>
+            <span><strong data-i18n="ui.theme.names.reliquary">Reliquary</strong><small data-i18n="ui.theme.hints.reliquary">Warm black, old gold, fireflies and a turning seal</small></span>
+          </button>
+          <button type="button" class="settings__choice" data-theme-choice="astral">
+            <i aria-hidden="true"></i>
+            <span><strong data-i18n="ui.theme.names.astral">Astral</strong><small data-i18n="ui.theme.hints.astral">A dense sky: constellations, shooting stars, nebulae</small></span>
+          </button>
+        </div>
+        <div class="settings__group" role="group" aria-labelledby="settings-language">
+          <h3 id="settings-language" data-i18n="ui.language">Language</h3>
+          <div class="settings__locales">
+            <button type="button" data-locale="en" lang="en">English</button>
+            <button type="button" data-locale="fr" lang="fr">Français</button>
+          </div>
+        </div>
+      </section>
+    </div>
 
     <main id="shell">
       <!-- L'amorce : visible dès le HTML, avant tout script, jusqu'à ce que le premier écran
@@ -134,6 +173,8 @@
       <section id="screen-waiting" class="screen" hidden>
         <div class="panel">
           <h1>Occulis</h1>
+          <!-- L'attente : un œil de huit pixels qui tourne, le temps qu'un adversaire paraisse. -->
+          <div class="waiting-orbit" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
           <p id="waiting-code" class="code" hidden></p>
           <button id="waiting-copy" type="button" class="quiet" hidden>Copy</button>
           <p id="waiting-note" role="status"></p>

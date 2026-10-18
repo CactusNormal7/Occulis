@@ -1,6 +1,7 @@
 import { Application } from "pixi.js";
 import { type ControlsOptions, attachControls } from "../input/controls.js";
-import { BACKGROUND } from "../theme.js";
+import { look } from "../theme.js";
+import { pixelResolution } from "../view/pixel.js";
 import { Scene, type SceneInput } from "./scene.js";
 
 /**
@@ -24,18 +25,39 @@ export interface Board {
 }
 
 export async function mountBoard(host: HTMLElement, hooks: BoardHooks): Promise<Board> {
+  // Le plateau est rendu en basse résolution, sans lissage, puis agrandi au plus proche
+  // voisin : c'est ce qui fait le pixel (docs/design.md 8.1, `view/pixel.ts`).
+  const resolution = pixelResolution(window.devicePixelRatio);
   const app = new Application();
-  await app.init({ background: BACKGROUND, resizeTo: window, antialias: true });
+  await app.init({
+    background: look().palette.background,
+    resizeTo: window,
+    antialias: false,
+    resolution,
+    autoDensity: true,
+    roundPixels: true,
+  });
+  app.canvas.style.imageRendering = "pixelated";
   host.appendChild(app.canvas);
 
-  const scene = new Scene();
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const scene = new Scene(resolution);
   app.stage.addChild(scene.root);
 
   app.renderer.on("resize", hooks.onResize);
   attachControls({ canvas: app.canvas, ...hooks.controls });
   app.ticker.add((ticker) => {
     const input = hooks.frame(ticker.deltaMS);
-    if (input !== undefined) scene.render(input);
+    if (input === undefined) return;
+    // Le thème peut changer en pleine partie : le vide du canevas le suit.
+    const background = look().palette.background;
+    if (app.renderer.background.color.toNumber() !== background) app.renderer.background.color = background;
+    scene.render(input, {
+      deltaMS: ticker.deltaMS,
+      width: app.screen.width,
+      height: app.screen.height,
+      still: still.matches,
+    });
   });
 
   return { clear: () => scene.clear() };
