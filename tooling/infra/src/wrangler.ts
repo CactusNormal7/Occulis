@@ -68,7 +68,8 @@ export function runWranglerInherited(args: string[]): Promise<number> {
       stdio: "inherit",
     });
     child.on("error", reject);
-    child.on("close", (code) => resolvePromise(code ?? 0));
+    // Tué par un signal (Ctrl+C), l'enfant n'a pas de code : ce n'est pas un succès.
+    child.on("close", (code, signal) => resolvePromise(code ?? (signal === null ? 0 : 130)));
   });
 }
 
@@ -76,7 +77,8 @@ export function runInherited(command: string, args: string[], cwd: string): Prom
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, { cwd, stdio: "inherit" });
     child.on("error", reject);
-    child.on("close", (code) => resolvePromise(code ?? 0));
+    // Tué par un signal (Ctrl+C), l'enfant n'a pas de code : ce n'est pas un succès.
+    child.on("close", (code, signal) => resolvePromise(code ?? (signal === null ? 0 : 130)));
   });
 }
 

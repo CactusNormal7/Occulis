@@ -3,7 +3,7 @@ import { render } from "ink";
 import { App, type InteractiveOutcome } from "./components/App.js";
 import { MOUSE_DISABLE } from "./components/useMouse.js";
 import { LEVEL_PREFIX, LEVEL_COLOR } from "./components/theme.js";
-import type { Level } from "./actions.js";
+import { ACTIONS, type Level } from "./actions.js";
 
 const COLOR_CODE: Record<string, string> = {
   green: "32",
@@ -74,8 +74,39 @@ async function runMenu(): Promise<void> {
   }
 }
 
-runMenu()
-  .then(() => process.exit(0))
+/**
+ * Une action lancée directement, sans le menu : `pnpm infra dev` (ou `pnpm local`) démarre
+ * le serveur local comme « Lancer le serveur en local ». Seules les actions marquées
+ * `direct` s'y prêtent — ni choix d'environnement, ni effet distant, ni commit. Le code de
+ * sortie dit l'issue : 2 pour une action refusée, 1 si l'action a signalé un échec.
+ */
+async function runDirect(id: string): Promise<void> {
+  const action = ACTIONS.find((candidate) => candidate.id === id);
+  if (action === undefined || action.direct !== true) {
+    const direct = ACTIONS.filter((candidate) => candidate.direct === true);
+    consoleLog(action === undefined ? `Action inconnue : « ${id} ».` : `« ${id} » ne se lance que depuis le menu (pnpm infra).`, "fail");
+    consoleLog(`Directes : ${direct.map((candidate) => candidate.id).join(", ")}`, "info");
+    process.exitCode = 2;
+    return;
+  }
+  consoleLog(action.label, "step");
+  inInteractive = action.interactive === true;
+  // Les actions signalent un échec par le journal et rendent la main normalement : on le relève
+  // ici pour qu'un script qui enchaîne sur `pnpm infra <id>` s'arrête.
+  let failed = false;
+  const log = (text: string, level: Level = "info"): void => {
+    if (level === "fail") failed = true;
+    consoleLog(text, level);
+  };
+  await action.run({ env: null, query: null, log });
+  if (failed) process.exitCode = 1;
+}
+
+const direct = process.argv[2];
+
+// Le menu sort par `process.exit` (Ink garde le terminal ouvert) ; une action directe se
+// termine d'elle-même, sans couper la sortie qui s'écrit encore dans un tube.
+(direct === undefined ? runMenu().then(() => process.exit(0)) : runDirect(direct))
   .catch((error) => {
     process.stderr.write(`${String(error)}\n`);
     process.exit(1);
