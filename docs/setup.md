@@ -38,8 +38,8 @@ recréer les ressources.
 ## 1. Outillage local
 
 **Node 24** (`.nvmrc`) : wrangler refuse de démarrer sous Node 22, malgré son message
-d'erreur qui annonce v20. La CI, elle, reste épinglée sur Node 22 — les deux satisfont
-`engines.node: ">=22"`.
+d'erreur qui annonce v20. La CI lit la même version dans `.nvmrc` (`node-version-file`), et
+`engines.node` vaut `">=24"`.
 
 ```bash
 nvm use          # lit .nvmrc ; nvm install si la version manque

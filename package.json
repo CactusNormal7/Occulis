@@ -24,7 +24,7 @@
   },
   "packageManager": "pnpm@10.34.5",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

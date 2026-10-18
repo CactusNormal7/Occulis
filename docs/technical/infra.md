@@ -52,7 +52,7 @@ Déclenché sur `push` de **toute** branche et sur toute `pull_request`.
 
 ### `checks` — les vérifications
 
-Node 22, pnpm, `pnpm install --frozen-lockfile`, puis dans l'ordre :
+Node (version lue dans `.nvmrc`), pnpm, `pnpm install --frozen-lockfile`, puis dans l'ordre :
 `pnpm typecheck` → `pnpm lint` → `pnpm test` → `pnpm build`.
 
 `pnpm -r test` n'exécute que les paquets déclarant un script `test` : `packages/core`,
@@ -306,10 +306,10 @@ sinon il référence des liaisons pas encore initialisées.
 
 ## Points d'attention
 
-- **Node 22 est requis par wrangler**, malgré son message d'erreur qui annonce v20. La CI
-  l'utilise, `.nvmrc` épingle Node 24 en local et `package.json` déclare
-  `engines.node: ">=22"` — les trois sont cohérents, mais **CI et poste de travail ne
-  tournent pas sur la même version majeure**. Sur une machine en Node 20,
+- **Une seule version de Node, celle de `.nvmrc` (24)** : la CI la lit (`node-version-file`)
+  et `package.json` déclare `engines.node: ">=24"`, donc CI et poste de travail tournent sur
+  la même version majeure. wrangler exige un Node récent, malgré un message d'erreur qui
+  annonce v20. Sur une machine en Node 20,
   les commandes wrangler (donc une grande partie de la TUI) échouent — la TUI elle-même,
   Ink et tsx, tourne pourtant sans problème, ce qui rend le diagnostic trompeur.
 - **`.wrangler/` doit rester dans `.gitignore`** : c'est de l'état local. `checkConfig()`
