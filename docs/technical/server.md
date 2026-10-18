@@ -146,7 +146,9 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 forcément la même instance de DO, sans annuaire ni coordination.
 
 `startMatch()` enchaîne : `crypto.randomUUID()` pour l'identifiant **et pour chacun des
-deux jetons de siège**, les deux cartes de joueur, un `INSERT` dans `matches` (avec `CURRENT_RULESET_VERSION` et
+deux jetons de siège**, les deux cartes de joueur, la carte figée
+(`snapshotScenario(scenarioFor(DEFAULT_SCENARIO))`, dans `MatchConfig.map` et `matches.map`),
+un `INSERT` dans `matches` (avec `CURRENT_RULESET_VERSION` et
 `DEFAULT_SCENARIO`), puis un `POST /init` vers le DO pour y déposer la configuration.
 Il répond `{ matchId, seats }`. Ses seuls appelants sont la file (`QueueDO.seat()`) et
 l'acceptation d'un défi (`SocialDO`) : **aucune route ne crée de partie**, et les deux
@@ -359,8 +361,8 @@ garantit.
 Si `this.live` est en cache, elle le renvoie. Sinon :
 
 1. `config()` relit la `MatchConfig` du stockage du DO.
-2. `scenarioFor()` et `rulesetFor()` reconstruisent le plateau et les règles **de la
-   version figée à la création** ; les pièces de départ sont celles du déploiement
+2. `frozenScenario()` et `rulesetFor()` reconstruisent le plateau et les règles **figés à
+   la création** — la carte depuis `MatchConfig.map`, ou le registre pour une partie d'avant ; les pièces de départ sont celles du déploiement
    (stockage du DO, `setup`), ou celles de la carte si elle n'en a pas.
 3. `createGame()` reconstruit l'état initial.
 4. Toutes les lignes de `match_actions` sont relues `ORDER BY seq ASC` et passées à
@@ -974,7 +976,7 @@ ajout. Le paquet ne contient que des types et la conversion de sérialisation �
 règle de jeu (elle vit dans `@occulis/core`), aucun transport (il vit dans chaque app).
 
 ```ts
-const PROTOCOL_VERSION = 6
+const PROTOCOL_VERSION = 7
 
 type ClientMessage =
   | { kind: "hello";  protocol: number }
@@ -988,12 +990,12 @@ interface PlayerCard { handle: string; elo: number; played: number; won: number;
 interface Locks { self: boolean; opponent: boolean }
 
 type ServerMessage =
-  | { kind: "welcome";           player: PlayerId; scenario: string; rulesetVersion: string }
+  | { kind: "welcome";           player: PlayerId; scenario: string; board: Tile[]; rulesetVersion: string }
   | { kind: "deployment";        zone: Coord[]; opponentZone: Coord[]; defaultTeam: TeamEntry[];
                                  remainingMs: number; locks: Locks; self: PlayerCard;
                                  opponent: PlayerCard; rated: boolean }
   | { kind: "deployment-update"; locks: Locks }
-  | { kind: "watching";          side: PlayerId; scenario: string; rulesetVersion: string }
+  | { kind: "watching";          side: PlayerId; scenario: string; board: Tile[]; rulesetVersion: string }
   | { kind: "view";              view: WireView }
   | { kind: "spectators";        count: number }
   | { kind: "rejected";          error: Rejection }
@@ -1051,7 +1053,9 @@ social (`SocialClientMessage` / `SocialServerMessage`, `packages/protocol/src/so
 négocie la même version.
 
 **`welcome`** dit au client de quel camp il tient le siège. Il ne le sait pas autrement :
-c'est le jeton qui le détermine, et le serveur seul le résout.
+c'est le jeton qui le détermine, et le serveur seul le résout. Il porte aussi **les cases de
+la carte figée** (`board`), que le client dessine telles quelles : son registre peut avoir
+changé depuis la création de la partie.
 
 **Pourquoi la version est négociée** : un client téléchargé (cible Electron) embarque un
 vieux `core` et calcule donc les coups légaux avec de vieilles règles. Le serveur doit
@@ -1067,7 +1071,8 @@ plutôt que le laisser diverger en silence.
 | `CURRENT_RULESET_VERSION` | `packages/core/src/rulesets/index.ts` | Version attribuée aux nouvelles parties — `"provisional-1"` |
 | `rulesetFor()` | `packages/core/src/rulesets/index.ts` | Version → `Ruleset` ; **lève** si inconnue |
 | `DEFAULT_SCENARIO` | `packages/core/src/scenarios/index.ts` | Scénario des nouvelles parties — `"ridge-1"` |
-| `scenarioFor()` | `packages/core/src/scenarios/index.ts` | Nom → `Scenario` ; **lève** si inconnu |
+| `scenarioFor()` | `packages/core/src/scenarios/index.ts` | Nom → `Scenario` ; **lève** si inconnu. Ne sert plus qu'à figer la carte d'une nouvelle partie et à rejouer les parties d'avant |
+| `frozenScenario()` | `packages/core/src/scenarios/index.ts` | La carte d'une partie : `MatchConfig.map` / `matches.map`, sinon le registre |
 
 Le registre vit désormais dans `@occulis/core` : le client doit appliquer la version de la
 partie qu'il joue (annoncée par `welcome`), donc le connaître aussi ; `apps/server/src/rulesets.ts`
@@ -1165,6 +1170,13 @@ avec elles que le log se rejoue) et `rating_change_a` / `rating_change_b`. `play
 `name`, `scenario`, `ruleset_version`, `team` en JSON, `is_default`, `created_at`,
 `updated_at`), indexée par `(player_id, updated_at DESC)`.
 
+### `migrations/0009_match_map.sql`
+
+Écrite à la main. `matches` gagne `map`, la carte figée à la création (JSON de
+`ScenarioSnapshot`) ; `NULL` pour les parties d'avant, qui repartent du registre. Seules
+les requêtes de détail la lisent (`MATCH_DETAIL_COLUMNS`) : quelques kilo-octets par
+partie, inutiles à une liste.
+
 ### `migrations/0008_social.sql`
 
 Écrite à la main. Tables `friendships` (paire ordonnée, `CHECK (player_low < player_high)`),
@@ -1222,7 +1234,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `seating.test.ts` | Node | Jeton → camp, refus d'un jeton inconnu ou vide, autorité de tour |
 | `pairing.test.ts` | Node | File d'attente, remplacement d'une attente en double, appariement du plus ancien |
 | `rooms.test.ts` | Node | Codes sans caractères confondables et déterministes, saisie normalisée, salon rendu à l'hôte qui revient, salon consommé une seule fois, code libre au tirage suivant |
-| `match-do.integration.test.ts` | workerd | 403 sans jeton, **mêmes vues après éviction du cache (rejeu depuis D1)**, **clôture retentée sans double Elo**, **coup mal formé ignoré sans rien écrire au log**, **aucune partie ni aucun profil créé par une requête anonyme**, **annonce du déploiement** (zones, équipe par défaut, cartes, temps restant), **coup refusé pendant le déploiement, équipe invalide ou illisible refusée**, **verrou annoncé aux deux camps et seconde équipe refusée**, **démarrage à deux équipes sans fuite de pièce adverse**, `setup` écrit en base, **échéance par l'alarme qui pose l'équipe par défaut**, refus hors tour, **abandon hors tour estampillé du siège**, **forfait d'un siège absent au-delà de `ABSENCE_MS`**, **retour à temps qui efface l'absence**, coup appliqué + écrit au log + diffusé, clôture en base sans Elo pour une partie privée, **Elo des deux joueurs à la fin d'une partie classée**, refus de protocole |
+| `match-do.integration.test.ts` | workerd | 403 sans jeton, **carte figée à la création et jouée même si elle diffère du registre**, **mêmes vues après éviction du cache (rejeu depuis D1)**, **clôture retentée sans double Elo**, **coup mal formé ignoré sans rien écrire au log**, **aucune partie ni aucun profil créé par une requête anonyme**, **annonce du déploiement** (zones, équipe par défaut, cartes, temps restant), **coup refusé pendant le déploiement, équipe invalide ou illisible refusée**, **verrou annoncé aux deux camps et seconde équipe refusée**, **démarrage à deux équipes sans fuite de pièce adverse**, `setup` écrit en base, **échéance par l'alarme qui pose l'équipe par défaut**, refus hors tour, **abandon hors tour estampillé du siège**, **forfait d'un siège absent au-delà de `ABSENCE_MS`**, **retour à temps qui efface l'absence**, coup appliqué + écrit au log + diffusé, clôture en base sans Elo pour une partie privée, **Elo des deux joueurs à la fin d'une partie classée**, refus de protocole |
 | `rating.test.ts` | Node | Espérance à Elo égal, variations opposées, victoire du moins bien classé mieux payée |
 | `feats/feats.test.ts` | Node | Statistiques dans l'ordre des fins (plus longue série), aucun fait sans partie, déblocage par seuil dans l'ordre du catalogue, **exhibition limitée aux faits débloqués, sans doublon, trois au plus** |
 | `legacy-routes.test.ts` | Node | Anciennes adresses françaises → anglaises, jeton conservé, paramètres renommés, adresses actuelles intactes |

@@ -32,6 +32,13 @@ une partie peut durer des jours et traverser un déploiement.
 v3 se termine en v3. Le serveur garde plusieurs versions de règles chargeables — peu coûteux
 puisque `core` est pur et sans dépendance.
 
+**La carte suit la même règle, plus strictement encore** (décision du 2026-10-18) : elle est
+**figée dans la partie** à sa création (`matches.map`, `ScenarioSnapshot`), cases, position
+fixe et déploiement compris, au lieu d'être retrouvée par son nom dans le registre. Retoucher
+une carte ne change donc ni les parties en cours ni les replays des parties finies, et le
+client dessine les cases que le serveur lui envoie, pas celles que son propre registre porte
+sous ce nom.
+
 ## 2. Hébergement : Cloudflare Worker + Durable Objects
 
 Un **Worker** est une fonction sans état exécutée à la requête. Un **Durable Object** est une

@@ -4,7 +4,8 @@ import type { ClientMessage, ServerMessage } from "@occulis/protocol";
 import { PROTOCOL_VERSION } from "@occulis/protocol";
 import type { StartedMatch } from "./match-setup.js";
 import { startTestMatch } from "./test-helpers.js";
-import { ABSENCE_MS, DEPLOYMENT_MS } from "./match-do.js";
+import { ABSENCE_MS, DEPLOYMENT_MS, type MatchConfig } from "./match-do.js";
+import type { ScenarioSnapshot } from "@occulis/core";
 
 /**
  * Tests d'intégration dans **workerd**, le runtime réel.
@@ -103,6 +104,29 @@ describe("MatchDO dans workerd", () => {
       .bind(playerA, playerB)
       .first<{ n: number }>();
     expect(created?.n).toBe(0);
+  });
+
+  it("fige la carte à la création, et la joue même si elle diffère du registre", async () => {
+    const match = await createMatch();
+    const row = await env.DB.prepare("SELECT map FROM matches WHERE id = ?").bind(match.matchId).first<{ map: string }>();
+    const map = JSON.parse(row?.map ?? "null") as ScenarioSnapshot;
+    expect(map.tiles.length).toBeGreaterThan(0);
+
+    const a = await seat(match.matchId, match.seats.A);
+    expect((await a.awaitKind("welcome")).board).toEqual(map.tiles);
+
+    // Une carte retouchée dans le registre ne doit rien changer : seule compte la copie figée.
+    const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
+    await runInDurableObject(stub, async (instance, state) => {
+      const config = await state.storage.get<MatchConfig>("config");
+      if (config?.map === undefined) throw new Error("carte absente de la configuration");
+      await state.storage.put("config", { ...config, map: { ...config.map, tiles: config.map.tiles.map((tile) => ({ ...tile, height: 0 })) } });
+      (instance as unknown as { live: unknown }).live = null;
+    });
+    a.send({ kind: "hello", protocol: PROTOCOL_VERSION });
+    expect((await a.awaitKind("welcome")).board.every((tile) => tile.height === 0)).toBe(true);
+
+    a.socket.close();
   });
 
   it("ouvre la partie par le déploiement : zones, équipe par défaut, cartes des joueurs", async () => {
@@ -409,7 +433,9 @@ describe("MatchDO dans workerd", () => {
     const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
     await runInDurableObject(stub, async (_instance, state) => {
       await state.storage.put("unrecorded-outcome", true);
-      await state.storage.setAlarm(Date.now());
+      // Dans le futur : `runDurableObjectAlarm` la déclenche aussitôt, sans que le
+      // runtime la devance.
+      await state.storage.setAlarm(Date.now() + 60_000);
     });
     expect(await runDurableObjectAlarm(stub)).toBe(true);
 

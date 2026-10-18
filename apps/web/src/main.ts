@@ -20,7 +20,6 @@ import {
 } from "./view/camera.js";
 import { tileAt } from "./view/picking.js";
 import { OnlineMatch } from "./game/online-match.js";
-import { boardForScenario } from "./game/scenario.js";
 import { type MatchChannel, type MatchHandlers, connectToMatch, watchMatch } from "./net/match-channel.js";
 import { type SocialChannel, openSocial } from "./net/social-channel.js";
 import * as friends from "./social/api.js";
@@ -204,10 +203,10 @@ function main(): void {
       });
     }
     return {
-      onSeated: ({ player, scenario, rulesetVersion, view }) => {
+      onSeated: ({ player, board, rulesetVersion, view }) => {
         clearTimeout(watchDeadline);
         match = new OnlineMatch(
-          boardForScenario(scenario),
+          board,
           rulesetFor(rulesetVersion),
           player,
           // Un spectateur n'envoie rien : le serveur refuserait de toute façon.
@@ -220,7 +219,7 @@ function main(): void {
         go({ kind: "seated", spectating });
         adopt();
       },
-      onDeployment: ({ player, scenario, rulesetVersion, deployment }) => {
+      onDeployment: ({ player, scenario, board, rulesetVersion, deployment }) => {
         // Le compte à rebours repart de chaque annonce (une reconnexion en renvoie une),
         // pas d'un simple changement de verrou, qui ne dit rien du temps.
         const receivedAt =
@@ -229,6 +228,7 @@ function main(): void {
         deploying = {
           player,
           scenario,
+          board,
           rulesetVersion,
           deployment,
           receivedAt,

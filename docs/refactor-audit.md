@@ -610,7 +610,7 @@ Propositions **optionnelles** :
 |---|---|
 | D1 | Oui |
 | D2 | Oui, une PR par anomalie |
-| D3 | Figer la carte dans la partie à sa création |
+| D3 | Figer la carte dans la partie à sa création — **fait** (`matches.map`, `welcome.board`, protocole 7) |
 | D4 | « Il y est déjà » — à clarifier : `~/Desktop` est bien synchronisé par iCloud |
 | D5 | CI en Node 24 |
 | D6, D7, D11 | Oui |

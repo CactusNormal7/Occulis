@@ -145,8 +145,8 @@ Une ligne = un `y` croissant, un caractère = un `x` croissant.
 | `.` | Hors-carte : aucune case |
 | `~` | Case infranchissable de hauteur 0 (gouffre, eau) — n'occulte pas |
 
-Tout autre caractère lève. Utilisé par les tests, par `apps/web/src/game/scenario.ts` et par
-`scenarioFor()` (`apps/server/src/scenarios.ts`).
+Tout autre caractère lève. Utilisé par les tests et par les cartes du registre
+(`scenarios/`).
 
 ---
 
@@ -678,7 +678,8 @@ de `docs/design.md` (pistes déjà écartées) et `docs/implementation-notes.md`
 | `scenarios/scenario.ts` | Le type `Scenario` : un nom, une fabrique de `Board`, des pièces fixes, et un `Deployment` optionnel |
 | `scenarios/demo.ts` | `demo-0`, la carte de démonstration à position fixe, **provisoire** — gardée pour les parties déjà jouées |
 | `scenarios/ridge.ts` | `ridge-1`, la carte des nouvelles parties, à déploiement, **provisoire** |
-| `scenarios/index.ts` | Le registre : `scenarioFor()` et `DEFAULT_SCENARIO` (`ridge-1`) |
+| `scenarios/index.ts` | Le registre : `scenarioFor()`, `DEFAULT_SCENARIO` (`ridge-1`), et `frozenScenario(name, snapshot)` — la carte figée d'une partie, ou celle du registre pour une partie d'avant les cartes figées |
+| `scenarios/snapshot.ts` | `ScenarioSnapshot` (nom, cases, position fixe, déploiement — sérialisable) et `snapshotScenario()`. Une partie fige sa carte ainsi à sa création (docs/architecture.md section 1) |
 
 **`ridge-1`** (14 × 10) : une arête en diagonale d'un bord à l'autre, haute de 3 avec un col
 de hauteur 1 en son milieu, sépare deux zones de 4 × 4 en coins opposés. La carte est

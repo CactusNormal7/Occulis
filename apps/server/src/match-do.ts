@@ -8,12 +8,13 @@ import {
   type PlayerId,
   type PlayerView,
   type Scenario,
+  type ScenarioSnapshot,
   type TeamEntry,
   advanceMemory,
   createGame,
   deployTeams,
   replayMemory,
-  scenarioFor,
+  frozenScenario,
   validateTeam,
   viewFor,
 } from "@occulis/core";
@@ -48,6 +49,11 @@ export interface MatchConfig {
   readonly matchId: string;
   readonly rulesetVersion: string;
   readonly scenario: string;
+  /**
+   * La carte figée à la création (`matches.map`). Absente des parties d'avant : elles
+   * jouent la carte du registre sous le nom `scenario`.
+   */
+  readonly map?: ScenarioSnapshot;
   readonly seats: Seats;
   /**
    * Les trois champs suivants manquent aux parties créées avant le déploiement : elles
@@ -124,7 +130,7 @@ export class MatchDO extends DurableObject<Env> {
     if (url.pathname === "/init") {
       const config = (await request.json()) as MatchConfig;
       await this.ctx.storage.put("config", config);
-      if (scenarioFor(config.scenario).deployment !== undefined) {
+      if (frozenScenario(config.scenario, config.map).deployment !== undefined) {
         const deadline = Date.now() + DEPLOYMENT_MS;
         await this.ctx.storage.put("deadline", deadline);
         // Une alarme et non un minuteur : elle survit à l'hibernation du DO, qui est
@@ -205,6 +211,7 @@ export class MatchDO extends DurableObject<Env> {
         kind: "welcome",
         player,
         scenario: config.scenario,
+        board: [...(await this.scenario()).board().allTiles()],
         rulesetVersion: config.rulesetVersion,
       });
       this.send(ws, { kind: "spectators", count: this.ctx.getWebSockets(watchTag(player)).length });
@@ -270,7 +277,13 @@ export class MatchDO extends DurableObject<Env> {
       return;
     }
     const config = await this.config();
-    this.send(ws, { kind: "watching", side, scenario: config.scenario, rulesetVersion: config.rulesetVersion });
+    this.send(ws, {
+      kind: "watching",
+      side,
+      scenario: config.scenario,
+      board: [...(await this.scenario()).board().allTiles()],
+      rulesetVersion: config.rulesetVersion,
+    });
     // Pendant le déploiement, aucune position n'existe encore — et la zone de l'ami
     // trahirait ses choix : le spectateur attend la première vue, que `start` diffusera.
     if (await this.deploying()) return;
@@ -606,7 +619,8 @@ export class MatchDO extends DurableObject<Env> {
   }
 
   private async scenario(): Promise<Scenario> {
-    return scenarioFor((await this.config()).scenario);
+    const config = await this.config();
+    return frozenScenario(config.scenario, config.map);
   }
 
   private async teams(): Promise<LockedTeams> {
@@ -628,7 +642,7 @@ export class MatchDO extends DurableObject<Env> {
     if (this.live !== null) return this.live;
 
     const config = await this.config();
-    const scenario = scenarioFor(config.scenario);
+    const scenario = await this.scenario();
     const setup = await this.ctx.storage.get<Piece[]>("setup");
     const start = createGame(scenario.board(), rulesetFor(config.rulesetVersion), [...(setup ?? scenario.pieces)]);
 

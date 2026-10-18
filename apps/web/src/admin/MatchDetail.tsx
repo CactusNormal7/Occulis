@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { Board } from "@occulis/core";
 import { BackLink, Banner, Card, EmptyState, FactStrip, IconButton, MoveList, QuickBar, Segmented, Toolbar, ToolbarText, Versus, useMessages, type MoveEntry } from "@occulis/ui";
 import type { AdminMatchDetail } from "@occulis/protocol";
-import { boardForScenario } from "../game/scenario.js";
 import { useLoad, whenReady } from "../load/hooks.js";
 import * as R from "./resources.js";
 import { formatDate, routeHash } from "./model.js";
@@ -50,14 +50,8 @@ function Replay({ match: m }: { match: AdminMatchDetail }) {
   const [perspective, setPerspective] = useState<Perspective>("all");
   const [turns, setTurns] = useState(0);
 
-  const board = useMemo(() => {
-    try {
-      return boardForScenario(m.scenario);
-    } catch {
-      // Une carte retirée du registre : le log reste lisible, le plateau ne l'est plus.
-      return undefined;
-    }
-  }, [m.scenario]);
+  // La carte que la partie a figée ; `null` quand le serveur n'a pas su la relire.
+  const board = useMemo(() => (m.board === null ? undefined : new Board(m.board)), [m.board]);
 
   const pin = (index: number) => {
     const next = clampFrame(index, count);

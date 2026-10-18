@@ -61,12 +61,14 @@ describe("fromMatch", () => {
       kind: "welcome",
       player: "B",
       scenario: "demo-0",
+      board: [{ coord: { x: 0, y: 0 }, height: 2, passable: true }],
       rulesetVersion: "provisional-0",
     });
     expect(after.phase.kind === "seated" && after.phase.player).toBe("B");
-    // La carte est annoncée par le serveur : le client doit dessiner celle sur
-    // laquelle le serveur calcule, pas celle qu'il aurait choisie seul.
+    // La carte est annoncée par le serveur, cases comprises : le client dessine celle sur
+    // laquelle le serveur calcule, pas celle que son registre porte sous ce nom.
     expect(after.phase.kind === "seated" && after.phase.scenario).toBe("demo-0");
+    expect(after.phase.kind === "seated" && after.phase.board).toEqual([{ coord: { x: 0, y: 0 }, height: 2, passable: true }]);
   });
 
   it("reconstruit le Set de cases visibles reçu en tableau", () => {
@@ -112,6 +114,7 @@ describe("fromMatch", () => {
       kind: "watching",
       side: "B",
       scenario: "duel",
+      board: [],
       rulesetVersion: "v1",
     });
     expect(after.phase).toMatchObject({ kind: "seated", seat: "", player: "B", spectating: true });

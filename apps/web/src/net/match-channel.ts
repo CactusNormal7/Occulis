@@ -1,4 +1,4 @@
-import type { Action, PlayerId, PlayerView, TeamEntry } from "@occulis/core";
+import { type Action, Board, type PlayerId, type PlayerView, type TeamEntry, type Tile } from "@occulis/core";
 import {
   PROTOCOL_VERSION,
   type ClientMessage,
@@ -45,6 +45,8 @@ export interface MatchHandlers {
 export interface SeatedContext {
   readonly player: PlayerId;
   readonly scenario: string;
+  /** La carte que la partie a figée, telle que `welcome` l'a annoncée. */
+  readonly board: Board;
   readonly rulesetVersion: string;
   readonly view: PlayerView;
   /** Un ami qui regarde : `player` est le camp suivi, et il ne joue rien. */
@@ -54,6 +56,7 @@ export interface SeatedContext {
 export interface DeploymentContext {
   readonly player: PlayerId;
   readonly scenario: string;
+  readonly board: Board;
   readonly rulesetVersion: string;
   readonly deployment: DeploymentState;
 }
@@ -83,6 +86,8 @@ function connect(start: Session, path: string, handlers: MatchHandlers): MatchCh
   let session: Session = start;
   let seated = false;
   let spectators = 0;
+  // Un `Board` par carte annoncée, et non par message : chaque `welcome` renvoie les cases.
+  let board: { readonly tiles: readonly Tile[]; readonly board: Board } | undefined;
 
   const receive = (message: ServerMessage): void => {
     session = fromMatch(session, message);
@@ -106,11 +111,12 @@ function connect(start: Session, path: string, handlers: MatchHandlers): MatchCh
 
     // La partie ne peut être construite qu'une fois le camp, la carte **et** une
     // première vue connus : ils arrivent en deux messages (`welcome` puis `view`).
-    const { player, scenario, rulesetVersion, view, deployment } = phase;
-    if (player === undefined || scenario === undefined || rulesetVersion === undefined) return;
+    const { player, scenario, rulesetVersion, view, deployment, board: tiles } = phase;
+    if (player === undefined || scenario === undefined || rulesetVersion === undefined || tiles === undefined) return;
+    if (tiles !== board?.tiles) board = { tiles, board: new Board(tiles) };
     if (view === undefined) {
       if (deployment !== undefined && (message.kind === "deployment" || message.kind === "deployment-update")) {
-        handlers.onDeployment({ player, scenario, rulesetVersion, deployment });
+        handlers.onDeployment({ player, scenario, board: board.board, rulesetVersion, deployment });
       }
       return;
     }
@@ -120,7 +126,7 @@ function connect(start: Session, path: string, handlers: MatchHandlers): MatchCh
       return;
     }
     seated = true;
-    handlers.onSeated({ player, scenario, rulesetVersion, view, spectating: phase.spectating });
+    handlers.onSeated({ player, scenario, board: board.board, rulesetVersion, view, spectating: phase.spectating });
   };
 
   // Une reconnexion renvoie `hello`, ce qui fait rediffuser `welcome` puis la vue

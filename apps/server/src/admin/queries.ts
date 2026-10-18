@@ -1,7 +1,9 @@
 import {
   advanceMemory,
   createGame,
-  scenarioFor,
+  type ScenarioSnapshot,
+  type Tile,
+  frozenScenario,
   startMemory,
   type Action,
   type MatchMemory,
@@ -92,16 +94,29 @@ export interface MatchRow {
   setup: string | null;
   rating_change_a: number | null;
   rating_change_b: number | null;
+  /**
+   * La carte figée à la création (JSON de `ScenarioSnapshot`), lue par les seules requêtes
+   * de détail : quelques kilo-octets par partie, inutiles à une liste. `NULL` pour une
+   * partie d'avant les cartes figées, qui repart du registre.
+   */
+  map?: string | null;
 }
 
-export const MATCH_COLUMNS = `
+const MATCH_FIELDS = `
   m.id, m.player_a, pa.handle AS handle_a, m.player_b, pb.handle AS handle_b,
   m.ruleset_version, m.scenario, m.started_at, m.finished_at, m.outcome,
   m.rated, m.setup, m.rating_change_a, m.rating_change_b,
-  (SELECT COUNT(*) FROM match_actions a WHERE a.match_id = m.id) AS actions
+  (SELECT COUNT(*) FROM match_actions a WHERE a.match_id = m.id) AS actions`;
+
+const MATCH_FROM = `
   FROM matches m
   JOIN players pa ON pa.id = m.player_a
   JOIN players pb ON pb.id = m.player_b`;
+
+export const MATCH_COLUMNS = `${MATCH_FIELDS} ${MATCH_FROM}`;
+
+/** `MATCH_COLUMNS` et la carte figée, pour rejouer une partie. */
+export const MATCH_DETAIL_COLUMNS = `${MATCH_FIELDS}, m.map ${MATCH_FROM}`;
 
 // `?1` et `?2` sont repris tels quels dans les deux requêtes de `listMatches` : le
 // décompte doit filtrer exactement comme la page, sinon la pagination ment.
@@ -127,7 +142,7 @@ export async function listMatches(db: D1Database, filter: MatchFilter): Promise<
 
 export async function readMatch(db: D1Database, id: string): Promise<AdminMatchDetail | undefined> {
   const [match, log] = await db.batch([
-    db.prepare(`SELECT ${MATCH_COLUMNS} WHERE m.id = ?`).bind(id),
+    db.prepare(`SELECT ${MATCH_DETAIL_COLUMNS} WHERE m.id = ?`).bind(id),
     db.prepare("SELECT seq, action FROM match_actions WHERE match_id = ? ORDER BY seq").bind(id),
   ]);
   const row = match?.results[0] as MatchRow | undefined;
@@ -141,11 +156,12 @@ export async function readMatch(db: D1Database, id: string): Promise<AdminMatchD
 function annotate(
   row: MatchRow,
   actions: readonly Action[],
-): { log: AdminLogEntry[]; frames: AdminFrame[]; replayError: string | null } {
-  const { frames, players, replayError } = replayLog(row, actions, frameOf);
+): { log: AdminLogEntry[]; frames: AdminFrame[]; board: Tile[] | null; replayError: string | null } {
+  const { frames, players, board, replayError } = replayLog(row, actions, frameOf);
   return {
     log: actions.map((action, seq) => ({ seq, player: players[seq] ?? null, action })),
     frames,
+    board,
     replayError,
   };
 }
@@ -162,17 +178,21 @@ function annotate(
  * `replay` seul, pour dire aussi ce que chaque camp voyait à cet instant.
  */
 export function replayLog<F>(
-  row: Pick<MatchRow, "scenario" | "ruleset_version" | "setup">,
+  row: Pick<MatchRow, "scenario" | "ruleset_version" | "setup" | "map">,
   actions: readonly Action[],
   frame: (memory: MatchMemory) => F,
-): { frames: F[]; players: PlayerId[]; replayError: string | null } {
+): { frames: F[]; players: PlayerId[]; board: Tile[] | null; replayError: string | null } {
   const frames: F[] = [];
   let replayError: string | null = null;
   let memory: MatchMemory | undefined;
+  let board: Tile[] | null = null;
   try {
-    const scenario = scenarioFor(row.scenario);
+    const map = row.map === null || row.map === undefined ? null : (JSON.parse(row.map) as ScenarioSnapshot);
+    const scenario = frozenScenario(row.scenario, map);
+    const start = scenario.board();
+    board = [...start.allTiles()];
     memory = startMemory(
-      createGame(scenario.board(), rulesetFor(row.ruleset_version), row.setup === null ? [...scenario.pieces] : (JSON.parse(row.setup) as Piece[])),
+      createGame(start, rulesetFor(row.ruleset_version), row.setup === null ? [...scenario.pieces] : (JSON.parse(row.setup) as Piece[])),
     );
     frames.push(frame(memory));
     for (const [seq, action] of actions.entries()) {
@@ -187,7 +207,7 @@ export function replayLog<F>(
   } catch (cause) {
     replayError = String(cause);
   }
-  return { frames, players: (memory?.state.history ?? []).map((entry) => entry.player), replayError };
+  return { frames, players: (memory?.state.history ?? []).map((entry) => entry.player), board, replayError };
 }
 
 /** Le log d'une partie, désérialisé, dans l'ordre de `seq`. */

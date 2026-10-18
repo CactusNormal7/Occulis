@@ -7,7 +7,7 @@
  * messages entrants (`parse.ts`) — aucune règle de jeu (elle vit dans `@occulis/core`),
  * aucun transport (il vit dans chaque app).
  */
-import type { Action, ActionError, Coord, PlayerId, PlayerView, TeamEntry, TeamError } from "@occulis/core";
+import type { Action, ActionError, Coord, PlayerId, PlayerView, TeamEntry, TeamError, Tile } from "@occulis/core";
 
 /**
  * Refus prononcé par le serveur et non par les règles : le siège qui a envoyé
@@ -24,7 +24,7 @@ export type SeatDenial =
  * doit pouvoir le refuser explicitement plutôt que le laisser diverger en silence
  * (docs/architecture.md section 1).
  */
-export const PROTOCOL_VERSION = 6;
+export const PROTOCOL_VERSION = 7;
 
 /** `PlayerView` contient des `Set`/`Map`, que `JSON.stringify` sérialise en `{}`. */
 export interface WireView {
@@ -92,13 +92,15 @@ export type ServerMessage =
   /**
    * Envoyé une fois la version acceptée. Dit au client de quel camp il tient le
    * siège — il ne le sait pas autrement, c'est le jeton qui le détermine — et sur
-   * quelle carte se joue la partie : le client doit dessiner exactement celle sur
-   * laquelle le serveur calcule, et les deux registres sont encore séparés.
+   * quelle carte se joue la partie : ses cases mêmes, figées à la création, et non son
+   * seul nom — le client doit dessiner exactement celle sur laquelle le serveur calcule,
+   * même si le registre a changé depuis.
    */
   | {
       readonly kind: "welcome";
       readonly player: PlayerId;
       readonly scenario: string;
+      readonly board: readonly Tile[];
       readonly rulesetVersion: string;
     }
   /**
@@ -109,6 +111,7 @@ export type ServerMessage =
       readonly kind: "watching";
       readonly side: PlayerId;
       readonly scenario: string;
+      readonly board: readonly Tile[];
       readonly rulesetVersion: string;
     }
   /**

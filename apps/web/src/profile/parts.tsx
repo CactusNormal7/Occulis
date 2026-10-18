@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import { Board } from "@occulis/core";
 import {
   BackLink,
   Badge,
@@ -17,7 +18,6 @@ import {
   useMessages,
 } from "@occulis/ui";
 import type { MeMatchDetail, MeMatchSummary, MeRecord, Relation } from "@occulis/protocol";
-import { boardForScenario } from "../game/scenario.js";
 import { ReplayBoard } from "../admin/ReplayBoard.js";
 import { clampFrame } from "../admin/replay.js";
 import { formatDate, winRate } from "../admin/model.js";
@@ -162,13 +162,8 @@ function Replay({ match: m, friend }: { match: MeMatchDetail; friend: string | u
   const [index, setIndex] = useState(count - 1);
   const [turns, setTurns] = useState(0);
   const frames = useMemo(() => asBoardFrames(m.frames, m.seat), [m.frames, m.seat]);
-  const board = useMemo(() => {
-    try {
-      return boardForScenario(m.scenario);
-    } catch {
-      return undefined;
-    }
-  }, [m.scenario]);
+  // La carte que la partie a figée ; `null` quand le serveur n'a pas su la relire.
+  const board = useMemo(() => (m.board === null ? undefined : new Board(m.board)), [m.board]);
 
   const go = (next: number) => setIndex(clampFrame(next, count));
   const entry = index === 0 ? undefined : m.log[index - 1];

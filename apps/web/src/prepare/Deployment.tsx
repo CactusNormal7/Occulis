@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Locale } from "@occulis/i18n";
-import { type PlayerId, type TeamEntry, rulesetFor } from "@occulis/core";
+import { type Board, type PlayerId, type TeamEntry, rulesetFor } from "@occulis/core";
 import type { TeamPreset } from "@occulis/protocol";
 import {
   Badge,
@@ -14,7 +14,6 @@ import {
   useMessages,
 } from "@occulis/ui";
 import type { DeploymentState } from "../net/session.js";
-import { boardForScenario } from "../game/scenario.js";
 import { TeamBuilder } from "../team/TeamBuilder.js";
 import { type TeamDraft, fromEntries, toEntries, verdict } from "../team/model.js";
 import { useRemaining } from "./clock.js";
@@ -33,7 +32,9 @@ import { initialTeam, presetTeam, secondsLeft, shouldAutoSend, usablePresets } f
 export interface DeploymentProps {
   readonly locale: Locale;
   readonly player: PlayerId;
+  /** Le nom de la carte, qui choisit les équipes préparées ; ses cases viennent de `board`. */
   readonly scenario: string;
+  readonly board: Board;
   readonly rulesetVersion: string;
   readonly deployment: DeploymentState;
   /** L'instant d'arrivée de l'annonce, sur `performance.now()`. */
@@ -57,11 +58,10 @@ export function Deployment(props: DeploymentProps) {
   );
 }
 
-function Content({ player, scenario, rulesetVersion, deployment, receivedAt, presets, rejection, onDeploy }: DeploymentProps) {
+function Content({ player, scenario, board, rulesetVersion, deployment, receivedAt, presets, rejection, onDeploy }: DeploymentProps) {
   const all = useMessages();
   const m = all.prepare;
   const ruleset = useMemo(() => rulesetFor(rulesetVersion), [rulesetVersion]);
-  const board = useMemo(() => boardForScenario(scenario), [scenario]);
   const usable = usablePresets(presets, scenario, rulesetVersion);
   const [draft, setDraft] = useState<TeamDraft>(() =>
     fromEntries(ruleset, initialTeam(presets, scenario, rulesetVersion, player, deployment.defaultTeam)),

@@ -11,7 +11,7 @@ import type {
   MeSession,
 } from "@occulis/protocol";
 import { checkHandle, type HandleError } from "../auth/handle.js";
-import { MATCH_COLUMNS, readLog, replayLog, type MatchRow } from "../admin/queries.js";
+import { MATCH_COLUMNS, MATCH_DETAIL_COLUMNS, readLog, replayLog, type MatchRow } from "../admin/queries.js";
 import type { Page } from "../admin/paging.js";
 
 /**
@@ -236,7 +236,7 @@ export type MyMatch = MeMatchDetail | "unknown" | "ongoing";
  */
 export async function readMyMatch(db: D1Database, playerId: string, matchId: string): Promise<MyMatch> {
   const row = await db
-    .prepare(`SELECT ${MATCH_COLUMNS} WHERE m.id = ?1 AND (m.player_a = ?2 OR m.player_b = ?2)`)
+    .prepare(`SELECT ${MATCH_DETAIL_COLUMNS} WHERE m.id = ?1 AND (m.player_a = ?2 OR m.player_b = ?2)`)
     .bind(matchId, playerId)
     .first<MatchRow>();
   if (row === null) return "unknown";
@@ -245,12 +245,12 @@ export async function readMyMatch(db: D1Database, playerId: string, matchId: str
   const summary = mySummary(row, playerId);
   const seat = summary.seat;
   const actions = await readLog(db, matchId);
-  const { frames, players, replayError } = replayLog(row, actions, (memory) => seatFrame(memory, seat));
+  const { frames, players, board, replayError } = replayLog(row, actions, (memory) => seatFrame(memory, seat));
   const log: MeLogEntry[] = actions.map((action, seq) => {
     const player = players[seq] ?? null;
     return { seq, player, action: player === seat || action.kind === "resign" ? action : null };
   });
-  return { ...summary, log, frames, replayError };
+  return { ...summary, log, frames, board, replayError };
 }
 
 function seatFrame(memory: MatchMemory, seat: PlayerId): MeFrame {

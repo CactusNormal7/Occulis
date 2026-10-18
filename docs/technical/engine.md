@@ -774,7 +774,11 @@ et c'est `watching { side }` qui joue le rôle de `welcome`. Côté joueur, `spe
 **`welcome` et la première `view` ne sont pas ordonnés.** Le serveur rediffuse les vues aux
 deux joueurs à chaque `hello` : un client peut donc recevoir une vue avant son propre
 `welcome`. `match-channel.ts` attend d'avoir camp, carte **et** vue avant de construire la
-partie, plutôt que de supposer un ordre (vérifié en conditions réelles).
+partie, plutôt que de supposer un ordre (vérifié en conditions réelles). La carte arrive
+**avec ses cases** (`welcome.board`) : `match-channel.ts` en fait un `Board`, passé à
+`onSeated` et `onDeployment`, sans consulter le registre de `core` — la partie a pu la
+figer avant qu'il change. `game/scenario.ts` (`boardForScenario`) ne sert plus qu'à
+l'éditeur d'équipes préparées, qui prépare la carte des prochaines parties.
 
 **Les trois façons d'entrer en partie passent par un seul canal.** L'intention voyage dans
 le `hello` (`quick`, `host`, `join`) et non dans l'URL : le serveur ne doit pouvoir faire
@@ -1458,8 +1462,8 @@ hors du cycle de rendu, et `destroy()` cesse d'observer le canevas au démontage
 dessiné en **Canvas 2D**, pas en PixiJS, mais avec la géométrie du jeu à l'identique —
 `view/iso.ts` pour la projection et l'ordre du peintre (relief et pièces dans une seule
 liste), `view/camera.ts` pour le quart de tour amorti, `view/animation.ts` pour le glissement
-des pièces, `theme.ts` pour les métriques et les couleurs — et la carte vient du registre de
-`core` (`boardForScenario`). Le dernier coup est marqué : départ en pointillé, trajet dans la
+des pièces, `theme.ts` pour les métriques et les couleurs — et la carte vient du serveur
+(`board` du détail de la partie, les cases qu'elle a figées à sa création). Le dernier coup est marqué : départ en pointillé, trajet dans la
 couleur du camp, arrivée dans la teinte de la sélection. `fitScale()` (`replay.ts`) calcule une
 échelle qui tient **aux quatre quarts de tour**, pour que le plateau ne change pas de taille en
 tournant. Les positions viennent du serveur (`frames`) : le client ne rejoue rien, il n'a pas

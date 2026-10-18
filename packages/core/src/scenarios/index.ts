@@ -1,8 +1,11 @@
+import { Board } from "../board.js";
 import { DEMO } from "./demo.js";
 import { RIDGE } from "./ridge.js";
 import type { Scenario } from "./scenario.js";
+import type { ScenarioSnapshot } from "./snapshot.js";
 
 export type { Scenario } from "./scenario.js";
+export { type ScenarioSnapshot, snapshotScenario } from "./snapshot.js";
 
 /**
  * Registre des scénarios, comme `Ruleset` l'est des types de pièces. Un scénario est
@@ -22,4 +25,14 @@ export function scenarioFor(name: string): Scenario {
   const scenario = REGISTRY.get(name);
   if (scenario === undefined) throw new Error(`Scenario not found: "${name}"`);
   return scenario;
+}
+
+/**
+ * La carte d'une partie : celle qu'elle a figée à sa création, ou — pour une partie
+ * d'avant les cartes figées — celle du registre sous son nom.
+ */
+export function frozenScenario(name: string, snapshot: ScenarioSnapshot | null | undefined): Scenario {
+  if (snapshot === null || snapshot === undefined) return scenarioFor(name);
+  const scenario = { name: snapshot.name, board: () => new Board(snapshot.tiles), pieces: snapshot.pieces };
+  return snapshot.deployment === undefined ? scenario : { ...scenario, deployment: snapshot.deployment };
 }

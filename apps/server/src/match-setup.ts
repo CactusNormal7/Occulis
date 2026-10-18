@@ -1,6 +1,6 @@
 import type { MatchConfig } from "./match-do.js";
 import { CURRENT_RULESET_VERSION } from "./rulesets.js";
-import { DEFAULT_SCENARIO } from "@occulis/core";
+import { DEFAULT_SCENARIO, scenarioFor, snapshotScenario } from "@occulis/core";
 import { readPlayerCard } from "./cards.js";
 import type { Seats } from "./seating.js";
 
@@ -31,6 +31,7 @@ export async function startMatch(
     matchId,
     rulesetVersion: CURRENT_RULESET_VERSION,
     scenario: DEFAULT_SCENARIO,
+    map: snapshotScenario(scenarioFor(DEFAULT_SCENARIO)),
     seats,
     rated: options.rated,
     players: { A: playerA, B: playerB },
@@ -38,10 +39,19 @@ export async function startMatch(
   };
 
   await env.DB.prepare(
-    `INSERT INTO matches (id, player_a, player_b, ruleset_version, scenario, started_at, rated)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO matches (id, player_a, player_b, ruleset_version, scenario, map, started_at, rated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   )
-    .bind(matchId, playerA, playerB, config.rulesetVersion, config.scenario, Date.now(), options.rated ? 1 : 0)
+    .bind(
+      matchId,
+      playerA,
+      playerB,
+      config.rulesetVersion,
+      config.scenario,
+      JSON.stringify(config.map),
+      Date.now(),
+      options.rated ? 1 : 0,
+    )
     .run();
 
   await env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(

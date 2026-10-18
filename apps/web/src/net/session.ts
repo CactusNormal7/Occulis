@@ -1,4 +1,4 @@
-import type { PlayerId, PlayerView } from "@occulis/core";
+import type { PlayerId, PlayerView, Tile } from "@occulis/core";
 import {
   type QueueServerMessage,
   type Rejection,
@@ -40,8 +40,12 @@ export type Phase =
       readonly seat: string;
       /** Connu seulement à réception de `welcome` : c'est le jeton qui le détermine. */
       readonly player: PlayerId | undefined;
-      /** Carte et règles annoncées par `welcome`, à faire correspondre localement. */
+      /**
+       * Carte et règles annoncées par `welcome`. La carte vient avec ses cases, figées à
+       * la création de la partie : le client ne la redéduit pas de son nom.
+       */
       readonly scenario: string | undefined;
+      readonly board: readonly Tile[] | undefined;
       readonly rulesetVersion: string | undefined;
       readonly view: PlayerView | undefined;
       /**
@@ -77,6 +81,7 @@ export function seatedAt(matchId: string, seat: string): Session {
       seat,
       player: undefined,
       scenario: undefined,
+      board: undefined,
       rulesetVersion: undefined,
       view: undefined,
       spectating: false,
@@ -120,6 +125,7 @@ export function fromQueue(session: Session, message: QueueServerMessage): Sessio
           seat: message.seat,
           player: message.player,
           scenario: undefined,
+          board: undefined,
           rulesetVersion: undefined,
           view: undefined,
           spectating: false,
@@ -150,6 +156,7 @@ export function fromMatch(session: Session, message: ServerMessage): Session {
           ...phase,
           player: message.player,
           scenario: message.scenario,
+          board: message.board,
           rulesetVersion: message.rulesetVersion,
         },
         rejection: undefined,
@@ -160,6 +167,7 @@ export function fromMatch(session: Session, message: ServerMessage): Session {
           ...phase,
           player: message.side,
           scenario: message.scenario,
+          board: message.board,
           rulesetVersion: message.rulesetVersion,
         },
         rejection: undefined,
