@@ -94,8 +94,15 @@ jobs:
 
       # Le Worker sert ../web/dist : le client doit exister avant le déploiement, et
       # provenir du même commit que le serveur, sinon les deux n'ont pas le même `core`.
+      # Hors production, `build:local` y ajoute le labo (/lab/) et les maquettes
+      # (/mockups/) : le bundle du jeu est le même, ces pages ne partent jamais en prod.
       - name: Build du client
-        run: pnpm --filter @occulis/web build
+        run: |
+          if [ "${{ needs.target.outputs.wrangler_env }}" = "production" ]; then
+            pnpm --filter @occulis/web build
+          else
+            pnpm --filter @occulis/web build:local
+          fi
 
       # Avant le déploiement : un Worker servi contre un schéma non migré échoue à la
       # première requête.

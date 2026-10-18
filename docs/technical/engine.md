@@ -1544,7 +1544,9 @@ Trois points qui se sont révélés à l'usage et qu'il ne faut pas défaire :
   des fichiers `.env.local`. Il ne s'appelle pas non plus `development`, qui basculerait
   `NODE_ENV` et produirait un bundle différent de celui qui est déployé — or le serveur local
   sert précisément à tester celui-là. Sous `--mode mockups`, le bundle est identique au bundle
-  de production, au dossier `mockups/` près.
+  de production, au dossier `mockups/` et à la page du labo près. C'est aussi ce que la CI
+  construit pour tout environnement hébergé autre que la production (recette, branches),
+  d'où `/lab/` et `/mockups/` sur `occulis-staging.0kl.fr` — voir `infra.md`, « `deploy` ».
 
 **Le labo de la refonte graphique** (`lab/index.html`, `LAB_PAGE`) suit la même règle que les
 maquettes : `pnpm dev` le sert sous `/lab/` (Vite sert toute page HTML de sa racine), le build
