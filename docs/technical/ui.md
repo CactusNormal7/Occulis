@@ -22,7 +22,10 @@ composants.
 | `src/cx.ts` | Assemblage de noms de classe |
 | `src/critical.ts` | `criticalHead()` et `withCriticalHead()` : le bloc de tête de chaque page HTML (sous-chemin `@occulis/ui/critical`) |
 | `src/window-reveal.ts` | `revealWindow()` : l'ouverture et la fermeture d'une fenêtre qu'un clic ouvre, depuis son centre ou la souris, et son calendrier pur (sous-chemin `@occulis/ui/reveal`, sans React) |
-| `scripts/build-tokens.ts` | Écrit `generated/tokens.css` (`pnpm --filter @occulis/ui tokens`) |
+| `scripts/build-tokens.ts` | Écrit `generated/tokens.css` et `generated/proposed-tokens.css` (`pnpm --filter @occulis/ui tokens`) |
+| `src/generated/proposed-tokens.css` | Les tokens **proposés** de la refonte (`PROPOSED`), générés eux aussi, lus par le seul labo |
+| `src/lab/` | Le labo de la refonte (sous-chemin `@occulis/ui/lab`, feuille `@occulis/ui/lab.css`) : composants proposés, qu'aucun écran n'importe — voir « Le labo de la refonte » |
+| `previews/` | La page d'aperçus du labo, servie sous `/lab/` par `apps/web/lab/` |
 | `scripts/bundle-css.mjs` | Écrit `dist/styles.css` : tokens **inclus**, sans `@import` |
 | `tsup.config.ts` | Le build publié : `dist/index.js`, `dist/index.d.ts`, `dist/styles.css` |
 
@@ -65,7 +68,8 @@ proposition dans ses propres couleurs.
 Le serveur fait de même pour ses courriers (`apps/server/src/auth/mail.ts`).
 
 **La règle est mécanique.** `eslint.config.js` interdit tout littéral de couleur dans
-`apps/web/src/**`, `apps/server/src/**` et `packages/ui/src/**`, tests compris, avec une seule exception : `tokens.ts`. Les feuilles
+`apps/web/src/**`, `apps/server/src/**` et `packages/ui/src/**` — et dans les aperçus du labo,
+`packages/ui/previews/**` et `apps/web/lab/**` —, tests compris, avec une seule exception : `tokens.ts`. Les feuilles
 de style échappent à ESLint ; `tokens.test.ts` les garde à la place :
 
 - `generated/tokens.css` doit égaler `tokensStylesheet()` — le fichier ne dérive pas de sa
@@ -231,6 +235,38 @@ Trois propositions ont précédé celle-ci, écartées par le porteur du projet 
 carrés éclose du centre, un balayage de carrés depuis le coin le plus proche de la souris,
 puis un œil qui s'ouvre (trait de lumière et paupières tramées).
 
+## Le labo de la refonte — `src/lab/`
+
+Des propositions de refonte graphique, **non intégrées** (le pourquoi et les options sont dans
+[`docs/design/refonte-graphique.md`](../design/refonte-graphique.md)). Elles vivent hors de
+`src/index.ts` : ni le jeu, ni le back-office, ni la synchronisation vers Claude Design ne les
+voient. Leur feuille, `lab/lab.css`, importe `generated/proposed-tokens.css` ; elle obéit aux
+mêmes règles que `styles.css`, gardées par les mêmes tests.
+
+**Tokens proposés** (`tokens.ts`) : `PROPOSED` (espacements 10 / 12 / 16, interlignes,
+durées par rôle, courbes, distances, rémanences, niveaux d'intensité, glyphes, papier),
+`MOTION_LEVEL_NAMES` / `MotionLevel` / `isMotionLevel()`, `motionLevelVariables(level)`,
+`proposedVariables()` et `proposedStylesheet()` — le contenu de `proposed-tokens.css` : les
+propriétés sur `:root`, les niveaux sous `:root[data-motion="calm" | "still"]`, et `still`
+imposé sous `prefers-reduced-motion`, même avec un `data-motion` explicite. Toute
+`--occ-dur-*` vaut `calc(<ms>ms * var(--occ-tempo))`, toute `--occ-dist-*`
+`calc(<px>px * var(--occ-motion-amplitude))`.
+
+| Fichier | Contenu |
+|---|---|
+| `motion.ts` | `motionFrom()` (pur) et `readMotion()` : niveau, amplitude et tempo lus sur la racine ; `durationMs(role, motion)` ; `readNumber()`, `readText()`, `readColor()` (une propriété de rôle résolue par une sonde) et `parseRgb()` ; `easing(css)`, une `cubic-bezier` des tokens en fonction |
+| `glyphs.ts` | Les trois alphabets (`lattice`, `stele`, `orbit`) générés et filtrés de façon déterministe (`hash()`, sans aléa) : `alphabet(name)` (famille, clé décodable de 36 glyphes, signe de ponctuation), `cipherGlyph()` (décodable ou ornement), `scrambleGlyph()`, `foldChar()` ; le calendrier pur `settleAt()` / `cellAt()` (décodage et encodage, vrai glyphe montré un pas avant la lettre) et `flickerVariant()` |
+| `Cipher.tsx` | `Glyph`, `CipherText` (le texte réel en `occ-cipher__sr`, les cases lettre + glyphe `aria-hidden`, une horloge par pas qui s'arrête au bout), `CipherFrieze` (rangée ou couronne, frémit seulement en `full`) |
+| `paper.ts` | Le calendrier de l'inversion : `paperAt()` (étalement, tenue, résorption `dither` / `recede` / `none`), `spreadMs()`, `totalMs()`, `farthestCorner()` ; la zone : `zoneDistances()` (en largeur, dans la zone), `zoneTexels()`, `zoneReach()` ; la projection `project()` / `unproject()` / `diamond()` |
+| `paper-gl.ts` | `createPaperRenderer()` : le shader WebGL (cercle quantifié au quadrillage, ou zone en texture, trame de Bayer pour la résorption), `null` sans WebGL |
+| `PaperInversion.tsx` | Le calque `aria-hidden` qui joue une `PaperRun` — relancé par sa seule clé, pas par un changement de fusion ou de disparition ; réglages lus dans les tokens au départ ; dernière image redessinée après un redimensionnement (qui vide le canevas) ; aucun dessin si les couleurs de rôle ne se lisent pas ; fondu seul sous `still` ; `onCovered`, `onDone` |
+| `choreography.ts` | Le coup sur le plateau en fonctions du temps : `hopAt()`, `trailAt()`, `waveDelayMs()` |
+
+La page d'aperçus (`previews/Lab.tsx`) pose ses réglages comme le ferait une surcharge :
+`data-theme`, `data-motion` et propriétés `--occ-*` sur `<html>`, gardés sous la clé
+`occulis.lab` du navigateur. `previews/board-mock.ts` est un plateau factice (ligne de vue
+simplifiée), **pas** la règle de `packages/core`.
+
 ## La synchronisation vers Claude Design
 
 `.design-sync/` porte la configuration, les aperçus rédigés (`previews/<Nom>.tsx`), les
@@ -241,13 +277,14 @@ catégories (`docs/<Nom>.md`), l'en-tête de conventions lu par l'agent de desig
 
 ## Tests
 
-37 tests, sous Node : `pnpm --filter @occulis/ui test`.
+69 tests, sous Node : `pnpm --filter @occulis/ui test`.
 
 | Fichier | Ce qui est verrouillé |
 |---|---|
-| `src/tokens.test.ts` | `generated/tokens.css` identique à sa source, mêmes propriétés pour chaque thème, `styles.css` sans propriété indéfinie ni couleur en dur, conversion des couleurs, **alpha précomposé pour les courriers** |
+| `src/tokens.test.ts` | `generated/tokens.css` et `generated/proposed-tokens.css` identiques à leur source, **tokens proposés absents de la feuille de production**, `lab.css` sans propriété indéfinie ni couleur, rôles colorés en renvois au thème, durées par le tempo et distances par l'amplitude, `still` imposé sous mouvement réduit, boucles de `lab.css` suspendues à `--occ-motion-loop`, `generated/tokens.css` identique à sa source, mêmes propriétés pour chaque thème, `styles.css` sans propriété indéfinie ni couleur en dur, conversion des couleurs, **alpha précomposé pour les courriers** |
 | `src/components.test.tsx` | Rendu serveur de chaque composant sans erreur, icônes sans couleur, raison d'un bouton grisé en infobulle, initiales, onglet et option courants marqués, état vide d'une table, libellé de pagination, **aide et erreur rattachées à leur champ**, **champ de mot de passe reconnaissable et bouton d'affichage qui n'envoie pas**, briques des parcours de compte, **logo Google sans couleur propre**, **réglage en lecture puis éditeur à la place de la valeur, bouton retiré pendant l'édition**, **langue fixée par `UiRoot` (et anglais par défaut)**, compte à rebours proportionnel et urgent, plaques dans la couleur de leur camp, ligne de choix marquée, fenêtre sans croix, **fil de messages : les siens marqués à part, texte échappé, état vide, longueur du champ**, squelette annoncé sans texte visible, **vitrine : code échappé, échantillon modifiable seulement avec `onChange`, lien courant marqué** |
 | `src/window-reveal.test.ts` | Ouverture continue d'un point à la fenêtre entière, fermeture jusqu'au point et plus rapide ; départ au pointeur ramené sur les bords, au centre sans pointeur ; rectangle qui contient toujours le point de départ |
+| `src/lab/lab.test.tsx` | Clé décodable de glyphes distincts par direction, glyphes dans leur case, pentes du plateau seules au treillis, même lettre même glyphe (accents compris) en décodable, aucun lien stable en ornement, déterminisme ; déchiffrement de gauche à droite, vrai glyphe avant la lettre, pas de brouillage hors `full`, encodage inverse, frise qui ne change jamais en bloc ; lecture des boutons et repli sur une surcharge mal formée, courbes, couleurs ; saut aplati par l'amplitude, aucune rémanence ni retard sous `still` ; papier à vitesse constante, tenue, résorptions, distances dans une zone en U, projection aller-retour ; **texte réel donné au lecteur d'écran**, frise et calque entièrement décoratifs |
 | `src/critical.test.ts` | **Fond et thème sombre sans variable** (la feuille n'est pas encore là), police pixel déclarée et préchargée, thème posé avant la première image, fondu coupé sous mouvement réduit, aucun préchargement de `/api/*` ni `/match/*` et jamais de `prerender`, **bloc placé après l'encodage et avant toute feuille** |
 
 Le rendu visuel n'est pas testé ici : il l'est par les aperçus vérifiés sur captures lors de

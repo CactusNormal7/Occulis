@@ -1546,6 +1546,17 @@ Trois points qui se sont révélés à l'usage et qu'il ne faut pas défaire :
   sert précisément à tester celui-là. Sous `--mode mockups`, le bundle est identique au bundle
   de production, au dossier `mockups/` près.
 
+**Le labo de la refonte graphique** (`lab/index.html`, `LAB_PAGE`) suit la même règle que les
+maquettes : `pnpm dev` le sert sous `/lab/` (Vite sert toute page HTML de sa racine), le build
+ne l'ajoute à ses entrées que sous `--mode mockups`. Le greffon `occulis-lab-redirect`
+(`serve`) renvoie `/lab` vers `/lab/` : sans la barre finale, le repli SPA servirait la page du
+jeu, noire sans serveur derrière. La page ne fait que monter
+`packages/ui/previews/main.tsx` (`lab/main.ts`) ; le client ne l'importe jamais. Elle **appelle**
+`mountLab()` au lieu d'importer le module pour son effet : `@occulis/ui` se déclare sans effet
+de bord hors CSS (`sideEffects`), et Rollup élaguait l'import — la page construite, servie par
+wrangler, restait noire quand `pnpm dev`, qui n'élague rien, l'affichait. Voir
+`ui.md`, « Le labo de la refonte ».
+
 Sous wrangler, Cloudflare applique son `html_handling` par défaut : `/mockups` redirige en 307
 vers `/mockups/`, et `/mockups/partie.html` vers `/mockups/partie`. Les liens relatifs des
 maquettes continuent de résoudre, la redirection étant transparente pour le navigateur.

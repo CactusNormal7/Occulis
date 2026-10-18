@@ -140,12 +140,42 @@ const PAGES = {
  */
 const UI_ENTRY = fileURLToPath(new URL("../../packages/ui/src/index.ts", import.meta.url));
 
+/**
+ * Le labo de la refonte graphique (`lab/`, qui monte `packages/ui/previews/`) : comme les
+ * maquettes, servi par le serveur de développement (Vite sert toute page HTML de sa racine)
+ * et ajouté au build sous le seul mode `mockups`. `pnpm build`, donc tout déploiement, ne
+ * l'embarque pas.
+ */
+const LAB_PAGE = fileURLToPath(new URL("lab/index.html", import.meta.url));
+const LAB_ROUTE = "/lab";
+
+/**
+ * `/lab` sans barre finale n'est pas une page pour Vite : son repli SPA y servirait le jeu,
+ * dont l'écran reste noir sans serveur derrière. On redirige vers `/lab/`, comme `/mockups`.
+ */
+function redirectLab(): Plugin {
+  return {
+    name: "occulis-lab-redirect",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if ((req.url ?? "").split("?")[0] !== LAB_ROUTE) {
+          next();
+          return;
+        }
+        res.writeHead(302, { Location: `${LAB_ROUTE}/` });
+        res.end();
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => ({
-  plugins: [criticalPaint(), serveMockups(), ...(mode === MOCKUPS_MODE ? [embedMockups()] : [])],
+  plugins: [criticalPaint(), serveMockups(), redirectLab(), ...(mode === MOCKUPS_MODE ? [embedMockups()] : [])],
   resolve: {
     alias: [{ find: /^@occulis\/ui$/, replacement: UI_ENTRY }],
     dedupe: ["react", "react-dom"],
   },
   esbuild: { jsx: "automatic" },
-  build: { rollupOptions: { input: PAGES } },
+  build: { rollupOptions: { input: mode === MOCKUPS_MODE ? { ...PAGES, lab: LAB_PAGE } : PAGES } },
 }));

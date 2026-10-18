@@ -276,6 +276,199 @@ export function paletteVariables(palette: Palette): Record<string, string> {
   };
 }
 
+/*
+ * ---- Proposition de refonte — non intégrée ---------------------------------------------
+ *
+ * Les tokens que la refonte graphique ajoute (docs/design/refonte-graphique.md). Ils ne
+ * sortent pas dans `generated/tokens.css`, donc dans aucun écran : `proposedStylesheet()`
+ * les écrit à part, dans `generated/proposed-tokens.css`, que seuls le labo
+ * (`src/lab/`) et ses aperçus (`previews/`) importent. À la validation de la direction,
+ * ils rejoignent `cssVariables()` et ce bloc disparaît.
+ *
+ * Trois étages, pour qu'une surcharge à l'exécution (globale ou par compte, depuis le
+ * back-office) n'ait qu'à poser quelques propriétés sur `:root` :
+ * - **les valeurs** (ici) : durées en millisecondes, courbes, pas de grille ;
+ * - **les rôles** (`--occ-dur-window`, `--occ-paper`…) : ce que les feuilles lisent. Une
+ *   couleur de rôle n'est jamais une valeur, toujours une propriété du thème
+ *   (`var(--occ-ink)`), pour qu'un changement de thème la suive ;
+ * - **les boutons** (`--occ-tempo`, `--occ-motion-amplitude`, `--occ-motion-loop`) : les
+ *   seuls réglages d'une surcharge. Chaque durée de rôle est multipliée par `--occ-tempo`.
+ */
+
+/** Les niveaux d'intensité du mouvement, du plus vif au plus calme. */
+export const MOTION_LEVEL_NAMES = ["full", "calm", "still"] as const;
+export type MotionLevel = (typeof MOTION_LEVEL_NAMES)[number];
+
+export function isMotionLevel(value: unknown): value is MotionLevel {
+  return typeof value === "string" && (MOTION_LEVEL_NAMES as readonly string[]).includes(value);
+}
+
+export const PROPOSED = {
+  /** Les écarts d'écran (entre blocs d'une page, autour d'un plateau), au-delà de `SPACE`. */
+  space: { 10: 40, 12: 48, 16: 64 },
+  /** L'interligne : serré pour un titre, ample pour une notice. */
+  leading: { tight: 1.25, base: 1.5, loose: 1.75 },
+  /**
+   * Les durées par rôle, en millisecondes, avant `--occ-tempo`. `window` et `screen` sont
+   * celles de `revealWindow()` et du voile tramé : notées ici pour que la grammaire soit
+   * complète, sans que ni l'un ni l'autre ne les lise encore (le voile est verrouillé).
+   */
+  duration: {
+    /** Un pas de glyphe qui se transforme. */
+    tick: 70,
+    /** Un retour de survol, un appui. */
+    fast: 150,
+    /** Une fenêtre qu'un clic ouvre (`revealWindow`). */
+    window: 220,
+    base: 250,
+    slow: 420,
+    /** Le voile tramé entre deux écrans. */
+    screen: 520,
+    /** Une chaîne cryptique qui devient lisible. */
+    decode: 900,
+    /** L'inversion « papier », pleinement posée, avant sa résorption. */
+    hold: 700,
+    /** La résorption de l'inversion. */
+    resorb: 600,
+    breath: 3200,
+    /** Le retard par case d'une vague : la ligne de vue qui se déploie depuis une pièce. */
+    wave: 45,
+    /** Le retard par case d'une cascade : les destinations d'une pièce sélectionnée. */
+    cascade: 38,
+  },
+  /**
+   * Les distances parcourues, en pixels, avant `--occ-motion-amplitude` : une entrée qui
+   * monte (`rise`), une pièce qui s'élève à la sélection (`lift`), le sommet d'un saut (`hop`).
+   */
+  distance: { rise: 8, lift: 3, hop: 14 },
+  /** Les images rémanentes d'un saut : leur nombre, et le retard de l'une sur l'autre (part du saut). */
+  trail: { count: 3, lag: 0.09 },
+  /**
+   * Les courbes, par geste. `out` est `MOTION.ease` : une entrée. `in` une sortie, qui part
+   * lentement et file. `inOut` un trajet (un saut de pièce). `sweep` un front qui se propage :
+   * presque linéaire, pour que la vitesse se lise.
+   */
+  easing: {
+    out: MOTION.ease,
+    in: "cubic-bezier(0.55, 0, 0.8, 0.3)",
+    inOut: "cubic-bezier(0.65, 0, 0.35, 1)",
+    sweep: "cubic-bezier(0.3, 0.1, 0.4, 1)",
+  },
+  /**
+   * Ce que chaque niveau d'intensité règle. `amplitude` multiplie les distances parcourues
+   * (une montée de 8 px devient 3 px en `calm`, rien en `still`) ; `loop` met en pause les
+   * boucles décoratives (étoiles, glyphes qui frémissent) ; `scramble` laisse les glyphes
+   * se brouiller avant de céder leur lettre. `still` est aussi ce que `prefers-reduced-motion`
+   * impose : plus rien ne se déplace, les changements passent en fondu.
+   */
+  motion: {
+    full: { amplitude: 1, loop: "running", scramble: true },
+    calm: { amplitude: 0.4, loop: "paused", scramble: false },
+    still: { amplitude: 0, loop: "paused", scramble: false },
+  },
+  /** L'alphabet cryptique : une case de glyphe, son trait, et l'os qui le porte. */
+  cipher: {
+    /** Le côté d'un pas de la grille du glyphe : un pixel du plateau. */
+    unit: 1,
+    stroke: 1,
+    /** Le temps moyen entre deux frémissements d'un glyphe en ornement. */
+    flicker: 1400,
+  },
+  /** L'inversion « papier millimétré ». */
+  paper: {
+    /** Le pas du quadrillage de points, en pixels. */
+    grid: 8,
+    /** Le côté d'un point. */
+    dot: 2,
+    /** La vitesse du front, en pixels par seconde. */
+    speed: 900,
+    /** La résorption : `dither` (trame qui s'éteint), `recede` (le front repart), `none`. */
+    resorb: "dither",
+  },
+} as const;
+
+export type PaperResorb = "dither" | "recede" | "none";
+
+/** Une durée de rôle, multipliée par le bouton de tempo. */
+function tempoed(ms: number): string {
+  return `calc(${ms}ms * var(--occ-tempo))`;
+}
+
+/** Les propriétés d'un niveau d'intensité : celles que `data-motion` bascule. */
+export function motionLevelVariables(level: MotionLevel): Record<string, string> {
+  const { amplitude, loop } = PROPOSED.motion[level];
+  return {
+    "--occ-motion-level": level,
+    "--occ-motion-amplitude": String(amplitude),
+    "--occ-motion-loop": loop,
+  };
+}
+
+/**
+ * Les propriétés proposées, nom → valeur, posées sur `:root` par `proposed-tokens.css`.
+ * Aucune n'est une couleur : les rôles colorés renvoient aux propriétés du thème.
+ */
+export function proposedVariables(): Record<string, string> {
+  const { space, leading, duration, distance, easing, cipher, paper } = PROPOSED;
+  return {
+    "--occ-tempo": "1",
+    ...motionLevelVariables("full"),
+    ...Object.fromEntries(Object.entries(space).map(([step, px]) => [`--occ-space-${step}`, `${px}px`])),
+    ...Object.fromEntries(Object.entries(leading).map(([name, value]) => [`--occ-leading-${name}`, String(value)])),
+    ...Object.fromEntries(Object.entries(duration).map(([name, ms]) => [`--occ-dur-${name}`, tempoed(ms)])),
+    ...Object.fromEntries(
+      Object.entries(distance).map(([name, px]) => [`--occ-dist-${name}`, `calc(${px}px * var(--occ-motion-amplitude))`]),
+    ),
+    "--occ-ease-out": easing.out,
+    "--occ-ease-in": easing.in,
+    "--occ-ease-in-out": easing.inOut,
+    "--occ-ease-sweep": easing.sweep,
+    "--occ-cipher-unit": `${cipher.unit}px`,
+    "--occ-cipher-stroke": `${cipher.stroke}px`,
+    "--occ-cipher-ink": "var(--occ-ink-soft)",
+    "--occ-cipher-ink-faint": "var(--occ-ink-faint)",
+    "--occ-dur-flicker": tempoed(cipher.flicker),
+    // Le papier est l'os, ses points sont le vide : une inversion exacte du thème, sans
+    // aucune couleur propre.
+    "--occ-paper": "var(--occ-ink)",
+    "--occ-paper-dot": "var(--occ-bg)",
+    "--occ-paper-grid": `${paper.grid}px`,
+    "--occ-paper-dot-size": `${paper.dot}px`,
+    "--occ-paper-speed": String(paper.speed),
+    "--occ-paper-resorb": paper.resorb,
+  };
+}
+
+/**
+ * Le contenu de `generated/proposed-tokens.css`. Les niveaux d'intensité se basculent par
+ * `data-motion` sur la racine ; `prefers-reduced-motion` impose `still` **par-dessus** tout
+ * choix explicite — le réglage du système d'exploitation est un plafond, pas une valeur
+ * par défaut (point ouvert dans docs/design/refonte-graphique.md).
+ */
+export function proposedStylesheet(): string {
+  const declarations = (variables: Record<string, string>): string[] =>
+    Object.entries(variables).map(([name, value]) => `  ${name}: ${value};`);
+  return [
+    "/* Généré depuis src/tokens.ts (PROPOSED) par `pnpm --filter @occulis/ui tokens` — ne pas modifier.",
+    "   Proposition de refonte, importée par le seul labo (src/lab/lab.css). */",
+    ":root {",
+    ...declarations(proposedVariables()),
+    "}",
+    ...MOTION_LEVEL_NAMES.filter((level) => level !== "full").flatMap((level) => [
+      `:root[data-motion="${level}"] {`,
+      ...declarations(motionLevelVariables(level)),
+      "}",
+    ]),
+    "@media (prefers-reduced-motion: reduce) {",
+    "  :root,",
+    "  :root[data-motion] {",
+    ...declarations(motionLevelVariables("still")).map((line) => `  ${line}`),
+    "  }",
+    "}",
+    "",
+  ].join("\n");
+}
+
 /**
  * Le contenu de `generated/tokens.css` : le thème par défaut sur `:root`, puis chaque
  * thème sous `:root[data-theme="…"]`, que le bloc critique pose avant la première image.

@@ -11,7 +11,9 @@
     "./tokens": "./src/tokens.ts",
     "./critical": "./src/critical.ts",
     "./styles.css": "./src/styles.css",
-    "./reveal": "./src/window-reveal.ts"
+    "./reveal": "./src/window-reveal.ts",
+    "./lab": "./src/lab/index.ts",
+    "./lab.css": "./src/lab/lab.css"
   },
   "sideEffects": [
     "*.css"
