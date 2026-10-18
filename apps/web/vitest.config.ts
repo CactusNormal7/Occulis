@@ -16,7 +16,7 @@ export default defineConfig({
         "src/ui/flow.ts",
         "src/load/cache.ts",
         "src/admin/model.ts",
-        "src/admin/replay.ts",
+        "src/replay/replay.ts",
         "src/admin/design/catalog.ts",
         "src/admin/design/tweaks.ts",
       ],

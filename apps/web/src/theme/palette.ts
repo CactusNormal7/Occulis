@@ -1,5 +1,5 @@
 import { INK_ALPHA, PANEL_ALPHA, cssColor, cssVariables } from "@occulis/ui/tokens";
-import { look } from "../theme.js";
+import { look } from "./theme.js";
 
 /**
  * Passe le code couleur du thème en vigueur (`theme.ts`) à la feuille de style de
@@ -9,7 +9,7 @@ import { look } from "../theme.js";
  * du jeu les reçoit via des propriétés personnalisées calculées ici. Aucune couleur
  * n'est donc réécrite en dur dans `ui.css` : les valeurs restent celles de
  * `@occulis/ui/tokens` (docs/design.md 8.1). Rappelée à chaque changement de thème
- * (`ui/theme-choice.ts`) : posées en ligne, ces propriétés l'emportent sur celles du
+ * (`theme/theme-choice.ts`) : posées en ligne, ces propriétés l'emportent sur celles du
  * thème dans `tokens.css`.
  */
 export function applyPalette(root: HTMLElement): void {

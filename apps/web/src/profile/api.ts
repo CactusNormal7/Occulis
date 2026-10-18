@@ -1,6 +1,6 @@
 import type { TeamEntry } from "@occulis/core";
 import type { MeCurrentMatch, MeFeats, MeMatchDetail, MeMatchPage, MeProfile, MeSession, TeamPreset, TeamPresetList } from "@occulis/protocol";
-import { messages } from "../i18n/current.js";
+import { messages } from "../locale/current.js";
 import { authMessage, ROUTE_PATHS } from "../net/auth.js";
 import type { Outcome } from "../admin/api.js";
 

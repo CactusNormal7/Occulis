@@ -1,18 +1,18 @@
 import type { Board, PlayerId } from "@occulis/core";
 import { cssColor } from "@occulis/ui/tokens";
-import { look } from "../theme.js";
-import { type IsoProjection, type Quad, type ScreenPoint, cliffQuads, depthOf, project, tileQuad } from "../view/iso.js";
-import { topColor } from "../view/matter.js";
-import { mixColor, pixelResolution } from "../view/pixel.js";
+import { look } from "../../theme/theme.js";
+import { type IsoProjection, type Quad, type ScreenPoint, cliffQuads, depthOf, project, tileQuad } from "../../view/iso.js";
+import { topColor } from "../../view/matter.js";
+import { mixColor, pixelResolution } from "../../view/pixel.js";
 
 /**
  * Les primitives du plateau en Canvas 2D, partagées par le rejeu du back-office et du
- * profil (`admin/replay-canvas.ts`) et par le plateau de déploiement
- * (`team/placement-canvas.ts`). Même géométrie que le jeu (`view/iso.ts`), mêmes tokens
+ * profil (`replay/replay-canvas.ts`) et par le plateau de déploiement
+ * (`team-builder/placement-canvas.ts`). Même géométrie que le jeu (`view/iso.ts`), mêmes tokens
  * (`theme.ts`), même grain (`view/pixel.ts`) : ce qui est dessiné ici ressemble à ce que
  * PixiJS dessine en partie.
  *
- * Les épaisseurs passées ici sont en **pixels du plateau**, comme dans `scene/`.
+ * Les épaisseurs passées ici sont en **pixels du plateau**, comme dans `render/pixi/`.
  */
 
 /** Un élément à peindre, avec sa profondeur pour l'ordre du peintre (`compareDepth`). */
@@ -42,7 +42,7 @@ function pixelOf(context: CanvasRenderingContext2D): number {
 
 const patterns = new WeakMap<CanvasRenderingContext2D, Map<number, CanvasPattern | null>>();
 
-/** La trame un-sur-deux du jeu (`scene/scene.ts`), dans la couleur du vide. */
+/** La trame un-sur-deux du jeu (`render/pixi/scene.ts`), dans la couleur du vide. */
 function ditherOf(context: CanvasRenderingContext2D): CanvasPattern | null {
   const color = look().geometry.fogDither;
   let byColor = patterns.get(context);
@@ -127,7 +127,7 @@ export function terrainDrawables(
           (look().geometry.depthFadeFar + (look().geometry.depthFadeNear - look().geometry.depthFadeFar) * nearness);
         const centre = project(tile.coord, tile.height, proj);
         for (const cliff of cliffQuads(board, tile.coord, tile.height, proj)) {
-          // Une face arrière, pleine, déborderait sous le relief (voir `scene/terrain.ts`).
+          // Une face arrière, pleine, déborderait sous le relief (voir `render/pixi/terrain.ts`).
           if ((cliff[0].y + cliff[1].y) / 2 <= centre.y) continue;
           const side = (cliff[0].x + cliff[1].x) / 2 < centre.x ? look().geometry.sideLight : look().geometry.sideShade;
           fillQuad(context, cliff, cssColor(seen ? side : mixColor(side, look().palette.background, 0.45)));
@@ -152,7 +152,7 @@ export function terrainDrawables(
 }
 
 /**
- * La silhouette de `scene/pieces.ts` — obélisque et œil flottant — tracée en Canvas 2D.
+ * La silhouette de `render/pixi/pieces.ts` — obélisque et œil flottant — tracée en Canvas 2D.
  * Une pièce moins qu'entièrement posée (`alpha` sous `look().pieces.alphaVisible`) est un
  * fantôme : contour seul. Rend le haut de l'œil.
  */

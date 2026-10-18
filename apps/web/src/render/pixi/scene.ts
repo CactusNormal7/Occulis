@@ -17,26 +17,26 @@ import {
   depthOf,
   project,
   standingDepth,
-} from "../view/iso.js";
-import { type MoveAnimation, lagging, liftOf, positionOf } from "../view/animation.js";
-import type { Selection } from "../game/selection.js";
-import { type LightMap, crestAt, lightAt, relight } from "../view/reveal.js";
-import { type Landing, introLength, introOf, materializeAt } from "../view/effects.js";
-import { easeOutCubic, phase } from "../view/easing.js";
-import { breath, snap } from "../view/pixel.js";
+} from "../../view/iso.js";
+import { type MoveAnimation, lagging, liftOf, positionOf } from "../../view/animation.js";
+import type { Selection } from "../../game/selection.js";
+import { type LightMap, crestAt, lightAt, relight } from "../../view/reveal.js";
+import { type Landing, introLength, introOf, materializeAt } from "../../view/effects.js";
+import { easeOutCubic, phase } from "../../view/easing.js";
+import { breath, snap } from "../../view/pixel.js";
 import { drawSigil } from "./ground.js";
 import { drawHover, drawLanding, drawSelection } from "./overlay.js";
 import { drawPiece } from "./pieces.js";
 import { drawMotes, drawSky } from "./sky.js";
 import { drawTile } from "./terrain.js";
-import { MOTION_FX, look } from "../theme.js";
+import { MOTION_FX, look } from "../../theme/theme.js";
 
 /**
  * Cinq couches, du fond vers l'avant, **toutes redessinées à chaque image** : presque
  * tout y est animé (vague de lumière, entrée du plateau, retombées, respiration), et un
  * plateau de quelques dizaines de cases se redessine en une fraction de milliseconde.
  *
- * - `sky` : la voûte d'étoiles, en coordonnées d'écran (`scene/sky.ts`) ;
+ * - `sky` : la voûte d'étoiles, en coordonnées d'écran (`render/pixi/sky.ts`) ;
  * - `ground` : le sceau gravé sous le plateau, pour les thèmes qui l'allument ;
  * - `world` : terrain et pièces, qui doivent partager un **unique ordre du peintre** pour
  *   qu'une pièce derrière un relief soit réellement masquée ;

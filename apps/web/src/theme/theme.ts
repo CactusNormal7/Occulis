@@ -29,12 +29,12 @@ export const METRICS = {
 
 /** Ce que chaque thème allume, au-delà de sa palette. */
 interface Atmosphere {
-  /** Le sceau gravé sous le plateau (`scene/ground.ts`). */
+  /** Le sceau gravé sous le plateau (`render/pixi/ground.ts`). */
   readonly sigil: boolean;
   /** Les particules en suspension : poussière d'os, lucioles qui luisent, ou rien. */
   readonly motes: "dust" | "fireflies" | "none";
   readonly moteCount: number;
-  /** La voûte d'étoiles derrière le plateau (`scene/sky.ts`). */
+  /** La voûte d'étoiles derrière le plateau (`render/pixi/sky.ts`). */
   readonly stars: number;
   /** Des segments entre étoiles voisines. */
   readonly constellations: boolean;

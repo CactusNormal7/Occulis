@@ -10,7 +10,7 @@ import type {
 } from "@occulis/protocol";
 import type { Outcome } from "../admin/api.js";
 import { authMessage } from "../net/auth.js";
-import { messages as dictionary } from "../i18n/current.js";
+import { messages as dictionary } from "../locale/current.js";
 import { socialMessage } from "./model.js";
 
 /**

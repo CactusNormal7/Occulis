@@ -32,7 +32,7 @@ Une URL du type `occulis-staging.0kl.fr/mockups` n'existe pas et n'est pas prév
 ## Ce que ces fichiers ne sont pas
 
 **Ni une spécification d'interface, ni une source de vérité.** Le *pourquoi* des décisions de DA reste dans
-[`../design.md`](../design.md) section 8.1, et le code couleur fait foi dans `apps/web/src/theme.ts` — seul
+[`../design.md`](../design.md) section 8.1, et le code couleur fait foi dans `apps/web/src/theme/theme.ts` — seul
 fichier du client autorisé à contenir une valeur de couleur. `mockup.css` recopie ces valeurs pour rester
 autonome ; en cas de divergence, c'est `theme.ts` qui a raison et la maquette qui se corrige.
 

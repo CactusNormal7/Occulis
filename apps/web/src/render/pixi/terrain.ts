@@ -1,9 +1,9 @@
 import type { FillPattern, Graphics } from "pixi.js";
 import type { Board, Tile } from "@occulis/core";
-import { type IsoProjection, type Quad, cliffQuads, project, tileQuad } from "../view/iso.js";
-import { topColor } from "../view/matter.js";
-import { mixColor } from "../view/pixel.js";
-import { look } from "../theme.js";
+import { type IsoProjection, type Quad, cliffQuads, project, tileQuad } from "../../view/iso.js";
+import { topColor } from "../../view/matter.js";
+import { mixColor } from "../../view/pixel.js";
+import { look } from "../../theme/theme.js";
 
 /**
  * Émet la géométrie d'une case dans un `Graphics` fourni, plutôt que d'en

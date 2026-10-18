@@ -18,8 +18,8 @@ import {
   useMessages,
 } from "@occulis/ui";
 import type { MeMatchDetail, MeMatchSummary, MeRecord, Relation } from "@occulis/protocol";
-import { ReplayBoard } from "../admin/ReplayBoard.js";
-import { clampFrame } from "../admin/replay.js";
+import { ReplayBoard } from "../replay/ReplayBoard.js";
+import { clampFrame } from "../replay/replay.js";
 import { formatDate, winRate } from "../admin/model.js";
 import { asBoardFrames, describeMyResult } from "./model.js";
 

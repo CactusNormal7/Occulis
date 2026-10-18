@@ -38,7 +38,7 @@ import * as R from "./resources.js";
 import { resourcesOf } from "./resources.js";
 import { formatDate, shortAgent } from "../admin/model.js";
 import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH, passwordHint } from "../account/model.js";
-import { chooseLocale, initLocale } from "../i18n/browser.js";
+import { chooseLocale, initLocale } from "../locale/browser.js";
 import { ROUTE_PATHS } from "../net/auth.js";
 import * as api from "./api.js";
 import * as friends from "../social/api.js";

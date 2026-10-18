@@ -1,5 +1,5 @@
 import type { AdminFrame, MeFrame, MeMatchSummary, MeProfile, MeResult } from "@occulis/protocol";
-import { currentLocale, messages } from "../i18n/current.js";
+import { currentLocale, messages } from "../locale/current.js";
 import { redirectMessage } from "../net/auth.js";
 
 /**
@@ -128,7 +128,7 @@ export function describeMyResult(match: Pick<MeMatchSummary, "result" | "outcome
 
 /**
  * Les images du replay joueur au format du plateau rejoué du back-office
- * (`admin/ReplayBoard.tsx`), qui attend la ligne de vue des deux camps : celle de
+ * (`replay/ReplayBoard.tsx`), qui attend la ligne de vue des deux camps : celle de
  * l'adversaire est vide, puisqu'on ne la connaît pas. Les pièces sont déjà réduites par
  * le serveur à celles que votre camp voyait.
  */

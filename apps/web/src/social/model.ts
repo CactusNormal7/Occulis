@@ -1,5 +1,5 @@
 import type { Challenge, Friend, FriendsOverview, Relation, SocialServerMessage } from "@occulis/protocol";
-import { messages } from "../i18n/current.js";
+import { messages } from "../locale/current.js";
 
 /**
  * L'état social vu d'une page — le menu du jeu comme le profil. Module pur : il réduit

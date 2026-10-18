@@ -1,5 +1,5 @@
 import type { Challenge, Friend, LiveMatch } from "@occulis/protocol";
-import { messages } from "../i18n/current.js";
+import { messages } from "../locale/current.js";
 import { type SocialState, presenceLabel } from "../social/model.js";
 
 /**

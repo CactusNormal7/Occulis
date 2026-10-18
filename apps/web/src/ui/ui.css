@@ -3,7 +3,7 @@
  *
  * Mise en page seulement. Aucune couleur en dur ici : les propriétés personnalisées
  * `--ink`, `--panel`, `--accepted` et `--refused` sont posées par `palette.ts` à
- * partir des tokens de `src/theme.ts`, seul détenteur du code couleur du client
+ * partir des tokens de `src/theme/theme.ts`, seul détenteur du code couleur du client
  * (docs/design.md 8.1).
  *
  * `palette.ts` y pose aussi toutes les propriétés `--occ-*` de la charte : les écrans

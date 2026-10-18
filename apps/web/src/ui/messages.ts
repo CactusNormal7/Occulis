@@ -3,7 +3,7 @@ import type { Rejection, RoomFault } from "@occulis/protocol";
 import type { Identity } from "../net/auth.js";
 import type { CommandFault } from "./command.js";
 import type { Seeking } from "./flow.js";
-import { messages } from "../i18n/current.js";
+import { messages } from "../locale/current.js";
 
 /**
  * Textes de l'interface, regroupés hors du câblage DOM : le module qui écoute les

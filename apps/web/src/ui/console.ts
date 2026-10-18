@@ -10,7 +10,7 @@ import {
   describeTurn,
   describeWatching,
 } from "./messages.js";
-import { messages } from "../i18n/current.js";
+import { messages } from "../locale/current.js";
 
 /**
  * Saisie de coups au clavier et comptes rendus de partie : le bandeau affiché

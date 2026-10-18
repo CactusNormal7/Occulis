@@ -32,19 +32,21 @@ qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 | `view/` | Projection, caméra, désignation, animation | **Aucune** — ni PixiJS, ni DOM |
 | `game/` | La partie côté client, la sélection, le scénario | **Aucune** — ni PixiJS, ni DOM |
 | `net/` | La lecture des messages du serveur | **Aucune** sauf `channel.ts` (WebSocket) |
-| `scene/` | Le dessin ; `board.ts`, chargé à part, monte le plateau | PixiJS |
+| `render/pixi/` | Le dessin ; `board.ts`, chargé à part, monte le plateau | PixiJS |
 | `input/` | Les gestes sur le canevas | DOM |
 | `ui/` | Les écrans et le bandeau de partie | DOM sauf `flow.ts`, `messages.ts`, `command.ts` |
 | `account/` | L'écran de compte, îlot React sur `@occulis/ui` dans la page du jeu | React, DOM et réseau sauf `model.ts` |
 | `profile/` | La page de profil, page à part sous `/profile/`, en React sur `@occulis/ui` | React, DOM et réseau sauf `model.ts` |
-| `i18n/` | La langue courante (`current.ts`) et son choix dans le navigateur (`browser.ts`) | Aucune sauf `browser.ts` (DOM, stockage, cookie) |
-| `team/` | Le brouillon d'équipe (`model.ts`), le constructeur (`TeamBuilder.tsx`) et son plateau (`placement-canvas.ts`) | React, DOM sauf `model.ts` |
+| `locale/` | La langue courante (`current.ts`) et son choix dans le navigateur (`browser.ts`) | Aucune sauf `browser.ts` (DOM, stockage, cookie) |
+| `team-builder/` | Le brouillon d'équipe (`model.ts`), le constructeur (`TeamBuilder.tsx`) et son plateau (`placement-canvas.ts`) | React, DOM sauf `model.ts` |
 | `prepare/` | Les îlots d'avant-partie : fenêtre d'acceptation et déploiement (annonce de l'adversaire comprise) | React, DOM sauf `model.ts` |
-| `teams/` | Les équipes préparées, depuis le menu | React, DOM et réseau |
-| `canvas/` | Les primitives du plateau en Canvas 2D, partagées par le rejeu et le déploiement | DOM (canevas) |
-| `admin/` | Le back-office, page à part sous `/admin/`, en React sur `@occulis/ui`, design system compris (`design/`) | React, DOM et réseau sauf `model.ts`, `replay.ts`, `design/catalog.ts` et `design/tweaks.ts` |
+| `presets/` | Les équipes préparées, depuis le menu | React, DOM et réseau |
+| `render/canvas2d/` | Les primitives du plateau en Canvas 2D, partagées par le rejeu et le déploiement | DOM (canevas) |
+| `admin/` | Le back-office, page à part sous `/admin/`, en React sur `@occulis/ui`, design system compris (`design/`) | React, DOM et réseau sauf `model.ts`, `design/catalog.ts` et `design/tweaks.ts` |
+| `replay/` | Le rejeu d'une partie, partagé par le back-office et le profil : coups entre deux images (`replay.ts`), plateau Canvas 2D (`replay-canvas.ts`), composant (`ReplayBoard.tsx`) | DOM (canevas) et React sauf `replay.ts` |
+| `theme/` | Tokens de DA du plateau (`theme.ts`), thème choisi (`theme-choice.ts`), code couleur passé au CSS (`palette.ts`) | Aucune sauf `theme-choice.ts` et `palette.ts` (DOM) |
 | `load/` | La lecture des données des vues React : cache, `useLoad`, `whenReady` | React sauf `cache.ts` |
-| racine | `main.ts` (composition) et `theme.ts` (tokens de DA) | — |
+| racine | `main.ts` (composition) | — |
 
 Les modules de `view/`, `game/` et `net/session.ts` sont purs : c'est là que vivent tous
 les tests, avec `ui/flow.ts`, `ui/command.ts`, `ui/messages.ts`, `account/model.ts`,
@@ -157,7 +159,7 @@ liste d'amis du menu (`friendsOverview`) et la partie à reprendre (`currentMatc
 paraît qu'une fois l'identité **et** la liste d'amis arrivées (`friendsBeforeMenu()`), le
 panneau Amis compris. Au-delà de `MENU_DEADLINE_MS` (2,5 s), le menu paraît sans la liste,
 plutôt que de ne pas paraître. Le formulaire de compte est dessiné avant que son écran soit
-montré. Le **plateau** est chargé à part (`scene/board.ts`) : PixiJS n'est ni téléchargé ni
+montré. Le **plateau** est chargé à part (`render/pixi/board.ts`) : PixiJS n'est ni téléchargé ni
 analysé avant d'afficher le menu ; il se charge au repos une fois le menu affiché, avec les
 équipes préparées, pour que l'écran des équipes s'ouvre complet.
 
@@ -190,7 +192,7 @@ chaque ouverture du canal social.
 | `apps/web/src/load/hooks.tsx` | `useLoad()`, `usePending()`, `whenReady()` | non |
 | `apps/web/public/_headers` | Cache d'un an des fichiers hachés de `/assets/`, d'une semaine de la police | — |
 | `apps/web/public/fonts/` | La police pixel Tiny5 (sous-ensemble latin) et sa licence OFL, à adresse fixe | — |
-| `apps/web/src/theme.ts` | Tokens de DA — **seul fichier contenant une couleur** | oui |
+| `apps/web/src/theme/theme.ts` | Tokens de DA — **seul fichier contenant une couleur** | oui |
 | `apps/web/src/view/iso.ts` | Projection isométrique et géométrie des cases | oui |
 | `apps/web/src/view/camera.ts` | État de caméra et ses transitions | oui |
 | `apps/web/src/view/picking.ts` | Point à l'écran → case du plateau | oui |
@@ -223,20 +225,20 @@ chaque ouverture du canal social.
 | `apps/web/src/account/mount.tsx` | Monte l'îlot de compte dans `#account-root` | non |
 | `apps/web/src/account/model.ts` | Parcours ↔ URL, messages de retour, refus rattachés à leur champ, indication de longueur | oui |
 | `apps/web/src/net/auth.ts` | Appels d'authentification et traduction des refus | non (sauf `authMessage()`, `redirectMessage()`) |
-| `apps/web/src/i18n/current.ts` | La langue courante et son dictionnaire, sans DOM | oui |
-| `apps/web/src/i18n/browser.ts` | Choix de langue (stockage, cookie, `<html lang>`) et remplissage du HTML statique (`data-i18n`) | non |
-| `apps/web/src/team/model.ts` | Le brouillon d'une équipe : emplacements, clic sur une case, échange, remplissage ; verdict délégué à `validateTeam()` | oui |
-| `apps/web/src/team/TeamBuilder.tsx` | Le constructeur d'équipe : emplacements, plateau, actions | non |
-| `apps/web/src/team/placement-canvas.ts` | Le plateau de placement en Canvas 2D : zones, pièces posées, survol, clic | non |
-| `apps/web/src/canvas/paint.ts` | Relief, cases et pièces en Canvas 2D, avec la géométrie du jeu | non |
+| `apps/web/src/locale/current.ts` | La langue courante et son dictionnaire, sans DOM | oui |
+| `apps/web/src/locale/browser.ts` | Choix de langue (stockage, cookie, `<html lang>`) et remplissage du HTML statique (`data-i18n`) | non |
+| `apps/web/src/team-builder/model.ts` | Le brouillon d'une équipe : emplacements, clic sur une case, échange, remplissage ; verdict délégué à `validateTeam()` | oui |
+| `apps/web/src/team-builder/TeamBuilder.tsx` | Le constructeur d'équipe : emplacements, plateau, actions | non |
+| `apps/web/src/team-builder/placement-canvas.ts` | Le plateau de placement en Canvas 2D : zones, pièces posées, survol, clic | non |
+| `apps/web/src/render/canvas2d/paint.ts` | Relief, cases et pièces en Canvas 2D, avec la géométrie du jeu | non |
 | `apps/web/src/prepare/model.ts` | Temps restant, envoi automatique, presets jouables, équipe préchargée | oui |
 | `apps/web/src/prepare/MatchFound.tsx` | La fenêtre « partie trouvée » | non |
 | `apps/web/src/prepare/Deployment.tsx` | L'écran de déploiement : annonce de l'adversaire, compte à rebours, constructeur, verrou | non |
 | `apps/web/src/prepare/Plates.tsx` | La plaque d'un joueur depuis sa `PlayerCard` | non |
 | `apps/web/src/prepare/clock.ts` | `useRemaining()`, le seul minuteur des écrans d'avant-partie | non |
 | `apps/web/src/prepare/mount.tsx` | Monte les deux îlots dans `#match-found-root` et `#deploy-root` | non |
-| `apps/web/src/teams/TeamsApp.tsx` | La liste des équipes préparées et leur éditeur | non |
-| `apps/web/src/teams/mount.tsx` | Monte l'îlot dans `#teams-root` | non |
+| `apps/web/src/presets/TeamsApp.tsx` | La liste des équipes préparées et leur éditeur | non |
+| `apps/web/src/presets/mount.tsx` | Monte l'îlot dans `#teams-root` | non |
 | `apps/web/profile/index.html` | Page de profil, troisième entrée Vite | — |
 | `apps/web/src/profile/main.tsx` | Point d'entrée du profil : monte `App` | non |
 | `apps/web/src/profile/App.tsx` | Compte, sécurité, spectateurs, sessions, suppression, parties et replay de son point de vue | non |
@@ -245,18 +247,18 @@ chaque ouverture du canal social.
 | `apps/web/src/profile/resources.ts` | Ce que lit chaque écran du profil (liste d'amis et équipes préparées comprises, partagées avec la page du jeu), et `resourcesOf(route)` pour le précharger | non |
 | `apps/web/src/profile/api.ts` | Appels `/api/me/*` et routes de compte de Better Auth | non |
 | `apps/web/src/profile/model.ts` | Routes du profil, messages d'arrivée, délai de pseudo, liaison retirable, images du replay | oui |
-| `apps/web/src/scene/board.ts` | `mountBoard()` : application Pixi, scène, gestes, boucle d'images — chargé par `import()` | non |
-| `apps/web/src/scene/scene.ts` | Couches PixiJS, trames et détection de changement | non |
-| `apps/web/src/scene/ground.ts` | Le sceau gravé sous le plateau | non |
-| `apps/web/src/scene/sky.ts` | La voûte derrière le plateau et les particules devant | non |
-| `apps/web/src/ui/theme-choice.ts` | Le thème choisi : stockage, document, rendu | non |
-| `apps/web/src/scene/terrain.ts` | Faces et arêtes d'une case | non |
-| `apps/web/src/scene/pieces.ts` | Silhouette d'une pièce | non |
-| `apps/web/src/scene/overlay.ts` | Survol et sélection | non |
+| `apps/web/src/render/pixi/board.ts` | `mountBoard()` : application Pixi, scène, gestes, boucle d'images — chargé par `import()` | non |
+| `apps/web/src/render/pixi/scene.ts` | Couches PixiJS, trames et détection de changement | non |
+| `apps/web/src/render/pixi/ground.ts` | Le sceau gravé sous le plateau | non |
+| `apps/web/src/render/pixi/sky.ts` | La voûte derrière le plateau et les particules devant | non |
+| `apps/web/src/theme/theme-choice.ts` | Le thème choisi : stockage, document, rendu | non |
+| `apps/web/src/render/pixi/terrain.ts` | Faces et arêtes d'une case | non |
+| `apps/web/src/render/pixi/pieces.ts` | Silhouette d'une pièce | non |
+| `apps/web/src/render/pixi/overlay.ts` | Survol et sélection | non |
 | `apps/web/src/input/controls.ts` | Gestes du canevas → intentions | non |
 | `apps/web/src/ui/command.ts` | Grammaire de la saisie de coups | oui |
 | `apps/web/src/ui/messages.ts` | Tous les textes de l'interface | oui |
-| `apps/web/src/ui/palette.ts` | Passe le code couleur au CSS | non |
+| `apps/web/src/theme/palette.ts` | Passe le code couleur au CSS | non |
 | `apps/web/src/ui/console.ts` | Bandeau de partie : saisie de coups et comptes rendus | non |
 | `apps/web/src/ui/ui.css` | Mise en page des écrans — **aucune couleur en dur** | — |
 | `apps/web/admin/index.html` | Page du back-office, seconde entrée Vite | — |
@@ -264,14 +266,14 @@ chaque ouverture du canal social.
 | `apps/web/src/admin/App.tsx` | Racine : garde d'affichage, barre du haut, aiguillage des vues | non |
 | `apps/web/src/admin/views.tsx` | Vue d'ensemble, comptes, fiche, profil, liste des parties | non |
 | `apps/web/src/admin/MatchDetail.tsx` | Détail d'une partie et son rejeu | non |
-| `apps/web/src/admin/ReplayBoard.tsx` | Le canevas du rejeu, en composant React | non |
+| `apps/web/src/replay/ReplayBoard.tsx` | Le canevas du rejeu, en composant React | non |
 | `apps/web/src/admin/actions.tsx` | Actions rapides d'un compte et leurs fenêtres | non |
 | `apps/web/src/admin/shared.tsx` | Pastilles d'état, résultat, table des parties | non |
 | `apps/web/src/admin/resources.ts` | Ce que lit chaque écran du back-office, et `resourcesOf(route)` pour le précharger | non |
 | `apps/web/src/admin/model.ts` | Routes du back-office et mise en mots des données | oui |
 | `apps/web/src/admin/api.ts` | Appels `/api/admin/*` et `/api/auth/admin/*` | non |
-| `apps/web/src/admin/replay.ts` | Rejeu : coups lus entre deux images, libellés, cadrage du plateau | oui |
-| `apps/web/src/admin/replay-canvas.ts` | Rejeu : le plateau dessiné en Canvas 2D, avec la géométrie du jeu | non |
+| `apps/web/src/replay/replay.ts` | Rejeu : coups lus entre deux images, libellés, cadrage du plateau | oui |
+| `apps/web/src/replay/replay-canvas.ts` | Rejeu : le plateau dessiné en Canvas 2D, avec la géométrie du jeu | non |
 | `apps/web/src/admin/design/DesignSystem.tsx` | Le design system : sous-navigation, retouches (thème, palette, vitesse) posées sur le document | non |
 | `apps/web/src/admin/design/Foundations.tsx` | Tokens : palette retouchable, os par alpha, typographie, écarts, mouvement, propriétés CSS | non |
 | `apps/web/src/admin/design/Components.tsx` | Catalogue des composants : aperçus montés en vrai, code, commentaire, props | non |
@@ -471,7 +473,7 @@ le joueur, jamais avant (`docs/design.md` section 2).
 |---|---|---|
 | `auth` | Personne n'est connecté | L'îlot de compte : connexion, inscription, mot de passe oublié, réinitialisation |
 | `menu` | Connecté | Partie rapide, créer une partie, rejoindre avec un code, **équipes** ; le panneau « Amis » |
-| `teams` | Entrée « Équipes » du menu | L'îlot des équipes préparées (`teams/`) |
+| `teams` | Entrée « Équipes » du menu | L'îlot des équipes préparées (`presets/`) |
 | `waiting` | Une demande est partie | Le code du salon, l'attente d'un adversaire, la réponse d'un ami défié (`challenge`), ou l'ouverture de la partie d'un ami (`watch`) — `friend` le nomme |
 | `proposal` | File rapide : `proposal` reçu | La fenêtre « partie trouvée » par-dessus l'attente (`prepare/MatchFound.tsx`) |
 | `deploying` | Assis, `deployment` reçu | L'annonce de l'adversaire et le constructeur d'équipe (`prepare/Deployment.tsx`) |
@@ -732,7 +734,7 @@ paraît en une fois, barre du haut comprise (« Chargement et premier rendu »).
 - **Suppression** : une fenêtre de confirmation, puis un lien par courrier ; rien n'est
   supprimé avant son ouverture.
 - **Replay** : `asBoardFrames()` adapte les images du serveur au plateau rejoué du
-  back-office (`admin/ReplayBoard.tsx`, réutilisé tel quel), avec la seule ligne de vue de
+  back-office (`replay/ReplayBoard.tsx`, réutilisé tel quel), avec la seule ligne de vue de
   son camp et le point de vue fixé sur lui.
 - **Amis** : `SocialProvider` (`Friends.tsx`) ouvre le canal social (`surface=profile`) et
   tient l'état social, partagé par l'onglet et le compteur de non-lus de la barre du haut.
@@ -877,7 +879,7 @@ de `core`.
 
 ---
 
-## `i18n/` — la langue
+## `locale/` — la langue
 
 **Aucun texte affiché n'existe en français seul** : tous vivent dans `@occulis/i18n`
 (`packages/i18n`), en anglais — la langue par défaut et la langue source — et en français.
@@ -886,12 +888,12 @@ ajoutée ou un message dont les paramètres changent ne compile pas. Un message 
 une fonction (`m.game.outdated(4)`), jamais une chaîne à trous : pas d'interpolation à
 l'exécution, et les pluriels s'écrivent dans la fonction.
 
-- `i18n/current.ts` porte **la langue courante**, sans DOM : `messages()` rend son
+- `locale/current.ts` porte **la langue courante**, sans DOM : `messages()` rend son
   dictionnaire, `setLocale()` la change et prévient les abonnés de `onLocaleChange()`. Les
   modules purs (`ui/messages.ts`, `account/model.ts`, `profile/model.ts`, `admin/model.ts`,
-  `admin/replay.ts`, `net/auth.ts`) y lisent leurs phrases et restent testables — les tests
+  `replay/replay.ts`, `net/auth.ts`) y lisent leurs phrases et restent testables — les tests
   dont les attentes sont en français appellent `setLocale("fr")` en tête de fichier.
-- `i18n/browser.ts` choisit la langue au chargement (`initLocale()` : choix enregistré, puis
+- `locale/browser.ts` choisit la langue au chargement (`initLocale()` : choix enregistré, puis
   `navigator.languages`, puis l'anglais — `resolveLocale()`), l'enregistre au changement
   (`chooseLocale()` : stockage local **et** cookie `occulis-locale`, que le serveur lit pour
   ses courriers), tient `<html lang>` à jour, et remplit le HTML statique :
@@ -906,9 +908,9 @@ l'exécution, et les pluriels s'écrivent dans la fonction.
   `main.ts` réécrit alors tout ce qui est affiché — HTML statique, écran courant, identité,
   îlot de compte. Un message déjà affiché (`notify`) garde sa langue d'origine.
 
-## `team/` — le constructeur d'équipe
+## `team-builder/` — le constructeur d'équipe
 
-`team/model.ts` est **pur** : un `TeamDraft` est la liste des emplacements fixés par la
+`team-builder/model.ts` est **pur** : un `TeamDraft` est la liste des emplacements fixés par la
 composition du ruleset (`emptyDraft()` : maîtresse, trois à capacité, quatre pions, la
 maîtresse en main), chacun avec son type et sa case, et l'emplacement « en main ».
 
@@ -925,7 +927,7 @@ d'une pièce à capacité au choix parmi ceux de son rôle), et le plateau. Il n
 état — `draft` et `onChange` viennent de l'appelant, le déploiement ou les équipes.
 
 `placement-canvas.ts` dessine le plateau en Canvas 2D, comme le rejeu et avec les
-primitives de `canvas/paint.ts` : la page n'a pas encore de partie à confier à PixiJS, et
+primitives de `render/canvas2d/paint.ts` : la page n'a pas encore de partie à confier à PixiJS, et
 le même plateau sert hors partie. La zone du joueur est dans la teinte de son camp, celle
 d'en face en pointillé dans la sienne, la pièce en main dans la teinte de la sélection — de
 l'information de partie, donc en couleur. Les pièces portent **l'initiale de leur type**,
@@ -957,7 +959,7 @@ pour que sa zone se présente comme celle du camp A. Le clic passe par `tileAt()
 `main.ts` tient les propriétés des trois îlots (`found`, `deploying`, `teamsOpen`) et les
 rend toutes par `showIslands()`, après chaque message comme après un changement de langue.
 
-## `teams/` — les équipes préparées
+## `presets/` — les équipes préparées
 
 L'entrée **Équipes** du menu ouvre l'îlot : la liste (par défaut, caduque, dupliquer,
 supprimer après confirmation, choisir celle par défaut) et l'éditeur, qui reprend
@@ -966,13 +968,13 @@ transpose au camp tenu au déploiement (`presetTeam()`). Les appels passent par
 `profile/api.ts` (`/api/me/presets`), les mêmes que lit le déploiement. Le serveur valide
 chaque équipe ; un preset que de nouvelles règles rendent caduc reste listé, grisé.
 
-## `canvas/paint.ts` — le plateau en Canvas 2D
+## `render/canvas2d/paint.ts` — le plateau en Canvas 2D
 
-Les primitives communes au rejeu (`admin/replay-canvas.ts`) et au placement :
+Les primitives communes au rejeu (`replay/replay-canvas.ts`) et au placement :
 `fitPixelCanvas()` (dimensionne le tampon au grain du plateau, `pixelResolution()`, et pose
 `image-rendering: pixelated`), `terrainDrawables()` (faces pleines, trame du fog et
 atténuation en profondeur du jeu, avec un crochet pour peindre une zone ou un survol **dans
-l'ordre du peintre**), `drawPiece()` (la silhouette de `scene/pieces.ts` ; une pièce sous
+l'ordre du peintre**), `drawPiece()` (la silhouette de `render/pixi/pieces.ts` ; une pièce sous
 `PIECES.alphaVisible` y est un fantôme, contour seul), `strokeQuad()` (épaisseur en pixels
 du plateau), `fillQuad()`. La trame du fog est un `CanvasPattern` de deux pixels sur deux,
 mis à l'échelle d'un pixel du tampon et gardé par contexte.
@@ -1003,7 +1005,7 @@ une position hors LOS. Un test le verrouille.
 
 ---
 
-## `ui/palette.ts` et `ui/console.ts`
+## `theme/palette.ts` et `ui/console.ts`
 
 `applyPalette()` pose sur la racine du document toutes les propriétés `--occ-*` de la
 charte pour le thème en vigueur (`cssVariables(look().name)`), puis convertit ses tokens en propriétés
@@ -1079,7 +1081,7 @@ commande ferait pivoter le plateau.
 
 ---
 
-## `scene/board.ts` et `scene/scene.ts` — couches, tri et animation
+## `render/pixi/board.ts` et `render/pixi/scene.ts` — couches, tri et animation
 
 `mountBoard()` initialise PixiJS **sans anticrénelage**, à la résolution
 `pixelResolution(devicePixelRatio)` (`view/pixel.ts`) avec `autoDensity`, et pose
@@ -1093,12 +1095,12 @@ d'autre.
 **Cinq couches, toutes redessinées à chaque image** — presque tout y est animé, et un
 plateau de quelques dizaines de cases se redessine en une fraction de milliseconde :
 
-- **`sky`** (coordonnées d'écran) : la voûte du thème (`scene/sky.ts`) ;
-- **`ground`** (dans `board`) : le sceau (`scene/ground.ts`), pour les thèmes qui l'allument ;
+- **`sky`** (coordonnées d'écran) : la voûte du thème (`render/pixi/sky.ts`) ;
+- **`ground`** (dans `board`) : le sceau (`render/pixi/ground.ts`), pour les thèmes qui l'allument ;
 - **`world`** (dans `board`) : terrain et pièces, qui doivent partager un **unique ordre du
   peintre** pour qu'une pièce derrière un relief soit réellement masquée ;
 - **`overlay`** (dans `board`) : survol, sélection, retombées ;
-- **`ambient`** (coordonnées d'écran) : les particules en suspension (`scene/sky.ts`).
+- **`ambient`** (coordonnées d'écran) : les particules en suspension (`render/pixi/sky.ts`).
 
 La scène tient `px`, la taille d'un pixel du plateau en unités logiques (`1 / resolution`) :
 toutes les épaisseurs en sont des multiples. Elle tient aussi son horloge (`time`), qui
@@ -1161,25 +1163,25 @@ pièce présente l'emporte sur un souvenir situé sur la même case.
 
 ---
 
-## `scene/terrain.ts`, `scene/pieces.ts`, `scene/overlay.ts`, `scene/ground.ts`, `scene/sky.ts`
+## `render/pixi/terrain.ts`, `render/pixi/pieces.ts`, `render/pixi/overlay.ts`, `render/pixi/ground.ts`, `render/pixi/sky.ts`
 
 Ce sont des **fonctions**, pas des classes : elles écrivent dans un `Graphics` qu'on leur
 passe. Toutes lisent le thème en vigueur par `look()`.
 
 | Fonction | Emplacement | Rôle |
 |---|---|---|
-| `drawTile()` | `scene/terrain.ts` | Falaises **tournées vers la caméra** (face éclairée à gauche, d'ombre à droite), dessus plein, trame selon l'éclairage, arête qui luit au passage de la vague ; décalée et estompée pendant l'entrée |
-| `facesCamera()` (privée) | `scene/terrain.ts` | Une falaise dont l'arête haute est dans la moitié basse du dessus ; une face arrière, pleine, déborderait sous le relief |
-| `depthAlpha()` (privée) | `scene/terrain.ts` | Proximité normalisée → opacité des arêtes |
-| `drawPiece()` | `scene/pieces.ts` | Colonne de lumière (sélection), ombre, obélisque à deux faces, halo et œil (qui s'élève et s'illumine) ; fantôme : contour et trame |
-| `drawBeam()` (privée) | `scene/pieces.ts` | La colonne de lumière, en bandes d'un pixel qui s'effacent vers le haut |
-| `drawHover()` | `scene/overlay.ts` | Voile et réticule qui se referme sur la case survolée, falaises soulignées |
-| `drawSelection()` | `scene/overlay.ts` | Destinations en cascade (aplat qui respire, gemme qui jaillit), puis la case de la pièce |
-| `drawLanding()` | `scene/overlay.ts` | Deux ondes au sol et une couronne d'étincelles |
-| `drawSigil()` | `scene/ground.ts` | Trois cercles tracés progressivement (`drawn`), graduations et glyphes, projetés dans le plan du sol |
-| `boardRadius()` | `scene/ground.ts` | Rayon du plateau autour du pivot, en cases |
-| `drawSky()` | `scene/sky.ts` | Nuées tramées, constellations, étoiles qui scintillent, étoile filante — selon l'atmosphère du thème |
-| `drawMotes()` | `scene/sky.ts` | Poussière d'os qui monte, ou lucioles qui errent et luisent |
+| `drawTile()` | `render/pixi/terrain.ts` | Falaises **tournées vers la caméra** (face éclairée à gauche, d'ombre à droite), dessus plein, trame selon l'éclairage, arête qui luit au passage de la vague ; décalée et estompée pendant l'entrée |
+| `facesCamera()` (privée) | `render/pixi/terrain.ts` | Une falaise dont l'arête haute est dans la moitié basse du dessus ; une face arrière, pleine, déborderait sous le relief |
+| `depthAlpha()` (privée) | `render/pixi/terrain.ts` | Proximité normalisée → opacité des arêtes |
+| `drawPiece()` | `render/pixi/pieces.ts` | Colonne de lumière (sélection), ombre, obélisque à deux faces, halo et œil (qui s'élève et s'illumine) ; fantôme : contour et trame |
+| `drawBeam()` (privée) | `render/pixi/pieces.ts` | La colonne de lumière, en bandes d'un pixel qui s'effacent vers le haut |
+| `drawHover()` | `render/pixi/overlay.ts` | Voile et réticule qui se referme sur la case survolée, falaises soulignées |
+| `drawSelection()` | `render/pixi/overlay.ts` | Destinations en cascade (aplat qui respire, gemme qui jaillit), puis la case de la pièce |
+| `drawLanding()` | `render/pixi/overlay.ts` | Deux ondes au sol et une couronne d'étincelles |
+| `drawSigil()` | `render/pixi/ground.ts` | Trois cercles tracés progressivement (`drawn`), graduations et glyphes, projetés dans le plan du sol |
+| `boardRadius()` | `render/pixi/ground.ts` | Rayon du plateau autour du pivot, en cases |
+| `drawSky()` | `render/pixi/sky.ts` | Nuées tramées, constellations, étoiles qui scintillent, étoile filante — selon l'atmosphère du thème |
+| `drawMotes()` | `render/pixi/sky.ts` | Poussière d'os qui monte, ou lucioles qui errent et luisent |
 
 L'opacité des **arêtes** d'une case, dans `drawTile()` :
 
@@ -1194,7 +1196,7 @@ valeur** : le dessus s'éclaircit avec la hauteur (`topColor()`), et une case ho
 est assombrie et tramée — le relief reste lisible (implementation-notes 10).
 
 Aucun type de `packages/core/src/pieces/` ne porte de champ visuel : la correspondance
-`kind` → forme appartient à `scene/pieces.ts`. Le roster n'étant pas acté, **toutes les
+`kind` → forme appartient à `render/pixi/pieces.ts`. Le roster n'étant pas acté, **toutes les
 pièces partagent aujourd'hui la même silhouette**.
 
 ## `view/` — les modules purs du rendu animé
@@ -1250,7 +1252,7 @@ voûte (`stars`), les constellations, les étoiles filantes, les nuées.
 `STATE.legalMove` est **délibérément distinct des deux couleurs de camp** dans chaque thème.
 Les épaisseurs sont en **pixels du plateau** (`view/pixel.ts`), jamais en pixels CSS.
 
-## `ui/theme-choice.ts` — le choix du joueur
+## `theme/theme-choice.ts` — le choix du joueur
 
 | Fonction | Rôle |
 |---|---|
@@ -1312,7 +1314,7 @@ pour que leurs rejeux en Canvas 2D en suivent les couleurs.
 `eslint.config.js` interdit tout littéral de couleur dans `apps/web/src/**` et
 `packages/ui/src/**` (`.ts` et `.tsx`), avec une exception unique : `packages/ui/src/tokens.ts`.
 Deux sélecteurs `no-restricted-syntax` couvrent `0xffffff` (par le `raw`) et `"#ffffff"` (par
-la valeur). Le CSS échappe à ESLint : `ui/palette.ts` y soumet les écrans du jeu, et les tests
+la valeur). Le CSS échappe à ESLint : `theme/palette.ts` y soumet les écrans du jeu, et les tests
 de `@occulis/ui` gardent sa feuille.
 
 ---
@@ -1334,7 +1336,7 @@ de `@occulis/ui` gardent sa feuille.
 | `reloadFriends(options)` (interne) | Relit la liste d'amis (`friendsOverview`, relecture forcée par défaut) et redessine le panneau |
 | `friendsBeforeMenu(force)` (interne) | Attend la liste d'amis avant de montrer le menu, au plus `MENU_DEADLINE_MS` |
 | `leave()` (interne) | Referme file, canal et partie, retire un défi en attente, vide la scène et rend la main au menu |
-| `ensureBoard()` (interne) | Charge `scene/board.ts` une seule fois et monte le plateau ; appelé par `sit()` et `watch()`. Un échec (pas de WebGL) laisse le menu utilisable |
+| `ensureBoard()` (interne) | Charge `render/pixi/board.ts` une seule fois et monte le plateau ; appelé par `sit()` et `watch()`. Un échec (pas de WebGL) laisse le menu utilisable |
 | `prewarmBoard()` (interne) | Une fois connecté, charge le plateau au repos (`requestIdleCallback`) |
 | `onLeaveMatch` (option du shell) | `#leave-match` : assis à une partie pas finie, demande confirmation puis envoie `resign` avant `leave()` — aucun chemin ne ramène à un siège quitté ; spectateur ou partie finie, `leave()` seul |
 | `adopt()` (interne) | Une vue reçue fait autorité : efface sélection et animation |
@@ -1636,10 +1638,10 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/admin/model.test.ts` | Routes du back-office lues et réécrites à l'identique, pages du design system et repli sur ses fondations, fiche rangée sous sa liste, résultat nommé par le siège, coups, dates ISO et millisecondes, pagination, **durée de suspension illisible refusée plutôt que lue comme définitive**, actions rapides fermées sur soi-même, sur un administrateur et sur un compte suspendu, initiales, taux de victoire, résumé du navigateur d'une session |
 | `apps/web/src/admin/design/catalog.test.ts` | Copies d'iCloud écartées, catégorie lue dans l'en-tête, exemples découpés par export, commentaire et props d'un composant (interface, type en ligne, **`forwardRef`**), constantes non composants ignorées, animations CSS avec leur commentaire mais sans titre de section ni règle qui les éteint, notes d'une table groupées sous leur commentaire, section du design doc isolée, Markdown découpé en titres, paragraphes, listes et code |
 | `apps/web/src/admin/design/tweaks.test.ts` | Couleurs énumérées dans l'ordre de la palette, remplacement sans toucher l'original, aller-retour du format du sélecteur, **palette écrite comme une entrée de `THEMES`** |
-| `apps/web/src/admin/replay.test.ts` | Pièce déplacée retrouvée entre deux images et elle seule, coup écrit comme l'historique de la maquette, libellé d'image avec camp et joueur, navigation bornée, **plateau centré et contenu dans son cadre aux quatre quarts de tour** |
+| `apps/web/src/replay/replay.test.ts` | Pièce déplacée retrouvée entre deux images et elle seule, coup écrit comme l'historique de la maquette, libellé d'image avec camp et joueur, navigation bornée, **plateau centré et contenu dans son cadre aux quatre quarts de tour** |
 | `apps/web/src/net/auth.test.ts` | Traduction sur le code et non sur la phrase, compte suspendu, **refus indiscernables laissés indiscernables**, limitation de débit annoncée sur le statut et distinguée du délai de pseudo, retours de Google et des liens expirés, mot de passe ayant fuité |
 | `apps/web/src/account/model.test.ts` | Parcours ↔ URL dans les deux sens, connexion par défaut, jeton lu, **jeton et erreurs retirés de l'URL**, adresse confirmée, compte supprimé, lien expiré du bon type, refus de liaison Google expliqué, **refus rattaché au bon champ, jamais pour des identifiants faux**, indication de longueur, **anciens noms de paramètres encore reconnus** |
-| `apps/web/src/team/model.test.ts` | Emplacements de la composition, pose dans la zone seulement, **reprise puis échange de deux pièces**, type changé dans son rôle seulement, brouillon rempli depuis une équipe et rendu à l'identique, **verdict de la règle de `core`**, remplissage, retrait |
+| `apps/web/src/team-builder/model.test.ts` | Emplacements de la composition, pose dans la zone seulement, **reprise puis échange de deux pièces**, type changé dans son rôle seulement, brouillon rempli depuis une équipe et rendu à l'identique, **verdict de la règle de `core`**, remplissage, retrait |
 | `apps/web/src/prepare/model.test.ts` | Décompte sur l'horloge du client, **envoi automatique d'un seul brouillon valide juste avant l'échéance**, preset par défaut transposé au camp tenu, repli sur l'équipe de la carte |
 | `apps/web/src/profile/model.test.ts` | Routes du profil dans les deux sens (amis, fiche, replay d'un ami, messages compris), onglet de chaque vue, **identifiant d'ami suspect ramené à la liste**, ancre de sécurité, **identifiant de partie suspect refusé**, messages d'arrivée, délai de pseudo, **dernière méthode de connexion non retirable**, résultat de son point de vue, **ligne de vue de son seul camp prêtée au plateau**, ancienneté d'une session |
 

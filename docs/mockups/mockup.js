@@ -6,7 +6,7 @@
  * le navigateur.
  *
  * Ce fichier reproduit la projection de `apps/web/src/iso.ts` et les tokens de
- * `apps/web/src/theme.ts` sans en dépendre. Il ne participe pas au build.
+ * `apps/web/src/theme/theme.ts` sans en dépendre. Il ne participe pas au build.
  */
 
 (function (global) {

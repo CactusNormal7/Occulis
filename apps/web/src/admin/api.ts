@@ -4,7 +4,7 @@ import type {
   AdminPlayer,
   AdminStats,
 } from "@occulis/protocol";
-import { messages } from "../i18n/current.js";
+import { messages } from "../locale/current.js";
 import { adminMessage, type MatchStatus } from "./model.js";
 import type { Outcome } from "../load/cache.js";
 

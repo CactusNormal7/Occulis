@@ -91,7 +91,7 @@ export default [
       "apps/web/src/ui/flow.ts",
       "apps/web/src/load/cache.ts",
       "apps/web/src/admin/model.ts",
-      "apps/web/src/admin/replay.ts",
+      "apps/web/src/replay/replay.ts",
       "apps/web/src/admin/design/catalog.ts",
       "apps/web/src/admin/design/tweaks.ts",
     ],

@@ -1,6 +1,6 @@
 import type { Action, PlayerId } from "@occulis/core";
 import type { AdminMatchSummary } from "@occulis/protocol";
-import { messages } from "../i18n/current.js";
+import { messages } from "../locale/current.js";
 
 /**
  * Ce que le back-office décide sans toucher ni au DOM ni au réseau : la route lue dans

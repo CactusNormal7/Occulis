@@ -17,7 +17,7 @@ passé en paramètre.
 
 **2. Immuabilité.** `Board`, `GameState`, `PlayerKnowledge` et `PlayerView` ne sont jamais
 mutés : `applyAction()` et `observe()` renvoient de nouvelles valeurs. Le client s'appuie
-directement sur cette propriété — `Scene.render()` (`apps/web/src/scene/scene.ts`) détecte les
+directement sur cette propriété — `Scene.render()` (`apps/web/src/render/pixi/scene.ts`) détecte les
 changements par **identité de référence**.
 
 Les erreurs sont retournées via `Result<T, E>` (`packages/core/src/result.ts`), **jamais
@@ -285,7 +285,7 @@ puisse se spécialiser sans que TypeScript ne fige la valeur de la classe de bas
 
 `Piece` ne porte pas sa hauteur : elle se dérive de `board.heightAt(piece.coord)`. Aucun
 type de `pieces/` n'a de champ visuel — toute correspondance type → forme appartient au
-rendu (`apps/web/src/scene/pieces.ts`). Conformément à `docs/design.md`, la différenciation
+rendu (`apps/web/src/render/pixi/pieces.ts`). Conformément à `docs/design.md`, la différenciation
 passe par la capacité et le mouvement, **jamais par des points de vie**.
 
 ---
@@ -617,7 +617,7 @@ n'apparaisse jamais deux fois.
 la carte, seules les *pièces* sont masquées hors LOS (`implementation-notes.md` point 10).
 Le rendu estompe le terrain non visible sans le cacher. Un consommateur de `PlayerView`
 doit donc recevoir le plateau séparément — c'est ce que fait `SceneInput`
-(`apps/web/src/scene/scene.ts`), qui porte `board` et `view` côte à côte.
+(`apps/web/src/render/pixi/scene.ts`), qui porte `board` et `view` côte à côte.
 
 Il n'existe par conséquent **aucune notion de « case mémorisée »** : seulement
 `visible` (éclairée) contre tout le reste (estompé). Le souvenir ne concerne que les

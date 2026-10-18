@@ -26,8 +26,8 @@ import * as api from "../profile/api.js";
 import { useLoad } from "../load/hooks.js";
 import { presets as presetsResource } from "../profile/resources.js";
 import { boardForScenario } from "../game/scenario.js";
-import { TeamBuilder } from "../team/TeamBuilder.js";
-import { type TeamDraft, emptyDraft, fromEntries, toEntries, verdict } from "../team/model.js";
+import { TeamBuilder } from "../team-builder/TeamBuilder.js";
+import { type TeamDraft, emptyDraft, fromEntries, toEntries, verdict } from "../team-builder/model.js";
 
 /**
  * Les équipes préparées, depuis le menu : la liste, et l'éditeur qui reprend le

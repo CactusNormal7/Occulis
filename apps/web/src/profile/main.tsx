@@ -4,7 +4,7 @@ import { App } from "./App.js";
 import { loadCache } from "../load/cache.js";
 import { parseProfileRoute } from "./model.js";
 import { resourcesOf } from "./resources.js";
-import { applyTheme, storedTheme } from "../ui/theme-choice.js";
+import { applyTheme, storedTheme } from "../theme/theme-choice.js";
 
 /**
  * La page de profil, servie sous `/profile/` — une page à part, en React sur les
@@ -13,7 +13,7 @@ import { applyTheme, storedTheme } from "../ui/theme-choice.js";
 // Tout ce que l'écran d'arrivée lira part avant même le premier rendu, en parallèle.
 loadCache.preload(resourcesOf(parseProfileRoute(location.hash)));
 
-// Le replay se dessine dans le design choisi depuis le jeu (`ui/theme-choice.ts`).
+// Le replay se dessine dans le design choisi depuis le jeu (`theme/theme-choice.ts`).
 applyTheme(storedTheme());
 
 const host = document.getElementById("profile");

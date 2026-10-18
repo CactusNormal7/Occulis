@@ -1,7 +1,7 @@
 import type { Graphics } from "pixi.js";
 import type { Board } from "@occulis/core";
-import { type IsoProjection, type ScreenPoint, project } from "../view/iso.js";
-import { look } from "../theme.js";
+import { type IsoProjection, type ScreenPoint, project } from "../../view/iso.js";
+import { look } from "../../theme/theme.js";
 
 /**
  * Le sceau gravé dans le vide sous le plateau (theme.ts, `sigil`), allumé par certains

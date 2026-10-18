@@ -1,7 +1,7 @@
 import type { Identity } from "../net/auth.js";
 import type { QueueSeeking, Stage } from "./flow.js";
 import { describeIdentity, describeWaiting } from "./messages.js";
-import { messages } from "../i18n/current.js";
+import { messages } from "../locale/current.js";
 import { sweepVeil } from "./veil.js";
 
 /**

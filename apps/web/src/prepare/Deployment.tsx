@@ -14,8 +14,8 @@ import {
   useMessages,
 } from "@occulis/ui";
 import type { DeploymentState } from "../net/session.js";
-import { TeamBuilder } from "../team/TeamBuilder.js";
-import { type TeamDraft, fromEntries, toEntries, verdict } from "../team/model.js";
+import { TeamBuilder } from "../team-builder/TeamBuilder.js";
+import { type TeamDraft, fromEntries, toEntries, verdict } from "../team-builder/model.js";
 import { useRemaining } from "./clock.js";
 import { DEPLOYMENT_TOTAL_MS } from "./constants.js";
 import { CardPlate } from "./Plates.js";

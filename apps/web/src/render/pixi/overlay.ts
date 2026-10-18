@@ -1,10 +1,10 @@
 import type { Graphics } from "pixi.js";
 import { type Board, type Coord, chebyshevDistance } from "@occulis/core";
-import { type IsoProjection, type Quad, cliffQuads, flattenQuad, project, tileQuad } from "../view/iso.js";
-import { type Landing, cascadeOf, landingAt, sparksOf } from "../view/effects.js";
-import { easeOutCubic, phase } from "../view/easing.js";
-import type { Selection } from "../game/selection.js";
-import { MOTION_FX, look } from "../theme.js";
+import { type IsoProjection, type Quad, cliffQuads, flattenQuad, project, tileQuad } from "../../view/iso.js";
+import { type Landing, cascadeOf, landingAt, sparksOf } from "../../view/effects.js";
+import { easeOutCubic, phase } from "../../view/easing.js";
+import type { Selection } from "../../game/selection.js";
+import { MOTION_FX, look } from "../../theme/theme.js";
 
 /**
  * Couche de surbrillance : survol, sélection et retombées. Dessinée par-dessus le monde

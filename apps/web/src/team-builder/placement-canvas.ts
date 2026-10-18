@@ -1,16 +1,16 @@
 import type { Board, Coord, PieceKind, PlayerId } from "@occulis/core";
 import { FONT, cssColor } from "@occulis/ui/tokens";
-import { type Drawable, drawPiece, fillQuad, fitPixelCanvas, strokeQuad, terrainDrawables } from "../canvas/paint.js";
-import { centerOffset, fitScale } from "../admin/replay.js";
-import { METRICS, look } from "../theme.js";
+import { type Drawable, drawPiece, fillQuad, fitPixelCanvas, strokeQuad, terrainDrawables } from "../render/canvas2d/paint.js";
+import { centerOffset, fitScale } from "../replay/replay.js";
+import { METRICS, look } from "../theme/theme.js";
 import { type Camera, createCamera, pivotOf, settle, toProjection, turn } from "../view/camera.js";
 import { compareDepth, depthOf, project, tileQuad } from "../view/iso.js";
 import { tileAt } from "../view/picking.js";
 
 /**
- * Le plateau du déploiement, en Canvas 2D comme le rejeu (`admin/replay-canvas.ts`) et
+ * Le plateau du déploiement, en Canvas 2D comme le rejeu (`replay/replay-canvas.ts`) et
  * avec la même géométrie que le jeu : la page du jeu n'a pas encore de partie à donner à
- * PixiJS, et le même plateau sert aussi à préparer une équipe hors partie (`teams/`).
+ * PixiJS, et le même plateau sert aussi à préparer une équipe hors partie (`presets/`).
  *
  * Ce qui y est **information de partie** prend une couleur, comme partout : la zone du
  * joueur dans la teinte de son camp, celle d'en face en pointillé dans la sienne, la pièce

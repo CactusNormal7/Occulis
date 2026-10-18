@@ -1,4 +1,4 @@
-import { messages } from "../i18n/current.js";
+import { messages } from "../locale/current.js";
 
 /**
  * Appels d'authentification. Le jeton de session n'apparaît jamais ici : il vit dans

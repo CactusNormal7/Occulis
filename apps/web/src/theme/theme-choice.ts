@@ -1,6 +1,6 @@
 import { DEFAULT_THEME, THEME_NAMES, type ThemeName, isThemeName } from "@occulis/ui/tokens";
 import { THEME_STORAGE_KEY } from "@occulis/ui/critical";
-import { setLook } from "../theme.js";
+import { setLook } from "./theme.js";
 
 /**
  * Le thème choisi par le joueur : relu du stockage au chargement de chaque page, posé sur

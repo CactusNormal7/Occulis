@@ -1,6 +1,6 @@
 import { Suspense, useState, type ReactNode } from "react";
 import { Button, EmptyState, LocaleSwitch, ProgressBar, ToastProvider, TopBar, UiRoot, useMessages } from "@occulis/ui";
-import { chooseLocale, initLocale } from "../i18n/browser.js";
+import { chooseLocale, initLocale } from "../locale/browser.js";
 import { stopImpersonating, type Identity } from "../net/auth.js";
 import { useHashRoute, useLoad, usePending, whenReady } from "../load/hooks.js";
 import { MatchDetail } from "./MatchDetail.js";

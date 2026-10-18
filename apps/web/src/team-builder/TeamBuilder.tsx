@@ -23,8 +23,8 @@ import { type TeamDraft, autoFill, clear, clickTile, fromEntries, placedCount, r
 /**
  * Le constructeur d'équipe : les emplacements de la composition à gauche, le plateau et
  * la zone à droite. Il sert au déploiement (`deployment/`) comme à la préparation hors
- * partie (`teams/`) — l'état vit chez l'appelant (`draft`, `onChange`), ce composant ne
- * fait que le montrer et le modifier par `team/model.ts`.
+ * partie (`presets/`) — l'état vit chez l'appelant (`draft`, `onChange`), ce composant ne
+ * fait que le montrer et le modifier par `team-builder/model.ts`.
  */
 export interface TeamBuilderProps {
   readonly ruleset: Ruleset;

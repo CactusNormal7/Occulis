@@ -12,7 +12,7 @@
  *   lueur signifie toujours quelque chose.
  *
  * Deux consommateurs, deux formats :
- * - `apps/web/src/theme.ts` (PixiJS) reprend les entiers 0xRRGGBB ;
+ * - `apps/web/src/theme/theme.ts` (PixiJS) reprend les entiers 0xRRGGBB ;
  * - les composants de ce paquet lisent les propriétés CSS `--occ-*` de
  *   `generated/tokens.css`, produit depuis ce fichier par `pnpm --filter @occulis/ui
  *   tokens` et verrouillé par un test : il ne se modifie jamais à la main.

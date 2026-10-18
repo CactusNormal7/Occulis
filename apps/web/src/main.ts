@@ -33,20 +33,20 @@ import { mountAccount } from "./account/mount.js";
 import { arrivalNotice, cleanedSearch, routeOf } from "./account/model.js";
 import { START, type QueueSeeking, type Stage, advance } from "./ui/flow.js";
 import { type Selection, resolveClick } from "./game/selection.js";
-import type { Board } from "./scene/board.js";
+import type { Board } from "./render/pixi/board.js";
 import { type GameConsole, attachConsole } from "./ui/console.js";
-import { applyPalette } from "./ui/palette.js";
-import { applyTheme, storedTheme } from "./ui/theme-choice.js";
+import { applyPalette } from "./theme/palette.js";
+import { applyTheme, storedTheme } from "./theme/theme-choice.js";
 import { attachSettings } from "./ui/settings.js";
 import { sweepVeil } from "./ui/veil.js";
 import { resendVerification, signOut, stopImpersonating, whoAmI, type Identity } from "./net/auth.js";
-import { chooseLocale, initLocale, translateDom } from "./i18n/browser.js";
-import { currentLocale, messages, onLocaleChange } from "./i18n/current.js";
+import { chooseLocale, initLocale, translateDom } from "./locale/browser.js";
+import { currentLocale, messages, onLocaleChange } from "./locale/current.js";
 import type { TeamPreset, TeamPresetList } from "@occulis/protocol";
 import { mountDeployment, mountMatchFound } from "./prepare/mount.js";
 import type { DeploymentProps } from "./prepare/Deployment.js";
 import type { MatchFoundProps } from "./prepare/MatchFound.js";
-import { mountTeams } from "./teams/mount.js";
+import { mountTeams } from "./presets/mount.js";
 import { currentMatch } from "./profile/api.js";
 import { loadCache } from "./load/cache.js";
 import { friendsOverview, presets as presetsResource } from "./profile/resources.js";
@@ -65,7 +65,7 @@ function main(): void {
   translateDom(document);
 
   const host = element<HTMLDivElement>("app");
-  /** Le plateau Pixi, chargé à part (`scene/board.ts`) ; absent tant qu'il n'est pas prêt. */
+  /** Le plateau Pixi, chargé à part (`render/pixi/board.ts`) ; absent tant qu'il n'est pas prêt. */
   let board: Board | undefined;
   let boardLoading: Promise<Board | undefined> | undefined;
 
@@ -632,7 +632,7 @@ function main(): void {
    * il ne coûte que la partie, qui ne s'affichera pas.
    */
   function ensureBoard(): Promise<Board | undefined> {
-    boardLoading ??= import("./scene/board.js")
+    boardLoading ??= import("./render/pixi/board.js")
       .then(({ mountBoard }) =>
         mountBoard(host, {
           onResize: () => {

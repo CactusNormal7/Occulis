@@ -1,4 +1,4 @@
-import { messages } from "../i18n/current.js";
+import { messages } from "../locale/current.js";
 import { ROUTE_PATHS, redirectMessage } from "../net/auth.js";
 
 /**

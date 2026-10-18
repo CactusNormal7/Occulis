@@ -63,7 +63,7 @@ et à la CI (`pnpm -r build`).
 `-ink`, `-a`, `-b`), identiques sous chaque thème, pour que le sélecteur montre chaque
 proposition dans ses propres couleurs.
 
-`apps/web/src/theme.ts` (PixiJS) importe `BACKGROUND`, `CAMP`, `INK`, `STATE` et `TERRAIN` depuis
+`apps/web/src/theme/theme.ts` (PixiJS) importe `BACKGROUND`, `CAMP`, `INK`, `STATE` et `TERRAIN` depuis
 `@occulis/ui/tokens` — un sous-chemin sans React, pour que le jeu n'embarque rien d'autre.
 Le serveur fait de même pour ses courriers (`apps/server/src/auth/mail.ts`).
 

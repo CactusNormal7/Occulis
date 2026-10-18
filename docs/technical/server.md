@@ -1031,7 +1031,7 @@ type QueueServerMessage =
 
 **Pourquoi `WireView` existe** : `PlayerView.visible` est un `ReadonlySet`, et
 `JSON.stringify` sérialise un `Set` en `{}`. `encodeView()` le convertit en tableau,
-`decodeView()` le reconstruit — `Scene` (`apps/web/src/scene/scene.ts`) attend bien un
+`decodeView()` le reconstruit — `Scene` (`apps/web/src/render/pixi/scene.ts`) attend bien un
 `Set`, et un client qui oublierait la conversion inverse afficherait un fog vide, donc
 tout le plateau.
 

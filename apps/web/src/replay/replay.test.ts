@@ -1,8 +1,8 @@
-import { setLocale } from "../i18n/current.js";
+import { setLocale } from "../locale/current.js";
 import { describe, expect, it } from "vitest";
 import { Board } from "@occulis/core";
 import type { AdminFrame, AdminMatchDetail } from "@occulis/protocol";
-import { METRICS } from "../theme.js";
+import { METRICS } from "../theme/theme.js";
 import { QUARTER_TURN, tileQuad } from "../view/iso.js";
 import { centerOffset, clampFrame, describeEntry, fitScale, frameLabel, movesBetween } from "./replay.js";
 

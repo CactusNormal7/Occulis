@@ -1,4 +1,4 @@
-import { setLocale } from "../i18n/current.js";
+import { setLocale } from "../locale/current.js";
 import { describe, expect, it } from "vitest";
 import {
   arrivalMessage,

@@ -1,7 +1,7 @@
 import { Application } from "pixi.js";
-import { type ControlsOptions, attachControls } from "../input/controls.js";
-import { look } from "../theme.js";
-import { pixelResolution } from "../view/pixel.js";
+import { type ControlsOptions, attachControls } from "../../input/controls.js";
+import { look } from "../../theme/theme.js";
+import { pixelResolution } from "../../view/pixel.js";
 import { Scene, type SceneInput } from "./scene.js";
 
 /**

@@ -4,7 +4,7 @@ import { clamp01, easeOutBack, easeOutCubic, phase } from "./easing.js";
 /**
  * Les effets du plateau qui ne dépendent que du temps : entrée du plateau, cascade des
  * destinations, retombée d'une pièce, matérialisation. Module pur : il dit **où en est**
- * chaque effet, la scène (`scene/`) le dessine.
+ * chaque effet, la scène (`render/pixi/`) le dessine.
  */
 
 /**

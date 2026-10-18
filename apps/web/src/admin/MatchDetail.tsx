@@ -5,8 +5,8 @@ import type { AdminMatchDetail } from "@occulis/protocol";
 import { useLoad, whenReady } from "../load/hooks.js";
 import * as R from "./resources.js";
 import { formatDate, routeHash } from "./model.js";
-import { ReplayBoard } from "./ReplayBoard.js";
-import { clampFrame, describeEntry, frameLabel, type Perspective } from "./replay.js";
+import { ReplayBoard } from "../replay/ReplayBoard.js";
+import { clampFrame, describeEntry, frameLabel, type Perspective } from "../replay/replay.js";
 import { ResultBadge } from "./shared.js";
 
 export function MatchDetail({ id }: { id: string }) {

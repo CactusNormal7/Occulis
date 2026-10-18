@@ -1,8 +1,8 @@
 import type { Board, Coord, PlayerId } from "@occulis/core";
 import type { AdminFrame, AdminMatchDetail } from "@occulis/protocol";
 import { QUARTER_TURN, type IsoProjection, tileQuad } from "../view/iso.js";
-import { messages } from "../i18n/current.js";
-import { describeAction, seatHandle } from "./model.js";
+import { messages } from "../locale/current.js";
+import { describeAction, seatHandle } from "../admin/model.js";
 
 /**
  * Ce que le rejeu du back-office décide sans dessiner : quels coups séparent deux
