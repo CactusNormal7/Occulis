@@ -66,6 +66,13 @@ est attendue, `switch` non exhaustif sur une union ; les règles des hooks React
 frontières de CLAUDE.md (`core` n'importe rien, le protocole que `core`, les modules purs du
 client ni Pixi ni React) ; et aucune couleur en dur hors de `tokens.ts`.
 
+**La couverture** se mesure dans `pnpm test` même (`vitest run --coverage`) pour
+`packages/core`, `packages/protocol` et les modules purs d'`apps/web` (liste dans son
+`vitest.config.ts`) : sous le seuil, le test échoue. Les seuils sont ceux mesurés à leur
+introduction, un plancher qui ne fait que monter. Le serveur n'en a pas : ses suites
+tournent dans workerd, où la couverture v8 ne s'applique pas, et ses Durable Objects sont
+éprouvés par les tests d'intégration.
+
 **Ce que `pnpm typecheck` lit.** Chaque paquet étend `tsconfig.base.json` (strict, et qui
 exclut les doublons iCloud `* 2.*`). Les fichiers lancés par Node — configurations de Vite,
 Vitest et tsup, scripts comme `apps/server/scripts/generate-schema.mts` — sont vérifiés par un

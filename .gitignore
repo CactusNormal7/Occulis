@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# Rapports de couverture de `vitest run --coverage`.
+coverage/
 .DS_Store
 *.log
 .vite/

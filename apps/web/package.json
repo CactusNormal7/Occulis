@@ -8,7 +8,7 @@
     "build": "vite build",
     "build:local": "vite build --mode mockups",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json",
-    "test": "vitest run"
+    "test": "vitest run --coverage"
   },
   "dependencies": {
     "@occulis/core": "workspace:*",

@@ -16,6 +16,7 @@ export default [
       "**/dist/**",
       "**/node_modules/**",
       "**/.wrangler/**",
+      "**/coverage/**",
       "ds-bundle/**",
       ".ds-sync/**",
       // Doublons de la synchronisation iCloud (voir .gitignore) : jamais des sources.
