@@ -100,6 +100,16 @@ describe("profil : équipes préparées", () => {
     expect(left.presets.map((preset) => [preset.id, preset.isDefault])).toEqual([[first.id, true]]);
   });
 
+  it("n'en marque qu'une par défaut, même créées en même temps", async () => {
+    const cookie = await signUp(unique("course"));
+    const created = await Promise.all(
+      ["un", "deux", "trois"].map((name) => request("POST", "/api/me/presets", cookie, { name, team: defaultTeam() })),
+    );
+    expect(created.map((response) => response.status)).toEqual([200, 200, 200]);
+    const list = (await (await request("GET", "/api/me/presets", cookie)).json()) as TeamPresetList;
+    expect(list.presets.filter((preset) => preset.isDefault)).toHaveLength(1);
+  });
+
   it("refuse une équipe invalide, un nom vide, et au-delà de la limite", async () => {
     const cookie = await signUp(unique("borne"));
     expect((await request("POST", "/api/me/presets", cookie, { name: "x", team: defaultTeam().slice(1) })).status).toBe(400);

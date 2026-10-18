@@ -267,3 +267,18 @@ describe("sans AUTH_SECRET", () => {
     expect((await call("/api/queue")).status).toBe(503);
   });
 });
+
+describe("comptes : un profil de jeu par compte", () => {
+  it("refuse qu'un second compte prenne le profil d'un autre", async () => {
+    const first = unique("ulysse");
+    const second = unique("vera");
+    await signUp(first);
+    await signUp(second);
+    const playerOf = async (name: string) =>
+      (await env.DB.prepare("SELECT player_id FROM users WHERE name = ?").bind(name).first<{ player_id: string }>())?.player_id;
+
+    await expect(
+      env.DB.prepare("UPDATE users SET player_id = ? WHERE name = ?").bind(await playerOf(first), second).run(),
+    ).rejects.toThrow(/UNIQUE/);
+  });
+});

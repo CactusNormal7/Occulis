@@ -613,7 +613,7 @@ Propositions **optionnelles** :
 | D3 | Figer la carte dans la partie à sa création — **fait** (`matches.map`, `welcome.board`, protocole 7) |
 | D4 | « Il y est déjà » — à clarifier : `~/Desktop` est bien synchronisé par iCloud |
 | D5 | CI en Node 24 |
-| D6, D7, D11 | Oui |
+| D6, D7, D11 | Oui — D7 fait (`parse.ts`), D11 fait (migration 0010) |
 | D8 | Configuration partagée : oui. Allègement de `@occulis/ui` : plus tard |
 | D9 | Oui, tout reformater avec Prettier (`pnpm format`, qui existe déjà) |
 | D10 | Tout `graphify-out/` hors de git — fait, voir O8 |

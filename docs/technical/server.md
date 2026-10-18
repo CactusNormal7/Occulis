@@ -835,7 +835,7 @@ ignore, sous `/api/me/`.
 | `/api/me/feats` | `GET` | `readMyFeats()` | `MeFeats` — le catalogue, chaque fait débloqué ou non, et ceux exhibés |
 | `/api/me/showcase` | `POST` | `setShowcase()` | `{ showcase }`, ou **400 `SHOWCASE_INVALID`** : fait inconnu, non débloqué, en double, ou plus de trois |
 | `/api/me/presets` | `GET` | `listPresets()` | `TeamPresetList` — vos équipes, la carte et le ruleset courants, la limite (10) |
-| `/api/me/presets` | `POST` | `createPreset()` | `TeamPreset` ; 400 `PRESET_NAME` / `PRESET_TEAM`, **409 `PRESET_LIMIT`** ; la première devient celle par défaut |
+| `/api/me/presets` | `POST` | `createPreset()` | `TeamPreset` ; 400 `PRESET_NAME` / `PRESET_TEAM`, **409 `PRESET_LIMIT`** ; la première devient celle par défaut — décidé dans l'`INSERT` même, sans quoi deux créations simultanées en marqueraient deux |
 | `/api/me/presets/:id` | `PUT` | `updatePreset()` | `TeamPreset` renommé et/ou d'équipe remplacée — rattaché alors à la carte et au ruleset courants ; 404 si elle n'est pas à vous |
 | `/api/me/presets/:id` | `DELETE` | `deletePreset()` | `{ deleted: 1 }` ; supprimer celle par défaut en désigne une autre (la plus récente) |
 | `/api/me/presets/:id/default` | `POST` | `setDefaultPreset()` | `{ isDefault: true }` — une seule par défaut |
@@ -1177,6 +1177,15 @@ avec elles que le log se rejoue) et `rating_change_a` / `rating_change_b`. `play
 les requêtes de détail la lisent (`MATCH_DETAIL_COLUMNS`) : quelques kilo-octets par
 partie, inutiles à une liste.
 
+### `migrations/0010_integrity.sql`
+
+Écrite à la main. Deux invariants que seul le code tenait passent au schéma :
+`users_by_player` devient **unique** sur `users(player_id)` (hors `NULL`) — un profil de jeu
+n'appartient qu'à un compte —, et `team_presets_one_default` interdit deux équipes par
+défaut pour un même joueur, après avoir gardé la plus récente des éventuels doublons. Un
+doublon de profil déjà présent fait échouer la migration, donc le déploiement qui la suit :
+il se résout à la main.
+
 ### `migrations/0008_social.sql`
 
 Écrite à la main. Tables `friendships` (paire ordonnée, `CHECK (player_low < player_high)`),
@@ -1238,13 +1247,13 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `rating.test.ts` | Node | Espérance à Elo égal, variations opposées, victoire du moins bien classé mieux payée |
 | `feats/feats.test.ts` | Node | Statistiques dans l'ordre des fins (plus longue série), aucun fait sans partie, déblocage par seuil dans l'ordre du catalogue, **exhibition limitée aux faits débloqués, sans doublon, trois au plus** |
 | `legacy-routes.test.ts` | Node | Anciennes adresses françaises → anglaises, jeton conservé, paramètres renommés, adresses actuelles intactes |
-| `me/preparation.integration.test.ts` | workerd | Elo du profil, **faits calculés depuis les parties et exhibition refusée hors déblocage**, presets créés, listés, renommés, changés de défaut et supprimés **pour le seul joueur de la session**, équipe invalide, nom vide et limite refusés |
+| `me/preparation.integration.test.ts` | workerd | Elo du profil, **une seule équipe par défaut même créées en même temps**, **faits calculés depuis les parties et exhibition refusée hors déblocage**, presets créés, listés, renommés, changés de défaut et supprimés **pour le seul joueur de la session**, équipe invalide, nom vide et limite refusés |
 | `proposals.test.ts` | Node | Quinze secondes, réglée à deux acceptations seulement, acceptation étrangère ignorée, **remise en tête de qui avait accepté**, échéance, recherche par joueur, `requeueFront()` |
 | `queue-do.integration.test.ts` | workerd | **Proposition avant toute partie, acceptations annoncées**, **refus : l'un remis en file, l'autre sorti**, **connexion fermée = refus**, **échéance par l'alarme**, deux joueurs appariés sur une même partie avec des sièges distincts, partie réellement joignable, **401 sans session et sur identité forgée dans l'URL**, salon privé apparié par son code (casse et espaces pardonnés, hôte en A), salon consommé une seule fois, refus d'un code inconnu et de son propre code |
 | `auth/password.test.ts` | workerd | **Plafond de 100 000 itérations par passe jamais dépassé**, coût effectif conforme à l'OWASP, aller-retour hachage/vérification, salage, paramétrage inscrit dans l'empreinte, lecture de la forme d'avant le chaînage, empreinte illisible rejetée sans lever ; **contrôle des fuites : seul le préfixe part**, leurres ignorés, **service en panne laissé passer** |
 | `auth/handle.test.ts` | workerd | Normalisation NFKC, longueur en code points, écritures non latines, **refus des invisibles et du bidi**, symboles, emoji et diacritiques empilés, **noms réservés sous toutes leurs formes**, pseudo dérivé (nettoyage, suffixes, repli), profil anonymisé imprenable |
 | `auth/mail.test.ts` | workerd | Lien présent en texte et en HTML, **échappé**, aucune couleur transparente ni propriété CSS, **valeur utilisateur échappée** |
-| `auth/auth.integration.test.ts` | workerd | Inscription et profil créés ensemble, session reconnue, jeton inventé refusé, attributs du cookie, **jeton lu en base insuffisant pour ouvrir une session**, mot de passe faux, **réponses indiscernables entre adresse inconnue et mot de passe faux**, adresse et pseudo uniques **sans compte orphelin**, mot de passe trop court, déconnexion, **limitation de débit**, **réinitialisation de bout en bout**, **file fermée sans adresse vérifiée** |
+| `auth/auth.integration.test.ts` | workerd | Inscription et profil créés ensemble, **un profil par compte (index unique)**, session reconnue, jeton inventé refusé, attributs du cookie, **jeton lu en base insuffisant pour ouvrir une session**, mot de passe faux, **réponses indiscernables entre adresse inconnue et mot de passe faux**, adresse et pseudo uniques **sans compte orphelin**, mot de passe trop court, déconnexion, **limitation de débit**, **réinitialisation de bout en bout**, **file fermée sans adresse vérifiée** |
 | `admin/paging.test.ts` | Node | Taille de page bornée, décalage négatif refusé, valeur illisible ignorée, statut inconnu écarté |
 | `me/me.integration.test.ts` | workerd | **401 sans session**, profil du seul compte de la session, pseudo changé dans les deux tables **puis délai imposé**, **collision insensible à la casse**, nom réservé, bidi, **`POST` d'une autre origine refusé**, pseudo normalisé et réservé à l'inscription, **sessions listées sans jeton**, **révocation refusée sur la session d'un autre compte**, fermeture des autres sessions, **changement de mot de passe qui ferme les autres sessions même sans le demander**, **replay refusé en cours (409) et à un tiers (404)**, **replay où une pièce adverse n'apparaît que sur une case vue**, résultat de chaque point de vue, **usurpation : profil lisible, sept routes de compte refusées**, **suppression par le lien puis profil anonymisé**, **limite des demandes de réinitialisation**, `/.well-known/change-password` |
 | `admin/admin.integration.test.ts` | workerd | **401 anonyme et 403 joueur ordinaire, sur nos routes comme sur celles du greffon**, `admin` dans `/api/auth/me`, **`POST` d'une autre origine refusé**, **usurpation signalée par `/api/auth/me`, back-office fermé pendant, session rendue à l'arrêt**, **usurpation d'un administrateur refusée**, liste des comptes avec rôle et `playerId`, **suspension qui ferme les sessions et la connexion**, puis levée, **renommage refusé par les routes de Better Auth**, parties filtrées par joueur et paginées, log rejoué avec son camp, une image par coup où chaque camp voit ses pièces, **bilan correct quel que soit le siège**, **renommage des deux tables d'un geste, intactes sur un pseudo pris** |

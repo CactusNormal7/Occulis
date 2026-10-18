@@ -56,13 +56,16 @@ export async function createPreset(db: D1Database, playerId: string, body: unkno
   if ((count?.n ?? 0) >= PRESET_LIMIT) return { ok: false, code: "PRESET_LIMIT" };
 
   const id = crypto.randomUUID();
-  const isDefault = (count?.n ?? 0) === 0 ? 1 : 0;
+  // Le défaut se décide dans l'INSERT même, et non sur le décompte lu plus haut : deux
+  // premières créations simultanées en auraient marqué deux, ce que l'index unique
+  // `team_presets_one_default` refuserait alors (migration 0010).
   await db
     .prepare(
       `INSERT INTO team_presets (id, player_id, name, scenario, ruleset_version, team, is_default, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6,
+               NOT EXISTS (SELECT 1 FROM team_presets WHERE player_id = ?2 AND is_default = 1), ?7, ?7)`,
     )
-    .bind(id, playerId, input.name, DEFAULT_SCENARIO, CURRENT_RULESET_VERSION, JSON.stringify(input.team), isDefault, now, now)
+    .bind(id, playerId, input.name, DEFAULT_SCENARIO, CURRENT_RULESET_VERSION, JSON.stringify(input.team), now)
     .run();
   return readPreset(db, playerId, id);
 }
