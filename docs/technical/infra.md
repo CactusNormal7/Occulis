@@ -55,9 +55,14 @@ Déclenché sur `push` de **toute** branche et sur toute `pull_request`.
 Node (version lue dans `.nvmrc`), pnpm, `pnpm install --frozen-lockfile`, puis dans l'ordre :
 `pnpm typecheck` → `pnpm lint` → `pnpm test` → `pnpm build`.
 
-`pnpm -r test` n'exécute que les paquets déclarant un script `test` : `packages/core`,
-`apps/web` et `tooling/infra` en déclarent un. Ajouter des tests à `apps/server` suffira
-donc à les voir passer ici, **sans toucher au workflow**.
+`pnpm -r test` n'exécute que les paquets déclarant un script `test` — aujourd'hui tous.
+Ajouter des tests à un paquet suffit donc à les voir passer ici, **sans toucher au workflow**.
+
+**Ce que `pnpm typecheck` lit.** Chaque paquet étend `tsconfig.base.json` (strict, et qui
+exclut les doublons iCloud `* 2.*`). Les fichiers lancés par Node — configurations de Vite,
+Vitest et tsup, scripts comme `apps/server/scripts/generate-schema.mts` — sont vérifiés par un
+second projet, `tsconfig.node.json` à la racine (types de Node), étendu par
+`apps/web`, `apps/server` et `packages/ui` : leur script `typecheck` enchaîne les deux.
 
 ### `target` — résoudre la branche
 

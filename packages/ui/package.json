@@ -22,7 +22,7 @@
     "build": "tsup",
     "tokens": "node --experimental-strip-types scripts/build-tokens.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json"
   },
   "peerDependencies": {
     "react": "^18.3.1",

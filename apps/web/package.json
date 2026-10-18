@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:local": "vite build --mode mockups",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json",
     "test": "vitest run"
   },
   "dependencies": {

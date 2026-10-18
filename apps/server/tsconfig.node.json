@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.node.json",
+  "compilerOptions": {
+    // `generate-schema.mts` charge la configuration de Better Auth, donc le code du
+    // Worker : ses types (D1, bindings) doivent être là, à côté de ceux de Node.
+    "types": ["node", "@cloudflare/workers-types"]
+  },
+  "include": ["vitest.config.ts", "scripts/*.mts", "src/env.d.ts"]
+}
