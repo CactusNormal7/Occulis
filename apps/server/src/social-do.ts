@@ -2,9 +2,9 @@ import { DurableObject } from "cloudflare:workers";
 import {
   PROTOCOL_VERSION,
   type Challenge,
-  type SocialClientMessage,
   type SocialServerMessage,
   type SocialSurface,
+  parseSocialClientMessage,
 } from "@occulis/protocol";
 import { startMatch } from "./match-setup.js";
 import { friendIds, isFriend } from "./social/queries.js";
@@ -62,8 +62,8 @@ export class SocialDO extends DurableObject<Env> {
 
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
     if (typeof raw !== "string") return;
-    const message = JSON.parse(raw) as SocialClientMessage;
-    if (message.kind !== "hello") return;
+    const message = parseSocialClientMessage(raw);
+    if (message === undefined) return;
     if (message.protocol !== PROTOCOL_VERSION) {
       this.send(ws, { kind: "protocol-mismatch", expected: PROTOCOL_VERSION });
       ws.close(4001, "protocol-mismatch");

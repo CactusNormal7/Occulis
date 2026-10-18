@@ -3,8 +3,9 @@
  *
  * Paquet partagé, et non module de `apps/server` : `apps/web` doit parler exactement
  * le même protocole, et deux définitions séparées auraient dérivé au premier ajout.
- * Il ne contient que des types et la conversion de sérialisation — aucune règle de
- * jeu (elle vit dans `@occulis/core`), aucun transport (il vit dans chaque app).
+ * Il ne contient que des types, la conversion de sérialisation et la lecture des
+ * messages entrants (`parse.ts`) — aucune règle de jeu (elle vit dans `@occulis/core`),
+ * aucun transport (il vit dans chaque app).
  */
 import type { Action, ActionError, Coord, PlayerId, PlayerView, TeamEntry, TeamError } from "@occulis/core";
 
@@ -199,6 +200,7 @@ export type QueueServerMessage =
     }
   | { readonly kind: "protocol-mismatch"; readonly expected: number };
 
+export * from "./parse.js";
 export type * from "./admin.js";
 export type * from "./me.js";
 export type * from "./social.js";

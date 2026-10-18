@@ -1213,7 +1213,7 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 | `seating.test.ts` | Node | Jeton → camp, refus d'un jeton inconnu ou vide, autorité de tour |
 | `pairing.test.ts` | Node | File d'attente, remplacement d'une attente en double, appariement du plus ancien |
 | `rooms.test.ts` | Node | Codes sans caractères confondables et déterministes, saisie normalisée, salon rendu à l'hôte qui revient, salon consommé une seule fois, code libre au tirage suivant |
-| `match-do.integration.test.ts` | workerd | 403 sans jeton, **aucune partie ni aucun profil créé par une requête anonyme**, **annonce du déploiement** (zones, équipe par défaut, cartes, temps restant), **coup refusé pendant le déploiement, équipe invalide ou illisible refusée**, **verrou annoncé aux deux camps et seconde équipe refusée**, **démarrage à deux équipes sans fuite de pièce adverse**, `setup` écrit en base, **échéance par l'alarme qui pose l'équipe par défaut**, refus hors tour, **abandon hors tour estampillé du siège**, **forfait d'un siège absent au-delà de `ABSENCE_MS`**, **retour à temps qui efface l'absence**, coup appliqué + écrit au log + diffusé, clôture en base sans Elo pour une partie privée, **Elo des deux joueurs à la fin d'une partie classée**, refus de protocole |
+| `match-do.integration.test.ts` | workerd | 403 sans jeton, **coup mal formé ignoré sans rien écrire au log**, **aucune partie ni aucun profil créé par une requête anonyme**, **annonce du déploiement** (zones, équipe par défaut, cartes, temps restant), **coup refusé pendant le déploiement, équipe invalide ou illisible refusée**, **verrou annoncé aux deux camps et seconde équipe refusée**, **démarrage à deux équipes sans fuite de pièce adverse**, `setup` écrit en base, **échéance par l'alarme qui pose l'équipe par défaut**, refus hors tour, **abandon hors tour estampillé du siège**, **forfait d'un siège absent au-delà de `ABSENCE_MS`**, **retour à temps qui efface l'absence**, coup appliqué + écrit au log + diffusé, clôture en base sans Elo pour une partie privée, **Elo des deux joueurs à la fin d'une partie classée**, refus de protocole |
 | `rating.test.ts` | Node | Espérance à Elo égal, variations opposées, victoire du moins bien classé mieux payée |
 | `feats/feats.test.ts` | Node | Statistiques dans l'ordre des fins (plus longue série), aucun fait sans partie, déblocage par seuil dans l'ordre du catalogue, **exhibition limitée aux faits débloqués, sans doublon, trois au plus** |
 | `legacy-routes.test.ts` | Node | Anciennes adresses françaises → anglaises, jeton conservé, paramètres renommés, adresses actuelles intactes |
@@ -1341,3 +1341,14 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
   `CLAUDE.md` laisse entendre. Sur le web, le client étant servi par le même Worker, une
   URL relative suffit. La contrainte « URL gravée dans le binaire » ne vaudra que pour la
   future distribution Electron, où le client n'est plus de même origine.
+
+## Lecture des messages entrants
+
+Aucun message WebSocket n'est casté : `MatchDO`, `QueueDO` et `SocialDO` passent par
+`parseClientMessage()`, `parseQueueClientMessage()` et `parseSocialClientMessage()`
+(`packages/protocol/src/parse.ts`). Chaque objet est reconstruit champ par champ — un coup
+garde `kind`, `pieceId` et des coordonnées entières, rien d'autre ; le `player` d'un abandon
+n'est jamais repris du client. Un message illisible (JSON invalide, genre inconnu, champ de
+mauvais type, intention de file absente) est ignoré ; une équipe illisible reste refusée par
+`malformed-team`. C'est ce qui garantit que le log D1 ne contient que des actions canoniques.
+

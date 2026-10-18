@@ -215,6 +215,28 @@ describe("MatchDO dans workerd", () => {
     b.socket.close();
   });
 
+  it("ignore un coup mal formé, sans rien écrire au log", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    await a.awaitKind("view");
+    await b.awaitKind("view");
+
+    // Des coordonnées en texte passeraient `coordKey()` et finiraient telles quelles en D1.
+    a.socket.send(JSON.stringify({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: "1", y: "5" } } }));
+    a.socket.send("pas du JSON");
+    a.drain();
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    expect((await a.awaitKind("view")).view.turn).toBe(1);
+
+    const logged = await env.DB.prepare("SELECT seq, action FROM match_actions WHERE match_id = ?")
+      .bind(match.matchId)
+      .all<{ seq: number; action: string }>();
+    expect(logged.results).toEqual([{ seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":1,"y":5}}' }]);
+
+    a.socket.close();
+    b.socket.close();
+  });
+
   it("applique un coup, l'écrit au log et le diffuse aux deux joueurs", async () => {
     const match = await createMatch();
     const { a, b } = await deployed(match);

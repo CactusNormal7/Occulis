@@ -12,7 +12,6 @@ import {
   advanceMemory,
   createGame,
   deployTeams,
-  parseTeam,
   replayMemory,
   scenarioFor,
   validateTeam,
@@ -20,12 +19,13 @@ import {
 } from "@occulis/core";
 import {
   PROTOCOL_VERSION,
-  type ClientMessage,
+  type ParsedClientMessage,
   type Locks,
   type PlayerCard,
   type ServerMessage,
   type WireView,
   encodeView,
+  parseClientMessage,
 } from "@occulis/protocol";
 import { ratingChanges } from "./rating.js";
 import { rulesetFor } from "./rulesets.js";
@@ -165,7 +165,8 @@ export class MatchDO extends DurableObject<Env> {
 
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
     if (typeof raw !== "string") return;
-    const message = JSON.parse(raw) as ClientMessage;
+    const message = parseClientMessage(raw);
+    if (message === undefined) return;
     const watched = this.watchedBy(ws);
     if (watched !== undefined) {
       await this.greetSpectator(ws, watched, message);
@@ -239,7 +240,7 @@ export class MatchDO extends DurableObject<Env> {
    * Un spectateur ne joue pas : tout ce qu'il envoie hors `hello` est refusé, et il ne
    * reçoit que la vue du camp qu'il suit.
    */
-  private async greetSpectator(ws: WebSocket, side: PlayerId, message: ClientMessage): Promise<void> {
+  private async greetSpectator(ws: WebSocket, side: PlayerId, message: ParsedClientMessage): Promise<void> {
     if (message.kind !== "hello") {
       this.send(ws, { kind: "rejected", error: { code: "unknown-seat" } });
       return;
@@ -354,12 +355,11 @@ export class MatchDO extends DurableObject<Env> {
     return tag === "A" || tag === "B" ? tag : undefined;
   }
 
-  private async deploy(team: unknown, player: PlayerId, from: WebSocket): Promise<void> {
+  private async deploy(entries: readonly TeamEntry[] | undefined, player: PlayerId, from: WebSocket): Promise<void> {
     if (!(await this.deploying())) return this.send(from, { kind: "rejected", error: { code: "wrong-phase" } });
     const teams = await this.teams();
     if (teams[player] !== undefined) return this.send(from, { kind: "rejected", error: { code: "already-locked" } });
 
-    const entries = parseTeam(team);
     if (entries === undefined) return this.send(from, { kind: "rejected", error: { code: "malformed-team" } });
 
     const config = await this.config();

@@ -1,9 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 import {
   PROTOCOL_VERSION,
-  type QueueClientMessage,
-  type QueueIntent,
   type QueueServerMessage,
+  parseQueueClientMessage,
 } from "@occulis/protocol";
 import { startMatch } from "./match-setup.js";
 import { type Waiting, dequeue, enqueue, requeueFront, takePairing } from "./pairing.js";
@@ -64,7 +63,8 @@ export class QueueDO extends DurableObject<Env> {
 
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
     if (typeof raw !== "string") return;
-    const message = JSON.parse(raw) as QueueClientMessage;
+    const message = parseQueueClientMessage(raw);
+    if (message === undefined) return;
     if (message.kind === "accept" || message.kind === "decline") {
       const entry = this.waitingOf(ws);
       if (entry === undefined) return;
@@ -87,11 +87,9 @@ export class QueueDO extends DurableObject<Env> {
     // la fois dans la file et dans un salon, sous peine d'être apparié deux fois.
     await this.forget(entry.connectionId);
 
-    // Un client d'une autre version n'arrive pas jusqu'ici : la négociation l'a déjà
-    // refusé. L'intention absente est donc une anomalie, traitée comme un appariement.
-    const intent = message.intent as QueueIntent | undefined;
-    if (intent?.kind === "host") return this.host(ws, entry);
-    if (intent?.kind === "join") return this.join(ws, entry, normalizeCode(intent.code));
+    const { intent } = message;
+    if (intent.kind === "host") return this.host(ws, entry);
+    if (intent.kind === "join") return this.join(ws, entry, normalizeCode(intent.code));
     return this.queueUp(ws, entry);
   }
 
