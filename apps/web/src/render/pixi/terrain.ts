@@ -48,7 +48,13 @@ function facesCamera(cliff: Quad, centreY: number): boolean {
   return (cliff[0].y + cliff[1].y) / 2 > centreY;
 }
 
-export function drawTile(g: Graphics, board: Board, tile: Tile, paint: TilePaint, proj: IsoProjection): void {
+export function drawTile(
+  g: Graphics,
+  board: Board,
+  tile: Tile,
+  paint: TilePaint,
+  proj: IsoProjection,
+): void {
   const geometry = look().geometry;
   const { light, crest, nearness, px, dither, drop, alpha: opacity } = paint;
   const edge =
@@ -70,6 +76,11 @@ export function drawTile(g: Graphics, board: Board, tile: Tile, paint: TilePaint
 
   const top = shifted(tileQuad(tile.coord, tile.height, proj), drop);
   g.poly(top).fill({ color: topColor(tile.height, light), alpha: opacity });
-  if (light < 1) g.poly(top).fill({ fill: dither, alpha: geometry.fogDitherAlpha * (1 - light) * opacity });
-  g.poly(top).stroke({ width: geometry.widthTop * px, color: geometry.stroke, alpha: Math.min(1, edge) });
+  if (light < 1)
+    g.poly(top).fill({ fill: dither, alpha: geometry.fogDitherAlpha * (1 - light) * opacity });
+  g.poly(top).stroke({
+    width: geometry.widthTop * px,
+    color: geometry.stroke,
+    alpha: Math.min(1, edge),
+  });
 }

@@ -13,7 +13,8 @@ export const profile: Messages["profile"] = {
   },
   arrival: {
     googleLinked: "Google est lié à votre compte.",
-    welcome: "Bienvenue sur Occulis. Votre pseudo vient de votre nom Google : vous pouvez le changer ci-dessous.",
+    welcome:
+      "Bienvenue sur Occulis. Votre pseudo vient de votre nom Google : vous pouvez le changer ci-dessous.",
   },
   verified: "adresse vérifiée",
   unverified: "adresse non vérifiée",
@@ -42,7 +43,8 @@ export const profile: Messages["profile"] = {
     hint: "2 à 24 caractères : lettres, chiffres, espaces, points, tirets.",
   },
   emailEditor: {
-    doneVerified: (email) => `Lien de confirmation envoyé à ${email}. Rien ne change avant votre accord.`,
+    doneVerified: (email) =>
+      `Lien de confirmation envoyé à ${email}. Rien ne change avant votre accord.`,
     doneUnverified: (email) => `Lien de vérification envoyé à ${email}.`,
     noteVerified: (email) =>
       `Un lien part d'abord vers ${email} pour confirmer, puis vers la nouvelle adresse pour la vérifier. Rien ne change avant les deux.`,
@@ -66,7 +68,8 @@ export const profile: Messages["profile"] = {
   },
   passwordSetup: {
     done: (email) => `Lien envoyé à ${email}. Il expire dans une heure.`,
-    note: (email) => `Un lien pour choisir votre mot de passe va partir vers ${email} : c'est la preuve que l'adresse est bien à vous.`,
+    note: (email) =>
+      `Un lien pour choisir votre mot de passe va partir vers ${email} : c'est la preuve que l'adresse est bien à vous.`,
   },
   google: {
     unlinked: "Google n'est plus lié à votre compte.",
@@ -113,7 +116,14 @@ export const profile: Messages["profile"] = {
   },
   matches: {
     title: (total) => `Mes parties (${total})`,
-    columns: { start: "début", opponent: "adversaire", side: "camp", result: "résultat", moves: "coups", elo: "Elo" },
+    columns: {
+      start: "début",
+      opponent: "adversaire",
+      side: "camp",
+      result: "résultat",
+      moves: "coups",
+      elo: "Elo",
+    },
     ratingChange: (change) => (change > 0 ? `+${change}` : `${change}`),
     unrated: "non classée",
     empty: "Aucune partie pour l'instant.",
@@ -136,9 +146,11 @@ export const profile: Messages["profile"] = {
   replay: {
     title: "Replay — votre point de vue",
     start: "position de départ",
-    move: (index, total, who, resigned) => `coup ${index} / ${total} — ${who}${resigned ? " — abandon" : ""}`,
+    move: (index, total, who, resigned) =>
+      `coup ${index} / ${total} — ${who}${resigned ? " — abandon" : ""}`,
     you: "vous",
-    unknownMap: (map) => `Carte « ${map} » inconnue de ce client : le plateau ne peut pas être redessiné.`,
+    unknownMap: (map) =>
+      `Carte « ${map} » inconnue de ce client : le plateau ne peut pas être redessiné.`,
   },
   since: {
     now: "à l'instant",

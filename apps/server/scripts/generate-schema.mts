@@ -23,7 +23,9 @@ const database = new DatabaseSync(":memory:");
 // Workers, qui déclarent chacun leur `URL` globale, et les fonctions de `node:fs`
 // n'acceptent que la première.
 const directory = join(dirname(fileURLToPath(import.meta.url)), "../migrations");
-for (const file of readdirSync(directory).filter((name) => name.endsWith(".sql")).sort()) {
+for (const file of readdirSync(directory)
+  .filter((name) => name.endsWith(".sql"))
+  .sort()) {
   database.exec(readFileSync(join(directory, file), "utf8"));
 }
 

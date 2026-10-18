@@ -16,6 +16,12 @@ export interface UiRootProps extends HTMLAttributes<HTMLDivElement> {
  * la typographie et du fond de la page hôte.
  */
 export function UiRoot({ fullPage = false, locale, className, ...rest }: UiRootProps) {
-  const root = <div className={cx("occ-root", fullPage && "occ-root--page", className)} lang={locale} {...rest} />;
+  const root = (
+    <div
+      className={cx("occ-root", fullPage && "occ-root--page", className)}
+      lang={locale}
+      {...rest}
+    />
+  );
   return locale === undefined ? root : <LocaleProvider locale={locale}>{root}</LocaleProvider>;
 }

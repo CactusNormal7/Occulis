@@ -11,7 +11,13 @@ describe("statistiques", () => {
       { player_a: "p", winner: "B" },
       { player_a: "q", winner: "B" },
     ];
-    expect(statsFrom(rows, "p", 1250)).toEqual({ played: 5, won: 4, lost: 1, bestStreak: 3, rating: 1250 });
+    expect(statsFrom(rows, "p", 1250)).toEqual({
+      played: 5,
+      won: 4,
+      lost: 1,
+      bestStreak: 3,
+      rating: 1250,
+    });
   });
 });
 
@@ -23,17 +29,22 @@ describe("faits d'armes", () => {
   });
 
   it("décerne les faits dont le seuil est atteint, dans l'ordre du catalogue", () => {
-    expect(unlockedFeats({ ...blank, played: 12, won: 3, bestStreak: 3 })).toEqual(["first-match", "first-win", "matches-10", "streak-3"]);
-    expect(unlockedFeats({ played: 99, won: 99, lost: 0, bestStreak: 99, rating: 2000 })).toEqual([...FEAT_IDS]);
+    expect(unlockedFeats({ ...blank, played: 12, won: 3, bestStreak: 3 })).toEqual([
+      "first-match",
+      "first-win",
+      "matches-10",
+      "streak-3",
+    ]);
+    expect(unlockedFeats({ played: 99, won: 99, lost: 0, bestStreak: 99, rating: 2000 })).toEqual([
+      ...FEAT_IDS,
+    ]);
   });
 
   it("n'exhibe que des faits débloqués, sans doublon, trois au plus", () => {
     const unlocked = unlockedFeats({ played: 99, won: 99, lost: 0, bestStreak: 99, rating: 2000 });
-    expect(shownFeats(["streak-5", "streak-5", "nope", "first-win", "wins-10", "matches-50"], unlocked)).toEqual([
-      "streak-5",
-      "first-win",
-      "wins-10",
-    ]);
+    expect(
+      shownFeats(["streak-5", "streak-5", "nope", "first-win", "wins-10", "matches-50"], unlocked),
+    ).toEqual(["streak-5", "first-win", "wins-10"]);
     expect(shownFeats(["rating-1400"], ["first-match"])).toEqual([]);
     expect(shownFeats("junk", unlocked)).toEqual([]);
   });

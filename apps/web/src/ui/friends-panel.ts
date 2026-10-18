@@ -70,12 +70,15 @@ export function attachFriendsPanel(options: FriendsPanelOptions): FriendsPanel {
     const presence = document.createElement("small");
     presence.className = "friend__presence";
     presence.textContent =
-      friend.unread > 0 ? `${presenceLabel(friend)} · ${messages().social.unread(friend.unread)}` : presenceLabel(friend);
+      friend.unread > 0
+        ? `${presenceLabel(friend)} · ${messages().social.unread(friend.unread)}`
+        : presenceLabel(friend);
 
     row.append(name, presence);
     const m = messages().social.menu;
     if (outgoing) row.append(button(m.challengeSent, () => undefined, true));
-    else if (friend.online) row.append(button(m.challenge, () => options.onChallenge(friend), !playable));
+    else if (friend.online)
+      row.append(button(m.challenge, () => options.onChallenge(friend), !playable));
 
     for (const match of friend.matches) {
       if (!match.watchable) continue;
@@ -90,9 +93,13 @@ export function attachFriendsPanel(options: FriendsPanelOptions): FriendsPanel {
       e.root.hidden = overview === undefined;
       if (overview === undefined) return;
 
-      e.challenges.replaceChildren(...state.incoming.map((challenge) => challengeRow(challenge, playable)));
+      e.challenges.replaceChildren(
+        ...state.incoming.map((challenge) => challengeRow(challenge, playable)),
+      );
       e.list.replaceChildren(
-        ...overview.friends.map((friend) => friendRow(friend, state.outgoing.includes(friend.id), playable)),
+        ...overview.friends.map((friend) =>
+          friendRow(friend, state.outgoing.includes(friend.id), playable),
+        ),
       );
       e.empty.hidden = overview.friends.length > 0;
     },

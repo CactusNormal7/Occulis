@@ -31,7 +31,12 @@ export type TeamError =
   /** Le ruleset ne connaît pas de composition : ses parties ne se déploient pas. */
   | { readonly code: "no-team-rules" }
   | { readonly code: "unknown-kind"; readonly kind: string }
-  | { readonly code: "wrong-count"; readonly role: PieceRole; readonly expected: number; readonly actual: number }
+  | {
+      readonly code: "wrong-count";
+      readonly role: PieceRole;
+      readonly expected: number;
+      readonly actual: number;
+    }
   | { readonly code: "outside-zone"; readonly coord: Coord }
   | { readonly code: "same-tile"; readonly coord: Coord };
 
@@ -42,7 +47,11 @@ export type TeamError =
  * Le serveur l'applique à ce qu'envoie le client, le client à son brouillon : la règle
  * n'existe qu'ici.
  */
-export function validateTeam(ruleset: Ruleset, zone: readonly Coord[], entries: readonly TeamEntry[]): Result<readonly TeamEntry[], TeamError> {
+export function validateTeam(
+  ruleset: Ruleset,
+  zone: readonly Coord[],
+  entries: readonly TeamEntry[],
+): Result<readonly TeamEntry[], TeamError> {
   const rules = ruleset.team;
   if (rules === null) return err({ code: "no-team-rules" });
 
@@ -82,7 +91,12 @@ export function deployTeams(
     const valid = validateTeam(ruleset, deployment.zones[player], teams[player]);
     if (!valid.ok) return err({ player, error: valid.error });
     valid.value.forEach((entry, index) => {
-      pieces.push({ id: `${player.toLowerCase()}-${index}`, kind: entry.kind, owner: player, coord: entry.coord });
+      pieces.push({
+        id: `${player.toLowerCase()}-${index}`,
+        kind: entry.kind,
+        owner: player,
+        coord: entry.coord,
+      });
     });
   }
   return ok(pieces);
@@ -95,7 +109,11 @@ export function deployTeams(
  * et sert quel que soit le camp tenu. Une case hors de `from` est laissée telle quelle —
  * `validateTeam()` la refusera.
  */
-export function translateTeam(entries: readonly TeamEntry[], from: readonly Coord[], to: readonly Coord[]): TeamEntry[] {
+export function translateTeam(
+  entries: readonly TeamEntry[],
+  from: readonly Coord[],
+  to: readonly Coord[],
+): TeamEntry[] {
   const index = new Map(from.map((coord, position) => [coordKey(coord), position]));
   return entries.map((entry) => {
     const position = index.get(coordKey(entry.coord));
@@ -105,8 +123,14 @@ export function translateTeam(entries: readonly TeamEntry[], from: readonly Coor
 }
 
 /** Une équipe écrite pour le camp A, posée pour `side`. */
-export function teamForSide(deployment: Deployment, entries: readonly TeamEntry[], side: PlayerId): TeamEntry[] {
-  return side === "A" ? [...entries] : translateTeam(entries, deployment.zones.A, deployment.zones.B);
+export function teamForSide(
+  deployment: Deployment,
+  entries: readonly TeamEntry[],
+  side: PlayerId,
+): TeamEntry[] {
+  return side === "A"
+    ? [...entries]
+    : translateTeam(entries, deployment.zones.A, deployment.zones.B);
 }
 
 /**

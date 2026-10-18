@@ -2,7 +2,12 @@ import type { Messages } from "../messages.js";
 
 export const admin: Messages["admin"] = {
   section: "back-office",
-  tabs: { overview: "Vue d'ensemble", accounts: "Comptes", matches: "Parties", design: "Design system" },
+  tabs: {
+    overview: "Vue d'ensemble",
+    accounts: "Comptes",
+    matches: "Parties",
+    design: "Design system",
+  },
   backToGame: "retour au jeu →",
   gate: {
     signIn: "Connectez-vous depuis le jeu, puis revenez ici.",
@@ -30,7 +35,13 @@ export const admin: Messages["admin"] = {
       VALIDATION_ERROR: "Valeur invalide.",
     },
   },
-  badges: { admin: "admin", verified: "vérifiée", unverified: "non vérifiée", banned: "suspendu", noAccount: "sans compte" },
+  badges: {
+    admin: "admin",
+    verified: "vérifiée",
+    unverified: "non vérifiée",
+    banned: "suspendu",
+    noAccount: "sans compte",
+  },
   result: {
     ongoing: "en cours",
     victory: (handle) => `victoire de ${handle} (abandon)`,
@@ -162,20 +173,23 @@ export const admin: Messages["admin"] = {
     banTitle: (name) => `Suspendre ${name}`,
     ban: "Suspendre",
     banned: (name) => `${name} est suspendu.`,
-    banNote: "Ses sessions sont fermées tout de suite, et il ne peut plus en ouvrir jusqu'à la levée.",
+    banNote:
+      "Ses sessions sont fermées tout de suite, et il ne peut plus en ouvrir jusqu'à la levée.",
     reason: "motif (facultatif)",
     days: "durée en jours",
     daysPlaceholder: "vide : définitive",
     daysHint: "Un nombre de jours, ou rien pour une suspension définitive.",
     deleteTitle: (name) => `Supprimer ${name}`,
     deleteConfirm: "Supprimer définitivement",
-    deleteNote: "Le compte et ses sessions disparaissent. Le profil de jeu et l'historique des parties restent.",
+    deleteNote:
+      "Le compte et ses sessions disparaissent. Le profil de jeu et l'historique des parties restent.",
     retype: (name) => `retapez « ${name} » pour confirmer`,
     impersonateTitle: (name) => `Se connecter en tant que ${name}`,
     impersonateConfirm: "Incarner ce joueur",
     impersonateNote:
       "Vous passez dans le jeu sous son identité, pour une heure au plus. Votre session d'administrateur est mise de côté : un bandeau permet d'y revenir à tout moment.",
-    impersonateWarning: "Tout ce que vous ferez — file d'attente, coups, abandon — sera fait en son nom.",
+    impersonateWarning:
+      "Tout ce que vous ferez — file d'attente, coups, abandon — sera fait en son nom.",
     createTitle: "Nouveau compte",
     create: "Créer",
     created: (name) => `Compte ${name} créé.`,
@@ -184,16 +198,25 @@ export const admin: Messages["admin"] = {
     password: "mot de passe",
     role: "rôle",
     roles: { user: "joueur", admin: "administrateur" },
-    createNote: "L'adresse n'est pas vérifiée à la création : marquez-la depuis la fiche si besoin.",
+    createNote:
+      "L'adresse n'est pas vérifiée à la création : marquez-la depuis la fiche si besoin.",
   },
   match: {
     back: "Parties",
-    facts: { start: "début", end: "fin", rules: "règles", map: "carte", moves: "coups", id: "identifiant" },
+    facts: {
+      start: "début",
+      end: "fin",
+      rules: "règles",
+      map: "carte",
+      moves: "coups",
+      id: "identifiant",
+    },
     replayError: (error) => `Rejeu interrompu — ${error}`,
     start: "départ",
     moves: (count) => `Coups (${count})`,
     hint: "survoler pour voir · cliquer pour épingler",
-    unknownMap: (map) => `Carte « ${map} » inconnue de ce client : le plateau ne peut pas être redessiné.`,
+    unknownMap: (map) =>
+      `Carte « ${map} » inconnue de ce client : le plateau ne peut pas être redessiné.`,
     first: "Position de départ",
     previous: "Coup précédent (←)",
     pause: "Mettre en pause",
@@ -212,14 +235,25 @@ export const admin: Messages["admin"] = {
     title: "Design system",
     intro:
       "Lu directement dans les sources de la charte — celles dont Claude Design est synchronisé — pour toujours montrer ce qui est construit. Les retouches ne valent que pour cette page et se perdent au rechargement.",
-    pages: { foundations: "Fondations", components: "Composants", motion: "Animations", conventions: "Conventions" },
+    pages: {
+      foundations: "Fondations",
+      components: "Composants",
+      motion: "Animations",
+      conventions: "Conventions",
+    },
     tweaks: {
       title: "Retouches",
       theme: "Thème",
       themes: { obsidian: "Obsidienne", reliquary: "Reliquaire", astral: "Astral" },
       speed: "Vitesse des animations",
-      speedOption: (factor) => (factor === 1 ? "temps réel" : `×${String(factor).replace(".", ",")}`),
-      edited: (count) => (count === 0 ? "aucune couleur retouchée" : count === 1 ? "1 couleur retouchée" : `${count} couleurs retouchées`),
+      speedOption: (factor) =>
+        factor === 1 ? "temps réel" : `×${String(factor).replace(".", ",")}`,
+      edited: (count) =>
+        count === 0
+          ? "aucune couleur retouchée"
+          : count === 1
+            ? "1 couleur retouchée"
+            : `${count} couleurs retouchées`,
       reset: "Réinitialiser",
       copy: "Copier pour tokens.ts",
       copied: "Palette copiée, prête à coller dans tokens.ts.",
@@ -246,7 +280,8 @@ export const admin: Messages["admin"] = {
       noDoc: "Aucun commentaire au-dessus de ce composant dans sa source.",
       noStory: "Aucun aperçu écrit pour ce composant.",
       open: "Ouvrir",
-      overlayHint: "Une fenêtre modale prend toute la page : Échap ou un clic sur le voile referme l'aperçu.",
+      overlayHint:
+        "Une fenêtre modale prend toute la page : Échap ou un clic sur le voile referme l'aperçu.",
       source: (file) => `source : ${file}`,
     },
     motion: {
@@ -276,16 +311,32 @@ export const admin: Messages["admin"] = {
         replay: "Rejouer",
         sample: "Une vue entre d'un seul tenant.",
       },
-      animated: { countdown: "Compte à rebours", reveal: "Annonce de l'adversaire", restart: "Relancer" },
+      animated: {
+        countdown: "Compte à rebours",
+        reveal: "Annonce de l'adversaire",
+        restart: "Relancer",
+      },
       board: {
         title: "Plateau",
         text: "Le plateau s'anime en Pixi, image par image, par des fonctions pures du temps. Voici ses durées (apps/web/src/theme.ts, MOTION_FX) et ses courbes.",
         curves: "Courbes d'accélération",
         replay: "Rejouer",
       },
-      game: { title: "Page du jeu", text: "Les animations CSS des écrans encore en DOM natif (apps/web/src/ui/ui.css)." },
-      charter: { title: "Charte", text: "Les animations CSS des composants (packages/ui/src/styles.css)." },
-      columns: { key: "clé", value: "valeur", note: "note", selector: "sélecteur", animation: "animation" },
+      game: {
+        title: "Page du jeu",
+        text: "Les animations CSS des écrans encore en DOM natif (apps/web/src/ui/ui.css).",
+      },
+      charter: {
+        title: "Charte",
+        text: "Les animations CSS des composants (packages/ui/src/styles.css).",
+      },
+      columns: {
+        key: "clé",
+        value: "valeur",
+        note: "note",
+        selector: "sélecteur",
+        animation: "animation",
+      },
     },
     conventions: {
       agent: "Conventions données à l'agent de design",

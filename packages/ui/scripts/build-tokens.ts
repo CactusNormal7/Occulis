@@ -8,5 +8,8 @@ import { writeFileSync } from "node:fs";
 import { proposedStylesheet, tokensStylesheet } from "../src/tokens.ts";
 
 writeFileSync(new URL("../src/generated/tokens.css", import.meta.url), tokensStylesheet());
-writeFileSync(new URL("../src/generated/proposed-tokens.css", import.meta.url), proposedStylesheet());
+writeFileSync(
+  new URL("../src/generated/proposed-tokens.css", import.meta.url),
+  proposedStylesheet(),
+);
 console.log("src/generated/tokens.css et src/generated/proposed-tokens.css écrits");

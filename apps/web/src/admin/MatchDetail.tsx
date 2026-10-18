@@ -1,6 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { Board } from "@occulis/core";
-import { BackLink, Banner, Card, EmptyState, FactStrip, IconButton, MoveList, QuickBar, Segmented, Toolbar, ToolbarText, Versus, useMessages, type MoveEntry } from "@occulis/ui";
+import {
+  BackLink,
+  Banner,
+  Card,
+  EmptyState,
+  FactStrip,
+  IconButton,
+  MoveList,
+  QuickBar,
+  Segmented,
+  Toolbar,
+  ToolbarText,
+  Versus,
+  useMessages,
+  type MoveEntry,
+} from "@occulis/ui";
 import type { AdminMatchDetail } from "@occulis/protocol";
 import { useLoad, whenReady } from "../load/hooks.js";
 import * as R from "./resources.js";
@@ -143,7 +158,13 @@ function Replay({ match: m }: { match: AdminMatchDetail }) {
               <IconButton icon="rotateRight" label={t.rotate} onClick={() => setTurns(turns + 1)} />
             </QuickBar>
           </Toolbar>
-          <ReplayBoard board={board} frames={m.frames} index={shown} perspective={perspective} turns={turns} />
+          <ReplayBoard
+            board={board}
+            frames={m.frames}
+            index={shown}
+            perspective={perspective}
+            turns={turns}
+          />
         </div>
       )}
     </Card>

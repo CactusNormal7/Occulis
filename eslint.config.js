@@ -45,7 +45,11 @@ export default [
     // attend une fonction synchrone échoue sans bruit — sur un socket ou un gestionnaire
     // de Durable Object, c'est un message perdu. Limité aux sources, que les tsconfig des
     // paquets couvrent ; les fichiers de configuration relèvent de tsconfig.node.json.
-    files: ["apps/*/src/**/*.{ts,tsx}", "packages/*/src/**/*.{ts,tsx}", "tooling/*/src/**/*.{ts,tsx}"],
+    files: [
+      "apps/*/src/**/*.{ts,tsx}",
+      "packages/*/src/**/*.{ts,tsx}",
+      "tooling/*/src/**/*.{ts,tsx}",
+    ],
     languageOptions: {
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
     },
@@ -56,7 +60,12 @@ export default [
     },
   },
   {
-    files: ["**/*.tsx", "apps/web/src/**/*.ts", "packages/ui/src/**/*.ts", "tooling/infra/src/**/*.ts"],
+    files: [
+      "**/*.tsx",
+      "apps/web/src/**/*.ts",
+      "packages/ui/src/**/*.ts",
+      "tooling/infra/src/**/*.ts",
+    ],
     plugins: { "react-hooks": reactHooks },
     rules: {
       "react-hooks/rules-of-hooks": "error",
@@ -70,7 +79,10 @@ export default [
     files: ["packages/core/src/**/*.ts"],
     ignores: ["**/*.test.ts"],
     rules: {
-      "no-restricted-imports": ["error", { patterns: [{ regex: "^[^.]", message: "@occulis/core ne dépend de rien (CLAUDE.md)." }] }],
+      "no-restricted-imports": [
+        "error",
+        { patterns: [{ regex: "^[^.]", message: "@occulis/core ne dépend de rien (CLAUDE.md)." }] },
+      ],
     },
   },
   {
@@ -79,7 +91,14 @@ export default [
     rules: {
       "no-restricted-imports": [
         "error",
-        { patterns: [{ regex: "^(?!\\.|@occulis/core$)", message: "Le protocole ne connaît que @occulis/core." }] },
+        {
+          patterns: [
+            {
+              regex: "^(?!\\.|@occulis/core$)",
+              message: "Le protocole ne connaît que @occulis/core.",
+            },
+          ],
+        },
       ],
     },
   },
@@ -98,7 +117,12 @@ export default [
     rules: {
       "no-restricted-imports": [
         "error",
-        { paths: ["pixi.js", "react", "react-dom"].map((name) => ({ name, message: "Module pur : ni rendu ni React (CLAUDE.md)." })) },
+        {
+          paths: ["pixi.js", "react", "react-dom"].map((name) => ({
+            name,
+            message: "Module pur : ni rendu ni React (CLAUDE.md).",
+          })),
+        },
       ],
     },
   },

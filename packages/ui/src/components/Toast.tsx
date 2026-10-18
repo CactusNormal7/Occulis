@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { CLOSE_MS, revealWindow } from "../window-reveal.js";
 
 export interface ToastMessage {
@@ -25,8 +33,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ToastMessage[]>([]);
 
   const dismiss = useCallback((id: number) => {
-    setMessages((current) => current.map((message) => (message.id === id ? { ...message, leaving: true } : message)));
-    setTimeout(() => setMessages((current) => current.filter((message) => message.id !== id)), LEAVE_MS);
+    setMessages((current) =>
+      current.map((message) => (message.id === id ? { ...message, leaving: true } : message)),
+    );
+    setTimeout(
+      () => setMessages((current) => current.filter((message) => message.id !== id)),
+      LEAVE_MS,
+    );
   }, []);
 
   const notify = useCallback<Notify>(
@@ -68,7 +81,13 @@ export function ToastStack({ messages, onDismiss }: ToastStackProps) {
   );
 }
 
-function Toast({ message, onDismiss }: { message: ToastMessage; onDismiss?: ((id: number) => void) | undefined }) {
+function Toast({
+  message,
+  onDismiss,
+}: {
+  message: ToastMessage;
+  onDismiss?: ((id: number) => void) | undefined;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const leaving = message.leaving === true;
 

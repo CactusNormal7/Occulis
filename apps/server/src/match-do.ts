@@ -181,7 +181,10 @@ export class MatchDO extends DurableObject<Env> {
     // commence à compter maintenant : sinon le joueur revenu l'attendrait à jamais.
     await this.ctx.storage.delete(absenceKey(player));
     const other: PlayerId = player === "A" ? "B" : "A";
-    if (!this.connected(other) && (await this.ctx.storage.get<number>(absenceKey(other))) === undefined) {
+    if (
+      !this.connected(other) &&
+      (await this.ctx.storage.get<number>(absenceKey(other))) === undefined
+    ) {
       await this.ctx.storage.put(absenceKey(other), Date.now());
     }
     await this.scheduleAlarm();
@@ -266,7 +269,11 @@ export class MatchDO extends DurableObject<Env> {
    * Un spectateur ne joue pas : tout ce qu'il envoie hors `hello` est refusé, et il ne
    * reçoit que la vue du camp qu'il suit.
    */
-  private async greetSpectator(ws: WebSocket, side: PlayerId, message: ParsedClientMessage): Promise<void> {
+  private async greetSpectator(
+    ws: WebSocket,
+    side: PlayerId,
+    message: ParsedClientMessage,
+  ): Promise<void> {
     if (message.kind !== "hello") {
       this.send(ws, { kind: "rejected", error: { code: "unknown-seat" } });
       return;
@@ -293,8 +300,11 @@ export class MatchDO extends DurableObject<Env> {
 
   /** Dit au joueur combien d'amis le regardent ; `leaving` est le socket qui se ferme. */
   private announceSpectators(side: PlayerId, leaving?: WebSocket): void {
-    const count = this.ctx.getWebSockets(watchTag(side)).filter((socket) => socket !== leaving).length;
-    for (const socket of this.ctx.getWebSockets(side)) this.send(socket, { kind: "spectators", count });
+    const count = this.ctx
+      .getWebSockets(watchTag(side))
+      .filter((socket) => socket !== leaving).length;
+    for (const socket of this.ctx.getWebSockets(side))
+      this.send(socket, { kind: "spectators", count });
   }
 
   /**
@@ -331,7 +341,10 @@ export class MatchDO extends DurableObject<Env> {
       const deployment = (await this.scenario()).deployment;
       if (deployment !== undefined && now >= deadline + DEPLOYMENT_GRACE_MS) {
         const teams = await this.teams();
-        await this.start({ A: teams.A ?? deployment.defaultTeams.A, B: teams.B ?? deployment.defaultTeams.B });
+        await this.start({
+          A: teams.A ?? deployment.defaultTeams.A,
+          B: teams.B ?? deployment.defaultTeams.B,
+        });
       }
     }
     if (!(await this.deploying())) await this.forfeitAbsent(now);
@@ -382,7 +395,8 @@ export class MatchDO extends DurableObject<Env> {
         if (at !== undefined) next = Math.min(next ?? Infinity, at + ABSENCE_MS);
       }
     }
-    if (await this.ctx.storage.get<boolean>(UNRECORDED)) next = Math.min(next ?? Infinity, Date.now() + OUTCOME_RETRY_MS);
+    if (await this.ctx.storage.get<boolean>(UNRECORDED))
+      next = Math.min(next ?? Infinity, Date.now() + OUTCOME_RETRY_MS);
     if (next === undefined) await this.ctx.storage.deleteAlarm();
     else await this.ctx.storage.setAlarm(next);
   }
@@ -396,17 +410,29 @@ export class MatchDO extends DurableObject<Env> {
     return tag === "A" || tag === "B" ? tag : undefined;
   }
 
-  private async deploy(entries: readonly TeamEntry[] | undefined, player: PlayerId, from: WebSocket): Promise<void> {
-    if (!(await this.deploying())) return this.send(from, { kind: "rejected", error: { code: "wrong-phase" } });
+  private async deploy(
+    entries: readonly TeamEntry[] | undefined,
+    player: PlayerId,
+    from: WebSocket,
+  ): Promise<void> {
+    if (!(await this.deploying()))
+      return this.send(from, { kind: "rejected", error: { code: "wrong-phase" } });
     const teams = await this.teams();
-    if (teams[player] !== undefined) return this.send(from, { kind: "rejected", error: { code: "already-locked" } });
+    if (teams[player] !== undefined)
+      return this.send(from, { kind: "rejected", error: { code: "already-locked" } });
 
-    if (entries === undefined) return this.send(from, { kind: "rejected", error: { code: "malformed-team" } });
+    if (entries === undefined)
+      return this.send(from, { kind: "rejected", error: { code: "malformed-team" } });
 
     const config = await this.config();
     const deployment = (await this.scenario()).deployment;
-    if (deployment === undefined) return this.send(from, { kind: "rejected", error: { code: "wrong-phase" } });
-    const valid = validateTeam(rulesetFor(config.rulesetVersion), deployment.zones[player], entries);
+    if (deployment === undefined)
+      return this.send(from, { kind: "rejected", error: { code: "wrong-phase" } });
+    const valid = validateTeam(
+      rulesetFor(config.rulesetVersion),
+      deployment.zones[player],
+      entries,
+    );
     if (!valid.ok) return this.send(from, { kind: "rejected", error: valid.error });
 
     const locked: LockedTeams = { ...teams, [player]: entries };
@@ -437,7 +463,10 @@ export class MatchDO extends DurableObject<Env> {
     const deployment = (await this.scenario()).deployment;
     if (deployment === undefined) return;
     const pieces = deployTeams(rulesetFor(config.rulesetVersion), deployment, teams);
-    if (!pieces.ok) throw new Error(`MatchDO: invalid team for ${pieces.error.player}: ${pieces.error.error.code}`);
+    if (!pieces.ok)
+      throw new Error(
+        `MatchDO: invalid team for ${pieces.error.player}: ${pieces.error.error.code}`,
+      );
 
     await this.env.DB.prepare("UPDATE matches SET setup = ? WHERE id = ?")
       .bind(JSON.stringify(pieces.value), config.matchId)
@@ -472,7 +501,8 @@ export class MatchDO extends DurableObject<Env> {
     // message, qui pourrait sinon faire abandonner l'adversaire. Un joueur qui quitte la
     // partie abandonne ainsi même pendant le tour d'en face, et elle se clôt.
     const stamped: Action = action.kind === "resign" ? { kind: "resign", player } : action;
-    const denial = stamped.kind === "resign" ? undefined : denyOutOfTurn(live.state.activePlayer, player);
+    const denial =
+      stamped.kind === "resign" ? undefined : denyOutOfTurn(live.state.activePlayer, player);
     if (denial !== undefined) {
       this.send(from, { kind: "rejected", error: denial });
       return;
@@ -550,7 +580,13 @@ export class MatchDO extends DurableObject<Env> {
           `UPDATE matches SET finished_at = ?, outcome = ?, rating_change_a = ?, rating_change_b = ?
            WHERE id = ? AND finished_at IS NULL`,
         )
-        .bind(Date.now(), JSON.stringify(state.outcome), changes?.a ?? null, changes?.b ?? null, config.matchId);
+        .bind(
+          Date.now(),
+          JSON.stringify(state.outcome),
+          changes?.a ?? null,
+          changes?.b ?? null,
+          config.matchId,
+        );
 
     if (config.rated !== true || config.players === undefined || state.outcome === null) {
       await finish(null).run();
@@ -567,7 +603,11 @@ export class MatchDO extends DurableObject<Env> {
       `UPDATE players SET elo = elo + ? WHERE id = ?
          AND EXISTS (SELECT 1 FROM matches WHERE id = ? AND finished_at IS NULL)`,
     );
-    await db.batch([bump.bind(changes.a, A, config.matchId), bump.bind(changes.b, B, config.matchId), finish(changes)]);
+    await db.batch([
+      bump.bind(changes.a, A, config.matchId),
+      bump.bind(changes.b, B, config.matchId),
+      finish(changes),
+    ]);
   }
 
   private async sendDeployment(ws: WebSocket, player: PlayerId): Promise<void> {
@@ -644,7 +684,9 @@ export class MatchDO extends DurableObject<Env> {
     const config = await this.config();
     const scenario = await this.scenario();
     const setup = await this.ctx.storage.get<Piece[]>("setup");
-    const start = createGame(scenario.board(), rulesetFor(config.rulesetVersion), [...(setup ?? scenario.pieces)]);
+    const start = createGame(scenario.board(), rulesetFor(config.rulesetVersion), [
+      ...(setup ?? scenario.pieces),
+    ]);
 
     const logged = await this.env.DB.prepare(
       "SELECT action FROM match_actions WHERE match_id = ? ORDER BY seq ASC",
@@ -674,5 +716,13 @@ function locksFor(teams: LockedTeams, player: PlayerId): Locks {
 
 /** La carte d'un camp ; une partie d'avant les cartes n'a que les jetons, d'où ce repli. */
 function cardOf(config: MatchConfig, player: PlayerId): PlayerCard {
-  return config.cards?.[player] ?? { handle: config.players?.[player] ?? player, elo: 1200, played: 0, won: 0, feats: [] };
+  return (
+    config.cards?.[player] ?? {
+      handle: config.players?.[player] ?? player,
+      elo: 1200,
+      played: 0,
+      won: 0,
+      feats: [],
+    }
+  );
 }

@@ -1,11 +1,5 @@
 import type { QueueIntent } from "@occulis/protocol";
-import {
-  type Action,
-  type ActionError,
-  type Coord,
-  type Result,
-  rulesetFor,
-} from "@occulis/core";
+import { type Action, type ActionError, type Coord, type Result, rulesetFor } from "@occulis/core";
 import { type MoveAnimation, advance as step, startMove } from "./view/animation.js";
 import type { Movement } from "./game/movement-diff.js";
 import {
@@ -20,10 +14,21 @@ import {
 } from "./view/camera.js";
 import { tileAt } from "./view/picking.js";
 import { OnlineMatch } from "./game/online-match.js";
-import { type MatchChannel, type MatchHandlers, connectToMatch, watchMatch } from "./net/match-channel.js";
+import {
+  type MatchChannel,
+  type MatchHandlers,
+  connectToMatch,
+  watchMatch,
+} from "./net/match-channel.js";
 import { type SocialChannel, openSocial } from "./net/social-channel.js";
 import * as friends from "./social/api.js";
-import { EMPTY_SOCIAL, type SocialState, challenged, receive, withOverview } from "./social/model.js";
+import {
+  EMPTY_SOCIAL,
+  type SocialState,
+  challenged,
+  receive,
+  withOverview,
+} from "./social/model.js";
 import { attachFriendsPanel } from "./ui/friends-panel.js";
 import type { SocialServerMessage } from "@occulis/protocol";
 import { type QueueChannel, joinQueue } from "./net/queue-channel.js";
@@ -39,7 +44,13 @@ import { applyPalette } from "./theme/palette.js";
 import { applyTheme, storedTheme } from "./theme/theme-choice.js";
 import { attachSettings } from "./ui/settings.js";
 import { sweepVeil } from "./ui/veil.js";
-import { resendVerification, signOut, stopImpersonating, whoAmI, type Identity } from "./net/auth.js";
+import {
+  resendVerification,
+  signOut,
+  stopImpersonating,
+  whoAmI,
+  type Identity,
+} from "./net/auth.js";
 import { chooseLocale, initLocale, translateDom } from "./locale/browser.js";
 import { currentLocale, messages, onLocaleChange } from "./locale/current.js";
 import type { TeamPreset, TeamPresetList } from "@occulis/protocol";
@@ -124,7 +135,9 @@ function main(): void {
     shell.render(stage);
     // Hors des écrans pleine page seulement, partie comprise : c'est sur le plateau qu'un
     // design se juge.
-    settings.setAvailable(stage.kind !== "deploying" && stage.kind !== "teams" && stage.kind !== "boot");
+    settings.setAvailable(
+      stage.kind !== "deploying" && stage.kind !== "teams" && stage.kind !== "boot",
+    );
   };
 
   /**
@@ -190,7 +203,8 @@ function main(): void {
   const handlersFor = (spectating: boolean): MatchHandlers => {
     // Les équipes préparées déjà lues (l'écran des équipes les a peut-être chargées) servent
     // aussitôt ; elles se relisent pendant l'annonce, et l'écran reprend la réponse.
-    let presets: readonly TeamPreset[] = loadCache.value<TeamPresetList>(presetsResource.key)?.presets ?? [];
+    let presets: readonly TeamPreset[] =
+      loadCache.value<TeamPresetList>(presetsResource.key)?.presets ?? [];
     let lastRemaining: number | undefined;
     if (!spectating) {
       void loadCache.request(presetsResource, { force: true }).then((outcome) => {
@@ -223,7 +237,9 @@ function main(): void {
         // Le compte à rebours repart de chaque annonce (une reconnexion en renvoie une),
         // pas d'un simple changement de verrou, qui ne dit rien du temps.
         const receivedAt =
-          deploying === undefined || deployment.remainingMs !== lastRemaining ? performance.now() : deploying.receivedAt;
+          deploying === undefined || deployment.remainingMs !== lastRemaining
+            ? performance.now()
+            : deploying.receivedAt;
         lastRemaining = deployment.remainingMs;
         deploying = {
           player,
@@ -316,7 +332,10 @@ function main(): void {
    * sans elle — mieux vaut un panneau en retard qu'un menu qui n'arrive pas.
    */
   const friendsBeforeMenu = (force: boolean): Promise<void> =>
-    Promise.race([reloadFriends({ force }), new Promise<void>((resolve) => setTimeout(resolve, MENU_DEADLINE_MS))]);
+    Promise.race([
+      reloadFriends({ force }),
+      new Promise<void>((resolve) => setTimeout(resolve, MENU_DEADLINE_MS)),
+    ]);
 
   const onSocial = (message: SocialServerMessage): void => {
     if (message.kind === "matched") {
@@ -475,7 +494,8 @@ function main(): void {
   const initialRoute = routeOf(location.pathname, location.search);
   let arrival = arrivalNotice(location.pathname, location.search);
   const cleaned = cleanedSearch(location.search);
-  if (cleaned !== location.search) history.replaceState(null, "", `${location.pathname}${cleaned}${location.hash}`);
+  if (cleaned !== location.search)
+    history.replaceState(null, "", `${location.pathname}${cleaned}${location.hash}`);
 
   const friendsPanel = attachFriendsPanel({
     elements: {

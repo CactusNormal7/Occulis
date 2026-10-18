@@ -47,7 +47,10 @@ export interface Frame {
  */
 export function originIn(width: number, height: number, pointer: Point | null): Point {
   if (pointer === null) return { x: width / 2, y: height / 2 };
-  return { x: Math.min(width, Math.max(0, pointer.x)), y: Math.min(height, Math.max(0, pointer.y)) };
+  return {
+    x: Math.min(width, Math.max(0, pointer.x)),
+    y: Math.min(height, Math.max(0, pointer.y)),
+  };
 }
 
 /** Le rectangle dévoilé à l'étendue `spread`, arrondi au pixel. */
@@ -160,7 +163,11 @@ export function revealWindow(
       fit();
       const { width, height } = size;
       const spread = spreadAt(elapsed, mode);
-      const origin = originIn(width, height, anchor === null ? null : { x: anchor.x - box.left, y: anchor.y - box.top });
+      const origin = originIn(
+        width,
+        height,
+        anchor === null ? null : { x: anchor.x - box.left, y: anchor.y - box.top },
+      );
       const shown = frameAt(spread, origin, width, height);
       target.style.clipPath = `inset(${shown.top}px ${width - shown.right}px ${height - shown.bottom}px ${shown.left}px)`;
 

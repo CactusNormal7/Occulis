@@ -87,7 +87,9 @@ describe("les pièces se barrent la route", () => {
       placePiece("b-cmd", "commander", "B", 5, 2),
     ]);
     expect(destinationsOf(state, "a-cmd").has("0,0")).toBe(false);
-    const after = unwrap(applyAction(state, { kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } }));
+    const after = unwrap(
+      applyAction(state, { kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } }),
+    );
     const bTurn = { ...after, activePlayer: "A" as const };
     expect(destinationsOf(bTurn, "a-cmd").has("0,0")).toBe(true);
   });
@@ -96,7 +98,9 @@ describe("les pièces se barrent la route", () => {
 describe("applyAction — déplacement", () => {
   it("déplace la pièce et rend la main à l'adversaire", () => {
     const before = duel();
-    const after = unwrap(applyAction(before, { kind: "move", pieceId: "a-scout", to: { x: 2, y: 0 } }));
+    const after = unwrap(
+      applyAction(before, { kind: "move", pieceId: "a-scout", to: { x: 2, y: 0 } }),
+    );
 
     expect(after.pieces.get("a-scout")?.coord).toEqual({ x: 2, y: 0 });
     expect(after.activePlayer).toBe("B");
@@ -142,7 +146,10 @@ describe("fin de partie", () => {
 
   it("refuse toute action après la fin de partie", () => {
     const finished = unwrap(applyAction(duel(), { kind: "resign" }));
-    expect(applyAction(finished, { kind: "resign" })).toEqual({ ok: false, error: { code: "game-over" } });
+    expect(applyAction(finished, { kind: "resign" })).toEqual({
+      ok: false,
+      error: { code: "game-over" },
+    });
   });
 
   it("ne termine rien tout seul : ni mat, ni pat, ni nulle", () => {
@@ -152,7 +159,9 @@ describe("fin de partie", () => {
       placePiece("a-cmd", "commander", "A", 0, 0),
       placePiece("b-cmd", "commander", "B", 4, 0),
     ]);
-    const after = unwrap(applyAction(state, { kind: "move", pieceId: "a-cmd", to: { x: 1, y: 0 } }));
+    const after = unwrap(
+      applyAction(state, { kind: "move", pieceId: "a-cmd", to: { x: 1, y: 0 } }),
+    );
 
     expect(after.activePlayer).toBe("B");
     expect(after.outcome).toBeNull();

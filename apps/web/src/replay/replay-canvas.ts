@@ -1,7 +1,14 @@
 import type { Board, Coord } from "@occulis/core";
 import type { AdminFrame } from "@occulis/protocol";
 import { METRICS, look } from "../theme/theme.js";
-import { type Drawable, drawPiece, fillQuad, fitPixelCanvas, strokeQuad, terrainDrawables } from "../render/canvas2d/paint.js";
+import {
+  type Drawable,
+  drawPiece,
+  fillQuad,
+  fitPixelCanvas,
+  strokeQuad,
+  terrainDrawables,
+} from "../render/canvas2d/paint.js";
 import { cssColor } from "@occulis/ui/tokens";
 import { type Camera, createCamera, pivotOf, settle, toProjection, turn } from "../view/camera.js";
 import { type MoveAnimation, advance, positionOf, startMove } from "../view/animation.js";
@@ -31,7 +38,11 @@ export interface ReplayCanvas {
 
 const PADDING = 28;
 
-export function mountReplay(canvas: HTMLCanvasElement, board: Board, frames: readonly AdminFrame[]): ReplayCanvas {
+export function mountReplay(
+  canvas: HTMLCanvasElement,
+  board: Board,
+  frames: readonly AdminFrame[],
+): ReplayCanvas {
   const context = canvas.getContext("2d");
   const base = {
     tileWidth: METRICS.tileWidth,
@@ -56,7 +67,11 @@ export function mountReplay(canvas: HTMLCanvasElement, board: Board, frames: rea
     const size = fitPixelCanvas(canvas);
     if (size === undefined) return;
     const { width, height } = size;
-    camera = { ...camera, viewport: { x: width, y: height }, scale: fitScale(board, base, width, height, PADDING) };
+    camera = {
+      ...camera,
+      viewport: { x: width, y: height },
+      scale: fitScale(board, base, width, height, PADDING),
+    };
     draw();
   };
 
@@ -66,7 +81,8 @@ export function mountReplay(canvas: HTMLCanvasElement, board: Board, frames: rea
     camera = settle(camera, delta);
     moving = moving.flatMap((animation) => advance(animation, delta) ?? []);
     draw();
-    if (moving.length > 0 || camera.rotation !== camera.targetRotation) frameRequest = requestAnimationFrame(tick);
+    if (moving.length > 0 || camera.rotation !== camera.targetRotation)
+      frameRequest = requestAnimationFrame(tick);
     else {
       frameRequest = undefined;
       last = 0;
@@ -89,25 +105,38 @@ export function mountReplay(canvas: HTMLCanvasElement, board: Board, frames: rea
     const offset = centerOffset(board, proj);
     context.translate(camera.viewport.x / 2 + offset.x, camera.viewport.y / 2 + offset.y);
 
-    const sight: ReadonlySet<string> | undefined = perspective === "all" ? undefined : new Set(frame.visible[perspective]);
+    const sight: ReadonlySet<string> | undefined =
+      perspective === "all" ? undefined : new Set(frame.visible[perspective]);
     const previous = frames[index - 1];
     const moves = previous === undefined ? [] : movesBetween(previous, frame);
     const gliding = new Map(moving.map((animation) => [animation.pieceId, positionOf(animation)]));
 
     // Un seul ordre du peintre pour le relief et les pièces, comme `scene.ts` : une pièce
     // derrière un mur doit être recouverte par lui.
-    const drawables: Drawable[] = terrainDrawables(context, board, proj, (key) => sight === undefined || sight.has(key));
+    const drawables: Drawable[] = terrainDrawables(
+      context,
+      board,
+      proj,
+      (key) => sight === undefined || sight.has(key),
+    );
 
     for (const piece of frame.pieces) {
       const glide = gliding.get(piece.id);
       const coord: Coord = glide?.coord ?? { x: piece.x, y: piece.y };
       const height = glide?.height ?? board.heightAt(coord) ?? 0;
-      const seen = sight === undefined || piece.owner === perspective || sight.has(`${piece.x},${piece.y}`);
+      const seen =
+        sight === undefined || piece.owner === perspective || sight.has(`${piece.x},${piece.y}`);
       drawables.push({
         // Au-dessus de sa propre case dans l'ordre du peintre, jamais derrière elle.
         depth: { ...depthOf(coord, height, proj), height: height + 0.5 },
         paint: () =>
-          drawPiece(context, project(coord, height, proj), piece.owner, seen ? look().pieces.alphaVisible : look().pieces.alphaGhost, proj),
+          drawPiece(
+            context,
+            project(coord, height, proj),
+            piece.owner,
+            seen ? look().pieces.alphaVisible : look().pieces.alphaGhost,
+            proj,
+          ),
       });
     }
 
@@ -122,7 +151,12 @@ export function mountReplay(canvas: HTMLCanvasElement, board: Board, frames: rea
       const fromHeight = board.heightAt(move.from) ?? 0;
       const toHeight = board.heightAt(move.to) ?? 0;
       context.setLineDash([2 / ratio, 2 / ratio]);
-      strokeQuad(context, tileQuad(move.from, fromHeight, proj), cssColor(look().state.selection, 0.7), 1);
+      strokeQuad(
+        context,
+        tileQuad(move.from, fromHeight, proj),
+        cssColor(look().state.selection, 0.7),
+        1,
+      );
       const a = project(move.from, fromHeight, proj);
       const b = project(move.to, toHeight, proj);
       context.beginPath();
@@ -152,7 +186,9 @@ export function mountReplay(canvas: HTMLCanvasElement, board: Board, frames: rea
       index = next;
       moving = [];
       if (animate && from !== undefined && to !== undefined && !reducedMotion()) {
-        moving = movesBetween(from, to).map((move) => startMove(move.pieceId, move.from, move.to, board));
+        moving = movesBetween(from, to).map((move) =>
+          startMove(move.pieceId, move.from, move.to, board),
+        );
       }
       if (moving.length > 0) animateLoop();
       else draw();

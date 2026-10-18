@@ -147,10 +147,22 @@ function occupantsOf(view: PlayerView): Map<CoordKey, Occupant> {
     });
   }
   for (const piece of view.visibleEnemies) {
-    occupants.set(coordKey(piece.coord), { id: piece.id, coord: piece.coord, color: players[piece.owner], ghost: false, enemy: true });
+    occupants.set(coordKey(piece.coord), {
+      id: piece.id,
+      coord: piece.coord,
+      color: players[piece.owner],
+      ghost: false,
+      enemy: true,
+    });
   }
   for (const piece of view.ownPieces) {
-    occupants.set(coordKey(piece.coord), { id: piece.id, coord: piece.coord, color: players[piece.owner], ghost: false, enemy: false });
+    occupants.set(coordKey(piece.coord), {
+      id: piece.id,
+      coord: piece.coord,
+      color: players[piece.owner],
+      ghost: false,
+      enemy: false,
+    });
   }
   return occupants;
 }
@@ -207,7 +219,8 @@ export class Scene {
    * resterait dessiné derrière le menu, et la partie suivante hériterait de ses effets.
    */
   clear(): void {
-    for (const layer of [this.sky, this.ground, this.world, this.overlay, this.ambient]) layer.clear();
+    for (const layer of [this.sky, this.ground, this.world, this.overlay, this.ambient])
+      layer.clear();
     this.lastBoard = undefined;
     this.lastView = undefined;
     this.light = undefined;
@@ -230,7 +243,15 @@ export class Scene {
     drawSky(this.sky, frame.width, frame.height, now, this.px);
     this.ground.clear();
     if (look().atmosphere.sigil) {
-      const drawn = frame.still ? 1 : easeOutCubic(phase(now, this.introStart + MOTION_FX.introMs * 0.4, MOTION_FX.introSpreadMs + MOTION_FX.introMs));
+      const drawn = frame.still
+        ? 1
+        : easeOutCubic(
+            phase(
+              now,
+              this.introStart + MOTION_FX.introMs * 0.4,
+              MOTION_FX.introSpreadMs + MOTION_FX.introMs,
+            ),
+          );
       drawSigil(this.ground, input.board, input.projection, this.px, now, drawn);
     }
     this.drawWorld(input, frame.still);
@@ -266,22 +287,31 @@ export class Scene {
 
       const occupants = occupantsOf(input.view);
       const visible = new Map(
-        [...occupants.values()].filter((occupant) => occupant.enemy && !occupant.ghost).map((occupant) => [occupant.id, occupant]),
+        [...occupants.values()]
+          .filter((occupant) => occupant.enemy && !occupant.ghost)
+          .map((occupant) => [occupant.id, occupant]),
       );
       if (this.seenEnemies !== undefined && !still) {
         for (const id of visible.keys()) if (!this.seenEnemies.has(id)) this.appeared.set(id, now);
-        for (const [id, occupant] of this.seenEnemies) if (!visible.has(id)) this.vanished.push({ occupant, start: now });
+        for (const [id, occupant] of this.seenEnemies)
+          if (!visible.has(id)) this.vanished.push({ occupant, start: now });
       }
       this.seenEnemies = visible;
 
-      const yours = input.view.outcome === undefined && input.view.activePlayer === input.view.player;
-      const wasYours = this.lastView !== undefined && this.lastView.activePlayer === this.lastView.player;
+      const yours =
+        input.view.outcome === undefined && input.view.activePlayer === input.view.player;
+      const wasYours =
+        this.lastView !== undefined && this.lastView.activePlayer === this.lastView.player;
       if (yours && !wasYours && !first && !still) this.turnAt = now;
       this.lastView = input.view;
     }
 
     if (input.selection !== this.lastSelection) {
-      if (input.selection !== undefined && input.selection.piece.id !== this.lastSelection?.piece.id) this.selectedAt = now;
+      if (
+        input.selection !== undefined &&
+        input.selection.piece.id !== this.lastSelection?.piece.id
+      )
+        this.selectedAt = now;
       this.lastSelection = input.selection;
     }
     if (!sameCoord(input.hovered, this.lastHovered)) {
@@ -289,12 +319,20 @@ export class Scene {
       this.lastHovered = input.hovered;
     }
 
-    const ended = this.lastAnimation !== undefined && input.animation?.pieceId !== this.lastAnimation.pieceId;
+    const ended =
+      this.lastAnimation !== undefined && input.animation?.pieceId !== this.lastAnimation.pieceId;
     if (ended && this.lastAnimation !== undefined && !still) {
       const finished = this.lastAnimation;
-      const piece = [...input.view.ownPieces, ...input.view.visibleEnemies].find((p) => p.id === finished.pieceId);
+      const piece = [...input.view.ownPieces, ...input.view.visibleEnemies].find(
+        (p) => p.id === finished.pieceId,
+      );
       if (piece !== undefined) {
-        this.landings.push({ coord: finished.to, height: finished.toHeight, color: look().players[piece.owner], start: now });
+        this.landings.push({
+          coord: finished.to,
+          height: finished.toHeight,
+          color: look().players[piece.owner],
+          start: now,
+        });
       }
     }
     this.lastAnimation = input.animation;
@@ -311,7 +349,10 @@ export class Scene {
     return pattern;
   }
 
-  private drawWorld({ board, view, projection, animation, selection }: SceneInput, still: boolean): void {
+  private drawWorld(
+    { board, view, projection, animation, selection }: SceneInput,
+    still: boolean,
+  ): void {
     const g = this.world;
     g.clear();
     const now = this.time;
@@ -324,7 +365,8 @@ export class Scene {
     const farthest = tiles[0]?.depth.plane ?? 0;
     const nearest = tiles[tiles.length - 1]?.depth.plane ?? 0;
     const span = nearest - farthest || 1;
-    const rankOf = (coord: Coord): number => (depthOf(coord, 0, projection).plane - farthest) / span;
+    const rankOf = (coord: Coord): number =>
+      (depthOf(coord, 0, projection).plane - farthest) / span;
 
     // Les cases sont poussées avant les pièces : à profondeur égale, le tri étant
     // stable, une pièce se dessine donc toujours après la case qui la porte.
@@ -336,7 +378,8 @@ export class Scene {
     const level = projection.heightUnit * projection.scale;
     const occupants = occupantsOf(view);
     for (const occupant of occupants.values()) {
-      const moving = animation !== undefined && occupant.id === animation.pieceId ? animation : undefined;
+      const moving =
+        animation !== undefined && occupant.id === animation.pieceId ? animation : undefined;
       const position = moving === undefined ? undefined : positionOf(moving);
       const at = position?.coord ?? occupant.coord;
       const height = position?.height ?? board.heightAt(occupant.coord) ?? 0;
@@ -344,9 +387,14 @@ export class Scene {
 
       // L'entrée du plateau : une pièce se matérialise juste après que sa case s'est posée.
       const rank = rankOf(occupant.coord);
-      const entry = materializeAt(this.introStart + rank * timing.introSpreadMs + timing.introMs * 0.7, now, still ? 0 : MOTION_FX.materializeMs);
+      const entry = materializeAt(
+        this.introStart + rank * timing.introSpreadMs + timing.introMs * 0.7,
+        now,
+        still ? 0 : MOTION_FX.materializeMs,
+      );
       const arrival = this.appeared.get(occupant.id);
-      const appear = arrival === undefined ? undefined : materializeAt(arrival, now, MOTION_FX.materializeMs);
+      const appear =
+        arrival === undefined ? undefined : materializeAt(arrival, now, MOTION_FX.materializeMs);
       const shown = sinceIntro < introLength(timing) + MOTION_FX.materializeMs ? entry : appear;
 
       const selected = selection !== undefined && selection.piece.id === occupant.id && !still;
@@ -358,7 +406,11 @@ export class Scene {
           const echoAt = positionOf(echo);
           drawables.push({
             depth: standingDepth(echoAt.coord, board, projection),
-            base: project(echoAt.coord, echoAt.height + liftOf(echo, MOTION_FX.hopHeight), projection),
+            base: project(
+              echoAt.coord,
+              echoAt.height + liftOf(echo, MOTION_FX.hopHeight),
+              projection,
+            ),
             occupant: { ...occupant, ghost: true },
             alpha: 0.75 * (1 - i / (MOTION_FX.trail + 1)),
             trail: true,
@@ -452,8 +504,18 @@ export class Scene {
     const now = this.time;
     const glow = breath(now, MOTION_FX.breathMs);
     const settled = still ? Infinity : 0;
-    if (selection !== undefined) drawSelection(g, board, selection, projection, this.px, glow, Math.max(settled, now - this.selectedAt));
-    if (hovered !== undefined) drawHover(g, board, hovered, projection, this.px, Math.max(settled, now - this.hoveredAt));
+    if (selection !== undefined)
+      drawSelection(
+        g,
+        board,
+        selection,
+        projection,
+        this.px,
+        glow,
+        Math.max(settled, now - this.selectedAt),
+      );
+    if (hovered !== undefined)
+      drawHover(g, board, hovered, projection, this.px, Math.max(settled, now - this.hoveredAt));
     for (const landing of this.landings) drawLanding(g, board, landing, projection, this.px, now);
   }
 }

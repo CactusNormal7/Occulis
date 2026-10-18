@@ -29,7 +29,8 @@ export async function handleAdmin(
 
   if (request.method === "GET") {
     if (path === "/stats") return Response.json(await readStats(env.DB, Date.now()));
-    if (path === "/matches") return Response.json(await listMatches(env.DB, parseMatchFilter(url.searchParams)));
+    if (path === "/matches")
+      return Response.json(await listMatches(env.DB, parseMatchFilter(url.searchParams)));
 
     const matchId = path.match(/^\/matches\/([\w-]+)$/)?.[1];
     if (matchId !== undefined) return found(await readMatch(env.DB, matchId));
@@ -46,7 +47,11 @@ export async function handleAdmin(
   return new Response("introuvable", { status: 404 });
 }
 
-async function refuseNonAdmin(auth: Auth, request: Request, url: URL): Promise<Response | undefined> {
+async function refuseNonAdmin(
+  auth: Auth,
+  request: Request,
+  url: URL,
+): Promise<Response | undefined> {
   // Une écriture doit venir de la page elle-même. `SameSite=Lax` retient déjà le cookie
   // d'un POST intersite ; l'origine est vérifiée en plus, comme Better Auth le fait
   // pour ses propres routes.
@@ -56,7 +61,8 @@ async function refuseNonAdmin(auth: Auth, request: Request, url: URL): Promise<R
 
   const session = await auth.api.getSession({ headers: request.headers });
   if (session === null) return new Response("authentification requise", { status: 401 });
-  if (!isAdmin(session.user.role)) return new Response("réservé aux administrateurs", { status: 403 });
+  if (!isAdmin(session.user.role))
+    return new Response("réservé aux administrateurs", { status: 403 });
   return undefined;
 }
 

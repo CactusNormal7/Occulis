@@ -133,7 +133,11 @@ function compile(gl: WebGLRenderingContext, type: number, source: string): WebGL
  * absence ne retire rien à la page.
  */
 export function createPaperRenderer(canvas: HTMLCanvasElement): PaperRenderer | null {
-  const gl = canvas.getContext("webgl", { alpha: true, premultipliedAlpha: true, antialias: false });
+  const gl = canvas.getContext("webgl", {
+    alpha: true,
+    premultipliedAlpha: true,
+    antialias: false,
+  });
   if (gl === null) return null;
   const vertex = compile(gl, gl.VERTEX_SHADER, VERTEX);
   const fragment = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT);
@@ -206,7 +210,13 @@ export function createPaperRenderer(canvas: HTMLCanvasElement): PaperRenderer | 
       gl.uniform1f(uniforms.invert, frame.invert ? 1 : 0);
       gl.uniform2f(uniforms.zoneSize, frame.zoneSize?.[0] ?? 1, frame.zoneSize?.[1] ?? 1);
       const iso = frame.iso;
-      gl.uniform4f(uniforms.iso, iso?.originX ?? 0, iso?.originY ?? 0, iso?.tileWidth ?? 1, iso?.tileHeight ?? 1);
+      gl.uniform4f(
+        uniforms.iso,
+        iso?.originX ?? 0,
+        iso?.originY ?? 0,
+        iso?.tileWidth ?? 1,
+        iso?.tileHeight ?? 1,
+      );
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLES, 0, 3);

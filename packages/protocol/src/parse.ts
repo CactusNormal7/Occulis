@@ -13,7 +13,12 @@
  * genre inconnu. La forme seulement : les règles restent l'affaire de `@occulis/core`.
  */
 import { type Action, type TeamEntry, parseTeam } from "@occulis/core";
-import type { ClientMessage, QueueClientMessage, QueueIntent, SocialClientMessage } from "./index.js";
+import type {
+  ClientMessage,
+  QueueClientMessage,
+  QueueIntent,
+  SocialClientMessage,
+} from "./index.js";
 
 /**
  * Un `ClientMessage` lu. Une équipe illisible reste `undefined` au lieu d'invalider le
@@ -50,7 +55,9 @@ export function parseQueueClientMessage(raw: string): QueueClientMessage | undef
     }
     case "accept":
     case "decline":
-      return isId(message.proposalId) ? { kind: message.kind, proposalId: message.proposalId } : undefined;
+      return isId(message.proposalId)
+        ? { kind: message.kind, proposalId: message.proposalId }
+        : undefined;
     default:
       return undefined;
   }
@@ -70,7 +77,8 @@ export function parseAction(value: unknown): Action | undefined {
   if (action?.kind === "resign") return { kind: "resign" };
   if (action?.kind !== "move" || !isId(action.pieceId)) return undefined;
   const to = record(action.to);
-  if (to === undefined || !Number.isSafeInteger(to.x) || !Number.isSafeInteger(to.y)) return undefined;
+  if (to === undefined || !Number.isSafeInteger(to.x) || !Number.isSafeInteger(to.y))
+    return undefined;
   return { kind: "move", pieceId: action.pieceId, to: { x: to.x as number, y: to.y as number } };
 }
 
@@ -84,8 +92,12 @@ function parseIntent(value: unknown): QueueIntent | undefined {
 }
 
 /** La version n'est que lue : la comparer à `PROTOCOL_VERSION` revient au serveur. */
-function hello(message: Readonly<Record<string, unknown>>): { kind: "hello"; protocol: number } | undefined {
-  return typeof message.protocol === "number" ? { kind: "hello", protocol: message.protocol } : undefined;
+function hello(
+  message: Readonly<Record<string, unknown>>,
+): { kind: "hello"; protocol: number } | undefined {
+  return typeof message.protocol === "number"
+    ? { kind: "hello", protocol: message.protocol }
+    : undefined;
 }
 
 function json(raw: string): unknown {

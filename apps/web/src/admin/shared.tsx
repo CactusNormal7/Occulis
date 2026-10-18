@@ -21,14 +21,28 @@ export function StateBadges({ user }: { user: QuickUser }) {
 /** Le résultat dans la couleur du camp vainqueur : c'est une information de partie. */
 export function ResultBadge({ match }: { match: AdminMatchSummary }) {
   const m = useMessages().admin.result;
-  return match.outcome === null ? <Badge tone="dim">{m.ongoing}</Badge> : <Badge tone={match.outcome.winner}>{describeResult(match)}</Badge>;
+  return match.outcome === null ? (
+    <Badge tone="dim">{m.ongoing}</Badge>
+  ) : (
+    <Badge tone={match.outcome.winner}>{describeResult(match)}</Badge>
+  );
 }
 
-export function MatchTable({ matches, compact = false }: { matches: readonly AdminMatchSummary[]; compact?: boolean }) {
+export function MatchTable({
+  matches,
+  compact = false,
+}: {
+  matches: readonly AdminMatchSummary[];
+  compact?: boolean;
+}) {
   const t = useMessages().admin.matchTable;
   const c = t.columns;
   return (
-    <Table columns={compact ? [c.match, c.result, ""] : [c.start, c.match, c.result, c.moves, ""]} rowCount={matches.length} empty={t.empty}>
+    <Table
+      columns={compact ? [c.match, c.result, ""] : [c.start, c.match, c.result, c.moves, ""]}
+      rowCount={matches.length}
+      empty={t.empty}
+    >
       {matches.map((m) => (
         <tr key={m.id}>
           {!compact && <td className="occ-muted">{formatDate(m.startedAt)}</td>}
@@ -36,14 +50,23 @@ export function MatchTable({ matches, compact = false }: { matches: readonly Adm
             <a href={routeHash({ view: "player", id: m.playerA.id })}>{m.playerA.handle}</a>
             <span className="occ-muted">{t.against}</span>
             <a href={routeHash({ view: "player", id: m.playerB.id })}>{m.playerB.handle}</a>
-            {compact && <small className="occ-muted" style={{ display: "block" }}>{formatDate(m.startedAt)}</small>}
+            {compact && (
+              <small className="occ-muted" style={{ display: "block" }}>
+                {formatDate(m.startedAt)}
+              </small>
+            )}
           </td>
           <td>
             <ResultBadge match={m} />
           </td>
           {!compact && <td className="occ-muted">{m.actions}</td>}
           <td className="occ-actions-cell">
-            <IconButton icon="eye" label={t.view} tipAlign="end" onClick={() => (location.hash = routeHash({ view: "match", id: m.id }))} />
+            <IconButton
+              icon="eye"
+              label={t.view}
+              tipAlign="end"
+              onClick={() => (location.hash = routeHash({ view: "match", id: m.id }))}
+            />
           </td>
         </tr>
       ))}

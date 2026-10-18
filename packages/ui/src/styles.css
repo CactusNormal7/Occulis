@@ -59,8 +59,7 @@
   z-index: 0;
   min-height: 100vh;
   background:
-    radial-gradient(ellipse 90% 60% at 50% -12%, var(--occ-aura) 0%, transparent 70%),
-    var(--occ-bg);
+    radial-gradient(ellipse 90% 60% at 50% -12%, var(--occ-aura) 0%, transparent 70%), var(--occ-bg);
   background-attachment: fixed;
 }
 
@@ -104,7 +103,6 @@
     animation: none;
   }
 }
-
 
 /* Le contenu d'une page : colonne centrée, blocs empilés à intervalle régulier. */
 .occ-page {
@@ -2054,7 +2052,9 @@ select.occ-input option {
    glisse d'une valeur à la suivante sans saccade. */
 .occ-countdown__arc {
   stroke: var(--occ-ink);
-  transition: stroke-dashoffset 1s linear, stroke var(--occ-base) var(--occ-ease);
+  transition:
+    stroke-dashoffset 1s linear,
+    stroke var(--occ-base) var(--occ-ease);
 }
 
 .occ-countdown--urgent .occ-countdown__arc {
@@ -2145,7 +2145,9 @@ select.occ-input option {
   gap: var(--occ-space-4) var(--occ-space-8);
   padding: var(--occ-space-8) var(--occ-space-6);
   border: 1px solid var(--occ-ink-line);
-  transition: padding var(--occ-slow) var(--occ-ease), gap var(--occ-slow) var(--occ-ease);
+  transition:
+    padding var(--occ-slow) var(--occ-ease),
+    gap var(--occ-slow) var(--occ-ease);
 }
 
 .occ-reveal__side--self {
@@ -2221,7 +2223,9 @@ select.occ-input option {
   gap: var(--occ-space-2);
   border-left: 1px solid transparent;
   border-bottom: 1px solid var(--occ-ink-ghost);
-  transition: border-color var(--occ-fast) var(--occ-ease), background var(--occ-fast) var(--occ-ease);
+  transition:
+    border-color var(--occ-fast) var(--occ-ease),
+    background var(--occ-fast) var(--occ-ease);
 }
 
 .occ-choice__main {

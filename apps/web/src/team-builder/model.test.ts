@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { provisionalRuleset, scenarioFor } from "@occulis/core";
-import { autoFill, clear, clickTile, emptyDraft, fromEntries, isComplete, placedCount, remove, setKind, toEntries, verdict } from "./model.js";
+import {
+  autoFill,
+  clear,
+  clickTile,
+  emptyDraft,
+  fromEntries,
+  isComplete,
+  placedCount,
+  remove,
+  setKind,
+  toEntries,
+  verdict,
+} from "./model.js";
 
 const ruleset = provisionalRuleset();
 const deployment = scenarioFor("ridge-1").deployment;
@@ -10,7 +22,16 @@ const zone = deployment.zones.A;
 describe("brouillon d'équipe", () => {
   it("ouvre les emplacements de la composition, la maîtresse en main", () => {
     const draft = emptyDraft(ruleset);
-    expect(draft.slots.map((slot) => slot.role)).toEqual(["commander", "special", "special", "special", "pawn", "pawn", "pawn", "pawn"]);
+    expect(draft.slots.map((slot) => slot.role)).toEqual([
+      "commander",
+      "special",
+      "special",
+      "special",
+      "pawn",
+      "pawn",
+      "pawn",
+      "pawn",
+    ]);
     expect(draft.slots.every((slot) => slot.coord === undefined)).toBe(true);
     expect(draft.selected).toBe(0);
   });
@@ -47,15 +68,22 @@ describe("brouillon d'équipe", () => {
   it("se remplit depuis une équipe, et la rend à l'identique", () => {
     const draft = fromEntries(ruleset, deployment.defaultTeams.A);
     expect(isComplete(draft)).toBe(true);
-    expect(new Set(toEntries(draft).map((entry) => `${entry.kind}@${entry.coord.x},${entry.coord.y}`))).toEqual(
-      new Set(deployment.defaultTeams.A.map((entry) => `${entry.kind}@${entry.coord.x},${entry.coord.y}`)),
+    expect(
+      new Set(toEntries(draft).map((entry) => `${entry.kind}@${entry.coord.x},${entry.coord.y}`)),
+    ).toEqual(
+      new Set(
+        deployment.defaultTeams.A.map((entry) => `${entry.kind}@${entry.coord.x},${entry.coord.y}`),
+      ),
     );
     expect(verdict(ruleset, zone, draft).ok).toBe(true);
   });
 
   it("laisse la règle juger un brouillon incomplet", () => {
     const partial = clickTile(emptyDraft(ruleset), { x: 0, y: 9 }, zone);
-    expect(verdict(ruleset, zone, partial)).toMatchObject({ ok: false, error: { code: "wrong-count" } });
+    expect(verdict(ruleset, zone, partial)).toMatchObject({
+      ok: false,
+      error: { code: "wrong-count" },
+    });
   });
 
   it("complète, retire et vide", () => {

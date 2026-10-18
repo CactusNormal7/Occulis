@@ -39,7 +39,8 @@ export default {
     const legacy = request.method === "GET" ? legacyRedirect(url) : undefined;
     if (legacy !== undefined) return Response.redirect(legacy, 301);
     const page = pageFor(url.pathname);
-    if (page !== undefined) return env.ASSETS.fetch(new Request(new URL(page, url.origin), request));
+    if (page !== undefined)
+      return env.ASSETS.fetch(new Request(new URL(page, url.origin), request));
     // Construite par requête : les bindings n'existent que là, et l'URL de base doit
     // être celle par laquelle on est joint, sinon les liens envoyés par courrier
     // pointeraient vers un autre environnement que celui où l'inscription a eu lieu.
@@ -122,7 +123,9 @@ export default {
            AND NOT EXISTS (SELECT 1 FROM users WHERE users.player_id = players.id)
            AND NOT EXISTS (SELECT 1 FROM matches WHERE matches.player_a = players.id OR matches.player_b = players.id)`,
       ).bind(Date.now() - DAY_MS),
-      env.DB.prepare("DELETE FROM messages WHERE created_at < ?").bind(Date.now() - MESSAGE_RETENTION_MS),
+      env.DB.prepare("DELETE FROM messages WHERE created_at < ?").bind(
+        Date.now() - MESSAGE_RETENTION_MS,
+      ),
     ]);
   },
 } satisfies ExportedHandler<Env>;
@@ -135,7 +138,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * page du jeu, dont l'îlot de compte lit le chemin. La liste est explicite : un repli
  * global vers `index.html` ferait d'une faute de frappe une page blanche au lieu d'un 404.
  */
-export const ACCOUNT_PATHS = ["/sign-in", "/sign-up", "/forgot-password", "/reset-password"] as const;
+export const ACCOUNT_PATHS = [
+  "/sign-in",
+  "/sign-up",
+  "/forgot-password",
+  "/reset-password",
+] as const;
 
 function pageFor(pathname: string): string | undefined {
   if ((ACCOUNT_PATHS as readonly string[]).includes(pathname)) return "/";
@@ -145,7 +153,10 @@ function pageFor(pathname: string): string | undefined {
 
 /** La langue du joueur : son choix (cookie posé par le client), sinon celle de son navigateur. */
 function localeOf(request: Request): Locale {
-  return resolveLocale(localeFromCookie(request.headers.get("Cookie")), request.headers.get("Accept-Language"));
+  return resolveLocale(
+    localeFromCookie(request.headers.get("Cookie")),
+    request.headers.get("Accept-Language"),
+  );
 }
 
 /** Le minimum que Better Auth recommande pour un secret de signature. */
@@ -198,8 +209,14 @@ async function joinSocial(
   const account = await currentAccount(auth, request);
   if (account === undefined) return new Response("authentication required", { status: 401 });
   if (!account.emailVerified) return new Response("email not verified", { status: 403 });
-  if (request.headers.get("Upgrade") !== "websocket") return new Response("expected websocket", { status: 426 });
-  return openSocial(env, request, account.playerId, url.searchParams.get("surface") === "game" ? "game" : "profile");
+  if (request.headers.get("Upgrade") !== "websocket")
+    return new Response("expected websocket", { status: 426 });
+  return openSocial(
+    env,
+    request,
+    account.playerId,
+    url.searchParams.get("surface") === "game" ? "game" : "profile",
+  );
 }
 
 /**
@@ -221,15 +238,18 @@ async function watchMatch(
   if (side !== "A" && side !== "B") return new Response("unknown side", { status: 400 });
 
   const row = await readWatchRow(env.DB, matchId, side);
-  if (row === undefined || row.player === undefined) return new Response("not found", { status: 404 });
+  if (row === undefined || row.player === undefined)
+    return new Response("not found", { status: 404 });
   const refusal = decideWatch({
     finished: row.finished,
     player: row.player === account.playerId || row.opponent === account.playerId,
     friend: await isFriend(env.DB, account.playerId, row.player),
     allowSpectators: row.allowSpectators,
   });
-  if (refusal !== undefined) return Response.json({ code: refusal }, { status: refusal === "MATCH_FINISHED" ? 409 : 403 });
-  if (request.headers.get("Upgrade") !== "websocket") return new Response("expected websocket", { status: 426 });
+  if (refusal !== undefined)
+    return Response.json({ code: refusal }, { status: refusal === "MATCH_FINISHED" ? 409 : 403 });
+  if (request.headers.get("Upgrade") !== "websocket")
+    return new Response("expected websocket", { status: 426 });
 
   const forwarded = new URL("https://do/watch");
   forwarded.searchParams.set("side", side);

@@ -20,6 +20,12 @@ export interface ScenarioSnapshot {
 }
 
 export function snapshotScenario(scenario: Scenario): ScenarioSnapshot {
-  const snapshot = { name: scenario.name, tiles: [...scenario.board().allTiles()], pieces: [...scenario.pieces] };
-  return scenario.deployment === undefined ? snapshot : { ...snapshot, deployment: scenario.deployment };
+  const snapshot = {
+    name: scenario.name,
+    tiles: [...scenario.board().allTiles()],
+    pieces: [...scenario.pieces],
+  };
+  return scenario.deployment === undefined
+    ? snapshot
+    : { ...snapshot, deployment: scenario.deployment };
 }

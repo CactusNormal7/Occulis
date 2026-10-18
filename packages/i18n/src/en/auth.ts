@@ -18,7 +18,8 @@ export const auth = {
     HANDLE_COOLDOWN: "The handle can only be changed once a month.",
     PASSWORD_TOO_SHORT: "The password must be at least 10 characters long.",
     PASSWORD_TOO_LONG: "The password must be at most 128 characters long.",
-    PASSWORD_COMPROMISED: "This password appears in known data breaches. Choose another one, preferably generated.",
+    PASSWORD_COMPROMISED:
+      "This password appears in known data breaches. Choose another one, preferably generated.",
     INVALID_PASSWORD: "Current password is incorrect.",
     CREDENTIAL_ACCOUNT_NOT_FOUND: "This account has no password yet.",
     VALIDATION_ERROR: "Invalid email address.",
@@ -36,12 +37,14 @@ export const auth = {
   redirects: {
     account_not_linked:
       "An account already exists with this address, but it was never confirmed. Sign in with your password, confirm the address, and Google can then be linked to it.",
-    "email_doesn't_match": "This Google account does not use the same address as your Occulis account.",
+    "email_doesn't_match":
+      "This Google account does not use the same address as your Occulis account.",
     access_denied: "Google sign-in cancelled.",
     state_mismatch: "Sign-in expired on the way. Try again.",
     please_restart_the_process: "Sign-in expired on the way. Try again.",
     unable_to_link_account: "This Google account is already linked to another account.",
-    account_already_linked_to_different_user: "This Google account is already linked to another account.",
+    account_already_linked_to_different_user:
+      "This Google account is already linked to another account.",
     email_not_found: "Google did not provide an email address.",
   },
 };

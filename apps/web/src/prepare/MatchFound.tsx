@@ -61,11 +61,22 @@ function Content({ remainingMs, receivedAt, accepted, onAccept, onDecline }: Mat
       }}
       onClose={onDecline}
     >
-      <CountdownRing size="lg" totalMs={ACCEPT_TOTAL_MS} remainingMs={remaining} label={m.remaining}>
+      <CountdownRing
+        size="lg"
+        totalMs={ACCEPT_TOTAL_MS}
+        remainingMs={remaining}
+        label={m.remaining}
+      >
         {secondsLeft(remaining)}
       </CountdownRing>
       <Note>
-        {accepted.self ? (accepted.opponent ? m.found.opponentAccepted : m.found.waitingOpponent) : accepted.opponent ? m.found.opponentAccepted : m.found.lead}
+        {accepted.self
+          ? accepted.opponent
+            ? m.found.opponentAccepted
+            : m.found.waitingOpponent
+          : accepted.opponent
+            ? m.found.opponentAccepted
+            : m.found.lead}
       </Note>
     </Dialog>
   );

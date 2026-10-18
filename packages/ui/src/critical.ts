@@ -34,7 +34,8 @@ export function criticalHead(): string {
     `@font-face{font-family:"Tiny5";src:url(${PIXEL_FONT_URL}) format("woff2");font-display:block}`,
     `html,body{background:${background};color-scheme:dark}`,
     ...THEME_NAMES.map(
-      (theme) => `html[data-theme="${theme}"],html[data-theme="${theme}"] body{background:${cssColor(THEMES[theme].background)}}`,
+      (theme) =>
+        `html[data-theme="${theme}"],html[data-theme="${theme}"] body{background:${cssColor(THEMES[theme].background)}}`,
     ),
     "@view-transition{navigation:auto}",
     "@media (prefers-reduced-motion:reduce){@view-transition{navigation:none}}",

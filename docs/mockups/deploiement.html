@@ -23,18 +23,26 @@
 
       <div class="body">
         <div class="stage">
-          <svg id="board" width="840" height="480" viewBox="-260 -80 560 320" role="img"
-            aria-label="Plateau de déploiement, zone du joueur en surbrillance"></svg>
+          <svg
+            id="board"
+            width="840"
+            height="480"
+            viewBox="-260 -80 560 320"
+            role="img"
+            aria-label="Plateau de déploiement, zone du joueur en surbrillance"
+          ></svg>
 
           <div class="legend">
             <div class="legend-row" style="color: var(--occ-legal)">
               <span class="swatch"></span><span class="muted-strong">Zone de déploiement</span>
             </div>
             <div class="legend-row" style="color: var(--occ-selection)">
-              <span class="swatch"></span><span class="muted-strong">Case ciblée — aperçu de la pièce</span>
+              <span class="swatch"></span
+              ><span class="muted-strong">Case ciblée — aperçu de la pièce</span>
             </div>
             <div class="legend-row" style="color: rgba(255, 255, 255, 0.2)">
-              <span class="swatch"></span><span class="muted-strong">Hors ligne de vue — zone adverse</span>
+              <span class="swatch"></span
+              ><span class="muted-strong">Hors ligne de vue — zone adverse</span>
             </div>
           </div>
         </div>
@@ -43,7 +51,13 @@
           <div class="label">PIÈCES À DÉPLOYER</div>
 
           <div class="card" style="padding: 12px 14px">
-            <svg class="roster-icon" data-type="roi" width="30" height="38" aria-hidden="true"></svg>
+            <svg
+              class="roster-icon"
+              data-type="roi"
+              width="30"
+              height="38"
+              aria-hidden="true"
+            ></svg>
             <div style="flex: 1 1 auto">
               <div style="font-size: 14px">Roi</div>
               <div class="mono-sm muted">Pièce maîtresse</div>
@@ -52,7 +66,13 @@
           </div>
 
           <div class="card" style="padding: 12px 14px">
-            <svg class="roster-icon" data-type="commandant" width="30" height="38" aria-hidden="true"></svg>
+            <svg
+              class="roster-icon"
+              data-type="commandant"
+              width="30"
+              height="38"
+              aria-hidden="true"
+            ></svg>
             <div style="flex: 1 1 auto">
               <div style="font-size: 14px">Commandant</div>
               <div class="mono-sm muted">Frappe télégraphiée</div>
@@ -61,7 +81,13 @@
           </div>
 
           <div class="card card-selected" style="padding: 12px 14px">
-            <svg class="roster-icon" data-type="eclaireur" width="30" height="38" aria-hidden="true"></svg>
+            <svg
+              class="roster-icon"
+              data-type="eclaireur"
+              width="30"
+              height="38"
+              aria-hidden="true"
+            ></svg>
             <div style="flex: 1 1 auto">
               <div style="font-size: 14px">Éclaireur</div>
               <div class="mono-sm muted">Vision étendue</div>
@@ -105,7 +131,7 @@
                 stroke: O.PALETTE.geometry,
                 "stroke-width": 1,
                 "stroke-opacity": inEnemyZone ? 0.12 : inDeployZone ? 0.6 : 0.5,
-              })
+              }),
             );
 
             if (inDeployZone) {

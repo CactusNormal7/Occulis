@@ -1,4 +1,12 @@
-import { type ReactNode, useCallback, useEffect, useRef, useState, useSyncExternalStore, startTransition } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  startTransition,
+} from "react";
 import { EmptyState } from "@occulis/ui";
 import { type Loaded, type Resource, loadCache, loadedOf, pendingLoads } from "./cache.js";
 
@@ -56,7 +64,10 @@ export function whenReady<T>(loaded: Loaded<T>, render: (value: T) => ReactNode)
  * (`resourcesOf`), puis passe en transition : l'écran affiché reste en place jusqu'à ce
  * que le suivant soit complet, au lieu de se vider puis de se remplir par morceaux.
  */
-export function useHashRoute<R>(parse: (hash: string) => R, resourcesOf: (route: R) => readonly Resource<unknown>[]): R {
+export function useHashRoute<R>(
+  parse: (hash: string) => R,
+  resourcesOf: (route: R) => readonly Resource<unknown>[],
+): R {
   const [route, setRoute] = useState(() => parse(location.hash));
   useEffect(() => {
     const update = () => {

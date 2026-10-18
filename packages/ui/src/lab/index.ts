@@ -18,7 +18,14 @@ export {
   type CipherAlphabet,
   type GlyphShape,
 } from "./glyphs.js";
-export { CipherFrieze, CipherText, Glyph, type CipherFriezeProps, type CipherMode, type CipherTextProps } from "./Cipher.js";
+export {
+  CipherFrieze,
+  CipherText,
+  Glyph,
+  type CipherFriezeProps,
+  type CipherMode,
+  type CipherTextProps,
+} from "./Cipher.js";
 export { DEFAULT_MOTION, durationMs, motionFrom, readMotion, type Motion } from "./motion.js";
 export {
   diamond,
@@ -32,4 +39,9 @@ export {
   type PaperTiming,
   type Tile,
 } from "./paper.js";
-export { PaperInversion, type PaperInversionProps, type PaperRun, type PaperSource } from "./PaperInversion.js";
+export {
+  PaperInversion,
+  type PaperInversionProps,
+  type PaperRun,
+  type PaperSource,
+} from "./PaperInversion.js";

@@ -171,7 +171,12 @@ function redirectLab(): Plugin {
 }
 
 export default defineConfig(({ mode }) => ({
-  plugins: [criticalPaint(), serveMockups(), redirectLab(), ...(mode === MOCKUPS_MODE ? [embedMockups()] : [])],
+  plugins: [
+    criticalPaint(),
+    serveMockups(),
+    redirectLab(),
+    ...(mode === MOCKUPS_MODE ? [embedMockups()] : []),
+  ],
   resolve: {
     alias: [{ find: /^@occulis\/ui$/, replacement: UI_ENTRY }],
     dedupe: ["react", "react-dom"],

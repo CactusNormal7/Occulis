@@ -73,7 +73,10 @@ export function buildAuth(env: Env, origin: string, locale: Locale = DEFAULT_LOC
         if (ctx.path === "/update-user" || ctx.path === "/admin/update-user") {
           const body = ctx.body as { name?: unknown; data?: { name?: unknown } } | undefined;
           if (body?.name !== undefined || body?.data?.name !== undefined) {
-            throw new APIError("BAD_REQUEST", { message: "handle-readonly", code: "HANDLE_READONLY" });
+            throw new APIError("BAD_REQUEST", {
+              message: "handle-readonly",
+              code: "HANDLE_READONLY",
+            });
           }
         }
 
@@ -84,7 +87,10 @@ export function buildAuth(env: Env, origin: string, locale: Locale = DEFAULT_LOC
         if (ctx.path !== undefined && ACCOUNT_MUTATIONS.has(ctx.path)) {
           const session = await getSessionFromCtx(ctx);
           if (isImpersonated(session?.session.impersonatedBy)) {
-            throw new APIError("FORBIDDEN", { message: "impersonation-readonly", code: "IMPERSONATION_READONLY" });
+            throw new APIError("FORBIDDEN", {
+              message: "impersonation-readonly",
+              code: "IMPERSONATION_READONLY",
+            });
           }
         }
 
@@ -92,7 +98,10 @@ export function buildAuth(env: Env, origin: string, locale: Locale = DEFAULT_LOC
         if (candidate !== undefined && env.PASSWORD_BREACH_CHECK !== "off") {
           // `undefined` (service injoignable) laisse passer : voir `breachedPassword`.
           if ((await breachedPassword(candidate)) === true) {
-            throw new APIError("BAD_REQUEST", { message: "password-compromised", code: "PASSWORD_COMPROMISED" });
+            throw new APIError("BAD_REQUEST", {
+              message: "password-compromised",
+              code: "PASSWORD_COMPROMISED",
+            });
           }
         }
 
@@ -108,8 +117,10 @@ export function buildAuth(env: Env, origin: string, locale: Locale = DEFAULT_LOC
         // Un avis à l'adresse du compte après chaque changement de mot de passe réussi :
         // si ce n'était pas le joueur, c'est par là qu'il l'apprend.
         if (ctx.path !== "/change-password" || isAPIError(ctx.context.returned)) return;
-        const email = (ctx.context.returned as { user?: { email?: unknown } } | undefined)?.user?.email;
-        if (typeof email === "string") await sendLetter(env, passwordChangedLetter(locale, email, securityUrl(origin)));
+        const email = (ctx.context.returned as { user?: { email?: unknown } } | undefined)?.user
+          ?.email;
+        if (typeof email === "string")
+          await sendLetter(env, passwordChangedLetter(locale, email, securityUrl(origin)));
       }),
     },
 
@@ -274,11 +285,9 @@ export function buildAuth(env: Env, origin: string, locale: Locale = DEFAULT_LOC
               // Ses relations partent avec lui : amis, demandes, blocages et messages
               // ne rattachent plus personne à un profil anonymisé.
               await env.DB.batch([
-                env.DB.prepare("UPDATE players SET handle = ?, handle_changed_at = ? WHERE id = ?").bind(
-                  anonymousHandle(row.player_id),
-                  Date.now(),
-                  row.player_id,
-                ),
+                env.DB.prepare(
+                  "UPDATE players SET handle = ?, handle_changed_at = ? WHERE id = ?",
+                ).bind(anonymousHandle(row.player_id), Date.now(), row.player_id),
                 ...forgetPlayer(env.DB, row.player_id),
               ]);
             }
@@ -295,8 +304,17 @@ export function buildAuth(env: Env, origin: string, locale: Locale = DEFAULT_LOC
             const owner = await env.DB.prepare("SELECT email, created_at FROM users WHERE id = ?")
               .bind(account.userId)
               .first<{ email: string; created_at: string }>();
-            if (owner === null || Date.now() - Date.parse(owner.created_at) < FRESH_ACCOUNT_MS) return;
-            await sendLetter(env, providerLinkedLetter(locale, owner.email, providerLabel(account.providerId), securityUrl(origin)));
+            if (owner === null || Date.now() - Date.parse(owner.created_at) < FRESH_ACCOUNT_MS)
+              return;
+            await sendLetter(
+              env,
+              providerLinkedLetter(
+                locale,
+                owner.email,
+                providerLabel(account.providerId),
+                securityUrl(origin),
+              ),
+            );
           },
         },
       },
@@ -350,7 +368,12 @@ export function isImpersonated(impersonatedBy: unknown): boolean {
 /** Le nouveau mot de passe que porte une requête, pour le contrôle des fuites. */
 function newPasswordOf(path: string, body: unknown): string | undefined {
   const fields = (body ?? {}) as { password?: unknown; newPassword?: unknown };
-  const value = path === "/sign-up/email" ? fields.password : PASSWORD_CHANGES.has(path) ? fields.newPassword : undefined;
+  const value =
+    path === "/sign-up/email"
+      ? fields.password
+      : PASSWORD_CHANGES.has(path)
+        ? fields.newPassword
+        : undefined;
   return typeof value === "string" && value.length >= MIN_PASSWORD_LENGTH ? value : undefined;
 }
 
@@ -380,18 +403,26 @@ async function claimHandle(db: D1Database, playerId: string, raw: string): Promi
  * Google ne doit jamais échouer pour un pseudo qu'il n'a pas choisi ; le joueur le
  * changera depuis son profil.
  */
-async function claimDerivedHandle(db: D1Database, playerId: string, displayName: string): Promise<string> {
+async function claimDerivedHandle(
+  db: D1Database,
+  playerId: string,
+  displayName: string,
+): Promise<string> {
   const random = (): string => crypto.randomUUID().replace(/-/g, "").slice(0, 4);
   for (const handle of handleCandidates(displayName, random)) {
     if (await insertPlayer(db, playerId, handle)) return handle;
   }
-  throw new APIError("INTERNAL_SERVER_ERROR", { message: "handle-exhausted", code: "HANDLE_EXHAUSTED" });
+  throw new APIError("INTERNAL_SERVER_ERROR", {
+    message: "handle-exhausted",
+    code: "HANDLE_EXHAUSTED",
+  });
 }
 
 /** Faux si le pseudo est déjà pris, à la casse près (index `players_handle_nocase`). */
 async function insertPlayer(db: D1Database, playerId: string, handle: string): Promise<boolean> {
   try {
-    await db.prepare("INSERT INTO players (id, handle, created_at) VALUES (?, ?, ?)")
+    await db
+      .prepare("INSERT INTO players (id, handle, created_at) VALUES (?, ?, ?)")
       .bind(playerId, handle, Date.now())
       .run();
     return true;

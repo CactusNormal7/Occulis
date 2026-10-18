@@ -108,7 +108,12 @@ export function fromQueue(session: Session, message: QueueServerMessage): Sessio
       return { phase: { kind: "room-fault", fault: message.fault }, rejection: undefined };
     case "proposal":
       return {
-        phase: { kind: "proposed", proposalId: message.proposalId, remainingMs: message.remainingMs, accepted: { self: false, opponent: false } },
+        phase: {
+          kind: "proposed",
+          proposalId: message.proposalId,
+          remainingMs: message.remainingMs,
+          accepted: { self: false, opponent: false },
+        },
         rejection: undefined,
       };
     case "proposal-update":
@@ -175,16 +180,32 @@ export function fromMatch(session: Session, message: ServerMessage): Session {
     case "spectators":
       return { phase: { ...phase, spectators: message.count }, rejection: undefined };
     case "deployment": {
-      const { zone, opponentZone, defaultTeam, remainingMs, locks, self, opponent, rated } = message;
-      const deployment = { zone, opponentZone, defaultTeam, remainingMs, locks, self, opponent, rated };
+      const { zone, opponentZone, defaultTeam, remainingMs, locks, self, opponent, rated } =
+        message;
+      const deployment = {
+        zone,
+        opponentZone,
+        defaultTeam,
+        remainingMs,
+        locks,
+        self,
+        opponent,
+        rated,
+      };
       return { phase: { ...phase, deployment }, rejection: undefined };
     }
     case "deployment-update":
       return phase.deployment === undefined
         ? session
-        : { phase: { ...phase, deployment: { ...phase.deployment, locks: message.locks } }, rejection: undefined };
+        : {
+            phase: { ...phase, deployment: { ...phase.deployment, locks: message.locks } },
+            rejection: undefined,
+          };
     case "view":
-      return { phase: { ...phase, view: decodeView(message.view), deployment: undefined }, rejection: undefined };
+      return {
+        phase: { ...phase, view: decodeView(message.view), deployment: undefined },
+        rejection: undefined,
+      };
     case "rejected":
       return { phase, rejection: message.error };
   }

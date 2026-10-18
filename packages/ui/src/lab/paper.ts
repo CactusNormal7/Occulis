@@ -53,7 +53,12 @@ export function totalMs(timing: PaperTiming): number {
 export function paperAt(elapsed: number, timing: PaperTiming): PaperFrame {
   const spread = spreadMs(timing);
   if (elapsed < spread) {
-    return { phase: "spread", front: (elapsed / spread) * timing.reach, dissolve: 0, covered: false };
+    return {
+      phase: "spread",
+      front: (elapsed / spread) * timing.reach,
+      dissolve: 0,
+      covered: false,
+    };
   }
   const afterSpread = elapsed - spread;
   if (timing.resorb === "none" || afterSpread < timing.holdMs) {
@@ -62,14 +67,29 @@ export function paperAt(elapsed: number, timing: PaperTiming): PaperFrame {
   const resorbing = afterSpread - timing.holdMs;
   if (timing.resorb === "recede") {
     if (resorbing >= spread) return { phase: "done", front: 0, dissolve: 0, covered: false };
-    return { phase: "resorb", front: timing.reach * (1 - resorbing / spread), dissolve: 0, covered: false };
+    return {
+      phase: "resorb",
+      front: timing.reach * (1 - resorbing / spread),
+      dissolve: 0,
+      covered: false,
+    };
   }
-  if (resorbing >= timing.resorbMs) return { phase: "done", front: timing.reach, dissolve: 1, covered: false };
-  return { phase: "resorb", front: timing.reach, dissolve: resorbing / timing.resorbMs, covered: false };
+  if (resorbing >= timing.resorbMs)
+    return { phase: "done", front: timing.reach, dissolve: 1, covered: false };
+  return {
+    phase: "resorb",
+    front: timing.reach,
+    dissolve: resorbing / timing.resorbMs,
+    covered: false,
+  };
 }
 
 /** La distance d'un point du rectangle `width` × `height` à son coin le plus éloigné : de quoi tout couvrir. */
-export function farthestCorner(width: number, height: number, origin: { x: number; y: number }): number {
+export function farthestCorner(
+  width: number,
+  height: number,
+  origin: { x: number; y: number },
+): number {
   const dx = Math.max(origin.x, width - origin.x);
   const dy = Math.max(origin.y, height - origin.y);
   return Math.hypot(dx, dy);
@@ -119,7 +139,11 @@ export function zoneDistances(zone: readonly Tile[], origin: Tile): Map<string, 
  * La zone mise en texture pour le shader : une case par texel, `width` × `height`, quatre
  * octets chacune — rouge à 255 si la case est atteinte, vert sa distance (plafonnée à 254).
  */
-export function zoneTexels(distances: ReadonlyMap<string, number>, width: number, height: number): Uint8Array {
+export function zoneTexels(
+  distances: ReadonlyMap<string, number>,
+  width: number,
+  height: number,
+): Uint8Array {
   const texels = new Uint8Array(width * height * 4);
   for (const [tileKey, distance] of distances) {
     const [x, y] = tileKey.split(",").map(Number) as [number, number];

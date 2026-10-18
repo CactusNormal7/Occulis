@@ -17,7 +17,14 @@ export interface PlayerPlateProps {
 }
 
 /** La plaque d'un joueur à l'annonce d'une partie : insigne, nom, chiffres, distinctions. */
-export function PlayerPlate({ name, camp, tag, lines = [], badges, align = "start" }: PlayerPlateProps) {
+export function PlayerPlate({
+  name,
+  camp,
+  tag,
+  lines = [],
+  badges,
+  align = "start",
+}: PlayerPlateProps) {
   return (
     <section className={cx("occ-plate", `occ-plate--${camp}`, align === "end" && "occ-plate--end")}>
       <TileAvatar name={name} size="lg" camp={camp} />

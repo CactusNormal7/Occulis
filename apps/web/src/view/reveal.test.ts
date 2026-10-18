@@ -11,7 +11,9 @@ describe("relight", () => {
     expect(lightAt(map, "0,0" as CoordKey, 0)).toBe(0);
     expect(lightAt(map, "0,0" as CoordKey, 400)).toBe(1);
     // À 300 ms, la case à une distance est plus éclairée que celle à quatre.
-    expect(lightAt(map, "1,0" as CoordKey, 300)).toBeGreaterThan(lightAt(map, "4,0" as CoordKey, 300));
+    expect(lightAt(map, "1,0" as CoordKey, 300)).toBeGreaterThan(
+      lightAt(map, "4,0" as CoordKey, 300),
+    );
     expect(lightAt(map, "4,0" as CoordKey, 600)).toBe(1);
     expect(settling(map, 500)).toBe(true);
     expect(settling(map, 10_000)).toBe(false);

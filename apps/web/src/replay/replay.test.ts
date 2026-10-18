@@ -4,14 +4,30 @@ import { Board } from "@occulis/core";
 import type { AdminFrame, AdminMatchDetail } from "@occulis/protocol";
 import { METRICS } from "../theme/theme.js";
 import { QUARTER_TURN, tileQuad } from "../view/iso.js";
-import { centerOffset, clampFrame, describeEntry, fitScale, frameLabel, movesBetween } from "./replay.js";
+import {
+  centerOffset,
+  clampFrame,
+  describeEntry,
+  fitScale,
+  frameLabel,
+  movesBetween,
+} from "./replay.js";
 
 // Les phrases attendues ici sont les françaises ; la forme des deux dictionnaires est
 // éprouvée par `@occulis/i18n`, et l'anglais y reste la langue par défaut.
 setLocale("fr");
 
-const piece = (id: string, owner: "A" | "B", x: number, y: number) => ({ id, kind: "scout", owner, x, y });
-const frame = (...pieces: ReturnType<typeof piece>[]): AdminFrame => ({ pieces, visible: { A: [], B: [] } });
+const piece = (id: string, owner: "A" | "B", x: number, y: number) => ({
+  id,
+  kind: "scout",
+  owner,
+  x,
+  y,
+});
+const frame = (...pieces: ReturnType<typeof piece>[]): AdminFrame => ({
+  pieces,
+  visible: { A: [], B: [] },
+});
 
 const match: AdminMatchDetail = {
   id: "m",
@@ -65,7 +81,12 @@ describe("rejeu : lecture des images", () => {
 
 describe("rejeu : cadrage", () => {
   const board = Board.fromAscii(["0000", "0020", "0000"]);
-  const base = { tileWidth: METRICS.tileWidth, tileHeight: METRICS.tileHeight, heightUnit: METRICS.heightUnit, pivot: { x: 1.5, y: 1 } };
+  const base = {
+    tileWidth: METRICS.tileWidth,
+    tileHeight: METRICS.tileHeight,
+    heightUnit: METRICS.heightUnit,
+    pivot: { x: 1.5, y: 1 },
+  };
 
   it("fait tenir le plateau, centré, dans le cadre à chaque quart de tour", () => {
     const [width, height] = [600, 400];
@@ -85,6 +106,8 @@ describe("rejeu : cadrage", () => {
   });
 
   it("grandit avec le cadre", () => {
-    expect(fitScale(board, base, 1200, 800, 20)).toBeGreaterThan(fitScale(board, base, 600, 400, 20));
+    expect(fitScale(board, base, 1200, 800, 20)).toBeGreaterThan(
+      fitScale(board, base, 600, 400, 20),
+    );
   });
 });

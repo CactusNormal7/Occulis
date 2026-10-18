@@ -1,10 +1,34 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { PROPOSED } from "../src/tokens.js";
-import { diamond, durationMs, project, readMotion, type IsoProjection, type Tile } from "../src/lab/index.js";
+import {
+  diamond,
+  durationMs,
+  project,
+  readMotion,
+  type IsoProjection,
+  type Tile,
+} from "../src/lab/index.js";
 import { hopAt, trailAt, waveDelayMs } from "../src/lab/choreography.js";
-import { COLUMNS, ROWS, START, allTiles, chebyshev, destinations, isWall, key, visibleTo, type MockPiece, type Role } from "./board-mock.js";
+import {
+  COLUMNS,
+  ROWS,
+  START,
+  allTiles,
+  chebyshev,
+  destinations,
+  isWall,
+  key,
+  visibleTo,
+  type MockPiece,
+  type Role,
+} from "./board-mock.js";
 
-export const ISO: IsoProjection = { originX: (ROWS * 48) / 2 + 24, originY: 48, tileWidth: 48, tileHeight: 24 };
+export const ISO: IsoProjection = {
+  originX: (ROWS * 48) / 2 + 24,
+  originY: 48,
+  tileWidth: 48,
+  tileHeight: 24,
+};
 const WALL_HEIGHT = 16;
 const VIEW_WIDTH = ((COLUMNS + ROWS) * ISO.tileWidth) / 2 + 48;
 const VIEW_HEIGHT = ((COLUMNS + ROWS) * ISO.tileHeight) / 2 + 72;
@@ -24,8 +48,14 @@ function Wall({ tile }: { tile: Tile }) {
   const z = WALL_HEIGHT;
   return (
     <g>
-      <polygon className="occ-lab-wall__left" points={`${x - w},${y - z} ${x},${y + h - z} ${x},${y + h} ${x - w},${y}`} />
-      <polygon className="occ-lab-wall__right" points={`${x},${y + h - z} ${x + w},${y - z} ${x + w},${y} ${x},${y + h}`} />
+      <polygon
+        className="occ-lab-wall__left"
+        points={`${x - w},${y - z} ${x},${y + h - z} ${x},${y + h} ${x - w},${y}`}
+      />
+      <polygon
+        className="occ-lab-wall__right"
+        points={`${x},${y + h - z} ${x + w},${y - z} ${x + w},${y} ${x},${y + h}`}
+      />
       <polygon className="occ-lab-wall__top" points={top(tile, z)} />
     </g>
   );
@@ -69,7 +99,13 @@ export function PieceShape({ role }: { role: Role }): ReactNode {
 
 export function PieceIcon({ role, camp }: { role: Role; camp: "A" | "B" }) {
   return (
-    <svg className="occ-lab-board" viewBox="-14 -34 28 42" width={56} height={84} aria-hidden="true">
+    <svg
+      className="occ-lab-board"
+      viewBox="-14 -34 28 42"
+      width={56}
+      height={84}
+      aria-hidden="true"
+    >
       <g className={`occ-lab-piece occ-lab-piece--${camp}`}>
         <PieceShape role={role} />
       </g>
@@ -112,7 +148,10 @@ export function BoardPrototype({ label }: BoardPrototypeProps) {
   const seen = useMemo(() => visibleTo("A", pieces), [pieces]);
   const selectedPiece = pieces.find((piece) => piece.id === selected);
   const targets = useMemo(
-    () => (selectedPiece === undefined || moving !== null ? new Map<string, number>() : destinations(selectedPiece, pieces)),
+    () =>
+      selectedPiece === undefined || moving !== null
+        ? new Map<string, number>()
+        : destinations(selectedPiece, pieces),
     [selectedPiece, pieces, moving],
   );
   const tiles = useMemo(() => allTiles().sort((a, b) => a.x + a.y - (b.x + b.y)), []);
@@ -199,7 +238,12 @@ export function BoardPrototype({ label }: BoardPrototypeProps) {
   const movingPiece = moving === null ? undefined : pieces.find((piece) => piece.id === moving.id);
 
   return (
-    <svg className="occ-lab-board" viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`} role="img" aria-label={label}>
+    <svg
+      className="occ-lab-board"
+      viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
+      role="img"
+      aria-label={label}
+    >
       <defs>
         <pattern id="occ-lab-dither" width="2" height="2" patternUnits="userSpaceOnUse">
           <rect className="occ-lab-dither" width="1" height="1" />
@@ -222,7 +266,9 @@ export function BoardPrototype({ label }: BoardPrototypeProps) {
           style={{ ["--delay" as string]: waveDelay(tile) }}
         />
       ))}
-      {selectedPiece !== undefined && <polygon className="occ-lab-selected" points={diamond(selectedPiece.at, ISO)} />}
+      {selectedPiece !== undefined && (
+        <polygon className="occ-lab-selected" points={diamond(selectedPiece.at, ISO)} />
+      )}
       {[...targets].map(([tileKey, distance]) => {
         const [x, y] = tileKey.split(",").map(Number) as [number, number];
         return (
@@ -235,12 +281,20 @@ export function BoardPrototype({ label }: BoardPrototypeProps) {
         );
       })}
       {wave !== null && motion.level !== "still" && (
-        <polygon key={`ripple-${wave.key}`} className="occ-lab-ripple" points={diamond(wave.origin, ISO)} />
+        <polygon
+          key={`ripple-${wave.key}`}
+          className="occ-lab-ripple"
+          points={diamond(wave.origin, ISO)}
+        />
       )}
       {[...ghosts.values()].map((ghost) => {
         const at = project(ghost.at, ISO);
         return (
-          <g key={`ghost-${ghost.id}`} className="occ-lab-ghost" transform={`translate(${at.x} ${at.y})`}>
+          <g
+            key={`ghost-${ghost.id}`}
+            className="occ-lab-ghost"
+            transform={`translate(${at.x} ${at.y})`}
+          >
             <PieceShape role={ghost.role} />
           </g>
         );
@@ -249,7 +303,10 @@ export function BoardPrototype({ label }: BoardPrototypeProps) {
         const at = project(piece.at, ISO);
         const entering = revealed.has(piece.id);
         return (
-          <g key={`${piece.id}-${entering ? (wave?.key ?? 0) : 0}`} transform={`translate(${at.x} ${at.y})`}>
+          <g
+            key={`${piece.id}-${entering ? (wave?.key ?? 0) : 0}`}
+            transform={`translate(${at.x} ${at.y})`}
+          >
             <g
               className={[
                 "occ-lab-piece",
@@ -300,4 +357,3 @@ export function BoardPrototype({ label }: BoardPrototypeProps) {
     </svg>
   );
 }
-

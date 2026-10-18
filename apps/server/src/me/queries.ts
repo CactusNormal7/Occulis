@@ -11,7 +11,13 @@ import type {
   MeSession,
 } from "@occulis/protocol";
 import { checkHandle, type HandleError } from "../auth/handle.js";
-import { MATCH_COLUMNS, MATCH_DETAIL_COLUMNS, readLog, replayLog, type MatchRow } from "../admin/queries.js";
+import {
+  MATCH_COLUMNS,
+  MATCH_DETAIL_COLUMNS,
+  readLog,
+  replayLog,
+  type MatchRow,
+} from "../admin/queries.js";
 import type { Page } from "../admin/paging.js";
 
 /**
@@ -42,22 +48,37 @@ export interface ProfileRow {
   readonly elo: number;
 }
 
-export async function readProfileRow(db: D1Database, userId: string, playerId: string): Promise<ProfileRow> {
+export async function readProfileRow(
+  db: D1Database,
+  userId: string,
+  playerId: string,
+): Promise<ProfileRow> {
   const [player, user, accounts, record] = await db.batch([
-    db.prepare("SELECT handle_changed_at, allow_spectators, elo FROM players WHERE id = ?").bind(playerId),
+    db
+      .prepare("SELECT handle_changed_at, allow_spectators, elo FROM players WHERE id = ?")
+      .bind(playerId),
     db.prepare("SELECT created_at FROM users WHERE id = ?").bind(userId),
-    db.prepare("SELECT provider_id, password IS NOT NULL AS has_password FROM accounts WHERE user_id = ?").bind(userId),
+    db
+      .prepare(
+        "SELECT provider_id, password IS NOT NULL AS has_password FROM accounts WHERE user_id = ?",
+      )
+      .bind(userId),
     recordStatement(db, playerId),
   ]);
   const linked = (accounts?.results ?? []) as { provider_id: string; has_password: number }[];
   const createdAt = (user?.results[0] as { created_at: string } | undefined)?.created_at;
-  const own = player?.results[0] as { handle_changed_at: number | null; allow_spectators: number; elo: number } | undefined;
+  const own = player?.results[0] as
+    { handle_changed_at: number | null; allow_spectators: number; elo: number } | undefined;
   return {
     handleChangedAt: own?.handle_changed_at ?? null,
     elo: own?.elo ?? 1200,
     createdAt: createdAt === undefined ? 0 : Date.parse(createdAt),
-    hasPassword: linked.some((account) => account.provider_id === "credential" && account.has_password === 1),
-    providers: linked.map((account) => account.provider_id).filter((provider) => provider !== "credential"),
+    hasPassword: linked.some(
+      (account) => account.provider_id === "credential" && account.has_password === 1,
+    ),
+    providers: linked
+      .map((account) => account.provider_id)
+      .filter((provider) => provider !== "credential"),
     record: recordOf(record?.results[0]),
     allowSpectators: (own?.allow_spectators ?? 1) === 1,
   };
@@ -93,13 +114,23 @@ export function recordOf(row: unknown): MeRecord {
   };
 }
 
-export async function setAllowSpectators(db: D1Database, playerId: string, allow: boolean): Promise<void> {
-  await db.prepare("UPDATE players SET allow_spectators = ? WHERE id = ?").bind(allow ? 1 : 0, playerId).run();
+export async function setAllowSpectators(
+  db: D1Database,
+  playerId: string,
+  allow: boolean,
+): Promise<void> {
+  await db
+    .prepare("UPDATE players SET allow_spectators = ? WHERE id = ?")
+    .bind(allow ? 1 : 0, playerId)
+    .run();
 }
 
 export type HandleChange =
   | { readonly ok: true; readonly handle: string; readonly nextHandleChangeAt: number }
-  | { readonly ok: false; readonly code: HandleError | "HANDLE_TAKEN" | "HANDLE_UNCHANGED" | "HANDLE_COOLDOWN" };
+  | {
+      readonly ok: false;
+      readonly code: HandleError | "HANDLE_TAKEN" | "HANDLE_UNCHANGED" | "HANDLE_COOLDOWN";
+    };
 
 /**
  * Change le pseudo du joueur, dans les deux tables qui le portent.
@@ -109,12 +140,20 @@ export type HandleChange =
  * Le lot est une transaction (D1 `batch`) ; la seconde instruction ne touche `users`
  * que si la première a effectivement écrit le nouveau pseudo.
  */
-export async function changeHandle(db: D1Database, playerId: string, raw: unknown, now: number): Promise<HandleChange> {
+export async function changeHandle(
+  db: D1Database,
+  playerId: string,
+  raw: unknown,
+  now: number,
+): Promise<HandleChange> {
   const checked = checkHandle(raw);
   if (!checked.ok) return checked;
   const handle = checked.handle;
 
-  const current = await db.prepare("SELECT handle FROM players WHERE id = ?").bind(playerId).first<{ handle: string }>();
+  const current = await db
+    .prepare("SELECT handle FROM players WHERE id = ?")
+    .bind(playerId)
+    .first<{ handle: string }>();
   if (current?.handle === handle) return { ok: false, code: "HANDLE_UNCHANGED" };
 
   try {
@@ -156,7 +195,12 @@ interface SessionRow {
  * que le profil ne passe pas par `/api/auth/list-sessions`, qui rend les jetons au
  * JavaScript de la page.
  */
-export async function listSessions(db: D1Database, userId: string, currentId: string, now: number): Promise<MeSession[]> {
+export async function listSessions(
+  db: D1Database,
+  userId: string,
+  currentId: string,
+  now: number,
+): Promise<MeSession[]> {
   const rows = await db
     .prepare(
       `SELECT id, created_at, updated_at, expires_at, user_agent, ip_address, impersonated_by
@@ -177,17 +221,35 @@ export async function listSessions(db: D1Database, userId: string, currentId: st
 }
 
 /** Faux si la session n'existe pas ou n'appartient pas à ce compte. */
-export async function revokeSession(db: D1Database, userId: string, sessionId: string): Promise<boolean> {
-  const result = await db.prepare("DELETE FROM sessions WHERE id = ? AND user_id = ?").bind(sessionId, userId).run();
+export async function revokeSession(
+  db: D1Database,
+  userId: string,
+  sessionId: string,
+): Promise<boolean> {
+  const result = await db
+    .prepare("DELETE FROM sessions WHERE id = ? AND user_id = ?")
+    .bind(sessionId, userId)
+    .run();
   return result.meta.changes > 0;
 }
 
-export async function revokeOtherSessions(db: D1Database, userId: string, currentId: string): Promise<number> {
-  const result = await db.prepare("DELETE FROM sessions WHERE user_id = ? AND id != ?").bind(userId, currentId).run();
+export async function revokeOtherSessions(
+  db: D1Database,
+  userId: string,
+  currentId: string,
+): Promise<number> {
+  const result = await db
+    .prepare("DELETE FROM sessions WHERE user_id = ? AND id != ?")
+    .bind(userId, currentId)
+    .run();
   return result.meta.changes;
 }
 
-export async function listMyMatches(db: D1Database, playerId: string, page: Page): Promise<MeMatchPage> {
+export async function listMyMatches(
+  db: D1Database,
+  playerId: string,
+  page: Page,
+): Promise<MeMatchPage> {
   const [rows, count] = await db.batch([
     db
       .prepare(
@@ -195,7 +257,9 @@ export async function listMyMatches(db: D1Database, playerId: string, page: Page
          ORDER BY m.started_at DESC LIMIT ?2 OFFSET ?3`,
       )
       .bind(playerId, page.limit, page.offset),
-    db.prepare("SELECT COUNT(*) AS total FROM matches WHERE player_a = ?1 OR player_b = ?1").bind(playerId),
+    db
+      .prepare("SELECT COUNT(*) AS total FROM matches WHERE player_a = ?1 OR player_b = ?1")
+      .bind(playerId),
   ]);
   return {
     matches: ((rows?.results ?? []) as MatchRow[]).map((row) => mySummary(row, playerId)),
@@ -234,9 +298,15 @@ export type MyMatch = MeMatchDetail | "unknown" | "ongoing";
  * resservirait la vue courante à qui n'est plus connecté au siège, et plus tard
  * peut-être davantage.
  */
-export async function readMyMatch(db: D1Database, playerId: string, matchId: string): Promise<MyMatch> {
+export async function readMyMatch(
+  db: D1Database,
+  playerId: string,
+  matchId: string,
+): Promise<MyMatch> {
   const row = await db
-    .prepare(`SELECT ${MATCH_DETAIL_COLUMNS} WHERE m.id = ?1 AND (m.player_a = ?2 OR m.player_b = ?2)`)
+    .prepare(
+      `SELECT ${MATCH_DETAIL_COLUMNS} WHERE m.id = ?1 AND (m.player_a = ?2 OR m.player_b = ?2)`,
+    )
     .bind(matchId, playerId)
     .first<MatchRow>();
   if (row === null) return "unknown";
@@ -245,7 +315,9 @@ export async function readMyMatch(db: D1Database, playerId: string, matchId: str
   const summary = mySummary(row, playerId);
   const seat = summary.seat;
   const actions = await readLog(db, matchId);
-  const { frames, players, board, replayError } = replayLog(row, actions, (memory) => seatFrame(memory, seat));
+  const { frames, players, board, replayError } = replayLog(row, actions, (memory) =>
+    seatFrame(memory, seat),
+  );
   const log: MeLogEntry[] = actions.map((action, seq) => {
     const player = players[seq] ?? null;
     return { seq, player, action: player === seat || action.kind === "resign" ? action : null };
@@ -255,7 +327,12 @@ export async function readMyMatch(db: D1Database, playerId: string, matchId: str
 
 function seatFrame(memory: MatchMemory, seat: PlayerId): MeFrame {
   const view = viewFor(memory.state, memory.knowledge[seat]);
-  const piece = (p: { id: string; kind: string; owner: PlayerId; coord: { x: number; y: number } }): MeFramePiece => ({
+  const piece = (p: {
+    id: string;
+    kind: string;
+    owner: PlayerId;
+    coord: { x: number; y: number };
+  }): MeFramePiece => ({
     id: p.id,
     kind: p.kind,
     owner: p.owner,
@@ -289,7 +366,11 @@ function mySummary(row: MatchRow, playerId: string): MeMatchSummary {
   };
 }
 
-export function resultFor(outcome: Outcome | null, finishedAt: number | null, seat: PlayerId): MeResult {
+export function resultFor(
+  outcome: Outcome | null,
+  finishedAt: number | null,
+  seat: PlayerId,
+): MeResult {
   if (finishedAt === null) return "ongoing";
   if (outcome === null) return "ended";
   return outcome.winner === seat ? "won" : "lost";

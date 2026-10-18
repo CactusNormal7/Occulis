@@ -18,7 +18,18 @@ import {
 } from "@occulis/ui";
 import { describeTeamError } from "../ui/messages.js";
 import { type PlacementCanvas, mountPlacement } from "./placement-canvas.js";
-import { type TeamDraft, autoFill, clear, clickTile, fromEntries, placedCount, remove, select, setKind, verdict } from "./model.js";
+import {
+  type TeamDraft,
+  autoFill,
+  clear,
+  clickTile,
+  fromEntries,
+  placedCount,
+  remove,
+  select,
+  setKind,
+  verdict,
+} from "./model.js";
 
 /**
  * Le constructeur d'équipe : les emplacements de la composition à gauche, le plateau et
@@ -40,7 +51,17 @@ export interface TeamBuilderProps {
   readonly locked?: boolean | undefined;
 }
 
-export function TeamBuilder({ ruleset, board, side, zone, opponentZone, draft, onChange, defaultTeam, locked = false }: TeamBuilderProps) {
+export function TeamBuilder({
+  ruleset,
+  board,
+  side,
+  zone,
+  opponentZone,
+  draft,
+  onChange,
+  defaultTeam,
+  locked = false,
+}: TeamBuilderProps) {
   const m = useMessages().team;
   const check = verdict(ruleset, zone, draft);
   const change = (next: TeamDraft): void => {
@@ -69,7 +90,9 @@ export function TeamBuilder({ ruleset, board, side, zone, opponentZone, draft, o
                         <SelectField
                           label={m.slot.choose}
                           value={slot.kind}
-                          onChange={(event) => change(setKind(draft, ruleset, index, event.target.value))}
+                          onChange={(event) =>
+                            change(setKind(draft, ruleset, index, event.target.value))
+                          }
                           options={choices.map((kind) => ({ value: kind, label: kindName(kind) }))}
                         />
                       )}
@@ -79,7 +102,12 @@ export function TeamBuilder({ ruleset, board, side, zone, opponentZone, draft, o
                         <Badge tone={side}>{m.slot.placed(slot.coord.x, slot.coord.y)}</Badge>
                       )}
                       {slot.coord !== undefined && !locked && (
-                        <IconButton icon="close" label={m.actions.reset} tipAlign="end" onClick={() => change(remove(draft, index))} />
+                        <IconButton
+                          icon="close"
+                          label={m.actions.reset}
+                          tipAlign="end"
+                          onClick={() => change(remove(draft, index))}
+                        />
                       )}
                     </>
                   }
@@ -96,7 +124,9 @@ export function TeamBuilder({ ruleset, board, side, zone, opponentZone, draft, o
             })}
           </ChoiceList>
         </Card>
-        {!check.ok && placedCount(draft) === draft.slots.length && <FormMessage tone="error">{describeTeamError(check.error)}</FormMessage>}
+        {!check.ok && placedCount(draft) === draft.slots.length && (
+          <FormMessage tone="error">{describeTeamError(check.error)}</FormMessage>
+        )}
       </CardColumn>
       <CardColumn>
         <Card flush>
@@ -147,7 +177,15 @@ interface PlacementBoardProps {
  * Le canevas du placement, monté une fois par plateau. Les clics remontent par une
  * référence, pour qu'un nouveau rendu n'oblige pas à remonter le canevas.
  */
-function PlacementBoard({ board, side, zone, opponentZone, draft, initialOf, onPick }: PlacementBoardProps) {
+function PlacementBoard({
+  board,
+  side,
+  zone,
+  opponentZone,
+  draft,
+  initialOf,
+  onPick,
+}: PlacementBoardProps) {
   const m = useMessages().team;
   const canvas = useRef<HTMLCanvasElement>(null);
   const mounted = useRef<PlacementCanvas | null>(null);
@@ -171,18 +209,32 @@ function PlacementBoard({ board, side, zone, opponentZone, draft, initialOf, onP
       opponentZone,
       initialOf,
       pieces: draft.slots.flatMap((slot, index) =>
-        slot.coord === undefined ? [] : [{ coord: slot.coord, kind: slot.kind, selected: draft.selected === index }],
+        slot.coord === undefined
+          ? []
+          : [{ coord: slot.coord, kind: slot.kind, selected: draft.selected === index }],
       ),
     });
   });
 
   return (
     <>
-      <canvas ref={canvas} aria-label={m.board.label} style={{ display: "block", width: "100%", height: "clamp(300px, 52vh, 520px)" }} />
+      <canvas
+        ref={canvas}
+        aria-label={m.board.label}
+        style={{ display: "block", width: "100%", height: "clamp(300px, 52vh, 520px)" }}
+      />
       <Toolbar>
         <QuickBar>
-          <IconButton icon="rotateLeft" label={m.board.rotate} onClick={() => mounted.current?.rotate(-1)} />
-          <IconButton icon="rotateRight" label={m.board.rotate} onClick={() => mounted.current?.rotate(1)} />
+          <IconButton
+            icon="rotateLeft"
+            label={m.board.rotate}
+            onClick={() => mounted.current?.rotate(-1)}
+          />
+          <IconButton
+            icon="rotateRight"
+            label={m.board.rotate}
+            onClick={() => mounted.current?.rotate(1)}
+          />
         </QuickBar>
       </Toolbar>
     </>

@@ -38,13 +38,23 @@ export function membersOf(proposal: Proposal): readonly Waiting[] {
 }
 
 /** La proposition où attend cette connexion, s'il y en a une. */
-export function proposalOf(proposals: readonly Proposal[], connectionId: string): Proposal | undefined {
-  return proposals.find((proposal) => membersOf(proposal).some((member) => member.connectionId === connectionId));
+export function proposalOf(
+  proposals: readonly Proposal[],
+  connectionId: string,
+): Proposal | undefined {
+  return proposals.find((proposal) =>
+    membersOf(proposal).some((member) => member.connectionId === connectionId),
+  );
 }
 
 /** La proposition où attend ce joueur, quelle que soit la connexion. */
-export function proposalOfPlayer(proposals: readonly Proposal[], playerId: string): Proposal | undefined {
-  return proposals.find((proposal) => membersOf(proposal).some((member) => member.playerId === playerId));
+export function proposalOfPlayer(
+  proposals: readonly Proposal[],
+  playerId: string,
+): Proposal | undefined {
+  return proposals.find((proposal) =>
+    membersOf(proposal).some((member) => member.playerId === playerId),
+  );
 }
 
 export function isSettled(proposal: Proposal): boolean {
@@ -61,11 +71,19 @@ export function accept(
   connectionId: string,
 ): { readonly proposals: readonly Proposal[]; readonly proposal: Proposal | undefined } {
   const found = proposals.find((proposal) => proposal.id === proposalId);
-  if (found === undefined || !membersOf(found).some((member) => member.connectionId === connectionId)) {
+  if (
+    found === undefined ||
+    !membersOf(found).some((member) => member.connectionId === connectionId)
+  ) {
     return { proposals, proposal: undefined };
   }
-  const updated = found.accepted.includes(connectionId) ? found : { ...found, accepted: [...found.accepted, connectionId] };
-  return { proposals: proposals.map((proposal) => (proposal.id === found.id ? updated : proposal)), proposal: updated };
+  const updated = found.accepted.includes(connectionId)
+    ? found
+    : { ...found, accepted: [...found.accepted, connectionId] };
+  return {
+    proposals: proposals.map((proposal) => (proposal.id === found.id ? updated : proposal)),
+    proposal: updated,
+  };
 }
 
 /** Retire une proposition réglée (acceptée des deux côtés) : la partie va être créée. */
@@ -80,28 +98,42 @@ export function withdraw(
 ): { readonly proposals: readonly Proposal[]; readonly lapse: Lapse | undefined } {
   const found = proposalOf(proposals, connectionId);
   if (found === undefined) return { proposals, lapse: undefined };
-  return { proposals: settle(proposals, found.id), lapse: lapseOf(found, (member) => member.connectionId === connectionId) };
+  return {
+    proposals: settle(proposals, found.id),
+    lapse: lapseOf(found, (member) => member.connectionId === connectionId),
+  };
 }
 
 /** Les propositions dont le délai est passé tombent ; qui n'avait pas accepté en sort. */
-export function expire(proposals: readonly Proposal[], now: number): { readonly proposals: readonly Proposal[]; readonly lapses: readonly Lapse[] } {
+export function expire(
+  proposals: readonly Proposal[],
+  now: number,
+): { readonly proposals: readonly Proposal[]; readonly lapses: readonly Lapse[] } {
   const due = proposals.filter((proposal) => proposal.deadline <= now);
   return {
     proposals: proposals.filter((proposal) => proposal.deadline > now),
-    lapses: due.map((proposal) => lapseOf(proposal, (member) => !proposal.accepted.includes(member.connectionId))),
+    lapses: due.map((proposal) =>
+      lapseOf(proposal, (member) => !proposal.accepted.includes(member.connectionId)),
+    ),
   };
 }
 
 /** L'échéance la plus proche, pour l'alarme du Durable Object. */
 export function nextDeadline(proposals: readonly Proposal[]): number | undefined {
-  return proposals.length === 0 ? undefined : Math.min(...proposals.map((proposal) => proposal.deadline));
+  return proposals.length === 0
+    ? undefined
+    : Math.min(...proposals.map((proposal) => proposal.deadline));
 }
 
 function lapseOf(proposal: Proposal, faulty: (member: Waiting) => boolean): Lapse {
   const members = membersOf(proposal);
   return {
     proposal,
-    requeue: members.filter((member) => !faulty(member) && proposal.accepted.includes(member.connectionId)),
-    dropped: members.filter((member) => faulty(member) || !proposal.accepted.includes(member.connectionId)),
+    requeue: members.filter(
+      (member) => !faulty(member) && proposal.accepted.includes(member.connectionId),
+    ),
+    dropped: members.filter(
+      (member) => faulty(member) || !proposal.accepted.includes(member.connectionId),
+    ),
   };
 }

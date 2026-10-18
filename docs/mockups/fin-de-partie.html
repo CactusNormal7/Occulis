@@ -13,19 +13,35 @@
   <body>
     <main class="screen">
       <!-- Le viewBox est volontairement plus large que le plateau : il le réduit à une toile de fond. -->
-      <svg id="board" width="1280" height="800" viewBox="-542 -284 1120 680"
-        style="position: absolute; inset: 0; opacity: 0.16" aria-hidden="true"></svg>
+      <svg
+        id="board"
+        width="1280"
+        height="800"
+        viewBox="-542 -284 1120 680"
+        style="position: absolute; inset: 0; opacity: 0.16"
+        aria-hidden="true"
+      ></svg>
 
       <div
         style="
           position: absolute;
           inset: 0;
-          background: radial-gradient(ellipse at center, rgba(13, 15, 18, 0.6) 0%, rgba(13, 15, 18, 0.96) 62%);
+          background: radial-gradient(
+            ellipse at center,
+            rgba(13, 15, 18, 0.6) 0%,
+            rgba(13, 15, 18, 0.96) 62%
+          );
         "
       ></div>
 
-      <svg id="motes" width="1280" height="800" viewBox="0 0 1280 800"
-        style="position: absolute; inset: 0" aria-hidden="true"></svg>
+      <svg
+        id="motes"
+        width="1280"
+        height="800"
+        viewBox="0 0 1280 800"
+        style="position: absolute; inset: 0"
+        aria-hidden="true"
+      ></svg>
 
       <div
         style="
@@ -40,7 +56,10 @@
       >
         <svg id="crown" class="occ-breathe" width="44" height="56" aria-hidden="true"></svg>
 
-        <div class="mono" style="letter-spacing: 4px; color: var(--occ-camp-a); text-transform: uppercase">
+        <div
+          class="mono"
+          style="letter-spacing: 4px; color: var(--occ-camp-a); text-transform: uppercase"
+        >
           Échec et mat
         </div>
 
@@ -50,7 +69,10 @@
           Le roi adverse n'a plus aucune parade
         </div>
 
-        <div class="mono-sm muted" style="display: flex; gap: 48px; margin-top: 10px; letter-spacing: 1px">
+        <div
+          class="mono-sm muted"
+          style="display: flex; gap: 48px; margin-top: 10px; letter-spacing: 1px"
+        >
           <div style="text-align: center">
             <div style="font-size: 22px; color: #ffffff; letter-spacing: 0">18</div>
             <div style="margin-top: 4px">TOURS</div>
@@ -107,7 +129,7 @@
             stroke: O.PALETTE.campB,
             "stroke-width": 2,
             "stroke-linecap": "round",
-          })
+          }),
         );
 
         var motes = document.getElementById("motes");

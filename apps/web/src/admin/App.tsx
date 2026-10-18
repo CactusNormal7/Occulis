@@ -1,5 +1,14 @@
 import { Suspense, useState, type ReactNode } from "react";
-import { Button, EmptyState, LocaleSwitch, ProgressBar, ToastProvider, TopBar, UiRoot, useMessages } from "@occulis/ui";
+import {
+  Button,
+  EmptyState,
+  LocaleSwitch,
+  ProgressBar,
+  ToastProvider,
+  TopBar,
+  UiRoot,
+  useMessages,
+} from "@occulis/ui";
 import { chooseLocale, initLocale } from "../locale/browser.js";
 import { stopImpersonating, type Identity } from "../net/auth.js";
 import { useHashRoute, useLoad, usePending, whenReady } from "../load/hooks.js";
@@ -84,7 +93,16 @@ function Gate({ identity, route }: { identity: Identity; route: Route }) {
     // La session est celle du joueur incarné : le back-office lui est fermé, mais le
     // chemin du retour doit rester à portée.
     return (
-      <EmptyState action={<Button variant="primary" onClick={() => void stopImpersonating().then(() => location.reload())}>{m.stop}</Button>}>
+      <EmptyState
+        action={
+          <Button
+            variant="primary"
+            onClick={() => void stopImpersonating().then(() => location.reload())}
+          >
+            {m.stop}
+          </Button>
+        }
+      >
         {m.impersonating(identity.handle ?? m.aPlayer)}
       </EmptyState>
     );

@@ -54,7 +54,11 @@ export function hash(...values: readonly number[]): number {
   return h >>> 0;
 }
 
-function shape(segments: readonly Segment[], dots: readonly Point[] = [], rings: readonly Point[] = []): GlyphShape {
+function shape(
+  segments: readonly Segment[],
+  dots: readonly Point[] = [],
+  rings: readonly Point[] = [],
+): GlyphShape {
   return { segments, dots, rings };
 }
 
@@ -124,7 +128,9 @@ function latticePool(): GlyphShape[] {
     if (chosen.length < 3 || chosen.length > 5) continue;
     // Une face entière n'est qu'une case vide : elle ne se lit pas comme un signe.
     if ((mask & 0b1111) === 0b1111 || (mask & 0b11110000) === 0b11110000) continue;
-    const edges = chosen.map((index): readonly [string, string] => CUBE_EDGES[index] ?? ["t0", "t0"]);
+    const edges = chosen.map(
+      (index): readonly [string, string] => CUBE_EDGES[index] ?? ["t0", "t0"],
+    );
     if (!connected(edges)) continue;
     pool.push(shape(edges.map(edgeSegment)));
   }
@@ -153,7 +159,12 @@ function stelePool(): GlyphShape[] {
     const chosen = bits(mask, marks.length);
     if (chosen.length > 3) continue;
     // Deux encoches au plus par hauteur : au-delà, la hauteur ne se lit plus.
-    if (STELE_LEVELS.some((_, level) => chosen.filter((index) => Math.floor(index / 4) === level).length > 2)) continue;
+    if (
+      STELE_LEVELS.some(
+        (_, level) => chosen.filter((index) => Math.floor(index / 4) === level).length > 2,
+      )
+    )
+      continue;
     pool.push(shape([STELE_SPINE, ...chosen.map((index) => marks[index] ?? STELE_SPINE)]));
   }
   return pool;
@@ -161,7 +172,9 @@ function stelePool(): GlyphShape[] {
 
 /* ---- Orbites : des étoiles reliées sur une grille de 3 × 3 ---------------------------- */
 
-const ORBIT_NODES: readonly Point[] = [0, 1, 2].flatMap((row) => [0, 1, 2].map((col): Point => [col * 4, 1 + row * 4]));
+const ORBIT_NODES: readonly Point[] = [0, 1, 2].flatMap((row) =>
+  [0, 1, 2].map((col): Point => [col * 4, 1 + row * 4]),
+);
 const ORBIT_CENTER = 4;
 
 function neighbours(a: number, b: number): boolean {
@@ -207,7 +220,11 @@ function orbitPool(): GlyphShape[] {
 
 /* ---- Alphabets ----------------------------------------------------------------------- */
 
-const POOLS: Record<CipherAlphabet, () => GlyphShape[]> = { lattice: latticePool, stele: stelePool, orbit: orbitPool };
+const POOLS: Record<CipherAlphabet, () => GlyphShape[]> = {
+  lattice: latticePool,
+  stele: stelePool,
+  orbit: orbitPool,
+};
 
 /** Le signe d'un caractère que l'alphabet ne chiffre pas (ponctuation) : le plus simple de tous. */
 const STOPS: Record<CipherAlphabet, GlyphShape> = {
@@ -270,16 +287,28 @@ export function isGap(char: string): boolean {
  * - **ornement** : un glyphe tiré de la position et de la graine, sans rapport stable avec la
  *   lettre — deux « E » ne se ressemblent pas, rien n'est déchiffrable.
  */
-export function cipherGlyph(char: string, index: number, name: CipherAlphabet, decodable: boolean, seed = 0): GlyphShape {
+export function cipherGlyph(
+  char: string,
+  index: number,
+  name: CipherAlphabet,
+  decodable: boolean,
+  seed = 0,
+): GlyphShape {
   const set = alphabet(name);
   const folded = foldChar(char);
   const position = CIPHER_CHARSET.indexOf(folded);
-  if (decodable) return position === -1 || folded.length !== 1 ? set.stop : (set.key[position] ?? set.stop);
+  if (decodable)
+    return position === -1 || folded.length !== 1 ? set.stop : (set.key[position] ?? set.stop);
   return set.pool[hash(seed, index, folded.codePointAt(0) ?? 0) % set.pool.length] ?? set.stop;
 }
 
 /** Un glyphe de passage, pendant qu'un caractère se brouille : change à chaque `variant`. */
-export function scrambleGlyph(index: number, variant: number, name: CipherAlphabet, seed = 0): GlyphShape {
+export function scrambleGlyph(
+  index: number,
+  variant: number,
+  name: CipherAlphabet,
+  seed = 0,
+): GlyphShape {
   const set = alphabet(name);
   return set.pool[hash(seed, index, variant, 92) % set.pool.length] ?? set.stop;
 }
@@ -326,13 +355,20 @@ export function settleAt(index: number, length: number, timing: DecodeTiming): n
  * Juste avant de céder sa lettre, un caractère montre **son vrai glyphe** pendant un pas :
  * avec un alphabet décodable, c'est ce qui permet d'associer un signe à sa lettre.
  */
-export function cellAt(index: number, length: number, elapsed: number, timing: DecodeTiming, direction: "decode" | "encode"): CellState {
+export function cellAt(
+  index: number,
+  length: number,
+  elapsed: number,
+  timing: DecodeTiming,
+  direction: "decode" | "encode",
+): CellState {
   const settle = settleAt(index, length, timing);
   const scrambleFrom = settle - SCRAMBLE_TICKS * timing.tickMs;
   const truthFrom = settle - timing.tickMs;
   if (direction === "decode") {
     if (elapsed >= settle) return { state: "plain" };
-    if (!timing.scramble || elapsed < scrambleFrom || elapsed >= truthFrom) return { state: "cipher" };
+    if (!timing.scramble || elapsed < scrambleFrom || elapsed >= truthFrom)
+      return { state: "cipher" };
     return { state: "scramble", variant: Math.floor((elapsed - scrambleFrom) / timing.tickMs) };
   }
   // Le chiffrement est le même geste remonté dans le temps — la lettre tient, se brouille,
@@ -345,7 +381,13 @@ export function cellAt(index: number, length: number, elapsed: number, timing: D
  * Le glyphe d'un ornement à l'instant `elapsed` : chaque case frémit à son rythme, si bien
  * que la frise entière change d'un glyphe toutes les `flickerMs` en moyenne — jamais en bloc.
  */
-export function flickerVariant(index: number, count: number, elapsed: number, flickerMs: number, seed = 0): number {
+export function flickerVariant(
+  index: number,
+  count: number,
+  elapsed: number,
+  flickerMs: number,
+  seed = 0,
+): number {
   const period = flickerMs * Math.max(1, count) * (0.75 + (hash(seed, index, 241) % 500) / 1000);
   const phase = (hash(seed, index, 242) % 1000) / 1000;
   return Math.floor(elapsed / period + phase);

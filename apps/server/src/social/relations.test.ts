@@ -39,23 +39,41 @@ describe("decideRequest", () => {
   });
 
   it("accepte directement une demande croisée", () => {
-    expect(decideRequest("a", "b", { ...NONE, incoming: true }, 0)).toEqual({ ok: true, action: "accept" });
+    expect(decideRequest("a", "b", { ...NONE, incoming: true }, 0)).toEqual({
+      ok: true,
+      action: "accept",
+    });
   });
 
   it("refuse soi-même, un profil sans compte et un ami existant", () => {
     expect(decideRequest("a", "a", NONE, 0)).toEqual({ ok: false, code: "SELF" });
-    expect(decideRequest("a", "b", { ...NONE, exists: false }, 0)).toEqual({ ok: false, code: "UNKNOWN_PLAYER" });
-    expect(decideRequest("a", "b", { ...NONE, friend: true }, 0)).toEqual({ ok: false, code: "ALREADY_FRIENDS" });
+    expect(decideRequest("a", "b", { ...NONE, exists: false }, 0)).toEqual({
+      ok: false,
+      code: "UNKNOWN_PLAYER",
+    });
+    expect(decideRequest("a", "b", { ...NONE, friend: true }, 0)).toEqual({
+      ok: false,
+      code: "ALREADY_FRIENDS",
+    });
   });
 
   it("répond « indisponible » à qui est bloqué, sans nommer le blocage", () => {
-    expect(decideRequest("a", "b", { ...NONE, theyBlock: true }, 0)).toEqual({ ok: false, code: "UNAVAILABLE" });
-    expect(decideRequest("a", "b", { ...NONE, iBlock: true }, 0)).toEqual({ ok: false, code: "BLOCKED" });
+    expect(decideRequest("a", "b", { ...NONE, theyBlock: true }, 0)).toEqual({
+      ok: false,
+      code: "UNAVAILABLE",
+    });
+    expect(decideRequest("a", "b", { ...NONE, iBlock: true }, 0)).toEqual({
+      ok: false,
+      code: "BLOCKED",
+    });
   });
 
   it("borne les demandes en attente", () => {
     expect(decideRequest("a", "b", NONE, 50)).toEqual({ ok: false, code: "TOO_MANY_REQUESTS" });
-    expect(decideRequest("a", "b", { ...NONE, outgoing: true }, 50)).toEqual({ ok: true, action: "already-sent" });
+    expect(decideRequest("a", "b", { ...NONE, outgoing: true }, 50)).toEqual({
+      ok: true,
+      action: "already-sent",
+    });
   });
 });
 

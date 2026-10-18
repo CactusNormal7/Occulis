@@ -49,7 +49,13 @@ function vaultOf(current: Look): Vault {
 }
 
 /** Des nuées en anneaux concentriques à peine posés : un dégradé par paliers, à la manière du pixel art. */
-function drawNebula(g: Graphics, width: number, height: number, timeMs: number, color: number): void {
+function drawNebula(
+  g: Graphics,
+  width: number,
+  height: number,
+  timeMs: number,
+  color: number,
+): void {
   const clouds = [
     { x: 0.22, y: 0.3, r: 0.32 },
     { x: 0.78, y: 0.22, r: 0.26 },
@@ -71,7 +77,13 @@ function drawNebula(g: Graphics, width: number, height: number, timeMs: number, 
   }
 }
 
-export function drawSky(g: Graphics, width: number, height: number, timeMs: number, px: number): void {
+export function drawSky(
+  g: Graphics,
+  width: number,
+  height: number,
+  timeMs: number,
+  px: number,
+): void {
   const current = look();
   const { stars, links } = vaultOf(current);
   const { star: starColor, aura } = current.palette.sky;
@@ -103,13 +115,22 @@ export function drawSky(g: Graphics, width: number, height: number, timeMs: numb
       g.moveTo(shooting.tailX, shooting.tailY)
         .lineTo(shooting.x, shooting.y)
         .stroke({ width: px, color: starColor, alpha: shooting.alpha * 0.8 });
-      g.rect(snap(shooting.x, px), snap(shooting.y, px), px * 2, px * 2).fill({ color: starColor, alpha: shooting.alpha });
+      g.rect(snap(shooting.x, px), snap(shooting.y, px), px * 2, px * 2).fill({
+        color: starColor,
+        alpha: shooting.alpha,
+      });
     }
   }
 }
 
 /** Poussière d'os qui monte, ou lucioles qui errent et luisent, selon le thème. */
-export function drawMotes(g: Graphics, width: number, height: number, timeMs: number, px: number): void {
+export function drawMotes(
+  g: Graphics,
+  width: number,
+  height: number,
+  timeMs: number,
+  px: number,
+): void {
   const current = look();
   const { motes } = vaultOf(current);
   g.clear();
@@ -117,7 +138,9 @@ export function drawMotes(g: Graphics, width: number, height: number, timeMs: nu
   const fireflies = current.atmosphere.motes === "fireflies";
   const color = fireflies ? current.palette.sky.aura : current.palette.ink;
   for (const mote of motes) {
-    const at = fireflies ? fireflyAt(mote, timeMs, width, height) : moteAt(mote, timeMs, width, height);
+    const at = fireflies
+      ? fireflyAt(mote, timeMs, width, height)
+      : moteAt(mote, timeMs, width, height);
     if (at.alpha <= 0.01) continue;
     const x = snap(at.x, px);
     const y = snap(at.y, px);

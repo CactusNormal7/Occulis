@@ -23,9 +23,10 @@ function BoardMove() {
       }
     >
       <p className="occ-lab-note">
-        Click a teal piece: it lifts, its destinations open in a cascade. Click a destination: an arc with afterimages, a ripple on
-        landing, then the line of sight unfolds as a wave from the landing tile. An enemy entering sight materialises; one leaving it
-        leaves a dotted ghost. Calm: lower arc, no trail. Still: the piece fades across, fog cross-fades at once.
+        Click a teal piece: it lifts, its destinations open in a cascade. Click a destination: an
+        arc with afterimages, a ripple on landing, then the line of sight unfolds as a wave from the
+        landing tile. An enemy entering sight materialises; one leaving it leaves a dotted ghost.
+        Calm: lower arc, no trail. Still: the piece fades across, fog cross-fades at once.
       </p>
       <BoardPrototype key={round} label="Prototype board: camp A to move" />
       <div className="occ-lab-legend">
@@ -55,7 +56,14 @@ function ScreenThreshold() {
     if (box === undefined) return;
     const button = event.currentTarget.getBoundingClientRect();
     // Le papier part du bouton : le geste dit d'où vient le changement d'écran.
-    setRun({ key: Date.now(), source: { kind: "point", x: button.left + button.width / 2 - box.left, y: button.top + button.height / 2 - box.top } });
+    setRun({
+      key: Date.now(),
+      source: {
+        kind: "point",
+        x: button.left + button.width / 2 - box.left,
+        y: button.top + button.height / 2 - box.top,
+      },
+    });
   };
 
   return (
@@ -68,9 +76,10 @@ function ScreenThreshold() {
       }
     >
       <p className="occ-lab-note">
-        The paper spreads from the button that was pressed, covers the frame, the screen swaps underneath in one piece, then the
-        paper resorbs in an ordered dither — the same vocabulary as the theme veil, without touching it. The new title arrives as
-        glyphs and decodes. Still: one cross-fade.
+        The paper spreads from the button that was pressed, covers the frame, the screen swaps
+        underneath in one piece, then the paper resorbs in an ordered dither — the same vocabulary
+        as the theme veil, without touching it. The new title arrives as glyphs and decodes. Still:
+        one cross-fade.
       </p>
       <div className="occ-lab-screen" ref={frame}>
         {screen === "found" ? (
@@ -147,21 +156,34 @@ function QueueWait() {
       }
     >
       <p className="occ-lab-note">
-        A crown of glyphs turns very slowly around a breathing eye; one glyph shifts now and then. The elapsed time stays plain text.
-        When an opponent is found the crown closes into the eye and the status decodes. Calm and still: the crown stands still.
+        A crown of glyphs turns very slowly around a breathing eye; one glyph shifts now and then.
+        The elapsed time stays plain text. When an opponent is found the crown closes into the eye
+        and the status decodes. Calm and still: the crown stands still.
       </p>
       <div className="occ-lab-screen">
         <div className="occ-lab-screen__content">
           <div className="occ-lab-queue" data-found={state === "found"}>
-            {state !== "idle" && <CipherFrieze key={state} count={16} layout="ring" live={state === "searching"} seed={9} />}
+            {state !== "idle" && (
+              <CipherFrieze
+                key={state}
+                count={16}
+                layout="ring"
+                live={state === "searching"}
+                seed={9}
+              />
+            )}
             <span className="occ-lab-eye" aria-hidden="true" />
           </div>
           <span className="occ-label">
             {state === "idle" && "Ready"}
             {state === "searching" && <CipherText text="Searching" mode="plain" />}
-            {state === "found" && <CipherText text="Opponent found · boris" mode="decode" playKey={found} />}
+            {state === "found" && (
+              <CipherText text="Opponent found · boris" mode="decode" playKey={found} />
+            )}
           </span>
-          {state === "searching" && <span className="occ-lab-note">{`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`}</span>}
+          {state === "searching" && (
+            <span className="occ-lab-note">{`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`}</span>
+          )}
         </div>
       </div>
     </Stage>
@@ -175,8 +197,9 @@ export function MotionSection() {
       <header>
         <h2 className="occ-label">4 · Interface motion — three prototypes</h2>
         <p>
-          The full inventory (every screen, its intent, its priority) is in docs/design/refonte-graphique.md. These three set the
-          vocabulary the others reuse: the board move, the screen threshold, the wait.
+          The full inventory (every screen, its intent, its priority) is in
+          docs/design/refonte-graphique.md. These three set the vocabulary the others reuse: the
+          board move, the screen threshold, the wait.
         </p>
       </header>
       <BoardMove />

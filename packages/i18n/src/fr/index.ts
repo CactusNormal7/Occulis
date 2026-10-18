@@ -11,4 +11,16 @@ import { social } from "./social.js";
 import { team } from "./team.js";
 import { ui } from "./ui.js";
 
-export const fr: Messages = { ui, game, auth, account, profile, admin, mail, team, feats, prepare, social };
+export const fr: Messages = {
+  ui,
+  game,
+  auth,
+  account,
+  profile,
+  admin,
+  mail,
+  team,
+  feats,
+  prepare,
+  social,
+};

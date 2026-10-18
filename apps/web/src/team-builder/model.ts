@@ -69,19 +69,33 @@ export function fromEntries(ruleset: Ruleset, entries: readonly TeamEntry[]): Te
 }
 
 export function select(draft: TeamDraft, index: number | undefined): TeamDraft {
-  return { ...draft, selected: index !== undefined && draft.slots[index] !== undefined ? index : undefined };
+  return {
+    ...draft,
+    selected: index !== undefined && draft.slots[index] !== undefined ? index : undefined,
+  };
 }
 
 /** Change le type d'un emplacement — parmi ceux de son rôle seulement. */
-export function setKind(draft: TeamDraft, ruleset: Ruleset, index: number, kind: PieceKind): TeamDraft {
+export function setKind(
+  draft: TeamDraft,
+  ruleset: Ruleset,
+  index: number,
+  kind: PieceKind,
+): TeamDraft {
   const slot = draft.slots[index];
-  if (slot === undefined || !ruleset.has(kind) || ruleset.get(kind).role !== slot.role) return draft;
-  return { ...draft, slots: draft.slots.map((other, i) => (i === index ? { ...other, kind } : other)) };
+  if (slot === undefined || !ruleset.has(kind) || ruleset.get(kind).role !== slot.role)
+    return draft;
+  return {
+    ...draft,
+    slots: draft.slots.map((other, i) => (i === index ? { ...other, kind } : other)),
+  };
 }
 
 /** L'emplacement posé sur `coord`, s'il y en a un. */
 export function slotAt(draft: TeamDraft, coord: Coord): number | undefined {
-  const index = draft.slots.findIndex((slot) => slot.coord !== undefined && coordEquals(slot.coord, coord));
+  const index = draft.slots.findIndex(
+    (slot) => slot.coord !== undefined && coordEquals(slot.coord, coord),
+  );
   return index < 0 ? undefined : index;
 }
 
@@ -107,13 +121,21 @@ export function clickTile(draft: TeamDraft, coord: Coord, zone: readonly Coord[]
     if (i === occupant) return { ...slot, coord: moving.coord };
     return slot;
   });
-  return { slots, selected: firstUnplaced(slots) ?? (occupant !== undefined && moving.coord === undefined ? occupant : undefined) };
+  return {
+    slots,
+    selected:
+      firstUnplaced(slots) ??
+      (occupant !== undefined && moving.coord === undefined ? occupant : undefined),
+  };
 }
 
 /** Reprend une pièce posée : son emplacement redevient vide, et en main. */
 export function remove(draft: TeamDraft, index: number): TeamDraft {
   if (draft.slots[index] === undefined) return draft;
-  return { slots: draft.slots.map((slot, i) => (i === index ? { ...slot, coord: undefined } : slot)), selected: index };
+  return {
+    slots: draft.slots.map((slot, i) => (i === index ? { ...slot, coord: undefined } : slot)),
+    selected: index,
+  };
 }
 
 /** Retire toutes les pièces, en gardant les types choisis. */
@@ -124,7 +146,9 @@ export function clear(draft: TeamDraft): TeamDraft {
 
 /** Pose les emplacements vides sur les cases libres de la zone, dans l'ordre de la zone. */
 export function autoFill(draft: TeamDraft, zone: readonly Coord[]): TeamDraft {
-  const taken = new Set(draft.slots.flatMap((slot) => (slot.coord === undefined ? [] : [coordKey(slot.coord)])));
+  const taken = new Set(
+    draft.slots.flatMap((slot) => (slot.coord === undefined ? [] : [coordKey(slot.coord)])),
+  );
   const free = zone.filter((tile) => !taken.has(coordKey(tile)));
   let next = 0;
   const slots = draft.slots.map((slot) => {
@@ -146,11 +170,17 @@ export function isComplete(draft: TeamDraft): boolean {
 
 /** Les pièces posées, dans l'ordre des emplacements : ce qui part au serveur. */
 export function toEntries(draft: TeamDraft): TeamEntry[] {
-  return draft.slots.flatMap((slot) => (slot.coord === undefined ? [] : [{ kind: slot.kind, coord: slot.coord }]));
+  return draft.slots.flatMap((slot) =>
+    slot.coord === undefined ? [] : [{ kind: slot.kind, coord: slot.coord }],
+  );
 }
 
 /** Le verdict de la règle sur le brouillon — `validateTeam()`, sans rien y ajouter. */
-export function verdict(ruleset: Ruleset, zone: readonly Coord[], draft: TeamDraft): Result<readonly TeamEntry[], TeamError> {
+export function verdict(
+  ruleset: Ruleset,
+  zone: readonly Coord[],
+  draft: TeamDraft,
+): Result<readonly TeamEntry[], TeamError> {
   return validateTeam(ruleset, zone, toEntries(draft));
 }
 

@@ -70,7 +70,8 @@ export class SocialDO extends DurableObject<Env> {
       return;
     }
     // Une page qui arrive apprend les défis qu'on lui a lancés pendant son absence.
-    for (const challenge of (await this.incoming()).values()) this.send(ws, { kind: "challenge", challenge });
+    for (const challenge of (await this.incoming()).values())
+      this.send(ws, { kind: "challenge", challenge });
   }
 
   async webSocketClose(ws: WebSocket): Promise<void> {
@@ -93,9 +94,15 @@ export class SocialDO extends DurableObject<Env> {
 
   /** Écrit le cache de présence, puis le dit à chaque ami. */
   private async announce(self: string, online: boolean): Promise<void> {
-    await this.env.DB.prepare("UPDATE players SET online = ? WHERE id = ?").bind(online ? 1 : 0, self).run();
+    await this.env.DB.prepare("UPDATE players SET online = ? WHERE id = ?")
+      .bind(online ? 1 : 0, self)
+      .run();
     const friends = await friendIds(this.env.DB, self);
-    await Promise.all(friends.map((friend) => pushTo(this.env, friend, { kind: "presence", playerId: self, online })));
+    await Promise.all(
+      friends.map((friend) =>
+        pushTo(this.env, friend, { kind: "presence", playerId: self, online }),
+      ),
+    );
   }
 
   /** Une poussée venue d'une route ou d'une autre instance, relayée à ses pages. */
@@ -110,9 +117,7 @@ export class SocialDO extends DurableObject<Env> {
       if (incoming.delete(message.from)) await this.ctx.storage.put("incoming", incoming);
     }
     const sockets =
-      message.kind === "matched"
-        ? this.ctx.getWebSockets("game")
-        : this.ctx.getWebSockets();
+      message.kind === "matched" ? this.ctx.getWebSockets("game") : this.ctx.getWebSockets();
     for (const socket of sockets) this.send(socket, message);
   }
 
@@ -133,7 +138,11 @@ export class SocialDO extends DurableObject<Env> {
     if (challenge === undefined) return false;
     outgoing.delete(to);
     await this.ctx.storage.put("outgoing", outgoing);
-    const cancelled: SocialServerMessage = { kind: "challenge-cancelled", from: challenge.from.id, to };
+    const cancelled: SocialServerMessage = {
+      kind: "challenge-cancelled",
+      from: challenge.from.id,
+      to,
+    };
     await pushTo(this.env, to, cancelled);
     for (const socket of this.ctx.getWebSockets()) this.send(socket, cancelled);
     return true;
@@ -161,8 +170,18 @@ export class SocialDO extends DurableObject<Env> {
 
     // L'auteur du défi joue le camp A, comme l'hôte d'un salon privé.
     const match = await startMatch(this.env, self, to);
-    await this.receive({ kind: "matched", matchId: match.matchId, player: "A", seat: match.seats.A });
-    await pushTo(this.env, to, { kind: "matched", matchId: match.matchId, player: "B", seat: match.seats.B });
+    await this.receive({
+      kind: "matched",
+      matchId: match.matchId,
+      player: "A",
+      seat: match.seats.A,
+    });
+    await pushTo(this.env, to, {
+      kind: "matched",
+      matchId: match.matchId,
+      player: "B",
+      seat: match.seats.B,
+    });
     return Response.json({ matchId: match.matchId });
   }
 
@@ -188,7 +207,12 @@ function socialOf(env: Env, playerId: string): DurableObjectStub {
 }
 
 /** Appelle l'instance sociale d'un joueur, en lui rappelant qui elle sert. */
-export function callSocial(env: Env, playerId: string, path: string, body?: unknown): Promise<Response> {
+export function callSocial(
+  env: Env,
+  playerId: string,
+  path: string,
+  body?: unknown,
+): Promise<Response> {
   const url = new URL(`https://social${path}`);
   url.searchParams.set("player", playerId);
   return socialOf(env, playerId).fetch(
@@ -200,7 +224,11 @@ export function callSocial(env: Env, playerId: string, path: string, body?: unkn
  * Prévient un joueur. Une poussée perdue ne doit jamais faire échouer l'écriture qui l'a
  * causée : la donnée est en D1, la page la relira.
  */
-export async function pushTo(env: Env, playerId: string, message: SocialServerMessage): Promise<void> {
+export async function pushTo(
+  env: Env,
+  playerId: string,
+  message: SocialServerMessage,
+): Promise<void> {
   try {
     await callSocial(env, playerId, "/push", message);
   } catch (cause) {
@@ -209,7 +237,12 @@ export async function pushTo(env: Env, playerId: string, message: SocialServerMe
 }
 
 /** Le WebSocket du canal social, ouvert par le Worker pour le joueur de la session. */
-export function openSocial(env: Env, request: Request, playerId: string, surface: SocialSurface): Promise<Response> {
+export function openSocial(
+  env: Env,
+  request: Request,
+  playerId: string,
+  surface: SocialSurface,
+): Promise<Response> {
   const url = new URL("https://social/connect");
   url.searchParams.set("player", playerId);
   url.searchParams.set("surface", surface);

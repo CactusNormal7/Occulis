@@ -1,6 +1,13 @@
 import type { Graphics } from "pixi.js";
 import { type Board, type Coord, chebyshevDistance } from "@occulis/core";
-import { type IsoProjection, type Quad, cliffQuads, flattenQuad, project, tileQuad } from "../../view/iso.js";
+import {
+  type IsoProjection,
+  type Quad,
+  cliffQuads,
+  flattenQuad,
+  project,
+  tileQuad,
+} from "../../view/iso.js";
 import { type Landing, cascadeOf, landingAt, sparksOf } from "../../view/effects.js";
 import { easeOutCubic, phase } from "../../view/easing.js";
 import type { Selection } from "../../game/selection.js";
@@ -31,7 +38,14 @@ function scaled(quad: Quad, k: number): number[] {
  * Les quatre coins de la case, en branches courtes : un réticule plutôt qu'un cadre. Il
  * se referme sur la case à son arrivée (`since`, ms depuis le début du survol).
  */
-export function drawHover(g: Graphics, board: Board, coord: Coord, proj: IsoProjection, px: number, since: number): void {
+export function drawHover(
+  g: Graphics,
+  board: Board,
+  coord: Coord,
+  proj: IsoProjection,
+  px: number,
+  since: number,
+): void {
   const hover = look().hover;
   const tile = board.getTile(coord);
   const quad = topOf(board, coord, proj);
@@ -39,13 +53,20 @@ export function drawHover(g: Graphics, board: Board, coord: Coord, proj: IsoProj
   const settle = easeOutCubic(phase(since, 0, MOTION_FX.hoverMs));
 
   for (const cliff of cliffQuads(board, tile.coord, tile.height, proj)) {
-    g.poly(flattenQuad(cliff)).stroke({ width: px, color: hover.stroke, alpha: hover.cliffAlpha * settle });
+    g.poly(flattenQuad(cliff)).stroke({
+      width: px,
+      color: hover.stroke,
+      alpha: hover.cliffAlpha * settle,
+    });
   }
   g.poly(flattenQuad(quad)).fill({ color: hover.fill, alpha: hover.fillAlpha * settle });
 
   const spread = scaled(quad, 1 + 0.35 * (1 - settle));
   for (let i = 0; i < 4; i += 1) {
-    const at = (j: number) => ({ x: spread[((j + 4) % 4) * 2] ?? 0, y: spread[((j + 4) % 4) * 2 + 1] ?? 0 });
+    const at = (j: number) => ({
+      x: spread[((j + 4) % 4) * 2] ?? 0,
+      y: spread[((j + 4) % 4) * 2 + 1] ?? 0,
+    });
     const corner = at(i);
     const next = at(i + 1);
     const previous = at(i - 1);
@@ -75,13 +96,28 @@ export function drawSelection(
   for (const coord of selection.moves.values()) {
     const quad = topOf(board, coord, proj);
     if (quad === undefined) continue;
-    const open = cascadeOf(chebyshevDistance(coord, selection.piece.coord), since, MOTION_FX.cascadePerTileMs, MOTION_FX.cascadeMs);
+    const open = cascadeOf(
+      chebyshevDistance(coord, selection.piece.coord),
+      since,
+      MOTION_FX.cascadePerTileMs,
+      MOTION_FX.cascadeMs,
+    );
     if (open <= 0) continue;
     g.poly(scaled(quad, Math.min(1, open)))
-      .fill({ color: style.destination, alpha: lerp(style.destinationFillAlpha, glow) * Math.min(1, open) })
-      .stroke({ width: style.destinationWidth * px, color: style.destination, alpha: style.destinationStrokeAlpha * Math.min(1, open) });
+      .fill({
+        color: style.destination,
+        alpha: lerp(style.destinationFillAlpha, glow) * Math.min(1, open),
+      })
+      .stroke({
+        width: style.destinationWidth * px,
+        color: style.destination,
+        alpha: style.destinationStrokeAlpha * Math.min(1, open),
+      });
     // La gemme centrale : elle jaillit un peu trop grande, puis se pose.
-    g.poly(scaled(quad, style.destinationGem * open)).fill({ color: style.destination, alpha: 0.7 + 0.3 * glow });
+    g.poly(scaled(quad, style.destinationGem * open)).fill({
+      color: style.destination,
+      alpha: 0.7 + 0.3 * glow,
+    });
   }
 
   const tile = board.getTile(selection.piece.coord);
@@ -97,17 +133,35 @@ export function drawSelection(
 }
 
 /** Une retombée : deux ondes au sol qui s'élargissent, et des étincelles qui montent et s'éteignent. */
-export function drawLanding(g: Graphics, board: Board, landing: Landing, proj: IsoProjection, px: number, now: number): void {
+export function drawLanding(
+  g: Graphics,
+  board: Board,
+  landing: Landing,
+  proj: IsoProjection,
+  px: number,
+  now: number,
+): void {
   const state = landingAt(landing, now, MOTION_FX.landingMs);
   const quad = topOf(board, landing.coord, proj);
   if (state === undefined || quad === undefined) return;
-  g.poly(scaled(quad, state.ring)).stroke({ width: px, color: landing.color, alpha: state.ringAlpha });
-  g.poly(scaled(quad, state.ring * 0.7)).stroke({ width: px, color: look().palette.ink, alpha: state.ringAlpha * 0.5 });
+  g.poly(scaled(quad, state.ring)).stroke({
+    width: px,
+    color: landing.color,
+    alpha: state.ringAlpha,
+  });
+  g.poly(scaled(quad, state.ring * 0.7)).stroke({
+    width: px,
+    color: look().palette.ink,
+    alpha: state.ringAlpha * 0.5,
+  });
 
   for (const spark of sparksOf(MOTION_FX.sparks, landing.start)) {
     const t = state.spark;
     const at = project(
-      { x: landing.coord.x + spark.dx * easeOutCubic(t), y: landing.coord.y + spark.dy * easeOutCubic(t) },
+      {
+        x: landing.coord.x + spark.dx * easeOutCubic(t),
+        y: landing.coord.y + spark.dy * easeOutCubic(t),
+      },
       landing.height + spark.rise * Math.sin(Math.PI * Math.min(1, t * 1.3)),
       proj,
     );

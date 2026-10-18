@@ -58,7 +58,9 @@ export function profileHash(route: ProfileRoute): string {
     case "friends":
       return "#/friends";
     case "friend":
-      return route.offset > 0 ? `#/friends/${route.id}?offset=${route.offset}` : `#/friends/${route.id}`;
+      return route.offset > 0
+        ? `#/friends/${route.id}?offset=${route.offset}`
+        : `#/friends/${route.id}`;
     case "friendMatch":
       return `#/friends/${route.id}/matches/${route.matchId}`;
     case "chat":
@@ -82,7 +84,12 @@ export function messageTime(timestamp: number, now: number): string {
   const locale = currentLocale();
   return sameDay
     ? date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
-    : date.toLocaleDateString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    : date.toLocaleDateString(locale, {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
 }
 
 export interface ArrivalMessage {
@@ -102,10 +109,17 @@ export function arrivalMessage(search: string): ArrivalMessage | undefined {
 }
 
 /** La date du prochain changement de pseudo, en clair ; `undefined` s'il est permis. */
-export function handleCooldownLabel(profile: Pick<MeProfile, "nextHandleChangeAt">, now: number): string | undefined {
+export function handleCooldownLabel(
+  profile: Pick<MeProfile, "nextHandleChangeAt">,
+  now: number,
+): string | undefined {
   const next = profile.nextHandleChangeAt;
   if (next === null || next <= now) return undefined;
-  const date = new Date(next).toLocaleDateString(currentLocale(), { day: "numeric", month: "long", year: "numeric" });
+  const date = new Date(next).toLocaleDateString(currentLocale(), {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
   return messages().profile.account.cooldown(date);
 }
 
@@ -114,14 +128,18 @@ export function handleCooldownLabel(profile: Pick<MeProfile, "nextHandleChangeAt
  * sans mot de passe ni autre fournisseur, le délier enfermerait le joueur dehors. Le
  * serveur le refuse de toute façon (`allowUnlinkingAll`).
  */
-export function canUnlink(profile: Pick<MeProfile, "hasPassword" | "providers">, provider: string): boolean {
+export function canUnlink(
+  profile: Pick<MeProfile, "hasPassword" | "providers">,
+  provider: string,
+): boolean {
   if (!profile.providers.includes(provider)) return false;
   return profile.hasPassword || profile.providers.some((other) => other !== provider);
 }
 
 export function describeMyResult(match: Pick<MeMatchSummary, "result" | "outcome">): string {
   const results = messages().profile.results;
-  if (match.outcome?.reason === "resignation") return match.result === "won" ? results.wonByResignation : results.lostByResignation;
+  if (match.outcome?.reason === "resignation")
+    return match.result === "won" ? results.wonByResignation : results.lostByResignation;
   const RESULTS: Record<MeResult, string> = results;
   return RESULTS[match.result];
 }

@@ -78,7 +78,11 @@ export function fireflyAt(mote: Mote, timeMs: number, width: number, height: num
   const x = mote.x + mote.sway * 2.2 * Math.sin(seconds * 0.23 + mote.phase);
   const y = mote.y + mote.sway * 1.6 * Math.sin(seconds * 0.31 + mote.phase * 2);
   const glow = Math.max(0, Math.sin(seconds * 0.9 + mote.phase * 5));
-  return { x: (((x % 1) + 1) % 1) * width, y: (((y % 1) + 1) % 1) * height, alpha: (0.25 + 0.75 * mote.alpha) * glow };
+  return {
+    x: (((x % 1) + 1) % 1) * width,
+    y: (((y % 1) + 1) % 1) * height,
+    alpha: (0.25 + 0.75 * mote.alpha) * glow,
+  };
 }
 
 export interface Star {
@@ -133,7 +137,10 @@ export function constellationsOf(stars: readonly Star[], reach: number): [number
         best = other.i;
       }
     }
-    if (best !== undefined && !links.some(([a, b]) => (a === best && b === i) || (a === i && b === best))) {
+    if (
+      best !== undefined &&
+      !links.some(([a, b]) => (a === best && b === i) || (a === i && b === best))
+    ) {
       links.push([i, best]);
     }
   }
@@ -153,7 +160,13 @@ export interface ShootingStar {
  * Une étoile filante par période, à un instant et un endroit tirés de la graine et du
  * numéro de la période : rare, imprévisible à l'œil, reproductible au calcul.
  */
-export function shootingStarAt(timeMs: number, width: number, height: number, periodMs: number, seed: number): ShootingStar | undefined {
+export function shootingStarAt(
+  timeMs: number,
+  width: number,
+  height: number,
+  periodMs: number,
+  seed: number,
+): ShootingStar | undefined {
   const index = Math.floor(timeMs / periodMs);
   const next = random(seed + index * 7919);
   const offset = next() * periodMs * 0.6;

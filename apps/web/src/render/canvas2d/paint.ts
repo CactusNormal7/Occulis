@@ -1,7 +1,15 @@
 import type { Board, PlayerId } from "@occulis/core";
 import { cssColor } from "@occulis/ui/tokens";
 import { look } from "../../theme/theme.js";
-import { type IsoProjection, type Quad, type ScreenPoint, cliffQuads, depthOf, project, tileQuad } from "../../view/iso.js";
+import {
+  type IsoProjection,
+  type Quad,
+  type ScreenPoint,
+  cliffQuads,
+  depthOf,
+  project,
+  tileQuad,
+} from "../../view/iso.js";
 import { topColor } from "../../view/matter.js";
 import { mixColor, pixelResolution } from "../../view/pixel.js";
 
@@ -25,7 +33,9 @@ export interface Drawable {
  * Dimensionne le tampon d'un canevas au grain du plateau et l'agrandit au plus proche
  * voisin. Rend sa taille CSS, ou `undefined` s'il n'en a pas encore.
  */
-export function fitPixelCanvas(canvas: HTMLCanvasElement): { width: number; height: number } | undefined {
+export function fitPixelCanvas(
+  canvas: HTMLCanvasElement,
+): { width: number; height: number } | undefined {
   const { width, height } = canvas.getBoundingClientRect();
   if (width === 0 || height === 0) return undefined;
   const resolution = pixelResolution(window.devicePixelRatio);
@@ -69,7 +79,9 @@ function ditherOf(context: CanvasRenderingContext2D): CanvasPattern | null {
 
 export function trace(context: CanvasRenderingContext2D, quad: Quad): void {
   context.beginPath();
-  quad.forEach((point, i) => (i === 0 ? context.moveTo(point.x, point.y) : context.lineTo(point.x, point.y)));
+  quad.forEach((point, i) =>
+    i === 0 ? context.moveTo(point.x, point.y) : context.lineTo(point.x, point.y),
+  );
   context.closePath();
 }
 
@@ -84,7 +96,12 @@ function tracePoints(context: CanvasRenderingContext2D, points: readonly number[
   context.closePath();
 }
 
-export function strokeQuad(context: CanvasRenderingContext2D, quad: Quad, color: string, width: number): void {
+export function strokeQuad(
+  context: CanvasRenderingContext2D,
+  quad: Quad,
+  color: string,
+  width: number,
+): void {
   trace(context, quad);
   context.strokeStyle = color;
   context.lineWidth = width * pixelOf(context);
@@ -124,14 +141,27 @@ export function terrainDrawables(
         const alpha =
           (seen ? look().geometry.alphaVisible : look().geometry.alphaFogged) *
           (tile.passable ? 1 : look().geometry.impassableFactor) *
-          (look().geometry.depthFadeFar + (look().geometry.depthFadeNear - look().geometry.depthFadeFar) * nearness);
+          (look().geometry.depthFadeFar +
+            (look().geometry.depthFadeNear - look().geometry.depthFadeFar) * nearness);
         const centre = project(tile.coord, tile.height, proj);
         for (const cliff of cliffQuads(board, tile.coord, tile.height, proj)) {
           // Une face arrière, pleine, déborderait sous le relief (voir `render/pixi/terrain.ts`).
           if ((cliff[0].y + cliff[1].y) / 2 <= centre.y) continue;
-          const side = (cliff[0].x + cliff[1].x) / 2 < centre.x ? look().geometry.sideLight : look().geometry.sideShade;
-          fillQuad(context, cliff, cssColor(seen ? side : mixColor(side, look().palette.background, 0.45)));
-          strokeQuad(context, cliff, cssColor(look().geometry.stroke, alpha * 0.55), look().geometry.widthCliff);
+          const side =
+            (cliff[0].x + cliff[1].x) / 2 < centre.x
+              ? look().geometry.sideLight
+              : look().geometry.sideShade;
+          fillQuad(
+            context,
+            cliff,
+            cssColor(seen ? side : mixColor(side, look().palette.background, 0.45)),
+          );
+          strokeQuad(
+            context,
+            cliff,
+            cssColor(look().geometry.stroke, alpha * 0.55),
+            look().geometry.widthCliff,
+          );
         }
         const top = tileQuad(tile.coord, tile.height, proj);
         fillQuad(context, top, cssColor(topColor(tile.height, seen ? 1 : 0)));
@@ -178,11 +208,33 @@ export function drawPiece(
     context.ellipse(base.x, base.y, foot * 1.6, foot * 0.8, 0, 0, Math.PI * 2);
     context.fillStyle = cssColor(look().pieces.shadow, look().pieces.shadowAlpha);
     context.fill();
-    tracePoints(context, [base.x - foot, base.y, base.x - foot * 0.45, top, base.x, top - px, base.x, base.y + foot * 0.35]);
-    context.fillStyle = cssColor(mixColor(color, look().palette.background, look().pieces.faceLight));
+    tracePoints(context, [
+      base.x - foot,
+      base.y,
+      base.x - foot * 0.45,
+      top,
+      base.x,
+      top - px,
+      base.x,
+      base.y + foot * 0.35,
+    ]);
+    context.fillStyle = cssColor(
+      mixColor(color, look().palette.background, look().pieces.faceLight),
+    );
     context.fill();
-    tracePoints(context, [base.x, base.y + foot * 0.35, base.x, top - px, base.x + foot * 0.45, top, base.x + foot, base.y]);
-    context.fillStyle = cssColor(mixColor(color, look().palette.background, look().pieces.faceShade));
+    tracePoints(context, [
+      base.x,
+      base.y + foot * 0.35,
+      base.x,
+      top - px,
+      base.x + foot * 0.45,
+      top,
+      base.x + foot,
+      base.y,
+    ]);
+    context.fillStyle = cssColor(
+      mixColor(color, look().palette.background, look().pieces.faceShade),
+    );
     context.fill();
   }
   tracePoints(context, [
@@ -202,14 +254,32 @@ export function drawPiece(
   context.strokeStyle = cssColor(color, alpha);
   context.stroke();
 
-  tracePoints(context, [base.x, eye - half * 0.75, base.x + half, eye, base.x, eye + half * 0.75, base.x - half, eye]);
+  tracePoints(context, [
+    base.x,
+    eye - half * 0.75,
+    base.x + half,
+    eye,
+    base.x,
+    eye + half * 0.75,
+    base.x - half,
+    eye,
+  ]);
   if (ghost) {
     context.stroke();
   } else {
     context.fillStyle = cssColor(color);
     context.fill();
     const pupil = Math.max(px, half * 0.28);
-    tracePoints(context, [base.x, eye - pupil, base.x + pupil, eye, base.x, eye + pupil, base.x - pupil, eye]);
+    tracePoints(context, [
+      base.x,
+      eye - pupil,
+      base.x + pupil,
+      eye,
+      base.x,
+      eye + pupil,
+      base.x - pupil,
+      eye,
+    ]);
     context.fillStyle = cssColor(look().palette.background);
     context.fill();
   }

@@ -22,8 +22,17 @@ import type { StartedMatch } from "../match-setup.js";
 
 const ORIGIN = "https://occulis.test";
 
-async function call(method: string, path: string, cookie: string, body?: unknown): Promise<Response> {
-  const headers: Record<string, string> = { Cookie: cookie, Origin: ORIGIN, "Content-Type": "application/json" };
+async function call(
+  method: string,
+  path: string,
+  cookie: string,
+  body?: unknown,
+): Promise<Response> {
+  const headers: Record<string, string> = {
+    Cookie: cookie,
+    Origin: ORIGIN,
+    "Content-Type": "application/json",
+  };
   return SELF.fetch(`${ORIGIN}${path}`, {
     method,
     headers,
@@ -54,13 +63,17 @@ async function someone(prefix: string): Promise<Someone> {
 }
 
 async function befriend(a: Someone, b: Someone): Promise<void> {
-  expect((await call("POST", "/api/friends/requests", a.cookie, { playerId: b.id })).status).toBe(200);
+  expect((await call("POST", "/api/friends/requests", a.cookie, { playerId: b.id })).status).toBe(
+    200,
+  );
   expect((await call("POST", `/api/friends/requests/${a.id}/accept`, b.cookie)).status).toBe(200);
 }
 
 /** Un socket et sa boîte de réception, avec une attente par genre de message. */
 async function listen<M extends { kind: string }>(path: string, cookie: string, hello: unknown) {
-  const response = await SELF.fetch(`${ORIGIN}${path}`, { headers: { Upgrade: "websocket", Cookie: cookie } });
+  const response = await SELF.fetch(`${ORIGIN}${path}`, {
+    headers: { Upgrade: "websocket", Cookie: cookie },
+  });
   expect(response.status).toBe(101);
   const socket = response.webSocket;
   if (socket === null) throw new Error("pas de WebSocket");
@@ -93,42 +106,59 @@ async function listen<M extends { kind: string }>(path: string, cookie: string, 
 }
 
 const social = (cookie: string, surface: "game" | "profile" = "game") =>
-  listen<SocialServerMessage>(`/api/social?surface=${surface}`, cookie, { kind: "hello", protocol: PROTOCOL_VERSION });
+  listen<SocialServerMessage>(`/api/social?surface=${surface}`, cookie, {
+    kind: "hello",
+    protocol: PROTOCOL_VERSION,
+  });
 
 describe("amis : demandes et liste", () => {
   it("demande, accepte, liste, puis retire", async () => {
     const anne = await someone("anne");
     const boris = await someone("boris");
 
-    expect(await json(await call("POST", "/api/friends/requests", anne.cookie, { playerId: boris.id }))).toEqual({
+    expect(
+      await json(await call("POST", "/api/friends/requests", anne.cookie, { playerId: boris.id })),
+    ).toEqual({
       relation: "outgoing",
     });
     const pending = await json<FriendsOverview>(await get("/api/friends", boris.cookie));
     expect(pending.incoming.map((request) => request.id)).toEqual([anne.id]);
 
-    expect((await call("POST", `/api/friends/requests/${anne.id}/accept`, boris.cookie)).status).toBe(200);
+    expect(
+      (await call("POST", `/api/friends/requests/${anne.id}/accept`, boris.cookie)).status,
+    ).toBe(200);
     const overview = await json<FriendsOverview>(await get("/api/friends", anne.cookie));
     expect(overview.friends.map((friend) => friend.handle)).toEqual([boris.handle]);
     expect(overview.outgoing).toEqual([]);
 
     expect((await call("DELETE", `/api/friends/${boris.id}`, anne.cookie)).status).toBe(200);
-    expect((await json<FriendsOverview>(await get("/api/friends", boris.cookie))).friends).toEqual([]);
+    expect((await json<FriendsOverview>(await get("/api/friends", boris.cookie))).friends).toEqual(
+      [],
+    );
   });
 
   it("transforme une demande croisée en amitié", async () => {
     const anne = await someone("anne");
     const boris = await someone("boris");
     await call("POST", "/api/friends/requests", anne.cookie, { playerId: boris.id });
-    expect(await json(await call("POST", "/api/friends/requests", boris.cookie, { playerId: anne.id }))).toEqual({
+    expect(
+      await json(await call("POST", "/api/friends/requests", boris.cookie, { playerId: anne.id })),
+    ).toEqual({
       relation: "friend",
     });
-    expect((await json<FriendsOverview>(await get("/api/friends", anne.cookie))).friends).toHaveLength(1);
+    expect(
+      (await json<FriendsOverview>(await get("/api/friends", anne.cookie))).friends,
+    ).toHaveLength(1);
   });
 
   it("refuse une demande à soi-même ou à un profil sans compte", async () => {
     const anne = await someone("anne");
-    expect((await call("POST", "/api/friends/requests", anne.cookie, { playerId: anne.id })).status).toBe(400);
-    expect((await call("POST", "/api/friends/requests", anne.cookie, { playerId: "personne" })).status).toBe(404);
+    expect(
+      (await call("POST", "/api/friends/requests", anne.cookie, { playerId: anne.id })).status,
+    ).toBe(400);
+    expect(
+      (await call("POST", "/api/friends/requests", anne.cookie, { playerId: "personne" })).status,
+    ).toBe(404);
   });
 
   it("exige une session, et refuse une écriture d'une autre origine", async () => {
@@ -150,7 +180,9 @@ describe("amis : recherche et blocage", () => {
     const boris = await someone(stem.toUpperCase());
     await call("POST", "/api/friends/requests", anne.cookie, { playerId: boris.id });
 
-    const found = await json<PlayerSearchResult[]>(await get(`/api/players/search?q=${stem}`, anne.cookie));
+    const found = await json<PlayerSearchResult[]>(
+      await get(`/api/players/search?q=${stem}`, anne.cookie),
+    );
     expect(found).toEqual([{ id: boris.id, handle: boris.handle, relation: "outgoing" }]);
     expect(await json(await get("/api/players/search?q=z", anne.cookie))).toEqual([]);
   });
@@ -161,20 +193,33 @@ describe("amis : recherche et blocage", () => {
     const boris = await someone(stem);
     await befriend(anne, boris);
 
-    expect((await call("POST", "/api/blocks", anne.cookie, { playerId: boris.id })).status).toBe(200);
-    expect((await json<FriendsOverview>(await get("/api/friends", boris.cookie))).friends).toEqual([]);
-    expect((await json<FriendsOverview>(await get("/api/friends", anne.cookie))).blocked.map((p) => p.id)).toEqual([
-      boris.id,
-    ]);
+    expect((await call("POST", "/api/blocks", anne.cookie, { playerId: boris.id })).status).toBe(
+      200,
+    );
+    expect((await json<FriendsOverview>(await get("/api/friends", boris.cookie))).friends).toEqual(
+      [],
+    );
+    expect(
+      (await json<FriendsOverview>(await get("/api/friends", anne.cookie))).blocked.map(
+        (p) => p.id,
+      ),
+    ).toEqual([boris.id]);
     expect(await json(await get(`/api/players/search?q=${stem}`, boris.cookie))).toEqual([]);
 
-    const refused = await call("POST", "/api/friends/requests", boris.cookie, { playerId: anne.id });
+    const refused = await call("POST", "/api/friends/requests", boris.cookie, {
+      playerId: anne.id,
+    });
     expect(refused.status).toBe(403);
     expect(await json(refused)).toEqual({ code: "UNAVAILABLE" });
-    expect((await call("POST", `/api/friends/${anne.id}/messages`, boris.cookie, { body: "coucou" })).status).toBe(403);
+    expect(
+      (await call("POST", `/api/friends/${anne.id}/messages`, boris.cookie, { body: "coucou" }))
+        .status,
+    ).toBe(403);
 
     expect((await call("DELETE", `/api/blocks/${boris.id}`, anne.cookie)).status).toBe(200);
-    expect((await call("POST", "/api/friends/requests", boris.cookie, { playerId: anne.id })).status).toBe(200);
+    expect(
+      (await call("POST", "/api/friends/requests", boris.cookie, { playerId: anne.id })).status,
+    ).toBe(200);
   });
 });
 
@@ -199,11 +244,17 @@ describe("amis : fiche, historique et replay", () => {
     ]);
 
     const profile = await json<FriendProfile>(await get(`/api/friends/${boris.id}`, anne.cookie));
-    expect(profile).toMatchObject({ id: boris.id, handle: boris.handle, record: { played: 1, lost: 1 } });
+    expect(profile).toMatchObject({
+      id: boris.id,
+      handle: boris.handle,
+      record: { played: 1, lost: 1 },
+    });
     expect((await get(`/api/friends/${boris.id}`, stranger.cookie)).status).toBe(403);
     expect((await get(`/api/friends/${boris.id}/matches`, stranger.cookie)).status).toBe(403);
 
-    const detail = await json<MeMatchDetail>(await get(`/api/friends/${boris.id}/matches/${matchId}`, anne.cookie));
+    const detail = await json<MeMatchDetail>(
+      await get(`/api/friends/${boris.id}/matches/${matchId}`, anne.cookie),
+    );
     expect(detail).toMatchObject({ seat: "A", result: "lost", opponentId: stranger.id });
     for (const frame of detail.frames) {
       for (const piece of frame.pieces) {
@@ -220,7 +271,9 @@ describe("amis : messages", () => {
     await befriend(anne, boris);
     const inbox = await social(boris.cookie, "profile");
 
-    const sent = await json<ChatMessage>(await call("POST", `/api/friends/${boris.id}/messages`, anne.cookie, { body: " salut " }));
+    const sent = await json<ChatMessage>(
+      await call("POST", `/api/friends/${boris.id}/messages`, anne.cookie, { body: " salut " }),
+    );
     expect(sent.body).toBe("salut");
     const pushed = await inbox.awaiting("message");
     expect(pushed.message.id).toBe(sent.id);
@@ -230,8 +283,12 @@ describe("amis : messages", () => {
     const page = await json<ChatPage>(await get(`/api/friends/${anne.id}/messages`, boris.cookie));
     expect(page.messages.map((message) => message.body)).toEqual(["salut"]);
 
-    expect(await json(await call("POST", `/api/friends/${anne.id}/messages/read`, boris.cookie))).toEqual({ read: 1 });
-    expect((await json<FriendsOverview>(await get("/api/friends", boris.cookie))).friends[0]?.unread).toBe(0);
+    expect(
+      await json(await call("POST", `/api/friends/${anne.id}/messages/read`, boris.cookie)),
+    ).toEqual({ read: 1 });
+    expect(
+      (await json<FriendsOverview>(await get("/api/friends", boris.cookie))).friends[0]?.unread,
+    ).toBe(0);
     inbox.socket.close();
   });
 
@@ -241,7 +298,13 @@ describe("amis : messages", () => {
     await befriend(anne, boris);
     const statuses: number[] = [];
     for (let index = 0; index < 21; index += 1) {
-      statuses.push((await call("POST", `/api/friends/${boris.id}/messages`, anne.cookie, { body: `n°${index}` })).status);
+      statuses.push(
+        (
+          await call("POST", `/api/friends/${boris.id}/messages`, anne.cookie, {
+            body: `n°${index}`,
+          })
+        ).status,
+      );
     }
     expect(statuses.slice(0, 20).every((status) => status === 200)).toBe(true);
     expect(statuses[20]).toBe(429);
@@ -258,12 +321,22 @@ describe("amis : présence et défi", () => {
     const watcher = await social(anne.cookie, "profile");
 
     const theirs = await social(boris.cookie);
-    expect(await watcher.awaiting("presence")).toEqual({ kind: "presence", playerId: boris.id, online: true });
-    expect((await json<FriendsOverview>(await get("/api/friends", anne.cookie))).friends[0]?.online).toBe(true);
+    expect(await watcher.awaiting("presence")).toEqual({
+      kind: "presence",
+      playerId: boris.id,
+      online: true,
+    });
+    expect(
+      (await json<FriendsOverview>(await get("/api/friends", anne.cookie))).friends[0]?.online,
+    ).toBe(true);
 
     const from = watcher.received.length;
     theirs.socket.close();
-    expect(await watcher.awaiting("presence", from)).toEqual({ kind: "presence", playerId: boris.id, online: false });
+    expect(await watcher.awaiting("presence", from)).toEqual({
+      kind: "presence",
+      playerId: boris.id,
+      online: false,
+    });
     watcher.socket.close();
   });
 
@@ -274,15 +347,21 @@ describe("amis : présence et défi", () => {
     const anneGame = await social(anne.cookie);
     const borisGame = await social(boris.cookie);
 
-    expect((await call("POST", `/api/friends/${boris.id}/challenge`, anne.cookie)).status).toBe(200);
+    expect((await call("POST", `/api/friends/${boris.id}/challenge`, anne.cookie)).status).toBe(
+      200,
+    );
     expect((await borisGame.awaiting("challenge")).challenge.from.id).toBe(anne.id);
 
-    expect((await call("POST", `/api/friends/${anne.id}/challenge/accept`, boris.cookie)).status).toBe(200);
+    expect(
+      (await call("POST", `/api/friends/${anne.id}/challenge/accept`, boris.cookie)).status,
+    ).toBe(200);
     const a = await anneGame.awaiting("matched");
     const b = await borisGame.awaiting("matched");
     expect(a.matchId).toBe(b.matchId);
     expect([a.player, b.player]).toEqual(["A", "B"]);
-    expect((await call("POST", `/api/friends/${anne.id}/challenge/accept`, boris.cookie)).status).toBe(404);
+    expect(
+      (await call("POST", `/api/friends/${anne.id}/challenge/accept`, boris.cookie)).status,
+    ).toBe(404);
 
     anneGame.socket.close();
     borisGame.socket.close();
@@ -292,7 +371,9 @@ describe("amis : présence et défi", () => {
     const anne = await someone("anne");
     const boris = await someone("boris");
     await befriend(anne, boris);
-    expect((await call("POST", `/api/friends/${boris.id}/challenge`, anne.cookie)).status).toBe(409);
+    expect((await call("POST", `/api/friends/${boris.id}/challenge`, anne.cookie)).status).toBe(
+      409,
+    );
   });
 });
 
@@ -302,7 +383,9 @@ describe("amis : spectateur", () => {
   }
 
   const watch = (matchId: string, side: string, cookie: string) =>
-    SELF.fetch(`${ORIGIN}/match/${matchId}/watch?side=${side}`, { headers: { Upgrade: "websocket", Cookie: cookie } });
+    SELF.fetch(`${ORIGIN}/match/${matchId}/watch?side=${side}`, {
+      headers: { Upgrade: "websocket", Cookie: cookie },
+    });
 
   it("montre à un ami exactement la vue de son camp, sans coups légaux, et rien du déploiement", async () => {
     const anne = await someone("anne");
@@ -319,7 +402,11 @@ describe("amis : spectateur", () => {
     const from = a.received.length;
 
     // Arrivé pendant le déploiement : le camp suivi, mais ni zone ni position.
-    const spectator = await listen<ServerMessage>(`/match/${matchId}/watch?side=A`, chloe.cookie, hello);
+    const spectator = await listen<ServerMessage>(
+      `/match/${matchId}/watch?side=A`,
+      chloe.cookie,
+      hello,
+    );
     expect(await spectator.awaiting("watching")).toMatchObject({ side: "A" });
     expect(await a.awaiting("spectators", from)).toEqual({ kind: "spectators", count: 1 });
 
@@ -350,11 +437,19 @@ describe("amis : spectateur", () => {
     expect(await json(await watch(matchId, "A", chloe.cookie))).toEqual({ code: "NOT_FRIENDS" });
 
     await befriend(anne, chloe);
-    expect((await call("POST", "/api/me/spectators", anne.cookie, { allow: false })).status).toBe(200);
-    expect(await json(await watch(matchId, "A", chloe.cookie))).toEqual({ code: "SPECTATORS_REFUSED" });
+    expect((await call("POST", "/api/me/spectators", anne.cookie, { allow: false })).status).toBe(
+      200,
+    );
+    expect(await json(await watch(matchId, "A", chloe.cookie))).toEqual({
+      code: "SPECTATORS_REFUSED",
+    });
 
     const overview = await json<FriendsOverview>(await get("/api/friends", chloe.cookie));
-    expect(overview.friends[0]?.matches[0]).toMatchObject({ id: matchId, side: "A", watchable: false });
+    expect(overview.friends[0]?.matches[0]).toMatchObject({
+      id: matchId,
+      side: "A",
+      watchable: false,
+    });
   });
 });
 
@@ -365,20 +460,31 @@ describe("amis : suppression de compte", () => {
     await befriend(anne, boris);
     await call("POST", `/api/friends/${boris.id}/messages`, anne.cookie, { body: "adieu" });
 
-    const userId = (await env.DB.prepare("SELECT id FROM users WHERE player_id = ?").bind(anne.id).first<{ id: string }>())?.id;
-    expect((await post("/api/auth/delete-user", { callbackURL: "/" }, anne.cookie)).status).toBe(200);
+    const userId = (
+      await env.DB.prepare("SELECT id FROM users WHERE player_id = ?")
+        .bind(anne.id)
+        .first<{ id: string }>()
+    )?.id;
+    expect((await post("/api/auth/delete-user", { callbackURL: "/" }, anne.cookie)).status).toBe(
+      200,
+    );
     const stored = await env.DB.prepare(
       "SELECT identifier FROM verifications WHERE value = ? AND identifier LIKE 'delete-account-%'",
     )
       .bind(userId)
       .first<{ identifier: string }>();
     const token = (stored?.identifier ?? "").replace("delete-account-", "");
-    const confirmed = await SELF.fetch(`${ORIGIN}/api/auth/delete-user/callback?token=${token}&callbackURL=/`, {
-      headers: { Cookie: anne.cookie },
-      redirect: "manual",
-    });
+    const confirmed = await SELF.fetch(
+      `${ORIGIN}/api/auth/delete-user/callback?token=${token}&callbackURL=/`,
+      {
+        headers: { Cookie: anne.cookie },
+        redirect: "manual",
+      },
+    );
     expect(confirmed.status).toBe(302);
-    expect((await json<FriendsOverview>(await get("/api/friends", boris.cookie))).friends).toEqual([]);
+    expect((await json<FriendsOverview>(await get("/api/friends", boris.cookie))).friends).toEqual(
+      [],
+    );
     const left = await env.DB.prepare("SELECT COUNT(*) AS total FROM messages WHERE sender = ?")
       .bind(anne.id)
       .first<{ total: number }>();

@@ -34,7 +34,15 @@ function at(angle: number, radius: number, proj: IsoProjection): ScreenPoint {
 }
 
 /** Un cercle tracé sur la fraction `drawn` de son tour, à partir de l'angle `from`. */
-function arc(g: Graphics, radius: number, from: number, drawn: number, proj: IsoProjection, width: number, alpha: number): void {
+function arc(
+  g: Graphics,
+  radius: number,
+  from: number,
+  drawn: number,
+  proj: IsoProjection,
+  width: number,
+  alpha: number,
+): void {
   const steps = Math.max(2, Math.round(128 * drawn));
   const start = at(from, radius, proj);
   g.moveTo(start.x, start.y);
@@ -49,12 +57,23 @@ function arc(g: Graphics, radius: number, from: number, drawn: number, proj: Iso
  * Les glyphes : trois formes qui alternent autour du cercle — un losange, une barre, un
  * œil. Elles ne veulent rien dire, et c'est voulu.
  */
-function glyph(g: Graphics, kind: number, angle: number, radius: number, size: number, proj: IsoProjection, px: number, alpha: number): void {
+function glyph(
+  g: Graphics,
+  kind: number,
+  angle: number,
+  radius: number,
+  size: number,
+  proj: IsoProjection,
+  px: number,
+  alpha: number,
+): void {
   const sigil = look().sigil;
   const c = at(angle, radius, proj);
   const style = { width: px, color: sigil.stroke, alpha };
   if (kind === 0) {
-    g.poly([c.x, c.y - size, c.x + size * 0.6, c.y, c.x, c.y + size, c.x - size * 0.6, c.y]).stroke(style);
+    g.poly([c.x, c.y - size, c.x + size * 0.6, c.y, c.x, c.y + size, c.x - size * 0.6, c.y]).stroke(
+      style,
+    );
   } else if (kind === 1) {
     const inner = at(angle, radius - sigil.ring * 0.35, proj);
     const outer = at(angle, radius + sigil.ring * 0.35, proj);
@@ -66,7 +85,14 @@ function glyph(g: Graphics, kind: number, angle: number, radius: number, size: n
   }
 }
 
-export function drawSigil(g: Graphics, board: Board, proj: IsoProjection, px: number, timeMs: number, drawn: number): void {
+export function drawSigil(
+  g: Graphics,
+  board: Board,
+  proj: IsoProjection,
+  px: number,
+  timeMs: number,
+  drawn: number,
+): void {
   const sigil = look().sigil;
   if (drawn <= 0) return;
   const inner = boardRadius(board, proj) + sigil.margin;
@@ -83,7 +109,9 @@ export function drawSigil(g: Graphics, board: Board, proj: IsoProjection, px: nu
     const long = i % 4 === 0;
     const a = at(angle, inner, proj);
     const b = at(angle, inner + sigil.ring * (long ? 0.6 : 0.3), proj);
-    g.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: px, color: sigil.stroke, alpha: sigil.alpha });
+    g.moveTo(a.x, a.y)
+      .lineTo(b.x, b.y)
+      .stroke({ width: px, color: sigil.stroke, alpha: sigil.alpha });
   }
 
   // …et les glyphes dans l'autre, sur l'anneau extérieur.

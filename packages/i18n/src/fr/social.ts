@@ -7,7 +7,12 @@ export const social: Messages["social"] = {
   loading: "Chargement des amis… (une adresse vérifiée est nécessaire)",
   presence: { online: "en ligne", playing: "en partie", offline: "absent" },
   unread: (count) => (count === 1 ? "1 non lu" : `${count} non lus`),
-  relations: { friend: "ami", outgoing: "demande envoyée", incoming: "vous a demandé", blocked: "bloqué" },
+  relations: {
+    friend: "ami",
+    outgoing: "demande envoyée",
+    incoming: "vous a demandé",
+    blocked: "bloqué",
+  },
   search: {
     title: "Ajouter un ami",
     placeholder: "Pseudo…",
@@ -17,7 +22,8 @@ export const social: Messages["social"] = {
   },
   list: {
     title: (count) => `Amis (${count})`,
-    empty: "Aucun ami pour l'instant : cherchez un pseudo ci-dessus, ou ajoutez un adversaire depuis vos parties.",
+    empty:
+      "Aucun ami pour l'instant : cherchez un pseudo ci-dessus, ou ajoutez un adversaire depuis vos parties.",
     messages: "Messages",
     unreadMessages: (count) => (count === 1 ? "1 message non lu" : `${count} messages non lus`),
     remove: "Retirer de mes amis",
@@ -56,7 +62,8 @@ export const social: Messages["social"] = {
     matchesTitle: (handle) => `Parties de ${handle}`,
     blockTitle: (handle) => `Bloquer ${handle}`,
     blockConfirm: "Bloquer",
-    blockText: "Il ne sera plus votre ami, ne pourra plus vous trouver, vous écrire ni vous défier. Il n'en sera pas averti.",
+    blockText:
+      "Il ne sera plus votre ami, ne pourra plus vous trouver, vous écrire ni vous défier. Il n'en sera pas averti.",
     replayTitle: (handle) => `Replay — point de vue de ${handle}`,
     against: (handle, opponent) => `${handle} contre ${opponent}`,
     someone: "votre ami",
@@ -74,7 +81,8 @@ export const social: Messages["social"] = {
     label: "Spectateurs",
     allowed: "Autorisés",
     refused: "Refusés",
-    description: "Un ami qui regarde ne voit que ce que vous voyez, en direct — jamais la position adverse.",
+    description:
+      "Un ami qui regarde ne voit que ce que vous voyez, en direct — jamais la position adverse.",
     refuse: "Refuser",
     allow: "Autoriser",
     nowAllowed: "Vos amis peuvent regarder vos parties.",
@@ -105,7 +113,8 @@ export const social: Messages["social"] = {
     decline: "Refuser",
     challengesYou: (handle) => `${handle} vous défie`,
     declinedChallenge: (handle) => `${handle} n'a pas accepté le défi.`,
-    cannotWatch: (handle) => `Impossible de regarder la partie de ${handle} : elle est peut-être terminée.`,
+    cannotWatch: (handle) =>
+      `Impossible de regarder la partie de ${handle} : elle est peut-être terminée.`,
     yourFriend: "Votre ami",
   },
   errors: {

@@ -5,11 +5,11 @@ sans dépendance et sans étape de build. Elles ne font partie ni du workspace p
 
 Trois façons de les regarder :
 
-| | Commande | Adresse |
-|---|---|---|
-| Depuis le disque | *(double-clic)* | `docs/mockups/index.html` |
-| Serveur de développement | `pnpm dev` | `http://localhost:5173/mockups/` |
-| Serveur local wrangler | `pnpm --filter @occulis/web build:local`<br>puis `cd apps/server && pnpm exec wrangler dev` | `http://localhost:8787/mockups/` |
+|                          | Commande                                                                                    | Adresse                          |
+| ------------------------ | ------------------------------------------------------------------------------------------- | -------------------------------- |
+| Depuis le disque         | _(double-clic)_                                                                             | `docs/mockups/index.html`        |
+| Serveur de développement | `pnpm dev`                                                                                  | `http://localhost:5173/mockups/` |
+| Serveur local wrangler   | `pnpm --filter @occulis/web build:local`<br>puis `cd apps/server && pnpm exec wrangler dev` | `http://localhost:8787/mockups/` |
 
 Sous `pnpm dev`, les fichiers sont lus directement ici : les modifier se voit au rafraîchissement, sans rebuild.
 Le serveur wrangler ne sait servir que `apps/web/dist`, d'où le `build:local` — `pnpm build` seul n'embarque
@@ -19,19 +19,19 @@ rien, délibérément. Le mécanisme est décrit dans
 **Les maquettes ne sont jamais déployées.** Ni sur la recette, ni en production : `docs/` est hors du build.
 Une URL du type `occulis-staging.0kl.fr/mockups` n'existe pas et n'est pas prévue.
 
-| Écran | Fichier | Phase |
-| --- | --- | --- |
-| Menu principal | [`menu.html`](menu.html) | avant partie |
-| Recherche d'adversaire | [`matchmaking.html`](matchmaking.html) | avant partie |
-| Déploiement | [`deploiement.html`](deploiement.html) | avant partie |
-| Partie en cours | [`partie.html`](partie.html) | en partie |
-| Fin de partie | [`fin-de-partie.html`](fin-de-partie.html) | en partie |
+| Écran                  | Fichier                                    | Phase        |
+| ---------------------- | ------------------------------------------ | ------------ |
+| Menu principal         | [`menu.html`](menu.html)                   | avant partie |
+| Recherche d'adversaire | [`matchmaking.html`](matchmaking.html)     | avant partie |
+| Déploiement            | [`deploiement.html`](deploiement.html)     | avant partie |
+| Partie en cours        | [`partie.html`](partie.html)               | en partie    |
+| Fin de partie          | [`fin-de-partie.html`](fin-de-partie.html) | en partie    |
 
 `mockup.js` et `mockup.css` portent la projection isométrique, les glyphes de pièces et les particules communes.
 
 ## Ce que ces fichiers ne sont pas
 
-**Ni une spécification d'interface, ni une source de vérité.** Le *pourquoi* des décisions de DA reste dans
+**Ni une spécification d'interface, ni une source de vérité.** Le _pourquoi_ des décisions de DA reste dans
 [`../design.md`](../design.md) section 8.1, et le code couleur fait foi dans `apps/web/src/theme/theme.ts` — seul
 fichier du client autorisé à contenir une valeur de couleur. `mockup.css` recopie ces valeurs pour rester
 autonome ; en cas de divergence, c'est `theme.ts` qui a raison et la maquette qui se corrige.

@@ -32,7 +32,15 @@ import * as api from "./api.js";
 import { CreateUserDialog, QuickActions, useAct, useGo } from "./actions.js";
 import { useLoad, whenReady } from "../load/hooks.js";
 import * as R from "./resources.js";
-import { describeBan, formatDate, pageLabel, routeHash, shortAgent, winRate, type MatchStatus } from "./model.js";
+import {
+  describeBan,
+  formatDate,
+  pageLabel,
+  routeHash,
+  shortAgent,
+  winRate,
+  type MatchStatus,
+} from "./model.js";
 import { MatchTable, StateBadges } from "./shared.js";
 
 /**
@@ -53,7 +61,12 @@ export function Overview() {
     <>
       <PageHead title={t.title} />
       <StatTileGrid>
-        <StatTile value={s.users} label={t.accounts} detail={t.lastWeek(s.signupsLastWeek)} href={routeHash(ACCOUNTS)} />
+        <StatTile
+          value={s.users}
+          label={t.accounts}
+          detail={t.lastWeek(s.signupsLastWeek)}
+          href={routeHash(ACCOUNTS)}
+        />
         <StatTile
           value={s.verifiedUsers}
           label={t.verified}
@@ -61,21 +74,38 @@ export function Overview() {
         />
         <StatTile value={s.bannedUsers} label={t.banned} />
         <StatTile value={s.admins} label={t.admins} />
-        <StatTile value={s.matches} label={t.matches} detail={t.lastWeek(s.matchesLastWeek)} href={routeHash(GAMES)} />
-        <StatTile value={s.ongoingMatches} label={t.ongoing} href={routeHash({ view: "matches", status: "ongoing", offset: 0 })} />
+        <StatTile
+          value={s.matches}
+          label={t.matches}
+          detail={t.lastWeek(s.matchesLastWeek)}
+          href={routeHash(GAMES)}
+        />
+        <StatTile
+          value={s.ongoingMatches}
+          label={t.ongoing}
+          href={routeHash({ view: "matches", status: "ongoing", offset: 0 })}
+        />
         <StatTile value={s.actions} label={t.moves} />
         <StatTile value={s.players} label={t.players} detail={t.withoutAccount} />
       </StatTileGrid>
       <CardGrid>
         <Card title={t.recentMatches} action={<a href={routeHash(GAMES)}>{t.seeAll}</a>}>
-          {recent.ok ? <MatchTable matches={recent.value.matches} compact /> : <EmptyState error>{recent.message}</EmptyState>}
+          {recent.ok ? (
+            <MatchTable matches={recent.value.matches} compact />
+          ) : (
+            <EmptyState error>{recent.message}</EmptyState>
+          )}
         </Card>
         <Card title={t.newcomers} action={<a href={routeHash(ACCOUNTS)}>{t.seeAll}</a>}>
           {newcomers.ok ? (
             <List>
               {newcomers.value.users.slice(0, 6).map((user) => (
                 <ListRow key={user.id} end={<StateBadges user={user} />}>
-                  <Person name={user.name} detail={formatDate(user.createdAt)} href={routeHash({ view: "user", id: user.id })} />
+                  <Person
+                    name={user.name}
+                    detail={formatDate(user.createdAt)}
+                    href={routeHash({ view: "user", id: user.id })}
+                  />
                 </ListRow>
               ))}
             </List>
@@ -90,7 +120,15 @@ export function Overview() {
 
 // --- Comptes -----------------------------------------------------------------------------
 
-export function UserList({ search, offset, self }: { search: string; offset: number; self: string }) {
+export function UserList({
+  search,
+  offset,
+  self,
+}: {
+  search: string;
+  offset: number;
+  self: string;
+}) {
   const t = useMessages().admin.users;
   const notify = useToast();
   const [creating, setCreating] = useState(false);
@@ -106,7 +144,9 @@ export function UserList({ search, offset, self }: { search: string; offset: num
             <SearchField
               defaultValue={search}
               placeholder={t.search}
-              onSearch={(value) => (location.hash = routeHash({ view: "users", search: value, offset: 0 }))}
+              onSearch={(value) =>
+                (location.hash = routeHash({ view: "users", search: value, offset: 0 }))
+              }
             />
             <Button icon="plus" onClick={() => setCreating(true)}>
               {t.create}
@@ -124,7 +164,11 @@ export function UserList({ search, offset, self }: { search: string; offset: num
             {users.map((user) => (
               <tr key={user.id}>
                 <td>
-                  <Person name={user.name} detail={user.email} href={routeHash({ view: "user", id: user.id })} />
+                  <Person
+                    name={user.name}
+                    detail={user.email}
+                    href={routeHash({ view: "user", id: user.id })}
+                  />
                 </td>
                 <td>
                   <StateBadges user={user} />
@@ -202,7 +246,13 @@ export function UserDetail({ id, self }: { id: string; self: string }) {
           }
         />
         {user.banned === true && (
-          <Banner action={<Button variant="danger" onClick={() => void act(api.unban(id), t.unbanned)}>{t.unban}</Button>}>
+          <Banner
+            action={
+              <Button variant="danger" onClick={() => void act(api.unban(id), t.unbanned)}>
+                {t.unban}
+              </Button>
+            }
+          >
             {describeBan(user)}
           </Banner>
         )}
@@ -218,7 +268,13 @@ export function UserDetail({ id, self }: { id: string; self: string }) {
             {history?.ok === true && (
               <Card
                 title={t.recentMatches}
-                action={playerId !== undefined && <a href={routeHash({ view: "player", id: playerId })}>{t.fullHistory(history.value.total)}</a>}
+                action={
+                  playerId !== undefined && (
+                    <a href={routeHash({ view: "player", id: playerId })}>
+                      {t.fullHistory(history.value.total)}
+                    </a>
+                  )
+                }
               >
                 <MatchTable matches={history.value.matches} compact />
               </Card>
@@ -252,7 +308,11 @@ export function UserDetail({ id, self }: { id: string; self: string }) {
               title={t.sessions(sessionList.length)}
               action={
                 sessionList.length > 0 && (
-                  <Button size="sm" icon="logout" onClick={() => void act(api.revokeSessions(id), t.sessionsClosed)}>
+                  <Button
+                    size="sm"
+                    icon="logout"
+                    onClick={() => void act(api.revokeSessions(id), t.sessionsClosed)}
+                  >
                     {t.closeAll}
                   </Button>
                 )
@@ -272,12 +332,20 @@ export function UserDetail({ id, self }: { id: string; self: string }) {
                           icon="close"
                           label={t.closeSession}
                           tipAlign="end"
-                          onClick={() => void act(api.revokeSession(session.token), t.sessionClosed)}
+                          onClick={() =>
+                            void act(api.revokeSession(session.token), t.sessionClosed)
+                          }
                         />
                       }
                     >
                       <strong>{shortAgent(session.userAgent)}</strong>
-                      <small>{t.sessionLine(session.ipAddress ?? t.unknownIp, formatDate(session.createdAt), formatDate(session.expiresAt))}</small>
+                      <small>
+                        {t.sessionLine(
+                          session.ipAddress ?? t.unknownIp,
+                          formatDate(session.createdAt),
+                          formatDate(session.expiresAt),
+                        )}
+                      </small>
                     </ListRow>
                   ))}
                 </List>
@@ -332,9 +400,19 @@ export function PlayerDetail({ id }: { id: string }) {
       <ProfileCard player={p} />
       <Card
         title={t.history}
-        action={history.ok && <span className="occ-muted">{pageLabel(0, history.value.matches.length, history.value.total)}</span>}
+        action={
+          history.ok && (
+            <span className="occ-muted">
+              {pageLabel(0, history.value.matches.length, history.value.total)}
+            </span>
+          )
+        }
       >
-        {history.ok ? <MatchTable matches={history.value.matches} /> : <EmptyState error>{history.message}</EmptyState>}
+        {history.ok ? (
+          <MatchTable matches={history.value.matches} />
+        ) : (
+          <EmptyState error>{history.message}</EmptyState>
+        )}
       </Card>
     </>
   ));
@@ -361,7 +439,11 @@ export function MatchList({ status, offset }: { status: MatchStatus | null; offs
             value={status ?? "all"}
             options={filters.map((filter) => ({
               ...filter,
-              href: routeHash({ view: "matches", status: filter.value === "all" ? null : filter.value, offset: 0 }),
+              href: routeHash({
+                view: "matches",
+                status: filter.value === "all" ? null : filter.value,
+                offset: 0,
+              }),
             }))}
           />
         }

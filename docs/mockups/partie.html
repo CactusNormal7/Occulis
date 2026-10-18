@@ -35,8 +35,14 @@
 
       <div class="body">
         <div class="stage">
-          <svg id="board" width="860" height="520" viewBox="-260 -110 560 340" role="img"
-            aria-label="Plateau isométrique filaire, tour 12"></svg>
+          <svg
+            id="board"
+            width="860"
+            height="520"
+            viewBox="-260 -110 560 340"
+            role="img"
+            aria-label="Plateau isométrique filaire, tour 12"
+          ></svg>
 
           <div class="legend">
             <div class="legend-row" style="color: var(--occ-selection)">
@@ -63,7 +69,9 @@
               <div style="flex: 1 1 auto">
                 <div style="font-size: 15px">Commandant</div>
                 <div class="mono-sm muted" style="margin-top: 4px">case 2,4 — altitude 0</div>
-                <div class="mono-sm" style="margin-top: 6px; color: var(--occ-legal)">3 déplacements légaux</div>
+                <div class="mono-sm" style="margin-top: 6px; color: var(--occ-legal)">
+                  3 déplacements légaux
+                </div>
               </div>
             </div>
           </div>
@@ -72,7 +80,9 @@
             <div class="label" style="margin-bottom: 10px">MENACE ACTIVE</div>
             <div class="card card-threat">
               <div class="mono" style="color: var(--occ-threat)">Zone déclarée en 4,1</div>
-              <div class="mono-sm muted" style="margin-top: 4px">Se résout à la fin de votre tour</div>
+              <div class="mono-sm muted" style="margin-top: 4px">
+                Se résout à la fin de votre tour
+              </div>
             </div>
           </div>
 
@@ -161,7 +171,7 @@
             minDuration: 2,
             durationSpread: 1.6,
             delaySpread: 3.4,
-          }
+          },
         );
 
         O.drawPieces(board, terrain, [
@@ -174,7 +184,11 @@
         ]);
 
         var selected = O.projectOn(terrain, 2, 4);
-        O.emitAround(board, { x: selected.bx, y: selected.ty - 4 }, { seed: 77, count: 8, radiusX: 8, radiusY: 4 });
+        O.emitAround(
+          board,
+          { x: selected.bx, y: selected.ty - 4 },
+          { seed: 77, count: 8, radiusX: 8, radiusY: 4 },
+        );
 
         O.scatter(board, {
           seed: 1337,
@@ -182,7 +196,9 @@
           box: { x: -240, y: -60, width: 520, height: 270 },
         });
 
-        O.drawGlyphIcon(document.getElementById("icon-selection"), "commandant", { color: O.PALETTE.campA });
+        O.drawGlyphIcon(document.getElementById("icon-selection"), "commandant", {
+          color: O.PALETTE.campA,
+        });
 
         var history = [
           ["T10", "5,3 → 5,4", "rgba(255,255,255,0.35)"],

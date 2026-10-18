@@ -1,6 +1,13 @@
 import type { Board, Coord, PieceKind, PlayerId } from "@occulis/core";
 import { FONT, cssColor } from "@occulis/ui/tokens";
-import { type Drawable, drawPiece, fillQuad, fitPixelCanvas, strokeQuad, terrainDrawables } from "../render/canvas2d/paint.js";
+import {
+  type Drawable,
+  drawPiece,
+  fillQuad,
+  fitPixelCanvas,
+  strokeQuad,
+  terrainDrawables,
+} from "../render/canvas2d/paint.js";
 import { centerOffset, fitScale } from "../replay/replay.js";
 import { METRICS, look } from "../theme/theme.js";
 import { type Camera, createCamera, pivotOf, settle, toProjection, turn } from "../view/camera.js";
@@ -41,9 +48,19 @@ export interface PlacementCanvas {
 
 const PADDING = 24;
 
-export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: PlayerId, onPick: (coord: Coord) => void): PlacementCanvas {
+export function mountPlacement(
+  canvas: HTMLCanvasElement,
+  board: Board,
+  side: PlayerId,
+  onPick: (coord: Coord) => void,
+): PlacementCanvas {
   const context = canvas.getContext("2d");
-  const base = { tileWidth: METRICS.tileWidth, tileHeight: METRICS.tileHeight, heightUnit: METRICS.heightUnit, pivot: pivotOf(board) };
+  const base = {
+    tileWidth: METRICS.tileWidth,
+    tileHeight: METRICS.tileHeight,
+    heightUnit: METRICS.heightUnit,
+    pivot: pivotOf(board),
+  };
   let camera: Camera = createCamera(base.pivot, { x: 0, y: 0 });
   // Le camp B regarde la carte depuis l'autre côté : sa zone se présente à gauche, comme
   // celle du camp A.
@@ -64,7 +81,11 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
     const size = fitPixelCanvas(canvas);
     if (size === undefined) return;
     const { width, height } = size;
-    camera = { ...camera, viewport: { x: width, y: height }, scale: fitScale(board, base, width, height, PADDING) };
+    camera = {
+      ...camera,
+      viewport: { x: width, y: height },
+      scale: fitScale(board, base, width, height, PADDING),
+    };
     draw();
   };
 
@@ -75,7 +96,10 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
     const proj = toProjection(camera);
     const offset = centerOffset(board, proj);
     return tileAt(
-      { x: event.clientX - rect.left - camera.viewport.x / 2 - offset.x, y: event.clientY - rect.top - camera.viewport.y / 2 - offset.y },
+      {
+        x: event.clientX - rect.left - camera.viewport.x / 2 - offset.x,
+        y: event.clientY - rect.top - camera.viewport.y / 2 - offset.y,
+      },
       board,
       proj,
     );
@@ -127,21 +151,32 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
     const camp = look().players[current.side];
     const other = look().players[current.side === "A" ? "B" : "A"];
 
-    const drawables: Drawable[] = terrainDrawables(context, board, proj, () => true, (coord, height) => {
-      const key = `${coord.x},${coord.y}`;
-      const quad = tileQuad(coord, height, proj);
-      if (own.has(key)) {
-        fillQuad(context, quad, cssColor(camp, 0.1));
-        strokeQuad(context, quad, cssColor(camp, 0.55), 1);
-      } else if (theirs.has(key)) {
-        context.setLineDash([2 / ratio, 2 / ratio]);
-        strokeQuad(context, quad, cssColor(other, 0.35), 1);
-        context.setLineDash([]);
-      }
-      if (hovered !== undefined && hovered.x === coord.x && hovered.y === coord.y) {
-        strokeQuad(context, quad, own.has(key) ? cssColor(look().state.selection) : cssColor(look().palette.ink, 0.4), 2);
-      }
-    });
+    const drawables: Drawable[] = terrainDrawables(
+      context,
+      board,
+      proj,
+      () => true,
+      (coord, height) => {
+        const key = `${coord.x},${coord.y}`;
+        const quad = tileQuad(coord, height, proj);
+        if (own.has(key)) {
+          fillQuad(context, quad, cssColor(camp, 0.1));
+          strokeQuad(context, quad, cssColor(camp, 0.55), 1);
+        } else if (theirs.has(key)) {
+          context.setLineDash([2 / ratio, 2 / ratio]);
+          strokeQuad(context, quad, cssColor(other, 0.35), 1);
+          context.setLineDash([]);
+        }
+        if (hovered !== undefined && hovered.x === coord.x && hovered.y === coord.y) {
+          strokeQuad(
+            context,
+            quad,
+            own.has(key) ? cssColor(look().state.selection) : cssColor(look().palette.ink, 0.4),
+            2,
+          );
+        }
+      },
+    );
 
     for (const piece of current.pieces) {
       const height = board.heightAt(piece.coord) ?? 0;
@@ -149,7 +184,14 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
         depth: { ...depthOf(piece.coord, height, proj), height: height + 0.5 },
         paint: () => {
           const tint = piece.selected ? look().state.selection : camp;
-          const top = drawPiece(context, project(piece.coord, height, proj), current.side, look().pieces.alphaVisible, proj, tint);
+          const top = drawPiece(
+            context,
+            project(piece.coord, height, proj),
+            current.side,
+            look().pieces.alphaVisible,
+            proj,
+            tint,
+          );
           context.fillStyle = cssColor(tint);
           // Tiny5 n'est nette qu'à 8 pixels du tampon, ou un multiple.
           context.font = `${8 / ratio}px ${FONT.pixel}`;
@@ -174,7 +216,8 @@ export function mountPlacement(canvas: HTMLCanvasElement, board: Board, side: Pl
     },
     rotate(direction) {
       camera = turn(camera, direction);
-      if (matchMedia("(prefers-reduced-motion: reduce)").matches) camera = { ...camera, rotation: camera.targetRotation };
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches)
+        camera = { ...camera, rotation: camera.targetRotation };
       if (frameRequest === undefined) frameRequest = requestAnimationFrame(tick);
     },
     destroy() {

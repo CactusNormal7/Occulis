@@ -12,13 +12,13 @@ construit chez soi, et rien de ce qu'elle contient ne se commite.
 
 ## Ce qui est versionné, et pourquoi
 
-| Fichier | Rôle |
-|---|---|
-| `CLAUDE.md`, section « graphify » | Demande à l'assistant d'interroger la carte avant de parcourir le code, et de la mettre à jour après une modification |
-| `.claude/CLAUDE.md` | Déclare la commande `/graphify` à Claude Code |
-| `.claude/skills/graphify/` | Le manuel de la commande `/graphify`, recopié depuis le paquet (version dans `.graphify_version`) |
-| `.claude/settings.json` | Deux rappels (*hooks*) : avant une recherche ou une lecture de fichier, ils signalent à l'assistant que la carte existe. Ils restent muets tant que `graphify-out/graph.json` n'existe pas, et ne demandent que `python3` |
-| `.graphifyignore` | Ce que graphify ne lit pas. Il **remplace** `.gitignore` au lieu de s'y ajouter, d'où la reprise de ses lignes |
+| Fichier                           | Rôle                                                                                                                                                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CLAUDE.md`, section « graphify » | Demande à l'assistant d'interroger la carte avant de parcourir le code, et de la mettre à jour après une modification                                                                                                     |
+| `.claude/CLAUDE.md`               | Déclare la commande `/graphify` à Claude Code                                                                                                                                                                             |
+| `.claude/skills/graphify/`        | Le manuel de la commande `/graphify`, recopié depuis le paquet (version dans `.graphify_version`)                                                                                                                         |
+| `.claude/settings.json`           | Deux rappels (_hooks_) : avant une recherche ou une lecture de fichier, ils signalent à l'assistant que la carte existe. Ils restent muets tant que `graphify-out/graph.json` n'existe pas, et ne demandent que `python3` |
+| `.graphifyignore`                 | Ce que graphify ne lit pas. Il **remplace** `.gitignore` au lieu de s'y ajouter, d'où la reprise de ses lignes                                                                                                            |
 
 `graphify-out/` est ignoré par git, comme ses sauvegardes datées. Il n'était pas raisonnable
 de le versionner : plusieurs mégaoctets réécrits à chaque mise à jour, des conflits entre
@@ -29,7 +29,7 @@ branches sur `graph.json`, et des chemins propres à une machine (`.graphify_pyt
 
 Depuis la racine du dépôt, après l'installation du projet ([setup.md](setup.md), section 1).
 
-**1. Installer l'outil.** Le paquet Python s'appelle `graphifyy`, avec deux *y*. Il installe
+**1. Installer l'outil.** Le paquet Python s'appelle `graphifyy`, avec deux _y_. Il installe
 la commande `graphify`. Le plus simple est pipx (`brew install pipx` sur macOS) :
 
 ```bash
@@ -80,13 +80,13 @@ open graphify-out/graph.html   # macOS ; xdg-open sous Linux
 
 Commandes d'interrogation, utiles aussi à la main :
 
-| Commande | Rend |
-|---|---|
-| `graphify query "<question>"` | L'extrait de carte autour de la question |
-| `graphify path "<A>" "<B>"` | Le plus court chemin entre deux éléments |
-| `graphify explain "<X>"` | Un élément et ses voisins, en clair |
-| `graphify god-nodes` | Les éléments les plus connectés, c'est-à-dire les pivots de l'architecture |
-| `graphify affected "<X>"` | Ce qui dépend de X, en remontant les liens |
+| Commande                      | Rend                                                                       |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| `graphify query "<question>"` | L'extrait de carte autour de la question                                   |
+| `graphify path "<A>" "<B>"`   | Le plus court chemin entre deux éléments                                   |
+| `graphify explain "<X>"`      | Un élément et ses voisins, en clair                                        |
+| `graphify god-nodes`          | Les éléments les plus connectés, c'est-à-dire les pivots de l'architecture |
+| `graphify affected "<X>"`     | Ce qui dépend de X, en remontant les liens                                 |
 
 ## Ce qu'il ne faut pas faire
 
@@ -100,7 +100,7 @@ Commandes d'interrogation, utiles aussi à la main :
 - **Ne pas forcer l'ajout de `graphify-out/`** (`git add -f`).
 - Les crochets git de graphify (`graphify hook install`, qui met la carte à jour après chaque
   commit) sont une commodité personnelle : ils vivent dans `.git/hooks`, ne sont pas
-  versionnés, et chacun est libre de les poser ou non. Le *merge driver* de graphify est
+  versionnés, et chacun est libre de les poser ou non. Le _merge driver_ de graphify est
   inutile ici, puisque `graph.json` n'est plus versionné.
 
 ## Mettre l'outil à jour

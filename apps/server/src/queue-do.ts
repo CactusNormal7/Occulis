@@ -112,7 +112,10 @@ export class QueueDO extends DurableObject<Env> {
     // Un joueur déjà sous proposition, depuis un autre onglet, la quitte : il ne doit
     // attendre qu'à un seul endroit à la fois.
     const pending = proposalOfPlayer(await this.proposals(), entry.playerId);
-    const other = pending === undefined ? undefined : membersOf(pending).find((member) => member.playerId === entry.playerId);
+    const other =
+      pending === undefined
+        ? undefined
+        : membersOf(pending).find((member) => member.playerId === entry.playerId);
     if (other !== undefined) await this.withdraw(other.connectionId);
     await this.ctx.storage.put("queue", enqueue(await this.queue(), entry));
     this.send(ws, { kind: "waiting" });
@@ -187,7 +190,12 @@ export class QueueDO extends DurableObject<Env> {
     await this.saveProposals([...(await this.proposals()), proposal]);
     for (const member of membersOf(proposal)) {
       const socket = this.socketOf(member.connectionId);
-      if (socket !== undefined) this.send(socket, { kind: "proposal", proposalId: proposal.id, remainingMs: proposal.deadline - Date.now() });
+      if (socket !== undefined)
+        this.send(socket, {
+          kind: "proposal",
+          proposalId: proposal.id,
+          remainingMs: proposal.deadline - Date.now(),
+        });
     }
   }
 
@@ -207,7 +215,10 @@ export class QueueDO extends DurableObject<Env> {
       if (socket === undefined) continue;
       this.send(socket, {
         kind: "proposal-update",
-        accepted: { self: proposal.accepted.includes(member.connectionId), opponent: proposal.accepted.includes(opponent.connectionId) },
+        accepted: {
+          self: proposal.accepted.includes(member.connectionId),
+          opponent: proposal.accepted.includes(opponent.connectionId),
+        },
       });
     }
   }

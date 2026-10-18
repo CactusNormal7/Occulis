@@ -23,7 +23,8 @@ export function paletteEntries(palette: Palette): PaletteEntry[] {
       entries.push({ path: prefix, value: node });
       return;
     }
-    for (const [key, child] of Object.entries(node)) walk(child, prefix === "" ? key : `${prefix}.${key}`);
+    for (const [key, child] of Object.entries(node))
+      walk(child, prefix === "" ? key : `${prefix}.${key}`);
   };
   walk(palette as unknown as Node, "");
   return entries;
@@ -64,7 +65,9 @@ export function paletteSource(name: string, palette: Palette): string {
   const literal = (value: number): string => `0x${value.toString(16).padStart(6, "0")}`;
   const lines = Object.entries(palette as unknown as Record<string, Node>).map(([key, node]) => {
     if (typeof node === "number") return `    ${key}: ${literal(node)},`;
-    const fields = Object.entries(node).map(([field, value]) => `${field}: ${literal(value as number)}`);
+    const fields = Object.entries(node).map(
+      ([field, value]) => `${field}: ${literal(value as number)}`,
+    );
     return `    ${key}: { ${fields.join(", ")} },`;
   });
   return [`  ${name}: {`, ...lines, "  },"].join("\n");

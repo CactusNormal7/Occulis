@@ -335,7 +335,10 @@ export const ACTIONS: ActionDef[] = [
         return ctx.log("Build du client en échec ou interrompu — serveur non lancé.", "fail");
       }
       ctx.log("Migrations locales", "step");
-      if ((await runWranglerInherited(["d1", "migrations", "apply", dbName("local"), "--local"])) !== 0) {
+      if (
+        (await runWranglerInherited(["d1", "migrations", "apply", dbName("local"), "--local"])) !==
+        0
+      ) {
         return ctx.log("Migrations locales en échec ou interrompues — serveur non lancé.", "fail");
       }
       ctx.log("Démarrage de wrangler dev — Ctrl+C pour l'arrêter.", "step");
@@ -362,7 +365,8 @@ export const ACTIONS: ActionDef[] = [
       );
       // Un build raté laisse un apps/web/dist périmé ou partiel : le déployer servirait
       // un client qui ne correspond plus au Worker.
-      if (build.code !== 0) return ctx.log("Build du client en échec — déploiement annulé.", "fail");
+      if (build.code !== 0)
+        return ctx.log("Build du client en échec — déploiement annulé.", "fail");
       // Migrations avant déploiement : un Worker servi contre un schéma non migré
       // échoue à la première requête.
       ctx.log("Migrations", "step");

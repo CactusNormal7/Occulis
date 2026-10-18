@@ -51,7 +51,8 @@ export async function mountBoard(host: HTMLElement, hooks: BoardHooks): Promise<
     if (input === undefined) return;
     // Le thème peut changer en pleine partie : le vide du canevas le suit.
     const background = look().palette.background;
-    if (app.renderer.background.color.toNumber() !== background) app.renderer.background.color = background;
+    if (app.renderer.background.color.toNumber() !== background)
+      app.renderer.background.color = background;
     scene.render(input, {
       deltaMS: ticker.deltaMS,
       width: app.screen.width,

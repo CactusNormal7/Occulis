@@ -58,13 +58,26 @@ export function Deployment(props: DeploymentProps) {
   );
 }
 
-function Content({ player, scenario, board, rulesetVersion, deployment, receivedAt, presets, rejection, onDeploy }: DeploymentProps) {
+function Content({
+  player,
+  scenario,
+  board,
+  rulesetVersion,
+  deployment,
+  receivedAt,
+  presets,
+  rejection,
+  onDeploy,
+}: DeploymentProps) {
   const all = useMessages();
   const m = all.prepare;
   const ruleset = useMemo(() => rulesetFor(rulesetVersion), [rulesetVersion]);
   const usable = usablePresets(presets, scenario, rulesetVersion);
   const [draft, setDraft] = useState<TeamDraft>(() =>
-    fromEntries(ruleset, initialTeam(presets, scenario, rulesetVersion, player, deployment.defaultTeam)),
+    fromEntries(
+      ruleset,
+      initialTeam(presets, scenario, rulesetVersion, player, deployment.defaultTeam),
+    ),
   );
   const [touched, setTouched] = useState(false);
   const [sent, setSent] = useState(false);
@@ -76,7 +89,13 @@ function Content({ player, scenario, board, rulesetVersion, deployment, received
   // Les presets arrivent parfois après l'annonce : tant que le joueur n'a touché à rien,
   // celui par défaut remplace l'équipe de la carte.
   useEffect(() => {
-    if (!touched) setDraft(fromEntries(ruleset, initialTeam(presets, scenario, rulesetVersion, player, deployment.defaultTeam)));
+    if (!touched)
+      setDraft(
+        fromEntries(
+          ruleset,
+          initialTeam(presets, scenario, rulesetVersion, player, deployment.defaultTeam),
+        ),
+      );
     // L'arrivée des presets seule : une mise à jour des verrous ne doit pas réécrire le brouillon.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presets]);
@@ -127,13 +146,25 @@ function Content({ player, scenario, board, rulesetVersion, deployment, received
                   const chosen = usable.find((preset) => preset.id === event.target.value);
                   if (chosen !== undefined) edit(fromEntries(ruleset, presetTeam(chosen, player)));
                 }}
-                options={[{ value: "", label: m.deploy.noPreset }, ...usable.map((preset) => ({ value: preset.id, label: preset.name }))]}
+                options={[
+                  { value: "", label: m.deploy.noPreset },
+                  ...usable.map((preset) => ({ value: preset.id, label: preset.name })),
+                ]}
               />
             )}
-            <CountdownRing totalMs={DEPLOYMENT_TOTAL_MS} remainingMs={remaining} label={m.remaining}>
+            <CountdownRing
+              totalMs={DEPLOYMENT_TOTAL_MS}
+              remainingMs={remaining}
+              label={m.remaining}
+            >
               {secondsLeft(remaining)}
             </CountdownRing>
-            <Button variant="primary" icon={locked ? undefined : "shield"} disabled={locked || sent || !valid} onClick={send}>
+            <Button
+              variant="primary"
+              icon={locked ? undefined : "shield"}
+              disabled={locked || sent || !valid}
+              onClick={send}
+            >
               {locked ? m.deploy.locked : m.deploy.lock}
             </Button>
           </>

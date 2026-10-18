@@ -1,4 +1,11 @@
-import { LOCALE_COOKIE, LOCALE_STORAGE_KEY, type Locale, localeFromCookie, lookup, resolveLocale } from "@occulis/i18n";
+import {
+  LOCALE_COOKIE,
+  LOCALE_STORAGE_KEY,
+  type Locale,
+  localeFromCookie,
+  lookup,
+  resolveLocale,
+} from "@occulis/i18n";
 import { currentLocale, messages, onLocaleChange, setLocale } from "./current.js";
 
 /**

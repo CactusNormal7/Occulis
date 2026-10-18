@@ -11,7 +11,8 @@ export const mail: Messages["mail"] = {
       "Votre compte est créé. Il reste à confirmer cette adresse : c'est elle qui ouvre la file d'attente et les parties en ligne.",
     ],
     action: "Confirmer mon adresse",
-    footnote: "Si vous n'êtes pas à l'origine de cette inscription, ignorez ce message : aucun compte ne sera activé.",
+    footnote:
+      "Si vous n'êtes pas à l'origine de cette inscription, ignorez ce message : aucun compte ne sera activé.",
   },
   reset: {
     subject: "Réinitialisation de votre mot de passe — Occulis",
@@ -22,7 +23,8 @@ export const mail: Messages["mail"] = {
       "Toutes vos sessions ouvertes seront fermées une fois le mot de passe changé.",
     ],
     action: "Choisir un mot de passe",
-    footnote: "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.",
+    footnote:
+      "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.",
   },
   changeEmail: {
     subject: "Changement d'adresse demandé — Occulis",
@@ -45,7 +47,8 @@ export const mail: Messages["mail"] = {
       "Le lien n'agit que dans le navigateur où vous êtes connecté, et expire dans 24 heures.",
     ],
     action: "Supprimer définitivement",
-    footnote: "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message et changez votre mot de passe.",
+    footnote:
+      "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message et changez votre mot de passe.",
   },
   passwordChanged: {
     subject: "Votre mot de passe a changé — Occulis",
@@ -63,8 +66,12 @@ export const mail: Messages["mail"] = {
     subject: (provider) => `Connexion ${provider} ajoutée — Occulis`,
     preheader: "Un avis de sécurité, rien à faire si c'était vous.",
     title: (provider) => `${provider} est lié à votre compte`,
-    paragraphs: (provider) => [`Vous pouvez désormais vous connecter à Occulis avec ${provider}.`, "Si c'était vous, il n'y a rien à faire."],
+    paragraphs: (provider) => [
+      `Vous pouvez désormais vous connecter à Occulis avec ${provider}.`,
+      "Si c'était vous, il n'y a rien à faire.",
+    ],
     action: "Gérer mes connexions",
-    footnote: "Si ce n'était pas vous, retirez cette connexion depuis votre profil et changez votre mot de passe.",
+    footnote:
+      "Si ce n'était pas vous, retirez cette connexion depuis votre profil et changez votre mot de passe.",
   },
 };

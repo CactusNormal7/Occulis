@@ -44,7 +44,15 @@ export interface Notice {
 }
 
 /** Les paramètres de retour que la page lit une fois, puis retire de l'URL. */
-const ARRIVAL_PARAMETERS = ["verified", "deleted", "verifiee", "supprime", "error", "error_description", "token"] as const;
+const ARRIVAL_PARAMETERS = [
+  "verified",
+  "deleted",
+  "verifiee",
+  "supprime",
+  "error",
+  "error_description",
+  "token",
+] as const;
 
 /**
  * Les anciens noms de ces paramètres, d'avant le passage du nommage en anglais : des
@@ -102,7 +110,12 @@ export function fieldOf(code: string | undefined): FieldName | undefined {
   if (code === undefined) return undefined;
   if (code.startsWith("HANDLE_")) return "handle";
   if (code.startsWith("PASSWORD_")) return "password";
-  if (code === "VALIDATION_ERROR" || code === "INVALID_EMAIL" || code.startsWith("USER_ALREADY_EXISTS")) return "email";
+  if (
+    code === "VALIDATION_ERROR" ||
+    code === "INVALID_EMAIL" ||
+    code.startsWith("USER_ALREADY_EXISTS")
+  )
+    return "email";
   return undefined;
 }
 

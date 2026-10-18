@@ -84,22 +84,35 @@ export interface ComponentDoc {
  */
 export function componentDocs(source: string): Map<string, ComponentDoc> {
   const interfaces = new Map<string, string>();
-  for (const match of source.matchAll(/^export interface (\w+)(?:<[^>]*>)?(?: extends [^{]+)? \{/gm)) {
+  for (const match of source.matchAll(
+    /^export interface (\w+)(?:<[^>]*>)?(?: extends [^{]+)? \{/gm,
+  )) {
     const body = balanced(source, match.index + match[0].length - 1, "{", "}");
-    if (body !== undefined) interfaces.set(match[1] ?? "", source.slice(match.index, match.index + match[0].length - 1) + body);
+    if (body !== undefined)
+      interfaces.set(
+        match[1] ?? "",
+        source.slice(match.index, match.index + match[0].length - 1) + body,
+      );
   }
 
   const docs = new Map<string, ComponentDoc>();
   for (const match of source.matchAll(/^export (function|const) (\w+)/gm)) {
     const name = match[2] ?? "";
     // Une constante n'est un composant que si elle enveloppe un rendu (`forwardRef`, `memo`).
-    if (!/^[A-Z]/.test(name) || (match[1] === "const" && !/^export const \w+ = (?:forwardRef|memo)\b/.test(source.slice(match.index)))) continue;
+    if (
+      !/^[A-Z]/.test(name) ||
+      (match[1] === "const" &&
+        !/^export const \w+ = (?:forwardRef|memo)\b/.test(source.slice(match.index)))
+    )
+      continue;
     const before = source.slice(0, match.index).trimEnd();
     const comment = before.endsWith("*/") ? before.slice(before.lastIndexOf("/**")) : "";
     const open = match[1] === "function" ? source.indexOf("(", match.index) : -1;
     const parameters = open === -1 ? undefined : balanced(source, open, "(", ")");
     const typed = parameters?.match(/\}:\s*([\s\S]+)\)$/)?.[1]?.trim();
-    const props = interfaces.get(`${name}Props`) ?? (typed !== undefined && !typed.endsWith("Props") ? typed : undefined);
+    const props =
+      interfaces.get(`${name}Props`) ??
+      (typed !== undefined && !typed.endsWith("Props") ? typed : undefined);
     docs.set(name, { doc: comment.length > 0 ? cleanDoc(comment) : "", props });
   }
   return docs;
@@ -125,7 +138,10 @@ export function cssAnimations(css: string): CssAnimation[] {
   // (`---- Animations ----`) : il ne décrit pas la règle.
   for (const match of css.matchAll(/(?:\/\*((?:[^*]|\*(?!\/))*)\*\/\s*)*([^{}/;]+)\{([^{}]*)\}/g)) {
     const body = match[3] ?? "";
-    const declaration = /(?:^|;|\s)animation:\s*([^;]+);/.exec(body)?.[1]?.trim().replace(/\s+/g, " ");
+    const declaration = /(?:^|;|\s)animation:\s*([^;]+);/
+      .exec(body)?.[1]
+      ?.trim()
+      .replace(/\s+/g, " ");
     if (declaration === undefined || declaration.startsWith("none")) continue;
     const selector = (match[2] ?? "").trim().replace(/\s+/g, " ");
     if (selector.startsWith("@") || selector.length === 0) continue;
@@ -163,10 +179,15 @@ export function fieldNotes(source: string, name: string): FieldNote[] {
 /** Une section d'un document Markdown, de son titre (`### 8.1 …`) au titre suivant de même rang. */
 export function markdownSection(markdown: string, heading: string): string | undefined {
   const lines = markdown.split("\n");
-  const start = lines.findIndex((line) => /^#+ /.test(line) && line.replace(/^#+ /, "").startsWith(heading));
+  const start = lines.findIndex(
+    (line) => /^#+ /.test(line) && line.replace(/^#+ /, "").startsWith(heading),
+  );
   if (start === -1) return undefined;
   const level = /^#+/.exec(lines[start] ?? "")?.[0].length ?? 1;
-  const end = lines.findIndex((line, index) => index > start && /^#+ /.test(line) && (/^#+/.exec(line)?.[0].length ?? 0) <= level);
+  const end = lines.findIndex(
+    (line, index) =>
+      index > start && /^#+ /.test(line) && (/^#+/.exec(line)?.[0].length ?? 0) <= level,
+  );
   return lines.slice(start, end === -1 ? undefined : end).join("\n");
 }
 
@@ -180,7 +201,11 @@ export type Inline =
 export type Block =
   | { readonly kind: "heading"; readonly level: number; readonly text: readonly Inline[] }
   | { readonly kind: "paragraph"; readonly text: readonly Inline[] }
-  | { readonly kind: "list"; readonly ordered: boolean; readonly items: readonly (readonly Inline[])[] }
+  | {
+      readonly kind: "list";
+      readonly ordered: boolean;
+      readonly items: readonly (readonly Inline[])[];
+    }
   | { readonly kind: "code"; readonly language: string; readonly text: string };
 
 /** Le Markdown d'une ligne : `code`, **gras**, *italique*, [lien](url). Rien d'autre. */
@@ -227,7 +252,11 @@ export function markdownBlocks(markdown: string): Block[] {
     }
     const heading = /^(#{1,6})\s+(.*)$/.exec(line);
     if (heading !== null) {
-      blocks.push({ kind: "heading", level: heading[1]?.length ?? 1, text: inline(heading[2] ?? "") });
+      blocks.push({
+        kind: "heading",
+        level: heading[1]?.length ?? 1,
+        text: inline(heading[2] ?? ""),
+      });
       i += 1;
       continue;
     }
@@ -244,7 +273,12 @@ export function markdownBlocks(markdown: string): Block[] {
       continue;
     }
     const paragraph: string[] = [];
-    while (i < lines.length && (lines[i] ?? "").trim().length > 0 && !/^(#{1,6}\s|```)/.test(lines[i] ?? "") && !item.test(lines[i] ?? "")) {
+    while (
+      i < lines.length &&
+      (lines[i] ?? "").trim().length > 0 &&
+      !/^(#{1,6}\s|```)/.test(lines[i] ?? "") &&
+      !item.test(lines[i] ?? "")
+    ) {
       paragraph.push((lines[i] ?? "").trim());
       i += 1;
     }

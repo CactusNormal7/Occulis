@@ -99,8 +99,7 @@ export function hasLineOfSight(
     const tileHeight = board.heightAt(coord);
     if (tileHeight === undefined) continue;
 
-    const obstacleHeight =
-      tileHeight + (occupied.has(coordKey(coord)) ? PIECE_HEIGHT : 0);
+    const obstacleHeight = tileHeight + (occupied.has(coordKey(coord)) ? PIECE_HEIGHT : 0);
     const sightlineHeight = eyeFrom + ((eyeTo - eyeFrom) * i) / lastStep;
     if (obstacleHeight >= sightlineHeight) return false;
   }

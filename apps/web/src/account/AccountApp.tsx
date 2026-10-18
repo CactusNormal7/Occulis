@@ -1,6 +1,23 @@
-import { useEffect, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import type { Locale } from "@occulis/i18n";
-import { Button, Divider, FormMessage, FormPanel, PasswordField, ProviderButton, TextField, UiRoot, useMessages } from "@occulis/ui";
+import {
+  Button,
+  Divider,
+  FormMessage,
+  FormPanel,
+  PasswordField,
+  ProviderButton,
+  TextField,
+  UiRoot,
+  useMessages,
+} from "@occulis/ui";
 import {
   register,
   requestReset,
@@ -49,7 +66,13 @@ export interface AccountAppProps {
   readonly locale: Locale;
 }
 
-export function AccountApp({ initialRoute, initialNotice, providers, onSignedIn, locale }: AccountAppProps) {
+export function AccountApp({
+  initialRoute,
+  initialNotice,
+  providers,
+  onSignedIn,
+  locale,
+}: AccountAppProps) {
   const [route, setRoute] = useState<AccountRoute>(initialRoute);
   const [notice, setNotice] = useState<Notice | undefined>(initialNotice);
   const [email, setEmail] = useState("");
@@ -101,13 +124,18 @@ interface Shared {
 /** L'état commun d'un formulaire : envoi en cours, refus général, refus par champ. */
 function useSubmission(formId: string, setNotice: (notice: Notice | undefined) => void) {
   const [busy, setBusy] = useState(false);
-  const [fieldError, setFieldError] = useState<{ field: FieldName; message: string } | undefined>(undefined);
+  const [fieldError, setFieldError] = useState<{ field: FieldName; message: string } | undefined>(
+    undefined,
+  );
   const focusOnError = useRef(false);
 
   useEffect(() => {
     if (!focusOnError.current) return;
     focusOnError.current = false;
-    const target = fieldError === undefined ? undefined : document.querySelector<HTMLInputElement>(`#${formId} [name="${fieldError.field}"]`);
+    const target =
+      fieldError === undefined
+        ? undefined
+        : document.querySelector<HTMLInputElement>(`#${formId} [name="${fieldError.field}"]`);
     target?.focus();
     target?.select();
   }, [fieldError, formId]);
@@ -128,11 +156,20 @@ function useSubmission(formId: string, setNotice: (notice: Notice | undefined) =
     else setFieldError({ field, message: outcome.message });
   };
 
-  const errorFor = (field: FieldName): string | undefined => (fieldError?.field === field ? fieldError.message : undefined);
+  const errorFor = (field: FieldName): string | undefined =>
+    fieldError?.field === field ? fieldError.message : undefined;
   return { busy, run, errorFor };
 }
 
-function SignIn({ email, setEmail, notice, setNotice, navigate, google, onSuccess }: Shared & { onSuccess: () => void }) {
+function SignIn({
+  email,
+  setEmail,
+  notice,
+  setNotice,
+  navigate,
+  google,
+  onSuccess,
+}: Shared & { onSuccess: () => void }) {
   const m = useMessages().account;
   const { busy, run, errorFor } = useSubmission("signin-form", setNotice);
   const [password, setPassword] = useState("");
@@ -194,7 +231,15 @@ function SignIn({ email, setEmail, notice, setNotice, navigate, google, onSucces
   );
 }
 
-function Register({ email, setEmail, notice, setNotice, navigate, google, onSuccess }: Shared & { onSuccess: (message?: string) => void }) {
+function Register({
+  email,
+  setEmail,
+  notice,
+  setNotice,
+  navigate,
+  google,
+  onSuccess,
+}: Shared & { onSuccess: (message?: string) => void }) {
   const m = useMessages().account;
   const { busy, run, errorFor } = useSubmission("register-form", setNotice);
   const [handle, setHandle] = useState("");
@@ -263,7 +308,9 @@ function Register({ email, setEmail, notice, setNotice, navigate, google, onSucc
           minLength={MIN_PASSWORD_LENGTH}
           maxLength={MAX_PASSWORD_LENGTH}
           // Lu par Safari et 1Password pour générer un mot de passe conforme.
-          {...{ passwordrules: `minlength: ${MIN_PASSWORD_LENGTH}; maxlength: ${MAX_PASSWORD_LENGTH};` }}
+          {...{
+            passwordrules: `minlength: ${MIN_PASSWORD_LENGTH}; maxlength: ${MAX_PASSWORD_LENGTH};`,
+          }}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           hint={passwordHint(password)}
@@ -307,7 +354,12 @@ function Forgot({ email, setEmail, notice, setNotice, navigate }: Shared) {
       }
     >
       <NoticeLine notice={notice} navigate={navigate} />
-      <form id="forgot-form" method="post" action="/api/auth/request-password-reset" onSubmit={submit}>
+      <form
+        id="forgot-form"
+        method="post"
+        action="/api/auth/request-password-reset"
+        onSubmit={submit}
+      >
         <TextField
           label={m.email}
           id="forgot-email"
@@ -331,7 +383,13 @@ function Forgot({ email, setEmail, notice, setNotice, navigate }: Shared) {
   );
 }
 
-function Reset({ setEmail, notice, setNotice, navigate, token }: Shared & { token: string | undefined }) {
+function Reset({
+  setEmail,
+  notice,
+  setNotice,
+  navigate,
+  token,
+}: Shared & { token: string | undefined }) {
   const m = useMessages().account;
   const { busy, run, errorFor } = useSubmission("reset-form", setNotice);
   const [account, setAccount] = useState(recallResetEmail);
@@ -339,7 +397,14 @@ function Reset({ setEmail, notice, setNotice, navigate, token }: Shared & { toke
 
   if (token === undefined) {
     return (
-      <FormPanel title={m.reset.title} footer={<RouteLink kind="signin" navigate={navigate}>{m.backToSignIn}</RouteLink>}>
+      <FormPanel
+        title={m.reset.title}
+        footer={
+          <RouteLink kind="signin" navigate={navigate}>
+            {m.backToSignIn}
+          </RouteLink>
+        }
+      >
         <NoticeLine
           notice={notice ?? { tone: "error", text: m.reset.invalid, retry: "reset" }}
           navigate={navigate}
@@ -366,7 +431,11 @@ function Reset({ setEmail, notice, setNotice, navigate, token }: Shared & { toke
     <FormPanel
       title={m.reset.title}
       lead={m.reset.lead}
-      footer={<RouteLink kind="signin" navigate={navigate}>{m.backToSignIn}</RouteLink>}
+      footer={
+        <RouteLink kind="signin" navigate={navigate}>
+          {m.backToSignIn}
+        </RouteLink>
+      }
     >
       <NoticeLine notice={notice} navigate={navigate} />
       <form id="reset-form" method="post" action="/api/auth/reset-password" onSubmit={submit}>
@@ -392,7 +461,9 @@ function Reset({ setEmail, notice, setNotice, navigate, token }: Shared & { toke
           autoFocus
           minLength={MIN_PASSWORD_LENGTH}
           maxLength={MAX_PASSWORD_LENGTH}
-          {...{ passwordrules: `minlength: ${MIN_PASSWORD_LENGTH}; maxlength: ${MAX_PASSWORD_LENGTH};` }}
+          {...{
+            passwordrules: `minlength: ${MIN_PASSWORD_LENGTH}; maxlength: ${MAX_PASSWORD_LENGTH};`,
+          }}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           hint={passwordHint(password)}
@@ -427,7 +498,13 @@ function GoogleEntry({ setNotice }: { setNotice: (notice: Notice | undefined) =>
   );
 }
 
-function NoticeLine({ notice, navigate }: { notice: Notice | undefined; navigate: Shared["navigate"] }) {
+function NoticeLine({
+  notice,
+  navigate,
+}: {
+  notice: Notice | undefined;
+  navigate: Shared["navigate"];
+}) {
   const m = useMessages().account;
   if (notice === undefined) return null;
   const action =
@@ -445,7 +522,15 @@ function NoticeLine({ notice, navigate }: { notice: Notice | undefined; navigate
 }
 
 /** Un lien vers un autre parcours : une vraie URL, suivie sans recharger la page. */
-function RouteLink({ kind, navigate, children }: { kind: RouteKind; navigate: Shared["navigate"]; children: ReactNode }) {
+function RouteLink({
+  kind,
+  navigate,
+  children,
+}: {
+  kind: RouteKind;
+  navigate: Shared["navigate"];
+  children: ReactNode;
+}) {
   const follow = (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
     event.preventDefault();

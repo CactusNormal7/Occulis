@@ -82,9 +82,11 @@ describe("OnlineMatch", () => {
       const played = memory.state;
       return startMemory({
         ...played,
-        pieces: new Map([...played.pieces].map(([id, piece]) =>
-          id === "a-scout" ? [id, { ...piece, coord: { x: 1, y: 0 } }] : [id, piece],
-        )),
+        pieces: new Map(
+          [...played.pieces].map(([id, piece]) =>
+            id === "a-scout" ? [id, { ...piece, coord: { x: 1, y: 0 } }] : [id, piece],
+          ),
+        ),
       });
     })();
     expect(knowledge).toBeDefined();

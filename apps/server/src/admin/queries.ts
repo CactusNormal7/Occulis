@@ -128,14 +128,16 @@ const MATCH_FILTER = `
 export async function listMatches(db: D1Database, filter: MatchFilter): Promise<AdminMatchPage> {
   const [page, count] = await db.batch([
     db
-      .prepare(`SELECT ${MATCH_COLUMNS} ${MATCH_FILTER} ORDER BY m.started_at DESC LIMIT ?3 OFFSET ?4`)
+      .prepare(
+        `SELECT ${MATCH_COLUMNS} ${MATCH_FILTER} ORDER BY m.started_at DESC LIMIT ?3 OFFSET ?4`,
+      )
       .bind(filter.player, filter.status, filter.limit, filter.offset),
     db
       .prepare(`SELECT COUNT(*) AS total FROM matches m ${MATCH_FILTER}`)
       .bind(filter.player, filter.status),
   ]);
   return {
-    matches: (page?.results as MatchRow[] | undefined ?? []).map(summary),
+    matches: ((page?.results as MatchRow[] | undefined) ?? []).map(summary),
     total: (count?.results[0] as { total: number } | undefined)?.total ?? 0,
   };
 }
@@ -156,7 +158,12 @@ export async function readMatch(db: D1Database, id: string): Promise<AdminMatchD
 function annotate(
   row: MatchRow,
   actions: readonly Action[],
-): { log: AdminLogEntry[]; frames: AdminFrame[]; board: Tile[] | null; replayError: string | null } {
+): {
+  log: AdminLogEntry[];
+  frames: AdminFrame[];
+  board: Tile[] | null;
+  replayError: string | null;
+} {
   const { frames, players, board, replayError } = replayLog(row, actions, frameOf);
   return {
     log: actions.map((action, seq) => ({ seq, player: players[seq] ?? null, action })),
@@ -187,12 +194,17 @@ export function replayLog<F>(
   let memory: MatchMemory | undefined;
   let board: Tile[] | null = null;
   try {
-    const map = row.map === null || row.map === undefined ? null : (JSON.parse(row.map) as ScenarioSnapshot);
+    const map =
+      row.map === null || row.map === undefined ? null : (JSON.parse(row.map) as ScenarioSnapshot);
     const scenario = frozenScenario(row.scenario, map);
     const start = scenario.board();
     board = [...start.allTiles()];
     memory = startMemory(
-      createGame(start, rulesetFor(row.ruleset_version), row.setup === null ? [...scenario.pieces] : (JSON.parse(row.setup) as Piece[])),
+      createGame(
+        start,
+        rulesetFor(row.ruleset_version),
+        row.setup === null ? [...scenario.pieces] : (JSON.parse(row.setup) as Piece[]),
+      ),
     );
     frames.push(frame(memory));
     for (const [seq, action] of actions.entries()) {
@@ -207,12 +219,20 @@ export function replayLog<F>(
   } catch (cause) {
     replayError = String(cause);
   }
-  return { frames, players: (memory?.state.history ?? []).map((entry) => entry.player), board, replayError };
+  return {
+    frames,
+    players: (memory?.state.history ?? []).map((entry) => entry.player),
+    board,
+    replayError,
+  };
 }
 
 /** Le log d'une partie, désérialisé, dans l'ordre de `seq`. */
 export async function readLog(db: D1Database, matchId: string): Promise<Action[]> {
-  const log = await db.prepare("SELECT action FROM match_actions WHERE match_id = ? ORDER BY seq").bind(matchId).all<{ action: string }>();
+  const log = await db
+    .prepare("SELECT action FROM match_actions WHERE match_id = ? ORDER BY seq")
+    .bind(matchId)
+    .all<{ action: string }>();
   return log.results.map((entry) => JSON.parse(entry.action) as Action);
 }
 

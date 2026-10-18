@@ -64,7 +64,9 @@ async function seat(matchId: string, token: string) {
 /** Attend que le DO ait noté le départ d'un siège : sa fermeture lui parvient en différé. */
 async function absentSince(stub: DurableObjectStub, side: "A" | "B"): Promise<number> {
   for (let attempt = 0; attempt < 50; attempt++) {
-    const since = await runInDurableObject(stub, (_instance, state) => state.storage.get<number>(`absent:${side}`));
+    const since = await runInDurableObject(stub, (_instance, state) =>
+      state.storage.get<number>(`absent:${side}`),
+    );
     if (since !== undefined) return since;
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
@@ -85,9 +87,12 @@ describe("MatchDO dans workerd", () => {
     const match = await createMatch();
 
     for (const token of ["", "A", "jeton-bidon"]) {
-      const response = await SELF.fetch(`https://occulis.test/match/${match.matchId}?seat=${token}`, {
-        headers: { Upgrade: "websocket" },
-      });
+      const response = await SELF.fetch(
+        `https://occulis.test/match/${match.matchId}?seat=${token}`,
+        {
+          headers: { Upgrade: "websocket" },
+        },
+      );
       expect(response.status).toBe(403);
     }
   });
@@ -108,7 +113,9 @@ describe("MatchDO dans workerd", () => {
 
   it("fige la carte à la création, et la joue même si elle diffère du registre", async () => {
     const match = await createMatch();
-    const row = await env.DB.prepare("SELECT map FROM matches WHERE id = ?").bind(match.matchId).first<{ map: string }>();
+    const row = await env.DB.prepare("SELECT map FROM matches WHERE id = ?")
+      .bind(match.matchId)
+      .first<{ map: string }>();
     const map = JSON.parse(row?.map ?? "null") as ScenarioSnapshot;
     expect(map.tiles.length).toBeGreaterThan(0);
 
@@ -120,7 +127,10 @@ describe("MatchDO dans workerd", () => {
     await runInDurableObject(stub, async (instance, state) => {
       const config = await state.storage.get<MatchConfig>("config");
       if (config?.map === undefined) throw new Error("carte absente de la configuration");
-      await state.storage.put("config", { ...config, map: { ...config.map, tiles: config.map.tiles.map((tile) => ({ ...tile, height: 0 })) } });
+      await state.storage.put("config", {
+        ...config,
+        map: { ...config.map, tiles: config.map.tiles.map((tile) => ({ ...tile, height: 0 })) },
+      });
       (instance as unknown as { live: unknown }).live = null;
     });
     a.send({ kind: "hello", protocol: PROTOCOL_VERSION });
@@ -157,7 +167,10 @@ describe("MatchDO dans workerd", () => {
     expect((await a.awaitKind("rejected")).error).toEqual({ code: "wrong-phase" });
 
     a.send({ kind: "deploy", team: defaultTeam.slice(1) });
-    expect((await a.awaitKind("rejected")).error).toMatchObject({ code: "wrong-count", role: "commander" });
+    expect((await a.awaitKind("rejected")).error).toMatchObject({
+      code: "wrong-count",
+      role: "commander",
+    });
 
     a.send({ kind: "deploy", team: "n'importe quoi" as never });
     expect((await a.awaitKind("rejected")).error).toEqual({ code: "malformed-team" });
@@ -189,13 +202,24 @@ describe("MatchDO dans workerd", () => {
 
     const view = (await a.awaitKind("view")).view;
     expect(view.player).toBe("A");
-    expect(view.ownPieces.map((piece) => piece.id).sort()).toEqual(["a-0", "a-1", "a-2", "a-3", "a-4", "a-5", "a-6", "a-7"]);
+    expect(view.ownPieces.map((piece) => piece.id).sort()).toEqual([
+      "a-0",
+      "a-1",
+      "a-2",
+      "a-3",
+      "a-4",
+      "a-5",
+      "a-6",
+      "a-7",
+    ]);
     // Les zones de la carte n'ont pas de vue mutuelle : rien de B ne doit passer.
     expect(view.visibleEnemies).toEqual([]);
     expect(JSON.stringify(view)).not.toContain('"b-');
     await b.awaitKind("view");
 
-    const row = await env.DB.prepare("SELECT setup FROM matches WHERE id = ?").bind(match.matchId).first<{ setup: string | null }>();
+    const row = await env.DB.prepare("SELECT setup FROM matches WHERE id = ?")
+      .bind(match.matchId)
+      .first<{ setup: string | null }>();
     expect(JSON.parse(row?.setup ?? "[]")).toHaveLength(16);
 
     a.socket.close();
@@ -207,7 +231,9 @@ describe("MatchDO dans workerd", () => {
     const a = await seat(match.matchId, match.seats.A);
     const { defaultTeam } = await a.awaitKind("deployment");
     // Une équipe différente du défaut, pour vérifier qu'elle est bien celle retenue.
-    const mine = defaultTeam.map((entry, index) => (index === 0 ? { ...entry, coord: { x: 0, y: 8 } } : entry));
+    const mine = defaultTeam.map((entry, index) =>
+      index === 0 ? { ...entry, coord: { x: 0, y: 8 } } : entry,
+    );
     a.send({ kind: "deploy", team: mine });
     await a.awaitKind("deployment-update");
 
@@ -218,7 +244,9 @@ describe("MatchDO dans workerd", () => {
     const view = (await a.awaitKind("view")).view;
     expect(view.ownPieces.find((piece) => piece.id === "a-0")?.coord).toEqual({ x: 0, y: 8 });
 
-    const row = await env.DB.prepare("SELECT setup FROM matches WHERE id = ?").bind(match.matchId).first<{ setup: string }>();
+    const row = await env.DB.prepare("SELECT setup FROM matches WHERE id = ?")
+      .bind(match.matchId)
+      .first<{ setup: string }>();
     const setup = JSON.parse(row?.setup ?? "[]") as { owner: string }[];
     expect(setup.filter((piece) => piece.owner === "B")).toHaveLength(8);
 
@@ -233,7 +261,10 @@ describe("MatchDO dans workerd", () => {
     // `core` vérifie que la pièce est au trait, pas que l'expéditeur en est le
     // propriétaire : sans le contrôle du serveur, B jouerait les pièces de A.
     b.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
-    expect((await b.awaitKind("rejected")).error).toEqual({ code: "not-your-turn", activePlayer: "A" });
+    expect((await b.awaitKind("rejected")).error).toEqual({
+      code: "not-your-turn",
+      activePlayer: "A",
+    });
 
     a.socket.close();
     b.socket.close();
@@ -246,7 +277,12 @@ describe("MatchDO dans workerd", () => {
     await b.awaitKind("view");
 
     // Des coordonnées en texte passeraient `coordKey()` et finiraient telles quelles en D1.
-    a.socket.send(JSON.stringify({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: "1", y: "5" } } }));
+    a.socket.send(
+      JSON.stringify({
+        kind: "action",
+        action: { kind: "move", pieceId: "a-4", to: { x: "1", y: "5" } },
+      }),
+    );
     a.socket.send("pas du JSON");
     a.drain();
     a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
@@ -255,7 +291,9 @@ describe("MatchDO dans workerd", () => {
     const logged = await env.DB.prepare("SELECT seq, action FROM match_actions WHERE match_id = ?")
       .bind(match.matchId)
       .all<{ seq: number; action: string }>();
-    expect(logged.results).toEqual([{ seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":1,"y":5}}' }]);
+    expect(logged.results).toEqual([
+      { seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":1,"y":5}}' },
+    ]);
 
     a.socket.close();
     b.socket.close();
@@ -280,7 +318,9 @@ describe("MatchDO dans workerd", () => {
     const logged = await env.DB.prepare("SELECT seq, action FROM match_actions WHERE match_id = ?")
       .bind(match.matchId)
       .all<{ seq: number; action: string }>();
-    expect(logged.results).toEqual([{ seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":1,"y":5}}' }]);
+    expect(logged.results).toEqual([
+      { seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":1,"y":5}}' },
+    ]);
 
     a.socket.close();
     b.socket.close();
@@ -296,7 +336,10 @@ describe("MatchDO dans workerd", () => {
     a.drain();
 
     a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 9, y: 9 } } });
-    expect((await a.awaitKind("rejected")).error).toEqual({ code: "unreachable", to: { x: 9, y: 9 } });
+    expect((await a.awaitKind("rejected")).error).toEqual({
+      code: "unreachable",
+      to: { x: 9, y: 9 },
+    });
 
     a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
     const after = (await a.awaitKind("view")).view;
@@ -319,9 +362,15 @@ describe("MatchDO dans workerd", () => {
     const view = (await a.awaitKind("view")).view;
     expect(view.outcome).toEqual({ kind: "victory", winner: "B", reason: "resignation" });
 
-    const row = await env.DB.prepare("SELECT finished_at, outcome, rating_change_a FROM matches WHERE id = ?")
+    const row = await env.DB.prepare(
+      "SELECT finished_at, outcome, rating_change_a FROM matches WHERE id = ?",
+    )
       .bind(match.matchId)
-      .first<{ finished_at: number | null; outcome: string | null; rating_change_a: number | null }>();
+      .first<{
+        finished_at: number | null;
+        outcome: string | null;
+        rating_change_a: number | null;
+      }>();
     expect(row?.finished_at).not.toBeNull();
     expect(row?.outcome).toBe('{"kind":"victory","winner":"B","reason":"resignation"}');
     expect(row?.rating_change_a).toBeNull();
@@ -367,7 +416,9 @@ describe("MatchDO dans workerd", () => {
     expect(since).toBeTypeOf("number");
 
     // Le temps ne s'avance pas dans workerd : on recule le départ.
-    await runInDurableObject(stub, (_instance, state) => state.storage.put("absent:B", Date.now() - ABSENCE_MS - 1));
+    await runInDurableObject(stub, (_instance, state) =>
+      state.storage.put("absent:B", Date.now() - ABSENCE_MS - 1),
+    );
     expect(await runDurableObjectAlarm(stub)).toBe(true);
     const view = (await a.awaitKind("view")).view;
     expect(view.outcome).toEqual({ kind: "victory", winner: "A", reason: "resignation" });
@@ -391,7 +442,9 @@ describe("MatchDO dans workerd", () => {
 
     const back = await seat(match.matchId, match.seats.B);
     expect((await back.awaitKind("view")).view.outcome).toBeNull();
-    const cleared = await runInDurableObject(stub, (_instance, state) => state.storage.get("absent:B"));
+    const cleared = await runInDurableObject(stub, (_instance, state) =>
+      state.storage.get("absent:B"),
+    );
     expect(cleared).toBeUndefined();
 
     a.socket.close();
@@ -408,10 +461,17 @@ describe("MatchDO dans workerd", () => {
     a.send({ kind: "action", action: { kind: "resign" } });
     await a.awaitKind("view");
 
-    const elo = async (id: string) => (await env.DB.prepare("SELECT elo FROM players WHERE id = ?").bind(id).first<{ elo: number }>())?.elo;
+    const elo = async (id: string) =>
+      (
+        await env.DB.prepare("SELECT elo FROM players WHERE id = ?")
+          .bind(id)
+          .first<{ elo: number }>()
+      )?.elo;
     expect(await elo(anne)).toBe(1184);
     expect(await elo(boris)).toBe(1216);
-    const row = await env.DB.prepare("SELECT rated, rating_change_a, rating_change_b FROM matches WHERE id = ?")
+    const row = await env.DB.prepare(
+      "SELECT rated, rating_change_a, rating_change_b FROM matches WHERE id = ?",
+    )
       .bind(match.matchId)
       .first();
     expect(row).toEqual({ rated: 1, rating_change_a: -16, rating_change_b: 16 });
@@ -439,10 +499,17 @@ describe("MatchDO dans workerd", () => {
     });
     expect(await runDurableObjectAlarm(stub)).toBe(true);
 
-    const elo = async (id: string) => (await env.DB.prepare("SELECT elo FROM players WHERE id = ?").bind(id).first<{ elo: number }>())?.elo;
+    const elo = async (id: string) =>
+      (
+        await env.DB.prepare("SELECT elo FROM players WHERE id = ?")
+          .bind(id)
+          .first<{ elo: number }>()
+      )?.elo;
     expect(await elo(anne)).toBe(1184);
     expect(await elo(boris)).toBe(1216);
-    expect(await runInDurableObject(stub, (_instance, state) => state.storage.get("unrecorded-outcome"))).toBeUndefined();
+    expect(
+      await runInDurableObject(stub, (_instance, state) => state.storage.get("unrecorded-outcome")),
+    ).toBeUndefined();
 
     a.socket.close();
     b.socket.close();
@@ -474,15 +541,20 @@ describe("MatchDO dans workerd", () => {
 
   it("ferme la connexion d'un client au protocole incompatible", async () => {
     const match = await createMatch();
-    const response = await SELF.fetch(`https://occulis.test/match/${match.matchId}?seat=${match.seats.A}`, {
-      headers: { Upgrade: "websocket" },
-    });
+    const response = await SELF.fetch(
+      `https://occulis.test/match/${match.matchId}?seat=${match.seats.A}`,
+      {
+        headers: { Upgrade: "websocket" },
+      },
+    );
     const socket = response.webSocket;
     if (socket === null) throw new Error("pas de WebSocket dans la réponse");
     socket.accept();
 
     const refused = new Promise<ServerMessage>((resolve) => {
-      socket.addEventListener("message", (event) => resolve(JSON.parse(String(event.data)) as ServerMessage));
+      socket.addEventListener("message", (event) =>
+        resolve(JSON.parse(String(event.data)) as ServerMessage),
+      );
     });
     socket.send(JSON.stringify({ kind: "hello", protocol: PROTOCOL_VERSION + 1 }));
 

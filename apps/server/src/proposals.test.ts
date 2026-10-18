@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { requeueFront } from "./pairing.js";
-import { ACCEPT_MS, accept, expire, isSettled, nextDeadline, propose, proposalOfPlayer, withdraw } from "./proposals.js";
+import {
+  ACCEPT_MS,
+  accept,
+  expire,
+  isSettled,
+  nextDeadline,
+  propose,
+  proposalOfPlayer,
+  withdraw,
+} from "./proposals.js";
 
 const anne = { playerId: "anne", connectionId: "c-anne" };
 const boris = { playerId: "boris", connectionId: "c-boris" };
@@ -52,6 +61,9 @@ describe("propositions", () => {
 
 describe("requeueFront", () => {
   it("remet en tête, sans doublon du même joueur", () => {
-    expect(requeueFront([carla, { ...anne, connectionId: "autre" }], [anne])).toEqual([anne, carla]);
+    expect(requeueFront([carla, { ...anne, connectionId: "autre" }], [anne])).toEqual([
+      anne,
+      carla,
+    ]);
   });
 });

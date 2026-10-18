@@ -62,7 +62,9 @@ function WindowOpening() {
   };
   const close = () => {
     if (panel.current === null) return;
-    void revealWindow(panel.current, "close", origin.current, { speed }).then(() => setShown(false));
+    void revealWindow(panel.current, "close", origin.current, { speed }).then(() =>
+      setShown(false),
+    );
   };
 
   return (
@@ -95,7 +97,13 @@ function WindowOpening() {
           </Card>
         </div>
       </Stage>
-      <Dialog open={dialog} title={m.dialogTitle} confirmLabel={m.close} onConfirm={() => true} onClose={() => setDialog(false)}>
+      <Dialog
+        open={dialog}
+        title={m.dialogTitle}
+        confirmLabel={m.close}
+        onConfirm={() => true}
+        onClose={() => setDialog(false)}
+      >
         <Note>{m.dialogText}</Note>
       </Dialog>
     </Card>
@@ -162,7 +170,10 @@ function Countdown() {
   const [remaining, setRemaining] = useState(COUNTDOWN_MS);
   const { speed } = useTweaks();
   useEffect(() => {
-    const tick = window.setInterval(() => setRemaining((value) => Math.max(0, value - 1000)), 1000 / speed);
+    const tick = window.setInterval(
+      () => setRemaining((value) => Math.max(0, value - 1000)),
+      1000 / speed,
+    );
     return () => window.clearInterval(tick);
   }, [speed]);
   return (
@@ -244,7 +255,10 @@ function Board() {
           </Specimen>
         ))}
       </Stage>
-      <Table columns={[m.columns.key, m.columns.value, m.columns.note]} rowCount={BOARD_MOTION.length}>
+      <Table
+        columns={[m.columns.key, m.columns.value, m.columns.note]}
+        rowCount={BOARD_MOTION.length}
+      >
         {BOARD_MOTION.map((field) => (
           <tr key={field.key}>
             <td>
@@ -264,25 +278,54 @@ function Board() {
 const PLOT = { width: 220, height: 72, low: -0.15, high: 1.2 } as const;
 
 function Curve({ curve, progress }: { curve: (t: number) => number; progress: number }) {
-  const y = (value: number) => PLOT.height - ((value - PLOT.low) / (PLOT.high - PLOT.low)) * PLOT.height;
+  const y = (value: number) =>
+    PLOT.height - ((value - PLOT.low) / (PLOT.high - PLOT.low)) * PLOT.height;
   const points = Array.from({ length: 49 }, (_, i) => i / 48)
     .map((t) => `${(t * PLOT.width).toFixed(1)},${y(curve(t)).toFixed(1)}`)
     .join(" ");
   return (
-    <svg width={PLOT.width} height={PLOT.height} viewBox={`0 0 ${PLOT.width} ${PLOT.height}`} aria-hidden="true">
-      <line x1={0} x2={PLOT.width} y1={y(1)} y2={y(1)} stroke="currentColor" strokeOpacity={0.15} strokeDasharray="2 3" />
+    <svg
+      width={PLOT.width}
+      height={PLOT.height}
+      viewBox={`0 0 ${PLOT.width} ${PLOT.height}`}
+      aria-hidden="true"
+    >
+      <line
+        x1={0}
+        x2={PLOT.width}
+        y1={y(1)}
+        y2={y(1)}
+        stroke="currentColor"
+        strokeOpacity={0.15}
+        strokeDasharray="2 3"
+      />
       <polyline points={points} fill="none" stroke="currentColor" strokeOpacity={0.6} />
-      <rect x={progress * PLOT.width - 3} y={y(curve(progress)) - 3} width={6} height={6} fill="currentColor" />
+      <rect
+        x={progress * PLOT.width - 3}
+        y={y(curve(progress)) - 3}
+        width={6}
+        height={6}
+        fill="currentColor"
+      />
     </svg>
   );
 }
 
-function Declared({ kind, animations }: { kind: "game" | "charter"; animations: readonly CssAnimation[] }) {
+function Declared({
+  kind,
+  animations,
+}: {
+  kind: "game" | "charter";
+  animations: readonly CssAnimation[];
+}) {
   const m = useMessages().admin.design.motion;
   return (
     <Card title={m[kind].title}>
       <Note>{m[kind].text}</Note>
-      <Table columns={[m.columns.selector, m.columns.animation, m.columns.note]} rowCount={animations.length}>
+      <Table
+        columns={[m.columns.selector, m.columns.animation, m.columns.note]}
+        rowCount={animations.length}
+      >
         {animations.map((animation, index) => (
           <tr key={`${animation.selector}-${index}`}>
             <td>

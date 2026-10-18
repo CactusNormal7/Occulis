@@ -45,28 +45,28 @@ pieces/ruleset.ts ──► team.ts ──► scenarios/  (zones et équipes par
 (`pieces/profiles.ts`), jamais la hiérarchie de classes qui les déclare — c'est ce qui
 évite un graphe de dépendances circulaire.
 
-| Fichier | Rôle |
-|---|---|
-| `packages/core/src/coord.ts` | Coordonnées, clés de hachage, adjacence, distances |
-| `packages/core/src/board.ts` | `Tile` et `Board` immuable |
-| `packages/core/src/pieces/piece.ts` | `Piece` : l'enregistrement de données d'une pièce en jeu |
-| `packages/core/src/pieces/profiles.ts` | `MovementProfile`, `VisionProfile` : les caractéristiques chiffrées |
-| `packages/core/src/pieces/piece-type.ts` | `PieceType` : la classe abstraite, et elle seule |
-| `packages/core/src/pieces/configurable-piece-type.ts` | `ConfigurablePieceType` : un type décrit par des données |
-| `packages/core/src/pieces/ruleset.ts` | `Ruleset` : table `kind` → `PieceType` d'une partie |
-| `packages/core/src/pieces/roster/scout.ts` | `Scout` — **provisoire** |
-| `packages/core/src/pieces/roster/commander.ts` | `Commander` — **provisoire** |
-| `packages/core/src/pieces/roster/pawn.ts` | `Pawn` — **provisoire** |
-| `packages/core/src/pieces/roster/index.ts` | Assemble le roster : `provisionalRuleset()`, `provisionalRulesetV0()`, `PROVISIONAL_TEAM` |
-| `packages/core/src/team.ts` | Le déploiement : `TeamEntry`, `Deployment`, `validateTeam()`, `deployTeams()`, `translateTeam()`, `teamForSide()`, `parseTeam()` |
-| `packages/core/src/rulesets/index.ts` | Le registre des rulesets par version : `rulesetFor()`, `CURRENT_RULESET_VERSION` |
-| `packages/core/src/los.ts` | Raycast et ligne de vue — **géométrie seule** |
-| `packages/core/src/movement.ts` | Cases atteignables, portée de mêlée |
-| `packages/core/src/state.ts` | État de partie et accesseurs |
-| `packages/core/src/actions.ts` | Coups légaux, validation, application, fin de partie |
-| `packages/core/src/fog.ts` | Mémoire du joueur et vue transmissible |
-| `packages/core/src/result.ts` | `Result<T, E>` |
-| `packages/core/src/testing.ts` | Fabriques de scénarios — **tests uniquement, non exporté** par `index.ts` |
+| Fichier                                               | Rôle                                                                                                                             |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/core/src/coord.ts`                          | Coordonnées, clés de hachage, adjacence, distances                                                                               |
+| `packages/core/src/board.ts`                          | `Tile` et `Board` immuable                                                                                                       |
+| `packages/core/src/pieces/piece.ts`                   | `Piece` : l'enregistrement de données d'une pièce en jeu                                                                         |
+| `packages/core/src/pieces/profiles.ts`                | `MovementProfile`, `VisionProfile` : les caractéristiques chiffrées                                                              |
+| `packages/core/src/pieces/piece-type.ts`              | `PieceType` : la classe abstraite, et elle seule                                                                                 |
+| `packages/core/src/pieces/configurable-piece-type.ts` | `ConfigurablePieceType` : un type décrit par des données                                                                         |
+| `packages/core/src/pieces/ruleset.ts`                 | `Ruleset` : table `kind` → `PieceType` d'une partie                                                                              |
+| `packages/core/src/pieces/roster/scout.ts`            | `Scout` — **provisoire**                                                                                                         |
+| `packages/core/src/pieces/roster/commander.ts`        | `Commander` — **provisoire**                                                                                                     |
+| `packages/core/src/pieces/roster/pawn.ts`             | `Pawn` — **provisoire**                                                                                                          |
+| `packages/core/src/pieces/roster/index.ts`            | Assemble le roster : `provisionalRuleset()`, `provisionalRulesetV0()`, `PROVISIONAL_TEAM`                                        |
+| `packages/core/src/team.ts`                           | Le déploiement : `TeamEntry`, `Deployment`, `validateTeam()`, `deployTeams()`, `translateTeam()`, `teamForSide()`, `parseTeam()` |
+| `packages/core/src/rulesets/index.ts`                 | Le registre des rulesets par version : `rulesetFor()`, `CURRENT_RULESET_VERSION`                                                 |
+| `packages/core/src/los.ts`                            | Raycast et ligne de vue — **géométrie seule**                                                                                    |
+| `packages/core/src/movement.ts`                       | Cases atteignables, portée de mêlée                                                                                              |
+| `packages/core/src/state.ts`                          | État de partie et accesseurs                                                                                                     |
+| `packages/core/src/actions.ts`                        | Coups légaux, validation, application, fin de partie                                                                             |
+| `packages/core/src/fog.ts`                            | Mémoire du joueur et vue transmissible                                                                                           |
+| `packages/core/src/result.ts`                         | `Result<T, E>`                                                                                                                   |
+| `packages/core/src/testing.ts`                        | Fabriques de scénarios — **tests uniquement, non exporté** par `index.ts`                                                        |
 
 **Une classe concrète par fichier**, toutes dans `roster/`.
 `packages/core/src/pieces/index.ts` réexporte le dossier ; `index.ts` réexporte tout sauf
@@ -77,21 +77,24 @@ pieces/ruleset.ts ──► team.ts ──► scenarios/  (zones et équipes par
 ## `coord.ts` — coordonnées et grille
 
 ```ts
-interface Coord { x: number; y: number }
-type CoordKey = string          // format `${x},${y}`
-type Adjacency = "orthogonal" | "octile"
+interface Coord {
+  x: number;
+  y: number;
+}
+type CoordKey = string; // format `${x},${y}`
+type Adjacency = "orthogonal" | "octile";
 ```
 
-| Fonction | Rôle |
-|---|---|
-| `coordKey()` | `Coord` → clé, pour indexer `Map`/`Set` sans allouer d'objets |
-| `parseCoordKey()` | L'inverse |
-| `coordEquals()` | Égalité de coordonnées |
-| `steps()` | Les 4 ou 8 déplacements élémentaires d'une topologie |
-| `neighbors()` | Voisins d'une case |
-| `areAdjacent()` | Adjacence selon la topologie ; **une case n'est jamais adjacente à elle-même** |
-| `chebyshevDistance()` | `max(|dx|, |dy|)` — sert à la portée de vision |
-| `manhattanDistance()` | `|dx| + |dy|` |
+| Fonction              | Rôle                                                                           |
+| --------------------- | ------------------------------------------------------------------------------ |
+| `coordKey()`          | `Coord` → clé, pour indexer `Map`/`Set` sans allouer d'objets                  |
+| `parseCoordKey()`     | L'inverse                                                                      |
+| `coordEquals()`       | Égalité de coordonnées                                                         |
+| `steps()`             | Les 4 ou 8 déplacements élémentaires d'une topologie                           |
+| `neighbors()`         | Voisins d'une case                                                             |
+| `areAdjacent()`       | Adjacence selon la topologie ; **une case n'est jamais adjacente à elle-même** |
+| `chebyshevDistance()` | `max(                                                                          | dx  | ,   | dy  | )` — sert à la portée de vision |
+| `manhattanDistance()` | `                                                                              | dx  | +   | dy  | `                               |
 
 La topologie **n'est pas une constante globale** : elle est portée par
 `MovementProfile.adjacency`, donc déclarée type de pièce par type de pièce.
@@ -105,7 +108,7 @@ par cas.
 ```ts
 interface Tile {
   coord: Coord;
-  height: number;    // 0 = niveau sol
+  height: number; // 0 = niveau sol
   passable: boolean;
 }
 ```
@@ -119,17 +122,17 @@ Deux décisions structurantes (`docs/design.md` section 5.1) :
 - **Une case absente est hors-carte** : ni franchissable, ni occultante. C'est un vide,
   pas un obstacle.
 
-| Méthode | Rôle |
-|---|---|
+| Méthode                | Rôle                                                                          |
+| ---------------------- | ----------------------------------------------------------------------------- |
 | `Board` (constructeur) | Construit depuis des `TileSpec` ; `height` défaut 0, `passable` défaut `true` |
-| `tileCount` | Nombre de cases |
-| `getTile()` | La case, ou `undefined` hors-carte |
-| `contains()` | La case existe-t-elle |
-| `heightAt()` | Hauteur, ou `undefined` hors-carte |
-| `isPassable()` | `false` hors-carte |
-| `allTiles()` | Itère les cases, **en ordre d'insertion** — jamais trié |
-| `Board.flat()` | Plateau rectangulaire de hauteur uniforme |
-| `Board.fromAscii()` | Plateau depuis une carte texte |
+| `tileCount`            | Nombre de cases                                                               |
+| `getTile()`            | La case, ou `undefined` hors-carte                                            |
+| `contains()`           | La case existe-t-elle                                                         |
+| `heightAt()`           | Hauteur, ou `undefined` hors-carte                                            |
+| `isPassable()`         | `false` hors-carte                                                            |
+| `allTiles()`           | Itère les cases, **en ordre d'insertion** — jamais trié                       |
+| `Board.flat()`         | Plateau rectangulaire de hauteur uniforme                                     |
+| `Board.fromAscii()`    | Plateau depuis une carte texte                                                |
 
 `Board` **n'expose aucune borne** (largeur, hauteur, rectangle englobant) : seulement
 `tileCount`. Un appelant qui a besoin des extrémités doit balayer `allTiles()` — c'est ce
@@ -139,11 +142,11 @@ que fait `pivotOf()` (`apps/web/src/view/camera.ts`).
 
 Une ligne = un `y` croissant, un caractère = un `x` croissant.
 
-| Caractère | Signification |
-|---|---|
-| `0`–`9` | Case franchissable de cette hauteur |
-| `.` | Hors-carte : aucune case |
-| `~` | Case infranchissable de hauteur 0 (gouffre, eau) — n'occulte pas |
+| Caractère | Signification                                                    |
+| --------- | ---------------------------------------------------------------- |
+| `0`–`9`   | Case franchissable de cette hauteur                              |
+| `.`       | Hors-carte : aucune case                                         |
+| `~`       | Case infranchissable de hauteur 0 (gouffre, eau) — n'occulte pas |
 
 Tout autre caractère lève. Utilisé par les tests et par les cartes du registre
 (`scenarios/`).
@@ -157,10 +160,15 @@ C'est la séparation centrale du paquet : **les données d'un côté, les règle
 ### `pieces/piece.ts` — la donnée
 
 ```ts
-type PlayerId = "A" | "B"
-type PieceKind = string          // le roster reste à définir (design.md point ouvert 12)
+type PlayerId = "A" | "B";
+type PieceKind = string; // le roster reste à définir (design.md point ouvert 12)
 
-interface Piece { id: PieceId; kind: PieceKind; owner: PlayerId; coord: Coord }
+interface Piece {
+  id: PieceId;
+  kind: PieceKind;
+  owner: PlayerId;
+  coord: Coord;
+}
 ```
 
 `Piece` est délibérément un **enregistrement de données et non une instance de classe** :
@@ -172,15 +180,21 @@ Deux raisons, toutes deux structurantes :
 - l'état de partie est **reconstruit en rejouant le log d'actions** — ce qui suppose des
   données inertes d'un côté et des règles versionnées de l'autre, jamais les deux mêlées.
 
-| Fonction | Rôle |
-|---|---|
+| Fonction       | Rôle          |
+| -------------- | ------------- |
 | `opponentOf()` | `"A"` ↔ `"B"` |
 
 ### `pieces/profiles.ts` — les caractéristiques chiffrées
 
 ```ts
-interface MovementProfile { steps: number; adjacency: Adjacency; canClimb: boolean }
-interface VisionProfile   { range: number }   // Chebyshev ; Infinity = limité par l'occultation seule
+interface MovementProfile {
+  steps: number;
+  adjacency: Adjacency;
+  canClimb: boolean;
+}
+interface VisionProfile {
+  range: number;
+} // Chebyshev ; Infinity = limité par l'occultation seule
 ```
 
 Elles vivent dans leur propre module pour que `movement.ts` et `los.ts`, qui les
@@ -195,16 +209,16 @@ tranché (`docs/design.md` point ouvert 7).
 les expose comme autant de points de redéfinition. **Une instance par type de pièce et par
 ruleset**, jamais une par pièce en jeu.
 
-| Membre | Rôle |
-|---|---|
-| `kind`, `movement`, `vision` | Abstraits : chaque type les déclare |
-| `role` | Accesseur : `commander`, `special` (par défaut) ou `pawn` — la place du type dans une équipe, sur laquelle portent les quotas (`TeamRules`) |
-| `isCommander` | Accesseur, dérivé de `role`. La capture d'une pièce maîtresse met fin à la partie |
-| `destinationsFrom()` | Cases atteignables en un tour ; délègue à `reachableTiles()` |
-| `canSee()` | Voit-elle `to` depuis `from` ? Portée d'abord, occultation ensuite |
-| `fieldOfView()` | Champ de vision complet, **dérivé de `canSee()`** via `collectVisible()` |
-| `canStrike()` | Peut-elle frapper `to` ? Adjacence du type, puis règle de dénivelé |
-| `visionRangeCovers()` | Protégée. Isolée pour qu'une redéfinition de `canSee()` puisse réutiliser la seule portée |
+| Membre                       | Rôle                                                                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `kind`, `movement`, `vision` | Abstraits : chaque type les déclare                                                                                                         |
+| `role`                       | Accesseur : `commander`, `special` (par défaut) ou `pawn` — la place du type dans une équipe, sur laquelle portent les quotas (`TeamRules`) |
+| `isCommander`                | Accesseur, dérivé de `role`. La capture d'une pièce maîtresse met fin à la partie                                                           |
+| `destinationsFrom()`         | Cases atteignables en un tour ; délègue à `reachableTiles()`                                                                                |
+| `canSee()`                   | Voit-elle `to` depuis `from` ? Portée d'abord, occultation ensuite                                                                          |
+| `fieldOfView()`              | Champ de vision complet, **dérivé de `canSee()`** via `collectVisible()`                                                                    |
+| `canStrike()`                | Peut-elle frapper `to` ? Adjacence du type, puis règle de dénivelé                                                                          |
+| `visionRangeCovers()`        | Protégée. Isolée pour qu'une redéfinition de `canSee()` puisse réutiliser la seule portée                                                   |
 
 **C'est la pièce qui définit ce qu'elle voit**, et non un appelant qui recalculerait un
 champ de vision à partir d'une portée brute. Une pièce future à la vision particulière —
@@ -225,20 +239,20 @@ permet à un scénario, un test ou un futur éditeur de carte de fournir ses dé
 **sans écrire de classe**.
 
 La ligne de partage : une pièce qui n'a que des chiffres passe par ici ; une pièce qui a
-un *comportement* — voir autrement, frapper autrement — hérite de `PieceType` dans son
+un _comportement_ — voir autrement, frapper autrement — hérite de `PieceType` dans son
 propre fichier.
 
 ### `pieces/ruleset.ts` — la table d'une partie
 
-| Méthode | Rôle |
-|---|---|
-| `Ruleset` (constructeur) | Indexe des `PieceType` par leur `kind`, avec la composition d'équipe (`TeamRules`) ou `null` |
-| `team` | `TeamRules` — combien de pièces de chaque rôle, **exactement** — ou `null` pour un ruleset sans déploiement |
-| `get()` | Le type ; **lève** si le `kind` est inconnu |
-| `has()` | Le `kind` est-il connu ? |
-| `typeOf()` | Raccourci de loin le plus fréquent : d'une pièce en jeu vers ses règles |
-| `kinds()` | Les types déclarés |
-| `kindsOf()` | Les types d'un rôle : ce qu'un joueur peut choisir pour un emplacement |
+| Méthode                  | Rôle                                                                                                        |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `Ruleset` (constructeur) | Indexe des `PieceType` par leur `kind`, avec la composition d'équipe (`TeamRules`) ou `null`                |
+| `team`                   | `TeamRules` — combien de pièces de chaque rôle, **exactement** — ou `null` pour un ruleset sans déploiement |
+| `get()`                  | Le type ; **lève** si le `kind` est inconnu                                                                 |
+| `has()`                  | Le `kind` est-il connu ?                                                                                    |
+| `typeOf()`               | Raccourci de loin le plus fréquent : d'une pièce en jeu vers ses règles                                     |
+| `kinds()`                | Les types déclarés                                                                                          |
+| `kindsOf()`              | Les types d'un rôle : ce qu'un joueur peut choisir pour un emplacement                                      |
 
 Les règles sont **versionnées par partie et non par connexion** : un `Ruleset` est
 construit une fois au démarrage et ne change plus, ce qui suppose qu'il **ne détient aucun
@@ -248,12 +262,12 @@ construit une fois au démarrage et ne change plus, ce qui suppose qu'il **ne d�
 
 **Une classe par fichier**, assemblées par `roster/index.ts`.
 
-| Fichier | Classe | Caractéristiques, déclarées dans la classe |
-|---|---|---|
-| `roster/scout.ts` | `Scout` | 6 pas, vision 20, octile, grimpe |
-| `roster/commander.ts` | `Commander` | 3 pas, vision 14, octile, grimpe ; rôle `commander` |
-| `roster/pawn.ts` | `Pawn` | 1 pas, vision 6, octile, grimpe ; rôle `pawn` |
-| `roster/index.ts` | — | `provisionalRuleset()` : maîtresse, éclaireur, pion et `PROVISIONAL_TEAM` (1 maîtresse, 3 à capacité, 4 pions) ; `provisionalRulesetV0()` : éclaireur et maîtresse sans composition, le roster des parties `provisional-0` |
+| Fichier               | Classe      | Caractéristiques, déclarées dans la classe                                                                                                                                                                                 |
+| --------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `roster/scout.ts`     | `Scout`     | 6 pas, vision 20, octile, grimpe                                                                                                                                                                                           |
+| `roster/commander.ts` | `Commander` | 3 pas, vision 14, octile, grimpe ; rôle `commander`                                                                                                                                                                        |
+| `roster/pawn.ts`      | `Pawn`      | 1 pas, vision 6, octile, grimpe ; rôle `pawn`                                                                                                                                                                              |
+| `roster/index.ts`     | —           | `provisionalRuleset()` : maîtresse, éclaireur, pion et `PROVISIONAL_TEAM` (1 maîtresse, 3 à capacité, 4 pions) ; `provisionalRulesetV0()` : éclaireur et maîtresse sans composition, le roster des parties `provisional-0` |
 
 **La composition 1 + 3 + 4 et le profil du pion sont des décisions du porteur du projet** ;
 les types eux-mêmes restent provisoires. Les trois pièces à capacité peuvent être du même
@@ -269,7 +283,7 @@ existent pour que le client, le serveur et les tests partagent **un seul lieu de
 au lieu de trois copies**. Ce n'est pas du contenu de jeu et **il ne faut bâtir aucun
 équilibrage dessus**.
 
-Corollaire pour les tests : une vérification de *règle* ne doit jamais s'appuyer sur ces
+Corollaire pour les tests : une vérification de _règle_ ne doit jamais s'appuyer sur ces
 valeurs, sous peine de casser au premier réglage. `piece-type.test.ts` exerce donc le
 comportement sur des types construits pour le test ; `roster/roster.test.ts` ne vérifie que
 des propriétés qui tiennent quelles que soient les valeurs (l'éclaireur voit plus loin que
@@ -298,13 +312,13 @@ de moteur 3D** (`docs/design.md` section 5.1).
 Ce module **ne connaît que la géométrie**. Ce qu'une pièce voit réellement est défini par
 son type.
 
-| Fonction | Rôle |
-|---|---|
-| `rasterizeLine()` | Cases traversées par le segment, extrémités incluses |
-| `inCanonicalOrder()` (privée) | Fixe le sens de parcours du tracé |
-| `hasLineOfSight()` | Y a-t-il vue entre deux cases, relief **et pièces** pris en compte |
-| `collectVisible()` | Cases visibles depuis un point, **filtrées par un test fourni par l'appelant** |
-| `visibleFrom()` | Champ de vision purement géométrique : portée de Chebyshev et occultation |
+| Fonction                      | Rôle                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------ |
+| `rasterizeLine()`             | Cases traversées par le segment, extrémités incluses                           |
+| `inCanonicalOrder()` (privée) | Fixe le sens de parcours du tracé                                              |
+| `hasLineOfSight()`            | Y a-t-il vue entre deux cases, relief **et pièces** pris en compte             |
+| `collectVisible()`            | Cases visibles depuis un point, **filtrées par un test fourni par l'appelant** |
+| `visibleFrom()`               | Champ de vision purement géométrique : portée de Chebyshev et occultation      |
 
 `collectVisible(board, origin, canSee)` est le point d'extension : `PieceType.fieldOfView()`
 lui passe son propre critère, si bien qu'une pièce à la vision particulière n'a **rien à
@@ -362,7 +376,7 @@ ne bloquer que les adverses rendrait la vue asymétrique entre les deux camps.
 
 La portée est une distance de **Chebyshev horizontale**. La hauteur n'étend ni ne réduit la
 portée de vision — elle ne joue que sur l'occultation (`docs/design.md` section 5.3). Une
-pièce sur une tour voit *plus loin* uniquement parce que moins d'obstacles la gênent,
+pièce sur une tour voit _plus loin_ uniquement parce que moins d'obstacles la gênent,
 jamais parce que sa portée augmente.
 
 Le module ne consulte toujours **aucun état de partie** : l'occupation lui est passée en
@@ -374,14 +388,18 @@ paramètre, comme à `reachableTiles()`. C'est `fog.ts` qui la calcule une fois 
 ## `movement.ts` — déplacement et portée de mêlée
 
 ```ts
-type MoveKind = "walk" | "climb"
-interface MoveOption { coord: Coord; cost: number; kind: MoveKind }
+type MoveKind = "walk" | "climb";
+interface MoveOption {
+  coord: Coord;
+  cost: number;
+  kind: MoveKind;
+}
 ```
 
-| Fonction | Rôle |
-|---|---|
+| Fonction           | Rôle                                                                   |
+| ------------------ | ---------------------------------------------------------------------- |
 | `reachableTiles()` | Cases atteignables depuis une case, avec coût et nature du déplacement |
-| `canMeleeReach()` | La règle de dénivelé en mêlée. **Ne teste pas l'adjacence** |
+| `canMeleeReach()`  | La règle de dénivelé en mêlée. **Ne teste pas l'adjacence**            |
 
 `reachableTiles()` est appelée à travers `PieceType.destinationsFrom()`, qui y ajoute le
 profil du type. `canMeleeReach()` l'est à travers `PieceType.canStrike()` — **plus aucun
@@ -421,14 +439,17 @@ interface GameState {
   ruleset: Ruleset;
   pieces: ReadonlyMap<PieceId, Piece>;
   activePlayer: PlayerId;
-  turn: number;              // incrémenté à chaque action
+  turn: number; // incrémenté à chaque action
   outcome: Outcome | null;
-  history: readonly ActionRecord[];   // les coups joués, dans l'ordre
+  history: readonly ActionRecord[]; // les coups joués, dans l'ordre
 }
 
-interface ActionRecord { player: PlayerId; action: Action }
+interface ActionRecord {
+  player: PlayerId;
+  action: Action;
+}
 
-type Outcome = { kind: "victory"; winner: PlayerId; reason: "resignation" }
+type Outcome = { kind: "victory"; winner: PlayerId; reason: "resignation" };
 ```
 
 **L'abandon est la seule fin de partie.** L'échec et mat, le pat et les deux nulles
@@ -443,12 +464,12 @@ pas diverger de la position qu'il décrit. C'est ce que le serveur persiste en D
 (`docs/architecture.md` section 3) ; `ActionRecord` porte le camp qui a joué, que la
 position seule ne dit plus.
 
-| Fonction | Rôle |
-|---|---|
-| `createGame()` | Construit l'état initial et **valide** le placement |
-| `pieceAt()` | La pièce sur une case, par balayage linéaire |
-| `occupancy()` | Ensemble des cases occupées |
-| `piecesOf()` | Les pièces d'un joueur |
+| Fonction        | Rôle                                                                    |
+| --------------- | ----------------------------------------------------------------------- |
+| `createGame()`  | Construit l'état initial et **valide** le placement                     |
+| `pieceAt()`     | La pièce sur une case, par balayage linéaire                            |
+| `occupancy()`   | Ensemble des cases occupées                                             |
+| `piecesOf()`    | Les pièces d'un joueur                                                  |
 | `commanderOf()` | La pièce maîtresse d'un joueur, via `ruleset.typeOf(piece).isCommander` |
 
 `commanderOf()` n'a plus d'appelant dans le moteur depuis le retrait de l'échec : la pièce
@@ -468,19 +489,17 @@ de `lastSeenTurn` pour les fantômes.
 ## `actions.ts` — coups légaux et résolution
 
 ```ts
-type Action =
-  | { kind: "move"; pieceId: PieceId; to: Coord }
-  | { kind: "resign"; player?: PlayerId }
+type Action = { kind: "move"; pieceId: PieceId; to: Coord } | { kind: "resign"; player?: PlayerId };
 ```
 
-| Fonction | Rôle |
-|---|---|
-| `occupancyWithout()` (privée) | Occupation vue par une pièce donnée : sa propre case exclue |
-| `destinationsFor()` (privée) | Destinations légales d'une pièce, **sa case de départ exclue** |
-| `legalActions()` | Toutes les actions légales du joueur au trait |
-| `validateAction()` | Valide une action ; `Result<Action, ActionError>` |
-| `applyAction()` | Valide puis applique ; `Result<GameState, ActionError>` |
-| `replay()` | Rejoue un log depuis un état de départ ; `Result<GameState, ReplayError>` |
+| Fonction                      | Rôle                                                                      |
+| ----------------------------- | ------------------------------------------------------------------------- |
+| `occupancyWithout()` (privée) | Occupation vue par une pièce donnée : sa propre case exclue               |
+| `destinationsFor()` (privée)  | Destinations légales d'une pièce, **sa case de départ exclue**            |
+| `legalActions()`              | Toutes les actions légales du joueur au trait                             |
+| `validateAction()`            | Valide une action ; `Result<Action, ActionError>`                         |
+| `applyAction()`               | Valide puis applique ; `Result<GameState, ActionError>`                   |
+| `replay()`                    | Rejoue un log depuis un état de départ ; `Result<GameState, ReplayError>` |
 
 `destinationsFor()` reçoit l'occupation **en paramètre** plutôt que de la recalculer :
 `legalActions()` la calcule une fois par lot et non par pièce. `occupancyWithout()` en
@@ -550,24 +569,27 @@ interface PlayerKnowledge {
 }
 
 interface PlayerView {
-  player; activePlayer; turn; outcome;
-  legalActions: readonly Action[];      // ses coups, vide s'il n'est pas au trait
+  player;
+  activePlayer;
+  turn;
+  outcome;
+  legalActions: readonly Action[]; // ses coups, vide s'il n'est pas au trait
   visible: ReadonlySet<CoordKey>;
   ownPieces: readonly Piece[];
   visibleEnemies: readonly Piece[];
-  ghosts: readonly RememberedPiece[];   // mémorisées mais hors LOS
+  ghosts: readonly RememberedPiece[]; // mémorisées mais hors LOS
 }
 ```
 
-| Fonction | Rôle |
-|---|---|
-| `emptyKnowledge()` | Connaissance vierge d'un joueur |
-| `visibleTilesFor()` | Union des champs de vision des pièces d'un joueur |
-| `observe()` | Fait avancer la mémoire après un changement d'état |
-| `viewFor()` | Produit l'état transmissible à un joueur |
-| `startMemory()` | `MatchMemory` initiale : une position et les deux connaissances |
-| `advanceMemory()` | Joue une action et fait avancer les deux mémoires |
-| `replayMemory()` | Rejoue un log entier, mémoires comprises |
+| Fonction            | Rôle                                                            |
+| ------------------- | --------------------------------------------------------------- |
+| `emptyKnowledge()`  | Connaissance vierge d'un joueur                                 |
+| `visibleTilesFor()` | Union des champs de vision des pièces d'un joueur               |
+| `observe()`         | Fait avancer la mémoire après un changement d'état              |
+| `viewFor()`         | Produit l'état transmissible à un joueur                        |
+| `startMemory()`     | `MatchMemory` initiale : une position et les deux connaissances |
+| `advanceMemory()`   | Joue une action et fait avancer les deux mémoires               |
+| `replayMemory()`    | Rejoue un log entier, mémoires comprises                        |
 
 ### `MatchMemory` — une partie et ce que chacun en sait
 
@@ -614,7 +636,7 @@ n'apparaisse jamais deux fois.
 ### Ce que `PlayerView` ne contient pas
 
 **Il ne contient pas le `Board`.** Le relief est **public** : les deux joueurs connaissent
-la carte, seules les *pièces* sont masquées hors LOS (`implementation-notes.md` point 10).
+la carte, seules les _pièces_ sont masquées hors LOS (`implementation-notes.md` point 10).
 Le rendu estompe le terrain non visible sans le cacher. Un consommateur de `PlayerView`
 doit donc recevoir le plateau séparément — c'est ce que fait `SceneInput`
 (`apps/web/src/render/pixi/scene.ts`), qui porte `board` et `view` côte à côte.
@@ -636,17 +658,17 @@ serait contournable via les devtools.
 
 101 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
 
-| Fichier | Couvre |
-|---|---|
-| `packages/core/src/los.test.ts` | Tracé, occultation par la hauteur **et par les pièces**, symétrie, portée |
-| `packages/core/src/movement.test.ts` | Parcours, verticalité, grimpe, blocage par occupation |
-| `packages/core/src/actions.test.ts` | Coups légaux, validation, blocage par les pièces, abandon (y compris hors tour) |
-| `packages/core/src/fog.test.ts` | Visibilité, mémoire fantôme, contenu de `PlayerView` |
-| `packages/core/src/pieces/piece-type.test.ts` | Vision, mêlée et déplacement définis par le type ; dérivation de `fieldOfView` depuis `canSee` y compris redéfini ; extension par héritage. **Indépendant du roster** |
+| Fichier                                          | Couvre                                                                                                                                                                                                                                |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/core/src/los.test.ts`                  | Tracé, occultation par la hauteur **et par les pièces**, symétrie, portée                                                                                                                                                             |
+| `packages/core/src/movement.test.ts`             | Parcours, verticalité, grimpe, blocage par occupation                                                                                                                                                                                 |
+| `packages/core/src/actions.test.ts`              | Coups légaux, validation, blocage par les pièces, abandon (y compris hors tour)                                                                                                                                                       |
+| `packages/core/src/fog.test.ts`                  | Visibilité, mémoire fantôme, contenu de `PlayerView`                                                                                                                                                                                  |
+| `packages/core/src/pieces/piece-type.test.ts`    | Vision, mêlée et déplacement définis par le type ; dérivation de `fieldOfView` depuis `canSee` y compris redéfini ; extension par héritage. **Indépendant du roster**                                                                 |
 | `packages/core/src/pieces/roster/roster.test.ts` | Propriétés du roster provisoire : différenciation par capacité, rôles, pion le plus lent et le plus myope, héritage du comportement commun, portée couvrant la carte de démonstration, indexation par `kind` et par rôle, composition |
-| `packages/core/src/team.test.ts` | Quotas exacts par rôle, type inconnu, case hors zone, deux pièces sur une case, ruleset sans composition, **identifiants déterministes**, lecture d'une équipe venue de l'extérieur, transposition d'une zone à l'autre |
-| `packages/core/src/scenarios/ridge.test.ts` | `ridge-1` : zones franchissables et assez larges, symétrie centrale, **aucune ligne de vue entre les zones**, équipes par défaut valides formant une position, transposition A → B |
-| `packages/core/src/rulesets/rulesets.test.ts` | Versions anciennes chargeables, version courante avec composition, version inconnue refusée |
+| `packages/core/src/team.test.ts`                 | Quotas exacts par rôle, type inconnu, case hors zone, deux pièces sur une case, ruleset sans composition, **identifiants déterministes**, lecture d'une équipe venue de l'extérieur, transposition d'une zone à l'autre               |
+| `packages/core/src/scenarios/ridge.test.ts`      | `ridge-1` : zones franchissables et assez larges, symétrie centrale, **aucune ligne de vue entre les zones**, équipes par défaut valides formant une position, transposition A → B                                                    |
+| `packages/core/src/rulesets/rulesets.test.ts`    | Versions anciennes chargeables, version courante avec composition, version inconnue refusée                                                                                                                                           |
 
 `packages/core/src/testing.ts` fournit `definePiece()` (qui renvoie un
 `ConfigurablePieceType`), `testRuleset()` et `placePiece()`. **Il n'est pas réexporté par
@@ -673,13 +695,13 @@ de `docs/design.md` (pistes déjà écartées) et `docs/implementation-notes.md`
 
 ## `scenarios/` — les positions de départ
 
-| Fichier | Rôle |
-|---|---|
-| `scenarios/scenario.ts` | Le type `Scenario` : un nom, une fabrique de `Board`, des pièces fixes, et un `Deployment` optionnel |
-| `scenarios/demo.ts` | `demo-0`, la carte de démonstration à position fixe, **provisoire** — gardée pour les parties déjà jouées |
-| `scenarios/ridge.ts` | `ridge-1`, la carte des nouvelles parties, à déploiement, **provisoire** |
-| `scenarios/index.ts` | Le registre : `scenarioFor()`, `DEFAULT_SCENARIO` (`ridge-1`), et `frozenScenario(name, snapshot)` — la carte figée d'une partie, ou celle du registre pour une partie d'avant les cartes figées |
-| `scenarios/snapshot.ts` | `ScenarioSnapshot` (nom, cases, position fixe, déploiement — sérialisable) et `snapshotScenario()`. Une partie fige sa carte ainsi à sa création (docs/architecture.md section 1) |
+| Fichier                 | Rôle                                                                                                                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scenarios/scenario.ts` | Le type `Scenario` : un nom, une fabrique de `Board`, des pièces fixes, et un `Deployment` optionnel                                                                                             |
+| `scenarios/demo.ts`     | `demo-0`, la carte de démonstration à position fixe, **provisoire** — gardée pour les parties déjà jouées                                                                                        |
+| `scenarios/ridge.ts`    | `ridge-1`, la carte des nouvelles parties, à déploiement, **provisoire**                                                                                                                         |
+| `scenarios/index.ts`    | Le registre : `scenarioFor()`, `DEFAULT_SCENARIO` (`ridge-1`), et `frozenScenario(name, snapshot)` — la carte figée d'une partie, ou celle du registre pour une partie d'avant les cartes figées |
+| `scenarios/snapshot.ts` | `ScenarioSnapshot` (nom, cases, position fixe, déploiement — sérialisable) et `snapshotScenario()`. Une partie fige sa carte ainsi à sa création (docs/architecture.md section 1)                |
 
 **`ridge-1`** (14 × 10) : une arête en diagonale d'un bord à l'autre, haute de 3 avec un col
 de hauteur 1 en son milieu, sépare deux zones de 4 × 4 en coins opposés. La carte est
@@ -706,13 +728,13 @@ Chaque joueur compose son équipe et la pose dans **sa zone** avant le premier t
 (`docs/design.md` section 7, point ouvert 5 tranché : un choix libre dans une zone par
 camp, définie par la carte).
 
-| Fonction | Rôle |
-|---|---|
-| `validateTeam(ruleset, zone, entries)` | `Result` : types connus, une case de la zone par pièce, quotas **exacts** de chaque rôle (`Ruleset.team`). Erreurs : `no-team-rules`, `unknown-kind`, `outside-zone`, `same-tile`, `wrong-count` |
+| Fonction                                  | Rôle                                                                                                                                                                                                       |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `validateTeam(ruleset, zone, entries)`    | `Result` : types connus, une case de la zone par pièce, quotas **exacts** de chaque rôle (`Ruleset.team`). Erreurs : `no-team-rules`, `unknown-kind`, `outside-zone`, `same-tile`, `wrong-count`           |
 | `deployTeams(ruleset, deployment, teams)` | Les pièces de départ des deux camps, ou le camp fautif et son erreur. **Identifiants tirés de l'ordre des entrées** (`a-0`… `b-7`) : rien d'aléatoire, rejouer le déploiement reconstruit la même position |
-| `translateTeam(entries, from, to)` | Transpose une équipe case pour case d'une zone à l'autre (la i-ème case de `from` devient la i-ème de `to`) |
-| `teamForSide(deployment, entries, side)` | Une équipe écrite pour le camp A, posée pour `side` : c'est ainsi qu'un preset sert quel que soit le camp tenu |
-| `parseTeam(value)` | Lit la **forme** d'une équipe venue de l'extérieur (message, requête, ligne de base) : liste d'au plus 64 `{ kind, coord: { x, y } }` à coordonnées entières ; `undefined` sinon |
+| `translateTeam(entries, from, to)`        | Transpose une équipe case pour case d'une zone à l'autre (la i-ème case de `from` devient la i-ème de `to`)                                                                                                |
+| `teamForSide(deployment, entries, side)`  | Une équipe écrite pour le camp A, posée pour `side` : c'est ainsi qu'un preset sert quel que soit le camp tenu                                                                                             |
+| `parseTeam(value)`                        | Lit la **forme** d'une équipe venue de l'extérieur (message, requête, ligne de base) : liste d'au plus 64 `{ kind, coord: { x, y } }` à coordonnées entières ; `undefined` sinon                           |
 
 `Deployment` (`{ zones, defaultTeams }`) est porté par la carte (`Scenario.deployment`) ;
 `defaultTeams` est l'équipe posée pour qui n'a rien validé à temps. **Les zones des deux

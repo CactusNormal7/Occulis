@@ -38,13 +38,23 @@ describe("retour de redirection", () => {
   });
 
   it("propose de redemander un lien expiré, du bon type", () => {
-    expect(arrivalNotice("/reset-password", "?error=INVALID_TOKEN")).toMatchObject({ tone: "error", retry: "reset" });
-    expect(arrivalNotice("/", "?error=TOKEN_EXPIRED")).toMatchObject({ tone: "error", retry: "verification" });
+    expect(arrivalNotice("/reset-password", "?error=INVALID_TOKEN")).toMatchObject({
+      tone: "error",
+      retry: "reset",
+    });
+    expect(arrivalNotice("/", "?error=TOKEN_EXPIRED")).toMatchObject({
+      tone: "error",
+      retry: "verification",
+    });
   });
 
   it("explique un refus de liaison Google", () => {
-    expect(arrivalNotice("/sign-in", "?error=account_not_linked")?.text).toContain("jamais été confirmée");
-    expect(arrivalNotice("/sign-in", "?error=access_denied")?.text).toBe("Connexion Google annulée.");
+    expect(arrivalNotice("/sign-in", "?error=account_not_linked")?.text).toContain(
+      "jamais été confirmée",
+    );
+    expect(arrivalNotice("/sign-in", "?error=access_denied")?.text).toBe(
+      "Connexion Google annulée.",
+    );
     expect(arrivalNotice("/sign-in", "?error=inedit")?.text).toContain("Réessayez");
   });
 

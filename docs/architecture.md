@@ -292,6 +292,7 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
 
     Restent ouverts : Discord, Apple, et le cas Steam, qui n'est pas de l'OAuth mais un
     ticket Steamworks qu'aucune bibliothèque d'authentification ne couvre.
+
 11. **Le client Electron n'est plus de même origine, et l'authentification s'en aperçoit.**
     Deux blocages connus, aucun encore traité : le cookie `SameSite=Lax` ne partira pas sur une
     requête inter-origine — il faudra soit `SameSite=None`, soit un jeton porteur rangé dans

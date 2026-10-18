@@ -14,7 +14,10 @@ describe("checkMessage", () => {
   it("refuse un message vide ou trop long", () => {
     expect(checkMessage("   ")).toEqual({ ok: false, code: "MESSAGE_EMPTY" });
     expect(checkMessage(42)).toEqual({ ok: false, code: "MESSAGE_EMPTY" });
-    expect(checkMessage("x".repeat(MAX_MESSAGE_LENGTH + 1))).toEqual({ ok: false, code: "MESSAGE_TOO_LONG" });
+    expect(checkMessage("x".repeat(MAX_MESSAGE_LENGTH + 1))).toEqual({
+      ok: false,
+      code: "MESSAGE_TOO_LONG",
+    });
     expect(checkMessage("é".repeat(MAX_MESSAGE_LENGTH)).ok).toBe(true);
   });
 });

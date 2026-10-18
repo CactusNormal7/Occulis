@@ -1,6 +1,12 @@
 import { SELF, env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import type { MeCurrentMatch, MeMatchDetail, MeMatchPage, MeProfile, MeSession } from "@occulis/protocol";
+import type {
+  MeCurrentMatch,
+  MeMatchDetail,
+  MeMatchPage,
+  MeProfile,
+  MeSession,
+} from "@occulis/protocol";
 import { PASSWORD, cookieFrom, post, signUp, startTestMatch, unique } from "../test-helpers.js";
 
 /**
@@ -35,7 +41,9 @@ async function idsOf(handle: string): Promise<{ id: string; player_id: string }>
 }
 
 async function signIn(handle: string): Promise<string> {
-  return cookieFrom(await post("/api/auth/sign-in/email", { email: `${handle}@occulis.test`, password: PASSWORD }));
+  return cookieFrom(
+    await post("/api/auth/sign-in/email", { email: `${handle}@occulis.test`, password: PASSWORD }),
+  );
 }
 
 /** Remplace le cookie de session par celui qu'une réponse pose, comme un navigateur. */
@@ -177,7 +185,9 @@ describe("profil : sessions", () => {
     expect(target).toBeDefined();
 
     // Un autre compte ne peut pas la fermer, même en connaissant son identifiant.
-    expect((await post(`/api/me/sessions/${target?.id ?? ""}/revoke`, {}, stranger)).status).toBe(404);
+    expect((await post(`/api/me/sessions/${target?.id ?? ""}/revoke`, {}, stranger)).status).toBe(
+      404,
+    );
     expect((await get("/api/me", other)).status).toBe(200);
 
     expect((await post(`/api/me/sessions/${target?.id ?? ""}/revoke`, {}, mine)).status).toBe(200);
@@ -191,7 +201,9 @@ describe("profil : sessions", () => {
     const a = await signIn(handle);
     const b = await signIn(handle);
 
-    expect(await (await post("/api/me/sessions/revoke-others", {}, mine)).json()).toEqual({ revoked: 2 });
+    expect(await (await post("/api/me/sessions/revoke-others", {}, mine)).json()).toEqual({
+      revoked: 2,
+    });
     expect((await get("/api/me", a)).status).toBe(401);
     expect((await get("/api/me", b)).status).toBe(401);
     expect((await get("/api/me", mine)).status).toBe(200);
@@ -204,7 +216,11 @@ describe("profil : sessions", () => {
 
     const changed = await post(
       "/api/auth/change-password",
-      { currentPassword: PASSWORD, newPassword: "un-nouveau-mot-de-passe", revokeOtherSessions: false },
+      {
+        currentPassword: PASSWORD,
+        newPassword: "un-nouveau-mot-de-passe",
+        revokeOtherSessions: false,
+      },
       mine,
     );
     expect(changed.status).toBe(200);
@@ -233,7 +249,9 @@ describe("profil : parties", () => {
     const current = (await (await get("/api/me/current-match", cookie)).json()) as MeCurrentMatch;
     expect(current).toEqual({ matchId: started.matchId, player: "B", seat: started.seats.B });
 
-    await env.DB.prepare("UPDATE matches SET finished_at = ? WHERE id = ?").bind(Date.now(), started.matchId).run();
+    await env.DB.prepare("UPDATE matches SET finished_at = ? WHERE id = ?")
+      .bind(Date.now(), started.matchId)
+      .run();
     expect(await (await get("/api/me/current-match", cookie)).json()).toBeNull();
   });
 
@@ -250,7 +268,12 @@ describe("profil : parties", () => {
 
     const page = (await (await get("/api/me/matches", cookie)).json()) as MeMatchPage;
     expect(page.total).toBe(1);
-    expect(page.matches[0]).toMatchObject({ id: matchId, seat: "B", opponent: opponentHandle, result: "ongoing" });
+    expect(page.matches[0]).toMatchObject({
+      id: matchId,
+      seat: "B",
+      opponent: opponentHandle,
+      result: "ongoing",
+    });
 
     // En cours : refusée au joueur lui-même, introuvable pour un tiers.
     expect((await get(`/api/me/matches/${matchId}`, cookie)).status).toBe(409);
@@ -269,7 +292,9 @@ describe("profil : parties", () => {
     ]);
 
     expect((await get(`/api/me/matches/${matchId}`, stranger)).status).toBe(404);
-    const detail = (await (await get(`/api/me/matches/${matchId}`, cookie)).json()) as MeMatchDetail;
+    const detail = (await (
+      await get(`/api/me/matches/${matchId}`, cookie)
+    ).json()) as MeMatchDetail;
     expect(detail.result).toBe("won");
     expect(detail.replayError).toBeNull();
     expect(detail.frames).toHaveLength(2);
@@ -281,7 +306,9 @@ describe("profil : parties", () => {
     }
     expect(JSON.stringify(detail)).not.toContain('"visible":{');
 
-    const theirs = (await (await get(`/api/me/matches/${matchId}`, opponentCookie)).json()) as MeMatchDetail;
+    const theirs = (await (
+      await get(`/api/me/matches/${matchId}`, opponentCookie)
+    ).json()) as MeMatchDetail;
     expect(theirs.seat).toBe("A");
     expect(theirs.result).toBe("lost");
     expect((await profile(cookie)).record).toEqual({ played: 1, won: 1, lost: 0, ongoing: 0 });
@@ -292,7 +319,9 @@ describe("profil : usurpation", () => {
   async function impersonate(): Promise<{ cookie: string; target: string }> {
     const admin = unique("chef");
     await signUp(admin);
-    await env.DB.prepare("UPDATE users SET role = 'admin' WHERE email = ?").bind(`${admin}@occulis.test`).run();
+    await env.DB.prepare("UPDATE users SET role = 'admin' WHERE email = ?")
+      .bind(`${admin}@occulis.test`)
+      .run();
     let cookie = await signIn(admin);
     const target = unique("cible");
     await signUp(target);
@@ -311,7 +340,10 @@ describe("profil : usurpation", () => {
     const attempts: [string, unknown][] = [
       ["/api/me/handle", { handle: unique("detourne") }],
       ["/api/me/sessions/revoke-others", {}],
-      ["/api/auth/change-password", { currentPassword: PASSWORD, newPassword: "un-mot-de-passe-pirate" }],
+      [
+        "/api/auth/change-password",
+        { currentPassword: PASSWORD, newPassword: "un-mot-de-passe-pirate" },
+      ],
       ["/api/auth/change-email", { newEmail: `${unique("pirate")}@occulis.test` }],
       ["/api/auth/delete-user", {}],
       ["/api/auth/unlink-account", { providerId: "google" }],
@@ -338,7 +370,9 @@ describe("profil : suppression du compte", () => {
     const asked = await post("/api/auth/delete-user", { callbackURL: "/" }, cookie);
     expect(asked.status).toBe(200);
     // Rien n'est supprimé tant que le lien n'a pas été ouvert.
-    expect(await env.DB.prepare("SELECT id FROM users WHERE id = ?").bind(id).first()).not.toBeNull();
+    expect(
+      await env.DB.prepare("SELECT id FROM users WHERE id = ?").bind(id).first(),
+    ).not.toBeNull();
 
     const stored = await env.DB.prepare(
       "SELECT identifier FROM verifications WHERE value = ? AND identifier LIKE 'delete-account-%'",
@@ -348,11 +382,16 @@ describe("profil : suppression du compte", () => {
     const token = (stored?.identifier ?? "").replace("delete-account-", "");
     expect(token.length).toBeGreaterThan(0);
 
-    const confirmed = await get(`/api/auth/delete-user/callback?token=${token}&callbackURL=/`, cookie);
+    const confirmed = await get(
+      `/api/auth/delete-user/callback?token=${token}&callbackURL=/`,
+      cookie,
+    );
     expect(confirmed.status).toBe(302);
 
     expect(await env.DB.prepare("SELECT id FROM users WHERE id = ?").bind(id).first()).toBeNull();
-    const player = await env.DB.prepare("SELECT handle FROM players WHERE id = ?").bind(player_id).first<{ handle: string }>();
+    const player = await env.DB.prepare("SELECT handle FROM players WHERE id = ?")
+      .bind(player_id)
+      .first<{ handle: string }>();
     expect(player?.handle.startsWith("deleted-")).toBe(true);
     expect(player?.handle).not.toContain(handle);
   });

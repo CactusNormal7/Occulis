@@ -27,7 +27,13 @@ import { useLoad } from "../load/hooks.js";
 import { presets as presetsResource } from "../profile/resources.js";
 import { boardForScenario } from "../game/scenario.js";
 import { TeamBuilder } from "../team-builder/TeamBuilder.js";
-import { type TeamDraft, emptyDraft, fromEntries, toEntries, verdict } from "../team-builder/model.js";
+import {
+  type TeamDraft,
+  emptyDraft,
+  fromEntries,
+  toEntries,
+  verdict,
+} from "../team-builder/model.js";
 
 /**
  * Les équipes préparées, depuis le menu : la liste, et l'éditeur qui reprend le
@@ -55,7 +61,9 @@ export function TeamsApp({ locale, onBack }: TeamsAppProps) {
   );
 }
 
-type Editing = { readonly id: string | undefined; readonly name: string; readonly team: readonly TeamEntry[] } | undefined;
+type Editing =
+  | { readonly id: string | undefined; readonly name: string; readonly team: readonly TeamEntry[] }
+  | undefined;
 
 function Teams({ onBack }: { onBack: () => void }) {
   const m = useMessages().team.presets;
@@ -65,7 +73,11 @@ function Teams({ onBack }: { onBack: () => void }) {
   const [deleting, setDeleting] = useState<TeamPreset | undefined>(undefined);
 
   if (loaded.state === "failed") {
-    return <EmptyState error action={<Button onClick={onBack}>{m.back}</Button>}>{loaded.message}</EmptyState>;
+    return (
+      <EmptyState error action={<Button onClick={onBack}>{m.back}</Button>}>
+        {loaded.message}
+      </EmptyState>
+    );
   }
   const list = loaded.value;
 
@@ -95,7 +107,13 @@ function Teams({ onBack }: { onBack: () => void }) {
             <Button variant="ghost" onClick={onBack}>
               {m.back}
             </Button>
-            <Button variant="primary" icon="plus" disabled={full} title={full ? m.limit(list.limit) : undefined} onClick={() => setEditing({ id: undefined, name: "", team: [] })}>
+            <Button
+              variant="primary"
+              icon="plus"
+              disabled={full}
+              title={full ? m.limit(list.limit) : undefined}
+              onClick={() => setEditing({ id: undefined, name: "", team: [] })}
+            >
               {m.create}
             </Button>
           </>
@@ -136,9 +154,21 @@ function Teams({ onBack }: { onBack: () => void }) {
                       icon="copy"
                       label={m.duplicate}
                       disabledReason={full ? m.limit(list.limit) : undefined}
-                      onClick={() => setEditing({ id: undefined, name: m.copyOf(preset.name), team: preset.team })}
+                      onClick={() =>
+                        setEditing({
+                          id: undefined,
+                          name: m.copyOf(preset.name),
+                          team: preset.team,
+                        })
+                      }
                     />
-                    <IconButton icon="trash" label={m.delete} danger tipAlign="end" onClick={() => setDeleting(preset)} />
+                    <IconButton
+                      icon="trash"
+                      label={m.delete}
+                      danger
+                      tipAlign="end"
+                      onClick={() => setDeleting(preset)}
+                    />
                   </QuickBar>
                 }
               >
@@ -206,7 +236,10 @@ function Editor({
     setBusy(true);
     setError(undefined);
     const team = toEntries(draft);
-    const pending = editing.id === undefined ? api.createPreset(name, team) : api.updatePreset(editing.id, { name, team });
+    const pending =
+      editing.id === undefined
+        ? api.createPreset(name, team)
+        : api.updatePreset(editing.id, { name, team });
     void pending.then((outcome) => {
       setBusy(false);
       if (outcome.ok) onSaved();
@@ -229,7 +262,13 @@ function Editor({
           </>
         }
       />
-      <TextField label={m.name} placeholder={m.namePlaceholder} maxLength={32} value={name} onChange={(event) => setName(event.target.value)} />
+      <TextField
+        label={m.name}
+        placeholder={m.namePlaceholder}
+        maxLength={32}
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+      />
       {error !== undefined && <FormMessage tone="error">{error}</FormMessage>}
       <TeamBuilder
         ruleset={ruleset}

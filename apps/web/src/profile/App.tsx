@@ -43,7 +43,14 @@ import { ROUTE_PATHS } from "../net/auth.js";
 import * as api from "./api.js";
 import * as friends from "../social/api.js";
 import { relationTo, unreadTotal } from "../social/model.js";
-import { ChatView, FriendMatchReplay, FriendView, FriendsView, SocialProvider, useSocial } from "./Friends.js";
+import {
+  ChatView,
+  FriendMatchReplay,
+  FriendView,
+  FriendsView,
+  SocialProvider,
+  useSocial,
+} from "./Friends.js";
 import { MatchReplayView, MatchTable, RecordCard } from "./parts.js";
 import {
   arrivalMessage,
@@ -105,7 +112,15 @@ function WithFriends({ children }: { children: ReactNode }) {
   return children;
 }
 
-function Frame({ localeSwitch, loaded, reload }: { localeSwitch: ReactNode; loaded: Loaded<MeProfile>; reload: () => void }) {
+function Frame({
+  localeSwitch,
+  loaded,
+  reload,
+}: {
+  localeSwitch: ReactNode;
+  loaded: Loaded<MeProfile>;
+  reload: () => void;
+}) {
   const all = useMessages();
   const m = all.profile;
   const route = useHashRoute(parseProfileRoute, resourcesOf);
@@ -121,8 +136,16 @@ function Frame({ localeSwitch, loaded, reload }: { localeSwitch: ReactNode; load
         tabs={
           signedIn
             ? [
-                { href: profileHash({ view: "account" }), label: m.tabs.account, current: route.view === "account" },
-                { href: profileHash({ view: "matches", offset: 0 }), label: m.tabs.matches, current: tabOf(route) === "matches" },
+                {
+                  href: profileHash({ view: "account" }),
+                  label: m.tabs.account,
+                  current: route.view === "account",
+                },
+                {
+                  href: profileHash({ view: "matches", offset: 0 }),
+                  label: m.tabs.matches,
+                  current: tabOf(route) === "matches",
+                },
                 {
                   href: profileHash({ view: "friends" }),
                   label: unread > 0 ? all.social.tabUnread(unread) : all.social.tab,
@@ -146,10 +169,20 @@ function Frame({ localeSwitch, loaded, reload }: { localeSwitch: ReactNode; load
   );
 }
 
-function Gate({ loaded, route, reload }: { loaded: Loaded<MeProfile>; route: ProfileRoute; reload: () => void }) {
+function Gate({
+  loaded,
+  route,
+  reload,
+}: {
+  loaded: Loaded<MeProfile>;
+  route: ProfileRoute;
+  reload: () => void;
+}) {
   const m = useMessages().profile;
   if (loaded.state === "failed") {
-    return <EmptyState action={<a href={ROUTE_PATHS.signin}>{m.signIn}</a>}>{loaded.message}</EmptyState>;
+    return (
+      <EmptyState action={<a href={ROUTE_PATHS.signin}>{m.signIn}</a>}>{loaded.message}</EmptyState>
+    );
   }
   const profile = loaded.value;
   return (
@@ -158,7 +191,10 @@ function Gate({ loaded, route, reload }: { loaded: Loaded<MeProfile>; route: Pro
         <Banner
           icon="impersonate"
           action={
-            <Button variant="danger" onClick={() => void stopImpersonating().then(() => location.assign("/admin/"))}>
+            <Button
+              variant="danger"
+              onClick={() => void stopImpersonating().then(() => location.assign("/admin/"))}
+            >
               {m.impersonation.stop}
             </Button>
           }
@@ -167,10 +203,14 @@ function Gate({ loaded, route, reload }: { loaded: Loaded<MeProfile>; route: Pro
         </Banner>
       )}
       {route.view === "account" && <Account profile={profile} reload={reload} />}
-      {route.view === "matches" && <Matches offset={route.offset} readOnly={profile.impersonating} />}
+      {route.view === "matches" && (
+        <Matches offset={route.offset} readOnly={profile.impersonating} />
+      )}
       {route.view === "match" && <MatchReplay id={route.id} />}
       {route.view === "friends" && <FriendsView readOnly={profile.impersonating} />}
-      {route.view === "friend" && <FriendView id={route.id} offset={route.offset} readOnly={profile.impersonating} />}
+      {route.view === "friend" && (
+        <FriendView id={route.id} offset={route.offset} readOnly={profile.impersonating} />
+      )}
       {route.view === "friendMatch" && <FriendMatchReplay id={route.id} matchId={route.matchId} />}
       {route.view === "chat" && <ChatView id={route.id} readOnly={profile.impersonating} />}
     </div>
@@ -198,7 +238,8 @@ function Account({ profile, reload }: { profile: MeProfile; reload: () => void }
   useEffect(() => {
     const arrival = arrivalMessage(location.search);
     if (arrival !== undefined) notify(arrival.text, arrival.ok);
-    if (location.search.length > 0) history.replaceState(null, "", `${location.pathname}${location.hash}`);
+    if (location.search.length > 0)
+      history.replaceState(null, "", `${location.pathname}${location.hash}`);
     if (location.hash === "#security") document.getElementById("security")?.scrollIntoView();
     // Au montage seulement : c'est l'URL d'arrivée qu'on lit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -219,7 +260,13 @@ function Account({ profile, reload }: { profile: MeProfile; reload: () => void }
       <Hero
         avatar={<TileAvatar name={profile.handle} size="lg" />}
         title={profile.handle}
-        badges={profile.emailVerified ? <Badge>{m.verified}</Badge> : <Badge tone="dim">{m.unverified}</Badge>}
+        badges={
+          profile.emailVerified ? (
+            <Badge>{m.verified}</Badge>
+          ) : (
+            <Badge tone="dim">{m.unverified}</Badge>
+          )
+        }
         meta={[profile.email, m.memberSince(formatDate(profile.createdAt))]}
       />
       {!profile.emailVerified && <VerifyBanner profile={profile} readOnly={readOnly} />}
@@ -240,7 +287,9 @@ function Account({ profile, reload }: { profile: MeProfile; reload: () => void }
               <SettingRow
                 label={m.account.email}
                 value={profile.email}
-                description={profile.emailVerified ? m.account.emailVerified : m.account.emailUnverified}
+                description={
+                  profile.emailVerified ? m.account.emailVerified : m.account.emailUnverified
+                }
                 onEdit={edit("email")}
                 editing={editing === "email"}
               >
@@ -273,7 +322,8 @@ function Account({ profile, reload }: { profile: MeProfile; reload: () => void }
                   <PasswordSetupEditor email={profile.email} onDone={done} onCancel={cancel} />
                 )}
               </SettingRow>
-              {(profile.availableProviders.includes("google") || profile.providers.includes("google")) && (
+              {(profile.availableProviders.includes("google") ||
+                profile.providers.includes("google")) && (
                 <GoogleSetting profile={profile} readOnly={readOnly} onDone={done} />
               )}
             </SettingList>
@@ -374,10 +424,16 @@ function EmailEditor({ profile, onDone, onCancel }: EditorProps & { profile: MeP
       onSubmit={() =>
         run(
           api.changeEmail(address),
-          profile.emailVerified ? m.emailEditor.doneVerified(profile.email) : m.emailEditor.doneUnverified(address),
+          profile.emailVerified
+            ? m.emailEditor.doneVerified(profile.email)
+            : m.emailEditor.doneUnverified(address),
         )
       }
-      note={profile.emailVerified ? m.emailEditor.noteVerified(profile.email) : m.emailEditor.noteUnverified}
+      note={
+        profile.emailVerified
+          ? m.emailEditor.noteVerified(profile.email)
+          : m.emailEditor.noteUnverified
+      }
     >
       <TextField
         label={m.emailEditor.label}
@@ -433,7 +489,9 @@ function PasswordEditor({ email, onDone, onCancel }: EditorProps & { email: stri
         required
         minLength={MIN_PASSWORD_LENGTH}
         maxLength={MAX_PASSWORD_LENGTH}
-        {...{ passwordrules: `minlength: ${MIN_PASSWORD_LENGTH}; maxlength: ${MAX_PASSWORD_LENGTH};` }}
+        {...{
+          passwordrules: `minlength: ${MIN_PASSWORD_LENGTH}; maxlength: ${MAX_PASSWORD_LENGTH};`,
+        }}
         value={next}
         onChange={(event) => setNext(event.target.value)}
         hint={passwordHint(next)}
@@ -459,7 +517,15 @@ function PasswordSetupEditor({ email, onDone, onCancel }: EditorProps & { email:
   );
 }
 
-function GoogleSetting({ profile, readOnly, onDone }: { profile: MeProfile; readOnly: boolean; onDone: (message: string) => void }) {
+function GoogleSetting({
+  profile,
+  readOnly,
+  onDone,
+}: {
+  profile: MeProfile;
+  readOnly: boolean;
+  onDone: (message: string) => void;
+}) {
   const m = useMessages().profile.google;
   const notify = useToast();
   const [busy, setBusy] = useState(false);
@@ -518,7 +584,9 @@ function FeatsCard({ readOnly }: { readOnly: boolean }) {
   const { feats, showcase } = loaded.value;
   const full = showcase.length >= 3;
   const toggle = (id: string) => {
-    const next = showcase.includes(id) ? showcase.filter((other) => other !== id) : [...showcase, id];
+    const next = showcase.includes(id)
+      ? showcase.filter((other) => other !== id)
+      : [...showcase, id];
     void api.setShowcase(next).then((outcome) => {
       notify(outcome.ok ? m.saved : outcome.message, outcome.ok);
       if (outcome.ok) reload();
@@ -538,7 +606,12 @@ function FeatsCard({ readOnly }: { readOnly: boolean }) {
                 !feat.unlocked ? (
                   <Badge tone="dim">{m.locked}</Badge>
                 ) : (
-                  <Button size="sm" disabled={readOnly || (!shown && full)} title={!shown && full ? m.full : undefined} onClick={() => toggle(feat.id)}>
+                  <Button
+                    size="sm"
+                    disabled={readOnly || (!shown && full)}
+                    title={!shown && full ? m.full : undefined}
+                    onClick={() => toggle(feat.id)}
+                  >
                     {shown ? m.hide : m.show}
                   </Button>
                 )
@@ -558,7 +631,15 @@ function FeatsCard({ readOnly }: { readOnly: boolean }) {
 }
 
 /** Le réglage qui ouvre ou ferme ses parties aux amis qui voudraient les regarder. */
-function SpectatorsCard({ profile, readOnly, onDone }: { profile: MeProfile; readOnly: boolean; onDone: (message: string) => void }) {
+function SpectatorsCard({
+  profile,
+  readOnly,
+  onDone,
+}: {
+  profile: MeProfile;
+  readOnly: boolean;
+  onDone: (message: string) => void;
+}) {
   const m = useMessages().social.spectators;
   const notify = useToast();
   const [busy, setBusy] = useState(false);
@@ -606,7 +687,12 @@ function Sessions({ readOnly }: { readOnly: boolean }) {
       title={m.title(list.length)}
       action={
         others > 0 && (
-          <Button size="sm" icon="logout" disabled={readOnly} onClick={() => void revoke(api.revokeOtherSessions(), m.othersClosed)}>
+          <Button
+            size="sm"
+            icon="logout"
+            disabled={readOnly}
+            onClick={() => void revoke(api.revokeOtherSessions(), m.othersClosed)}
+          >
             {m.closeOthers}
           </Button>
         )
@@ -637,7 +723,13 @@ function Sessions({ readOnly }: { readOnly: boolean }) {
                 {shortAgent(session.userAgent)}
                 {session.impersonated && m.impersonated}
               </strong>
-              <small>{m.line(session.ipAddress ?? m.unknownIp, sinceLabel(session.lastActiveAt, Date.now()), formatDate(session.createdAt))}</small>
+              <small>
+                {m.line(
+                  session.ipAddress ?? m.unknownIp,
+                  sinceLabel(session.lastActiveAt, Date.now()),
+                  formatDate(session.createdAt),
+                )}
+              </small>
             </ListRow>
           ))}
         </List>
@@ -659,7 +751,13 @@ function DangerZone({ profile, readOnly }: { profile: MeProfile; readOnly: boole
           value={m.final}
           description={m.description}
           action={
-            <Button size="sm" variant="danger" icon="trash" disabled={readOnly} onClick={() => setOpen(true)}>
+            <Button
+              size="sm"
+              variant="danger"
+              icon="trash"
+              disabled={readOnly}
+              onClick={() => setOpen(true)}
+            >
               {m.deleteButton}
             </Button>
           }
@@ -726,6 +824,9 @@ function MatchReplay({ id }: { id: string }) {
   const t = useMessages().profile.matches;
   const { loaded } = useLoad(R.match(id));
   return whenReady(loaded, (match) => (
-    <MatchReplayView match={match} back={{ href: profileHash({ view: "matches", offset: 0 }), label: t.back }} />
+    <MatchReplayView
+      match={match}
+      back={{ href: profileHash({ view: "matches", offset: 0 }), label: t.back }}
+    />
   ));
 }

@@ -38,7 +38,9 @@ function progress(transition: Transition, now: number): number {
 export function lightAt(map: LightMap, key: CoordKey, now: number): number {
   const transition = map.get(key);
   if (transition === undefined) return 0;
-  return transition.from + (transition.to - transition.from) * easeInOutSine(progress(transition, now));
+  return (
+    transition.from + (transition.to - transition.from) * easeInOutSine(progress(transition, now))
+  );
 }
 
 /**
@@ -93,8 +95,18 @@ export function relight(
     next.set(
       key,
       target === 1
-        ? { from, to: 1, start: now + delay + distance * timing.revealPerTileMs, duration: timing.revealMs }
-        : { from, to: 0, start: now + delay + distance * timing.dimPerTileMs, duration: timing.dimMs },
+        ? {
+            from,
+            to: 1,
+            start: now + delay + distance * timing.revealPerTileMs,
+            duration: timing.revealMs,
+          }
+        : {
+            from,
+            to: 0,
+            start: now + delay + distance * timing.dimPerTileMs,
+            duration: timing.dimMs,
+          },
     );
   }
   return next;

@@ -202,12 +202,13 @@ la fusion ou l'effacement de la branche concernée.
   **Changer `AUTH_SECRET` déconnecte tout le monde** : il signe les cookies de session.
 
   Facultatifs : `MAIL_FROM` (expéditeur), `MAIL_REPLY_TO` (adresse de réponse).
+
 - **Connexion Google.** Sans les deux secrets `GOOGLE_*`, le bouton n'apparaît pas et seule
   la connexion par mot de passe est proposée. Pour créer le client, dans la
   [Google Cloud Console](https://console.cloud.google.com/) :
 
   1. **Projet** : en créer un dédié (« Occulis ») depuis le sélecteur de projet.
-  2. **APIs & Services → OAuth consent screen** (« Google Auth Platform ») → *Get started* :
+  2. **APIs & Services → OAuth consent screen** (« Google Auth Platform ») → _Get started_ :
      nom de l'application « Occulis », adresse d'assistance, audience **External**, adresse de
      contact, accepter les conditions.
   3. **Branding** : page d'accueil `https://occulis.0kl.fr`, **politique de confidentialité**
@@ -217,14 +218,15 @@ la fusion ou l'effacement de la branche concernée.
      `.../auth/userinfo.profile` — non sensibles, donc sans audit.
   5. **Clients → Create client → Web application**, deux clients pour isoler la production :
 
-     | Client | Origines JavaScript | URI de redirection |
-     |---|---|---|
-     | `Occulis prod` | `https://occulis.0kl.fr` | `https://occulis.0kl.fr/api/auth/callback/google` |
-     | `Occulis dev` | `https://occulis-staging.0kl.fr`, `http://localhost:8787` | `https://occulis-staging.0kl.fr/api/auth/callback/google`, `http://localhost:8787/api/auth/callback/google` |
+     | Client         | Origines JavaScript                                       | URI de redirection                                                                                          |
+     | -------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+     | `Occulis prod` | `https://occulis.0kl.fr`                                  | `https://occulis.0kl.fr/api/auth/callback/google`                                                           |
+     | `Occulis dev`  | `https://occulis-staging.0kl.fr`, `http://localhost:8787` | `https://occulis-staging.0kl.fr/api/auth/callback/google`, `http://localhost:8787/api/auth/callback/google` |
 
      **Copier le secret à la création** : Google ne le réaffiche plus ensuite.
-  6. **Audience** : en mode *Testing*, seuls les *Test users* déclarés (100 au plus) peuvent se
-     connecter. *Publish app* ouvre à tous — immédiat avec ces scopes, à condition que la
+
+  6. **Audience** : en mode _Testing_, seuls les _Test users_ déclarés (100 au plus) peuvent se
+     connecter. _Publish app_ ouvre à tous — immédiat avec ces scopes, à condition que la
      politique de confidentialité soit en ligne.
 
   ```bash
@@ -241,6 +243,7 @@ la fusion ou l'effacement de la branche concernée.
   `GOOGLE_*` (client « dev »), `OAUTH_PROXY_URL=https://occulis-staging.0kl.fr` et un
   `OAUTH_PROXY_SECRET` commun (`openssl rand -base64 32`), jamais en production ni en local.
   Le fonctionnement est décrit dans [technical/server.md](technical/server.md), « Google ».
+
 - **La migration 0006 départage les pseudos qui ne diffèrent que par la casse** avant de
   créer l'index insensible à la casse : le plus ancien garde le sien, les autres reçoivent un
   suffixe. Pour savoir d'avance qui sera renommé dans un environnement :
@@ -250,6 +253,7 @@ la fusion ou l'effacement de la branche concernée.
     "SELECT handle, created_at FROM players WHERE lower(handle) IN \
      (SELECT lower(handle) FROM players GROUP BY lower(handle) HAVING COUNT(*) > 1)"
   ```
+
 - **Le premier administrateur se nomme à la main**, une fois par environnement : aucune
   migration n'en désigne, et le back-office (`/admin/`) ne s'ouvre qu'à un compte portant le
   rôle `admin`. Le compte doit déjà exister (inscription normale), puis :
@@ -263,6 +267,7 @@ la fusion ou l'effacement de la branche concernée.
 
   Se reconnecter ensuite : la session ouverte garde une copie du compte d'avant la
   promotion. Les administrateurs suivants se nomment depuis le back-office lui-même.
+
 - **Le domaine d'envoi Resend n'est pas déclaré.** Tant que `0kl.fr` n'est pas vérifié
   chez Resend (enregistrements DNS SPF et DKIM), aucun message ne partira réellement en
   production, même avec une clé posée.

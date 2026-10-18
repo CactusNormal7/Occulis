@@ -7,7 +7,16 @@
  * messages entrants (`parse.ts`) — aucune règle de jeu (elle vit dans `@occulis/core`),
  * aucun transport (il vit dans chaque app).
  */
-import type { Action, ActionError, Coord, PlayerId, PlayerView, TeamEntry, TeamError, Tile } from "@occulis/core";
+import type {
+  Action,
+  ActionError,
+  Coord,
+  PlayerId,
+  PlayerView,
+  TeamEntry,
+  TeamError,
+  Tile,
+} from "@occulis/core";
 
 /**
  * Refus prononcé par le serveur et non par les règles : le siège qui a envoyé
@@ -188,7 +197,10 @@ export type QueueServerMessage =
    */
   | { readonly kind: "proposal"; readonly proposalId: string; readonly remainingMs: number }
   /** Qui a accepté, du point de vue du destinataire. */
-  | { readonly kind: "proposal-update"; readonly accepted: { readonly self: boolean; readonly opponent: boolean } }
+  | {
+      readonly kind: "proposal-update";
+      readonly accepted: { readonly self: boolean; readonly opponent: boolean };
+    }
   /**
    * La proposition est tombée. `requeued` : le destinataire avait accepté, il est remis en
    * tête de file et attend de nouveau ; sinon il est sorti de la file.

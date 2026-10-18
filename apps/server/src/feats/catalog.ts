@@ -65,5 +65,7 @@ export function unlockedFeats(stats: PlayerStats): FeatId[] {
 export function shownFeats(showcase: unknown, unlocked: readonly FeatId[]): FeatId[] {
   if (!Array.isArray(showcase)) return [];
   const open = new Set(unlocked);
-  return [...new Set(showcase as unknown[])].filter((id): id is FeatId => isFeatId(id) && open.has(id)).slice(0, SHOWCASE_SIZE);
+  return [...new Set(showcase as unknown[])]
+    .filter((id): id is FeatId => isFeatId(id) && open.has(id))
+    .slice(0, SHOWCASE_SIZE);
 }

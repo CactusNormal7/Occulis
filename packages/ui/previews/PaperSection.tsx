@@ -1,6 +1,13 @@
 import { useMemo, useState, type MouseEvent } from "react";
 import { Badge, Segmented, Stage } from "../src/index.js";
-import { PaperInversion, diamond, project, unproject, type PaperRun, type Tile } from "../src/lab/index.js";
+import {
+  PaperInversion,
+  diamond,
+  project,
+  unproject,
+  type PaperRun,
+  type Tile,
+} from "../src/lab/index.js";
 import { ISO, PieceShape } from "./BoardPrototype.js";
 import { COLUMNS, ROWS, START, allTiles, isWall, key, visibleTo } from "./board-mock.js";
 
@@ -10,7 +17,10 @@ function CircleDemo({ blend }: { blend: Blend }) {
   const [run, setRun] = useState<PaperRun | null>(null);
   const start = (event: MouseEvent<HTMLDivElement>): void => {
     const box = event.currentTarget.getBoundingClientRect();
-    setRun({ key: Date.now(), source: { kind: "point", x: event.clientX - box.left, y: event.clientY - box.top } });
+    setRun({
+      key: Date.now(),
+      source: { kind: "point", x: event.clientX - box.left, y: event.clientY - box.top },
+    });
   };
   return (
     <div className="occ-lab-screen occ-lab-screen--clickable" onClick={start}>
@@ -21,14 +31,19 @@ function CircleDemo({ blend }: { blend: Blend }) {
           <Badge tone="B">Camp B</Badge>
           <Badge tone="strong">Ink</Badge>
         </div>
-        <span className="occ-lab-note">The wave starts under the pointer and covers the frame, then resorbs.</span>
+        <span className="occ-lab-note">
+          The wave starts under the pointer and covers the frame, then resorbs.
+        </span>
       </div>
       <PaperInversion run={run} blend={blend} />
     </div>
   );
 }
 
-const ZONE_VIEW = { width: ((COLUMNS + ROWS) * ISO.tileWidth) / 2 + 48, height: ((COLUMNS + ROWS) * ISO.tileHeight) / 2 + 72 };
+const ZONE_VIEW = {
+  width: ((COLUMNS + ROWS) * ISO.tileWidth) / 2 + 48,
+  height: ((COLUMNS + ROWS) * ISO.tileHeight) / 2 + 72,
+};
 
 function ZoneDemo({ blend }: { blend: Blend }) {
   // La zone montrée : ce que voit le camp A au départ — la ligne de vue est l'usage le plus
@@ -44,7 +59,11 @@ function ZoneDemo({ blend }: { blend: Blend }) {
     const box = event.currentTarget.getBoundingClientRect();
     // Le SVG est mis à l'échelle de sa boîte : la projection du shader doit l'être aussi.
     const ratio = box.width / ZONE_VIEW.width;
-    const tile: Tile = unproject((event.clientX - box.left) / ratio, (event.clientY - box.top) / ratio, ISO);
+    const tile: Tile = unproject(
+      (event.clientX - box.left) / ratio,
+      (event.clientY - box.top) / ratio,
+      ISO,
+    );
     if (!zoneKeys.has(key(tile))) return;
     setRun({
       key: Date.now(),
@@ -54,21 +73,42 @@ function ZoneDemo({ blend }: { blend: Blend }) {
         origin: tile,
         columns: COLUMNS,
         rows: ROWS,
-        iso: { originX: ISO.originX * ratio, originY: ISO.originY * ratio, tileWidth: ISO.tileWidth * ratio, tileHeight: ISO.tileHeight * ratio },
+        iso: {
+          originX: ISO.originX * ratio,
+          originY: ISO.originY * ratio,
+          tileWidth: ISO.tileWidth * ratio,
+          tileHeight: ISO.tileHeight * ratio,
+        },
       },
     });
   };
 
   return (
-    <div className="occ-lab-screen occ-lab-screen--clickable" onClick={start} style={{ aspectRatio: `${ZONE_VIEW.width} / ${ZONE_VIEW.height}` }}>
-      <svg className="occ-lab-board" viewBox={`0 0 ${ZONE_VIEW.width} ${ZONE_VIEW.height}`} aria-hidden="true">
+    <div
+      className="occ-lab-screen occ-lab-screen--clickable"
+      onClick={start}
+      style={{ aspectRatio: `${ZONE_VIEW.width} / ${ZONE_VIEW.height}` }}
+    >
+      <svg
+        className="occ-lab-board"
+        viewBox={`0 0 ${ZONE_VIEW.width} ${ZONE_VIEW.height}`}
+        aria-hidden="true"
+      >
         {allTiles().map((tile) => (
-          <polygon key={key(tile)} className={zoneKeys.has(key(tile)) ? "occ-lab-tile" : "occ-lab-wall__right"} points={diamond(tile, ISO)} />
+          <polygon
+            key={key(tile)}
+            className={zoneKeys.has(key(tile)) ? "occ-lab-tile" : "occ-lab-wall__right"}
+            points={diamond(tile, ISO)}
+          />
         ))}
         {START.filter((piece) => piece.camp === "A").map((piece) => {
           const at = project(piece.at, ISO);
           return (
-            <g key={piece.id} className="occ-lab-piece occ-lab-piece--A" transform={`translate(${at.x} ${at.y})`}>
+            <g
+              key={piece.id}
+              className="occ-lab-piece occ-lab-piece--A"
+              transform={`translate(${at.x} ${at.y})`}
+            >
               <PieceShape role={piece.role} />
             </g>
           );
@@ -86,8 +126,10 @@ const DISAPPEARANCES = [
 ] as const;
 
 const DISAPPEARANCE_NOTES: Record<string, string> = {
-  dither: "The paper holds, then goes out cell by cell everywhere at once, in an ordered dither — the theme veil's gesture.",
-  recede: "The paper holds, then the front runs backwards at the same speed and shrinks into the point it came from.",
+  dither:
+    "The paper holds, then goes out cell by cell everywhere at once, in an ordered dither — the theme veil's gesture.",
+  recede:
+    "The paper holds, then the front runs backwards at the same speed and shrinks into the point it came from.",
   none: "The paper stays where it is: an inverted zone that lasts until something replaces it.",
 };
 
@@ -105,9 +147,10 @@ export function PaperSection({ resorb, onResorb }: PaperSectionProps) {
       <header>
         <h2 className="occ-label">3 · Graph-paper inversion</h2>
         <p>
-          The theme inverts inside a zone — bone becomes the ground, the void a grid of dots — and spreads from a point. Drawn by
-          a WebGL fragment shader on a decorative overlay: per frame it receives a handful of numbers, nothing touches layout.
-          Speed, grid, dot size and resorption are tokens (bar above); hold and resorb durations follow the tempo.
+          The theme inverts inside a zone — bone becomes the ground, the void a grid of dots — and
+          spreads from a point. Drawn by a WebGL fragment shader on a decorative overlay: per frame
+          it receives a handful of numbers, nothing touches layout. Speed, grid, dot size and
+          resorption are tokens (bar above); hold and resorb durations follow the tempo.
         </p>
       </header>
       <div className="occ-lab-row">

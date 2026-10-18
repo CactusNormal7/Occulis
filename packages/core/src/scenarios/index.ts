@@ -31,8 +31,17 @@ export function scenarioFor(name: string): Scenario {
  * La carte d'une partie : celle qu'elle a figée à sa création, ou — pour une partie
  * d'avant les cartes figées — celle du registre sous son nom.
  */
-export function frozenScenario(name: string, snapshot: ScenarioSnapshot | null | undefined): Scenario {
+export function frozenScenario(
+  name: string,
+  snapshot: ScenarioSnapshot | null | undefined,
+): Scenario {
   if (snapshot === null || snapshot === undefined) return scenarioFor(name);
-  const scenario = { name: snapshot.name, board: () => new Board(snapshot.tiles), pieces: snapshot.pieces };
-  return snapshot.deployment === undefined ? scenario : { ...scenario, deployment: snapshot.deployment };
+  const scenario = {
+    name: snapshot.name,
+    board: () => new Board(snapshot.tiles),
+    pieces: snapshot.pieces,
+  };
+  return snapshot.deployment === undefined
+    ? scenario
+    : { ...scenario, deployment: snapshot.deployment };
 }

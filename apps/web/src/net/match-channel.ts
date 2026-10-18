@@ -1,4 +1,11 @@
-import { type Action, Board, type PlayerId, type PlayerView, type TeamEntry, type Tile } from "@occulis/core";
+import {
+  type Action,
+  Board,
+  type PlayerId,
+  type PlayerView,
+  type TeamEntry,
+  type Tile,
+} from "@occulis/core";
 import {
   PROTOCOL_VERSION,
   type ClientMessage,
@@ -79,7 +86,11 @@ export function connectToMatch(
  * n'arrivera jamais, à l'appelant de prévoir une échéance.
  */
 export function watchMatch(matchId: string, side: PlayerId, handlers: MatchHandlers): MatchChannel {
-  return connect(watchingAt(matchId), `/match/${encodeURIComponent(matchId)}/watch?side=${side}`, handlers);
+  return connect(
+    watchingAt(matchId),
+    `/match/${encodeURIComponent(matchId)}/watch?side=${side}`,
+    handlers,
+  );
 }
 
 function connect(start: Session, path: string, handlers: MatchHandlers): MatchChannel {
@@ -112,10 +123,19 @@ function connect(start: Session, path: string, handlers: MatchHandlers): MatchCh
     // La partie ne peut être construite qu'une fois le camp, la carte **et** une
     // première vue connus : ils arrivent en deux messages (`welcome` puis `view`).
     const { player, scenario, rulesetVersion, view, deployment, board: tiles } = phase;
-    if (player === undefined || scenario === undefined || rulesetVersion === undefined || tiles === undefined) return;
+    if (
+      player === undefined ||
+      scenario === undefined ||
+      rulesetVersion === undefined ||
+      tiles === undefined
+    )
+      return;
     if (tiles !== board?.tiles) board = { tiles, board: new Board(tiles) };
     if (view === undefined) {
-      if (deployment !== undefined && (message.kind === "deployment" || message.kind === "deployment-update")) {
+      if (
+        deployment !== undefined &&
+        (message.kind === "deployment" || message.kind === "deployment-update")
+      ) {
         handlers.onDeployment({ player, scenario, board: board.board, rulesetVersion, deployment });
       }
       return;
@@ -126,7 +146,14 @@ function connect(start: Session, path: string, handlers: MatchHandlers): MatchCh
       return;
     }
     seated = true;
-    handlers.onSeated({ player, scenario, board: board.board, rulesetVersion, view, spectating: phase.spectating });
+    handlers.onSeated({
+      player,
+      scenario,
+      board: board.board,
+      rulesetVersion,
+      view,
+      spectating: phase.spectating,
+    });
   };
 
   // Une reconnexion renvoie `hello`, ce qui fait rediffuser `welcome` puis la vue

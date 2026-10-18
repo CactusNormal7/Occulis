@@ -29,7 +29,13 @@ export const admin = {
       VALIDATION_ERROR: "Invalid value.",
     },
   },
-  badges: { admin: "admin", verified: "verified", unverified: "not verified", banned: "suspended", noAccount: "no account" },
+  badges: {
+    admin: "admin",
+    verified: "verified",
+    unverified: "not verified",
+    banned: "suspended",
+    noAccount: "no account",
+  },
   result: {
     ongoing: "ongoing",
     victory: (handle: string) => `${handle} wins (resignation)`,
@@ -127,7 +133,8 @@ export const admin = {
     closeSession: "Close this session",
     sessionClosed: "Session closed.",
     unknownIp: "unknown IP",
-    sessionLine: (ip: string, opened: string, expires: string) => `${ip} · opened on ${opened} · expires on ${expires}`,
+    sessionLine: (ip: string, opened: string, expires: string) =>
+      `${ip} · opened on ${opened} · expires on ${expires}`,
   },
   profileCard: {
     played: "matches",
@@ -161,20 +168,23 @@ export const admin = {
     banTitle: (name: string) => `Suspend ${name}`,
     ban: "Suspend",
     banned: (name: string) => `${name} is suspended.`,
-    banNote: "Their sessions are closed right away, and they cannot open new ones until it is lifted.",
+    banNote:
+      "Their sessions are closed right away, and they cannot open new ones until it is lifted.",
     reason: "reason (optional)",
     days: "duration in days",
     daysPlaceholder: "empty: permanent",
     daysHint: "A number of days, or nothing for a permanent suspension.",
     deleteTitle: (name: string) => `Delete ${name}`,
     deleteConfirm: "Delete permanently",
-    deleteNote: "The account and its sessions disappear. The game profile and match history remain.",
+    deleteNote:
+      "The account and its sessions disappear. The game profile and match history remain.",
     retype: (name: string) => `retype “${name}” to confirm`,
     impersonateTitle: (name: string) => `Sign in as ${name}`,
     impersonateConfirm: "Play as this player",
     impersonateNote:
       "You enter the game under their identity, for one hour at most. Your administrator session is set aside: a banner lets you return to it at any time.",
-    impersonateWarning: "Everything you do — queue, moves, resignation — will be done in their name.",
+    impersonateWarning:
+      "Everything you do — queue, moves, resignation — will be done in their name.",
     createTitle: "New account",
     create: "Create",
     created: (name: string) => `Account ${name} created.`,
@@ -187,12 +197,20 @@ export const admin = {
   },
   match: {
     back: "Matches",
-    facts: { start: "start", end: "end", rules: "rules", map: "map", moves: "moves", id: "identifier" },
+    facts: {
+      start: "start",
+      end: "end",
+      rules: "rules",
+      map: "map",
+      moves: "moves",
+      id: "identifier",
+    },
     replayError: (error: string) => `Replay interrupted — ${error}`,
     start: "start",
     moves: (count: number) => `Moves (${count})`,
     hint: "hover to see · click to pin",
-    unknownMap: (map: string) => `Map “${map}” unknown to this client: the board cannot be redrawn.`,
+    unknownMap: (map: string) =>
+      `Map “${map}” unknown to this client: the board cannot be redrawn.`,
     first: "Starting position",
     previous: "Previous move (←)",
     pause: "Pause",
@@ -204,21 +222,32 @@ export const admin = {
     viewOf: (handle: string) => `${handle}'s view`,
     rotate: "Rotate a quarter turn",
     frameStart: "starting position",
-    frame: (index: number, total: number, who: string, move: string) => `move ${index} / ${total} — ${who} — ${move}`,
+    frame: (index: number, total: number, who: string, move: string) =>
+      `move ${index} / ${total} — ${who} — ${move}`,
     board: "Replayed board",
   },
   design: {
     title: "Design system",
     intro:
       "Read straight from the charter's sources — the same ones Claude Design is synced from — so it always matches what is built. Tweaks apply to this page only and are lost on reload.",
-    pages: { foundations: "Foundations", components: "Components", motion: "Motion", conventions: "Conventions" },
+    pages: {
+      foundations: "Foundations",
+      components: "Components",
+      motion: "Motion",
+      conventions: "Conventions",
+    },
     tweaks: {
       title: "Tweaks",
       theme: "Theme",
       themes: { obsidian: "Obsidian", reliquary: "Reliquary", astral: "Astral" },
       speed: "Animation speed",
       speedOption: (factor: number) => (factor === 1 ? "real time" : `×${factor}`),
-      edited: (count: number) => (count === 0 ? "no colour edited" : count === 1 ? "1 colour edited" : `${count} colours edited`),
+      edited: (count: number) =>
+        count === 0
+          ? "no colour edited"
+          : count === 1
+            ? "1 colour edited"
+            : `${count} colours edited`,
       reset: "Reset",
       copy: "Copy for tokens.ts",
       copied: "Palette copied, ready to paste into tokens.ts.",
@@ -245,7 +274,8 @@ export const admin = {
       noDoc: "No comment above this component in its source.",
       noStory: "No preview written for this component yet.",
       open: "Open",
-      overlayHint: "A modal takes the whole page: Escape or a click on the backdrop closes the preview.",
+      overlayHint:
+        "A modal takes the whole page: Escape or a click on the backdrop closes the preview.",
       source: (file: string) => `source: ${file}`,
     },
     motion: {
@@ -282,9 +312,21 @@ export const admin = {
         curves: "Easing curves",
         replay: "Replay",
       },
-      game: { title: "Game page", text: "CSS animations of the screens still in native DOM (apps/web/src/ui/ui.css)." },
-      charter: { title: "Charter", text: "CSS animations of the components (packages/ui/src/styles.css)." },
-      columns: { key: "key", value: "value", note: "note", selector: "selector", animation: "animation" },
+      game: {
+        title: "Game page",
+        text: "CSS animations of the screens still in native DOM (apps/web/src/ui/ui.css).",
+      },
+      charter: {
+        title: "Charter",
+        text: "CSS animations of the components (packages/ui/src/styles.css).",
+      },
+      columns: {
+        key: "key",
+        value: "value",
+        note: "note",
+        selector: "selector",
+        animation: "animation",
+      },
     },
     conventions: {
       agent: "Conventions given to the design agent",

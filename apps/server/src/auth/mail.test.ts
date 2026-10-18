@@ -43,8 +43,12 @@ describe("courriers", () => {
   });
 
   it("parlent la langue demandée, et la déclarent", () => {
-    expect(verificationLetter("en", "a@occulis.test", URL).subject).toBe("Confirm your address — Occulis");
-    expect(verificationLetter("fr", "a@occulis.test", URL).subject).toBe("Confirmez votre adresse — Occulis");
+    expect(verificationLetter("en", "a@occulis.test", URL).subject).toBe(
+      "Confirm your address — Occulis",
+    );
+    expect(verificationLetter("fr", "a@occulis.test", URL).subject).toBe(
+      "Confirmez votre adresse — Occulis",
+    );
     expect(verificationLetter("fr", "a@occulis.test", URL).html).toContain('<html lang="fr">');
     expect(verificationLetter("en", "a@occulis.test", URL).html).toContain("Or copy this link");
   });
@@ -52,6 +56,8 @@ describe("courriers", () => {
 
 describe("escapeHtml", () => {
   it("neutralise les cinq caractères significatifs", () => {
-    expect(escapeHtml(`<a href="x" title='y'>&</a>`)).toBe("&lt;a href=&quot;x&quot; title=&#39;y&#39;&gt;&amp;&lt;/a&gt;");
+    expect(escapeHtml(`<a href="x" title='y'>&</a>`)).toBe(
+      "&lt;a href=&quot;x&quot; title=&#39;y&#39;&gt;&amp;&lt;/a&gt;",
+    );
   });
 });

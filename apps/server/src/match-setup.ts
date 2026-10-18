@@ -25,7 +25,10 @@ export async function startMatch(
   const matchId = crypto.randomUUID();
   const seats: Seats = { A: crypto.randomUUID(), B: crypto.randomUUID() };
 
-  const [cardA, cardB] = await Promise.all([readPlayerCard(env.DB, playerA), readPlayerCard(env.DB, playerB)]);
+  const [cardA, cardB] = await Promise.all([
+    readPlayerCard(env.DB, playerA),
+    readPlayerCard(env.DB, playerB),
+  ]);
 
   const config: MatchConfig = {
     matchId,

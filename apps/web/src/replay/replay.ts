@@ -31,7 +31,12 @@ export function movesBetween(before: AdminFrame, after: AdminFrame): Move[] {
   for (const piece of after.pieces) {
     const was = previous.get(piece.id);
     if (was !== undefined && (was.x !== piece.x || was.y !== piece.y)) {
-      moves.push({ pieceId: piece.id, owner: piece.owner, from: { x: was.x, y: was.y }, to: { x: piece.x, y: piece.y } });
+      moves.push({
+        pieceId: piece.id,
+        owner: piece.owner,
+        from: { x: was.x, y: was.y },
+        to: { x: piece.x, y: piece.y },
+      });
     }
   }
   return moves;
@@ -57,7 +62,12 @@ export function frameLabel(match: AdminMatchDetail, index: number): string {
   const entry = match.log[index - 1];
   if (entry === undefined) return "";
   const who = entry.player === null ? "?" : `${entry.player} · ${seatHandle(match, entry.player)}`;
-  return messages().admin.match.frame(index, match.log.length, who, describeEntry(match, index - 1));
+  return messages().admin.match.frame(
+    index,
+    match.log.length,
+    who,
+    describeEntry(match, index - 1),
+  );
 }
 
 export function clampFrame(index: number, count: number): number {
@@ -95,7 +105,11 @@ export function fitScale(
       }
     }
     if (minX > maxX) continue;
-    scale = Math.min(scale, (width - padding * 2) / (maxX - minX), (height - padding * 2) / (maxY - minY));
+    scale = Math.min(
+      scale,
+      (width - padding * 2) / (maxX - minX),
+      (height - padding * 2) / (maxY - minY),
+    );
   }
   return Number.isFinite(scale) && scale > 0 ? scale : 1;
 }

@@ -6,7 +6,9 @@ export const mail = {
     subject: "Confirm your address — Occulis",
     preheader: "One click to open online play.",
     title: "Welcome to Occulis",
-    paragraphs: ["Your account is created. All that remains is to confirm this address: it opens the queue and online matches."],
+    paragraphs: [
+      "Your account is created. All that remains is to confirm this address: it opens the queue and online matches.",
+    ],
     action: "Confirm my address",
     footnote: "If you did not sign up, ignore this message: no account will be activated.",
   },
@@ -30,7 +32,8 @@ export const mail = {
       "If you confirm, a second message will go to the new address to verify it. Nothing changes until both have been confirmed.",
     ],
     action: "Confirm the change",
-    footnote: "If you did not request anything, ignore this message and change your password: someone may have accessed your session.",
+    footnote:
+      "If you did not request anything, ignore this message and change your password: someone may have accessed your session.",
   },
   deleteAccount: {
     subject: "Deleting your account — Occulis",
@@ -47,15 +50,22 @@ export const mail = {
     subject: "Your password has changed — Occulis",
     preheader: "A security notice, nothing to do if it was you.",
     title: "Password changed",
-    paragraphs: ["Your account's password has just been changed, and the other sessions have been closed.", "If it was you, there is nothing to do."],
+    paragraphs: [
+      "Your account's password has just been changed, and the other sessions have been closed.",
+      "If it was you, there is nothing to do.",
+    ],
     action: "See my sessions",
-    footnote: "If it was not you, request a reset right away from the sign-in screen: it will close every session.",
+    footnote:
+      "If it was not you, request a reset right away from the sign-in screen: it will close every session.",
   },
   providerLinked: {
     subject: (provider: string) => `${provider} sign-in added — Occulis`,
     preheader: "A security notice, nothing to do if it was you.",
     title: (provider: string) => `${provider} is linked to your account`,
-    paragraphs: (provider: string) => [`You can now sign in to Occulis with ${provider}.`, "If it was you, there is nothing to do."],
+    paragraphs: (provider: string) => [
+      `You can now sign in to Occulis with ${provider}.`,
+      "If it was you, there is nothing to do.",
+    ],
     action: "Manage my sign-ins",
     footnote: "If it was not you, remove this sign-in from your profile and change your password.",
   },

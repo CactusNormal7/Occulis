@@ -49,5 +49,11 @@ export function ReplayBoard({ board, frames, index, perspective, turns }: Replay
     }
   }, [turns]);
 
-  return <canvas ref={canvas} aria-label={m.admin.match.board} style={{ display: "block", width: "100%", height: "clamp(320px, 58vh, 560px)" }} />;
+  return (
+    <canvas
+      ref={canvas}
+      aria-label={m.admin.match.board}
+      style={{ display: "block", width: "100%", height: "clamp(320px, 58vh, 560px)" }}
+    />
+  );
 }

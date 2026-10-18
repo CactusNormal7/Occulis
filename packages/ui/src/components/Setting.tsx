@@ -1,4 +1,11 @@
-import { useEffect, useRef, type FormEvent, type FormHTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  type FormEvent,
+  type FormHTMLAttributes,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { cx } from "../cx.js";
 import { Button } from "./Button.js";
 import { FormMessage } from "./Form.js";
@@ -67,11 +74,13 @@ export function SettingRow({
           </>
         )}
       </div>
-      {!editing && (action ?? (onEdit !== undefined && (
-        <Button ref={trigger} size="sm" onClick={onEdit} disabled={editDisabled}>
-          {editLabel ?? m.ui.edit}
-        </Button>
-      )))}
+      {!editing &&
+        (action ??
+          (onEdit !== undefined && (
+            <Button ref={trigger} size="sm" onClick={onEdit} disabled={editDisabled}>
+              {editLabel ?? m.ui.edit}
+            </Button>
+          )))}
     </section>
   );
 }
@@ -109,7 +118,9 @@ export function SettingEditor({
   const m = useMessages();
   const form = useRef<HTMLFormElement>(null);
   useEffect(() => {
-    form.current?.querySelector<HTMLInputElement>("input:not([type=hidden]):not([hidden])")?.focus();
+    form.current
+      ?.querySelector<HTMLInputElement>("input:not([type=hidden]):not([hidden])")
+      ?.focus();
   }, []);
 
   const submit = (event: FormEvent) => {
@@ -123,7 +134,13 @@ export function SettingEditor({
   };
 
   return (
-    <form ref={form} className={cx("occ-setting-editor", className)} onSubmit={submit} onKeyDown={escape} {...rest}>
+    <form
+      ref={form}
+      className={cx("occ-setting-editor", className)}
+      onSubmit={submit}
+      onKeyDown={escape}
+      {...rest}
+    >
       {children}
       {note !== undefined && <p className="occ-setting__description">{note}</p>}
       {error !== undefined && <FormMessage tone="error">{error}</FormMessage>}

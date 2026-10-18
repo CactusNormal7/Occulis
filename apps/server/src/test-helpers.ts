@@ -39,7 +39,12 @@ function nextAddress(): string {
   return `10.${(addresses >> 16) & 255}.${(addresses >> 8) & 255}.${addresses & 255}`;
 }
 
-export async function post(path: string, body: unknown, cookie?: string, ip?: string): Promise<Response> {
+export async function post(
+  path: string,
+  body: unknown,
+  cookie?: string,
+  ip?: string,
+): Promise<Response> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "CF-Connecting-IP": ip ?? nextAddress(),
@@ -51,7 +56,11 @@ export async function post(path: string, body: unknown, cookie?: string, ip?: st
     Origin: "https://occulis.test",
   };
   if (cookie !== undefined) headers["Cookie"] = cookie;
-  return SELF.fetch(`https://occulis.test${path}`, { method: "POST", body: JSON.stringify(body), headers });
+  return SELF.fetch(`https://occulis.test${path}`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers,
+  });
 }
 
 /** Rend le cookie de session, tel qu'un navigateur le renverrait. */
@@ -94,7 +103,9 @@ export async function startTestMatch(
   playerB: string,
   options?: { readonly rated: boolean },
 ): Promise<StartedMatch> {
-  const profile = env.DB.prepare("INSERT OR IGNORE INTO players (id, handle, created_at) VALUES (?, ?, ?)");
+  const profile = env.DB.prepare(
+    "INSERT OR IGNORE INTO players (id, handle, created_at) VALUES (?, ?, ?)",
+  );
   await env.DB.batch([playerA, playerB].map((id) => profile.bind(id, id, Date.now())));
   return startMatch(env, playerA, playerB, options);
 }
