@@ -1039,10 +1039,10 @@ type QueueServerMessage =
   | { kind: "protocol-mismatch"; expected: number };
 ```
 
-| Fonction       | Emplacement                   | Rôle                                   |
-| -------------- | ----------------------------- | -------------------------------------- |
-| `encodeView()` | `apps/server/src/protocol.ts` | `PlayerView` → `WireView` sérialisable |
-| `decodeView()` | `apps/server/src/protocol.ts` | `WireView` → `PlayerView`, côté client |
+| Fonction       | Emplacement                      | Rôle                                   |
+| -------------- | -------------------------------- | -------------------------------------- |
+| `encodeView()` | `packages/protocol/src/index.ts` | `PlayerView` → `WireView` sérialisable |
+| `decodeView()` | `packages/protocol/src/index.ts` | `WireView` → `PlayerView`, côté client |
 
 **Pourquoi `WireView` existe** : `PlayerView.visible` est un `ReadonlySet`, et
 `JSON.stringify` sérialise un `Set` en `{}`. `encodeView()` le convertit en tableau,

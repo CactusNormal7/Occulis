@@ -1,8 +1,8 @@
 # Notes d'implémentation — interprétations à valider
 
 `docs/design.md` reste la référence de game design. Ce fichier ne fait que consigner
-les choix qu'il a fallu encoder pour que `packages/core` tourne, alors que le design
-doc ne les tranche pas explicitement. **Aucun n'est acté** : ils sont isolés et
+les choix qu'il a fallu encoder, alors que le design doc ne les tranche pas explicitement :
+d'abord ceux de `packages/core`, puis (à partir de la note 19) ceux du serveur et du client. **Aucun n'est acté** : ils sont isolés et
 faciles à changer, et doivent être confirmés ou corrigés avec le porteur du projet.
 
 ## Interprétations encodées

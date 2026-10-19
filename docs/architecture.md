@@ -4,7 +4,8 @@
 hébergement, base de données, environnements, distribution. Il consigne les décisions
 prises et, comme le design doc, les points encore ouverts.
 
-Rien de ce qui suit n'est implémenté à ce jour : il n'existe ni serveur, ni base, ni CI.
+Ces décisions sont en œuvre — Worker, Durable Objects, D1, environnements, CI/CD —, sauf la
+distribution Electron, pas encore construite, et les points ouverts de la section 7.
 
 ## 1. Cible de distribution
 

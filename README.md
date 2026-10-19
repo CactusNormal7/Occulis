@@ -21,12 +21,15 @@ pnpm dev          # client seul (Vite) ; les maquettes sont servies sur /mockups
 ```
 
 Le jeu se joue contre le serveur. Pour une partie complète en local (client + Worker +
-Durable Objects + D1 locale) :
+Durable Objects + D1 locale), sur `http://localhost:8787` — build du client, migrations
+locales, puis `wrangler dev` :
 
 ```bash
-pnpm --filter @occulis/web build:local
-cd apps/server && pnpm exec wrangler dev
+pnpm local
 ```
+
+Le serveur exige `AUTH_SECRET` dans `apps/server/.dev.vars` ([docs/setup.md](docs/setup.md),
+section 2).
 
 Ouvrir deux navigateurs (ou une fenêtre privée), créer deux comptes, puis lancer une
 partie rapide ou un salon privé par code.

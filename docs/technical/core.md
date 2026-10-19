@@ -539,13 +539,15 @@ tour d'en face ne pouvait pas l'abandonner, et elle restait ouverte.
 
 ### `ActionError`
 
-`game-over` · `unknown-piece` · `not-your-piece` · `unreachable` · `must-do-something` ·
-`unknown-target` · `target-is-friendly` · `target-out-of-melee` ·
-`leaves-commander-exposed`.
+`game-over` · `unknown-piece` · `not-your-piece` · `unreachable`.
+
+Les codes de la capture et de l'échec (`must-do-something`, `unknown-target`,
+`target-is-friendly`, `target-out-of-melee`, `leaves-commander-exposed`) ont disparu avec
+elles (design.md, point ouvert 13).
 
 Ces codes traversent le réseau tels quels (`ServerMessage` de type `rejected`,
-`apps/server/src/protocol.ts`) et sont traduits en français par `describeActionError()`
-(`apps/web/src/ui/messages.ts`).
+`packages/protocol/src/index.ts`) et sont mis en mots par `describeActionError()`
+(`apps/web/src/ui/messages.ts`), dans la langue du joueur.
 
 ### Un piège de performance
 
@@ -649,7 +651,7 @@ pièces.
 
 `viewFor()` produit un objet qui **ne contient pas** les données hors LOS — elles ne sont
 pas masquées à l'affichage, elles sont absentes. C'est exactement ce que le serveur envoie
-(`encodeView()`, `apps/server/src/protocol.ts`). Un fog appliqué seulement côté client
+(`encodeView()`, `packages/protocol/src/index.ts`). Un fog appliqué seulement côté client
 serait contournable via les devtools.
 
 ---
