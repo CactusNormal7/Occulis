@@ -12,9 +12,9 @@ import {
 import type { ScreenPoint } from "../view/iso.js";
 
 /**
- * Seul module du client qui écoute des événements. Il ne dessine rien et ne
- * détient aucun état de rendu : il traduit les gestes en transformations de
- * caméra et en intention de survol.
+ * Les gestes sur le canevas du plateau. Il ne dessine rien et ne détient aucun état de
+ * rendu : il traduit les gestes en transformations de caméra et en intention de survol.
+ * Les écrans en DOM (`ui/`) écoutent leurs propres éléments.
  */
 
 export interface ControlsOptions {

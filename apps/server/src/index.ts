@@ -52,6 +52,8 @@ export default {
     // client statique et les parties, qui ne reposent que sur le jeton de siège, restent
     // servis.
     if (!hasAuthSecret(env)) {
+      // Cette liste doit couvrir tout routeur qui lit une session : une route oubliée ici
+      // serait servie avec le secret public de Better Auth.
       if (
         url.pathname.startsWith("/api/auth/") ||
         url.pathname.startsWith("/api/admin/") ||

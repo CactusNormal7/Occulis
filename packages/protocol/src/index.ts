@@ -97,6 +97,19 @@ export interface Locks {
   readonly opponent: boolean;
 }
 
+/**
+ * L'ordre dans lequel le client les reçoit, et sur lequel `apps/web/src/net/session.ts`
+ * s'appuie :
+ *
+ * - un joueur : `hello` → `welcome` → `spectators`, puis, pendant le déploiement,
+ *   `deployment` et des `deployment-update`, jusqu'à la première `view` ; ensuite des
+ *   `view` après chaque coup ;
+ * - un spectateur : `hello` → `watching`, puis des `view` — aucune pendant le déploiement.
+ *
+ * Chaque `hello`, reconnexion comprise, rediffuse les vues **aux deux joueurs** : c'est ce
+ * qui tient lieu de protocole de reprise, et c'est pourquoi un client peut recevoir une
+ * `view` avant son propre `welcome`. Un refus (`rejected`) ne part qu'à l'émetteur.
+ */
 export type ServerMessage =
   /**
    * Envoyé une fois la version acceptée. Dit au client de quel camp il tient le

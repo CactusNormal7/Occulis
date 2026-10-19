@@ -31,8 +31,8 @@ export type ClickOutcome =
 /**
  * `legal` est la liste que le serveur a calculée sur la position réelle
  * (`PlayerView.legalActions`), et non ce que le client déduirait de sa vue : sous fog
- * il ignore les menaces cachées et les pièces qui barrent une route, donc il
- * proposerait des coups refusés et en cacherait d'acceptables.
+ * il ignore les pièces cachées qui occupent une case ou barrent une route, donc il
+ * proposerait des coups refusés.
  */
 export function selectionFor(legal: readonly Action[], piece: Piece): Selection {
   const moves = new Map<CoordKey, Coord>();

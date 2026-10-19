@@ -204,6 +204,10 @@ export class QueueDO extends DurableObject<Env> {
     const { proposals, proposal } = accept(await this.proposals(), proposalId, entry.connectionId);
     if (proposal === undefined) return;
     if (isSettled(proposal)) {
+      // Réglée et retirée **avant** `seat()`, qui attend la création de la partie : les
+      // input gates ne couvrent pas cet appel sortant, et une acceptation arrivée entre-
+      // temps doit trouver la proposition déjà consommée, sans quoi elle en créerait une
+      // seconde.
       await this.saveProposals(settle(proposals, proposal.id));
       await this.seat(proposal.a, proposal.b, true);
       return;

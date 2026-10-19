@@ -33,7 +33,7 @@ import {
 
 /**
  * Le constructeur d'équipe : les emplacements de la composition à gauche, le plateau et
- * la zone à droite. Il sert au déploiement (`deployment/`) comme à la préparation hors
+ * la zone à droite. Il sert au déploiement (`prepare/`) comme à la préparation hors
  * partie (`presets/`) — l'état vit chez l'appelant (`draft`, `onChange`), ce composant ne
  * fait que le montrer et le modifier par `team-builder/model.ts`.
  */

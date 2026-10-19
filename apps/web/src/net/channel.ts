@@ -83,6 +83,9 @@ export function openChannel<TIn, TOut>(options: ChannelOptions<TIn, TOut>): Chan
   }
 
   return {
+    // Hors connexion, le message est perdu, pas mis en attente : à la reconnexion, `hello`
+    // fait rediffuser l'état, et un coup rejoué à l'aveugle sur une position qui a pu
+    // changer serait pire qu'un coup à rejouer. L'appelant le sait par `onStatus`.
     send: (message) => {
       if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
     },

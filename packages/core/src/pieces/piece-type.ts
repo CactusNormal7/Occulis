@@ -40,8 +40,9 @@ export abstract class PieceType {
   }
 
   /**
-   * Pièce maîtresse à protéger : sa capture met fin à la partie. Aucune spécificité
-   * de mouvement pour l'instant (docs/design.md section 7).
+   * Pièce maîtresse à protéger. Sans capture, sa perte ne termine plus la partie
+   * (design.md, point ouvert 13) ; aucune spécificité de mouvement pour l'instant
+   * (docs/design.md section 7).
    */
   get isCommander(): boolean {
     return this.role === "commander";

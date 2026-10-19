@@ -3,9 +3,10 @@ import { type Board, type Coord, type PieceId, chebyshevDistance } from "@occuli
 /**
  * Interpolation du déplacement d'une pièce. Module pur : ni PixiJS, ni DOM.
  *
- * L'action est appliquée à l'état **immédiatement** ; seule la position à l'écran
- * est interpolée. L'animation n'est donc jamais une source de vérité, et
- * l'interrompre ne peut pas désynchroniser la partie.
+ * La position vient toujours de la dernière vue du serveur ; seul le trajet à l'écran
+ * est interpolé, à partir de ce que cette vue a fait bouger (`main.ts`, `adopt()`).
+ * L'animation n'est donc jamais une source de vérité, et l'interrompre ne peut pas
+ * désynchroniser la partie.
  */
 
 const BASE_MS = 200;

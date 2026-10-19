@@ -32,6 +32,9 @@ export class SocialDO extends DurableObject<Env> {
     const url = new URL(request.url);
     const self = url.searchParams.get("player") ?? "";
     if (self.length === 0) return new Response("player required", { status: 400 });
+    // Un DO ne retrouve pas le nom qui l'a désigné (`idFromName`) : chaque requête du
+    // Worker le rappelle, et le stockage le garde pour la fermeture d'un socket, qui
+    // arrive sans requête — souvent après une hibernation.
     await this.ctx.storage.put("player", self);
 
     if (url.pathname === "/push") {

@@ -124,6 +124,9 @@ export function viewFor(state: GameState, knowledge: PlayerKnowledge): PlayerVie
     }
   }
 
+  // `observe()` garde aussi en mémoire les adverses vus en ce moment, à leur position
+  // courante : c'est ce qui en fera des fantômes dès qu'ils quitteront la vue. Tant
+  // qu'ils sont visibles, ils ne sont pas des fantômes.
   const seenNow = new Set(visibleEnemies.map((piece) => piece.id));
   const ghosts = [...knowledge.remembered.values()].filter((ghost) => !seenNow.has(ghost.id));
 
