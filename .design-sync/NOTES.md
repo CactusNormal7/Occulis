@@ -1,6 +1,8 @@
 # Notes de synchronisation — Occulis UI
 
 Projet Claude Design : « Occulis UI » (`projectId` dans `config.json`), forme `package`, sans Storybook.
+Le projet d'origine a été supprimé et recréé le 2026-10-19 (nouvel identifiant) : son ancre `_ds_sync.json`
+date de ce jour-là.
 
 ## Préparer un re-sync
 
@@ -11,6 +13,12 @@ Projet Claude Design : « Occulis UI » (`projectId` dans `config.json`), forme 
   Depuis le 2026-10-15 : **Playwright 1.64.0**, Chromium révision 1248, installé par
   `cd .ds-sync && npx playwright install chromium` (le cache 1234 avait disparu du poste). Un autre cache
   demandera une autre version (voir `node_modules/playwright-core/browsers.json`).
+- **Sous WSL (`~/docs/Occulis`, 2026-10-19)** : le cache Playwright contient Chromium **1228**, donc
+  `npm i playwright@1.61.0` dans `.ds-sync/`. Le headless shell y échoue au lancement (« Target page, context
+  or browser has been closed ») faute de `libasound.so.2` : sans `sudo`, `apt-get download libasound2t64` puis
+  `dpkg-deb -x` dans un dossier temporaire, et exporter `LD_LIBRARY_PATH=<dossier>/usr/lib/x86_64-linux-gnu`
+  avant `package-validate.mjs` et `package-capture.mjs`. Le shell est zsh : une variable contenant plusieurs
+  fichiers n'est pas découpée, les nommer un à un.
 - **Le dossier est sur le Bureau, synchronisé par iCloud, qui fabrique des copies numérotées** (`Button 3.jsx`,
   `react 2.js`, `Reveal 2.tsx`…) jusque dans `ds-bundle/`. Le `.gitignore` les écarte de git (`* 2.*`), mais pas
   de l'envoi : **filtrer la liste d'envoi** (`grep -vE ' [0-9]+(\.[A-Za-z.]+)?$'`). Dans `.design-sync/previews/`,
@@ -53,5 +61,5 @@ Projet Claude Design : « Occulis UI » (`projectId` dans `config.json`), forme 
   des parcours de compte (`FormPanel`, `PasswordField`, `SettingRow`…) : correction proposée, pas encore faite.
 - Les tokens sont générés depuis `packages/ui/src/tokens.ts` ; `tokens.test.ts` garde `generated/tokens.css`
   synchrone, mais seul le build met `dist/styles.css` à jour — reconstruire avant tout re-sync.
-- Le rendu n'a été vérifié qu'en Chromium 1234 (headless shell) ; aucune police n'est servie, la monospace est
+- Le rendu n'a été vérifié qu'en Chromium 1234 puis 1228 (headless shell) ; aucune police n'est servie, la monospace est
   celle du système — elle diffère d'une machine à l'autre, volontairement.
