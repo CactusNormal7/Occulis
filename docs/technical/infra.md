@@ -95,7 +95,10 @@ Conditionné à `needs.target.outputs.wrangler_env != ''`. Utilise l'environneme
 homonyme (`environment:`), ce qui permet d'y attacher des secrets et des règles de
 protection. Trois étapes, **dans cet ordre** :
 
-1. **Build du client** — `pnpm --filter @occulis/web build`. Le Worker sert
+1. **Build du client** — `pnpm --filter @occulis/web build` en production,
+   `build:local` (`--mode mockups`) partout ailleurs (recette, branches) : le bundle du jeu
+   est identique, s'y ajoutent le labo de la refonte sous `/lab/` et les maquettes sous
+   `/mockups/`, qui n'atteignent donc jamais la production. Le Worker sert
    `../web/dist` : le client doit exister avant le déploiement, et provenir du **même
    commit** que le serveur, sinon les deux n'ont pas le même `core`.
 2. **Migrations D1** — `wrangler d1 migrations apply … --remote --env <env>`. Avant le
