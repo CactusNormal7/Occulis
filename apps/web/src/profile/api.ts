@@ -11,7 +11,8 @@ import type {
 } from "@occulis/protocol";
 import { messages } from "../locale/current.js";
 import { authMessage, ROUTE_PATHS } from "../net/auth.js";
-import type { Outcome } from "../admin/api.js";
+import type { Outcome } from "../load/cache.js";
+import { type ErrorWording, jsonInit, request } from "../net/http.js";
 
 export type { Outcome };
 
@@ -27,33 +28,21 @@ export type { Outcome };
 
 export const PAGE_SIZE = 20;
 
-async function call<T>(path: string, init?: RequestInit): Promise<Outcome<T>> {
-  let response: Response;
-  try {
-    response = await fetch(path, init);
-  } catch {
-    return { ok: false, message: messages().profile.unreachable };
-  }
-  const payload = (await response.json().catch(() => ({}))) as T & {
-    code?: string;
-    message?: string;
-  };
-  if (!response.ok) {
-    if (response.status === 401) return { ok: false, message: messages().profile.sessionExpired };
+const WORDING: ErrorWording = {
+  unreachable: () => messages().profile.unreachable,
+  describe: (status, payload) => {
+    if (status === 401) return messages().profile.sessionExpired;
     const presetError =
       payload.code === undefined ? undefined : messages().team.presets.errors[payload.code];
-    if (presetError !== undefined) return { ok: false, message: presetError };
-    return { ok: false, message: authMessage(response.status, payload) };
-  }
-  return { ok: true, value: payload };
-}
+    return presetError ?? authMessage(status, payload);
+  },
+};
+
+const call = <T>(path: string, init?: RequestInit): Promise<Outcome<T>> =>
+  request<T>(path, init, WORDING);
 
 const send = <T>(path: string, body: unknown): Promise<Outcome<T>> =>
-  call<T>(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  call<T>(path, jsonInit("POST", body));
 
 export const profile = () => call<MeProfile>("/api/me");
 export const sessions = () => call<MeSession[]>("/api/me/sessions");
@@ -109,12 +98,7 @@ export const createPreset = (name: string, team: readonly TeamEntry[]) =>
 export const updatePreset = (
   id: string,
   change: { readonly name?: string; readonly team?: readonly TeamEntry[] },
-) =>
-  call<TeamPreset>(`/api/me/presets/${encodeURIComponent(id)}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(change),
-  });
+) => call<TeamPreset>(`/api/me/presets/${encodeURIComponent(id)}`, jsonInit("PUT", change));
 export const deletePreset = (id: string) =>
   call<{ deleted: number }>(`/api/me/presets/${encodeURIComponent(id)}`, { method: "DELETE" });
 export const setDefaultPreset = (id: string) =>

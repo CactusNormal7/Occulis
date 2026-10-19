@@ -2,6 +2,7 @@ import { isAdmin, type Auth } from "../auth/better-auth.js";
 import { checkHandle } from "../auth/handle.js";
 import { parseMatchFilter } from "./paging.js";
 import { listMatches, readMatch, readPlayer, readStats, renamePlayer } from "./queries.js";
+import { readBody } from "../http.js";
 
 /**
  * Les routes du back-office propres au projet, sous `/api/admin/`.
@@ -67,7 +68,7 @@ async function refuseNonAdmin(
 }
 
 async function rename(env: Env, request: Request, playerId: string): Promise<Response> {
-  const body = (await request.json().catch(() => ({}))) as { handle?: unknown };
+  const body = (await readBody(request)) as { handle?: unknown };
   const checked = checkHandle(body.handle);
   if (!checked.ok) return Response.json({ code: checked.code }, { status: 400 });
   const handle = checked.handle;

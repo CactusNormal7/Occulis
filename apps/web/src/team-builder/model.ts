@@ -92,7 +92,7 @@ export function setKind(
 }
 
 /** L'emplacement posé sur `coord`, s'il y en a un. */
-export function slotAt(draft: TeamDraft, coord: Coord): number | undefined {
+function slotAt(draft: TeamDraft, coord: Coord): number | undefined {
   const index = draft.slots.findIndex(
     (slot) => slot.coord !== undefined && coordEquals(slot.coord, coord),
   );

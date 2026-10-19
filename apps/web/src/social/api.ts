@@ -8,7 +8,8 @@ import type {
   PlayerSearchResult,
   Relation,
 } from "@occulis/protocol";
-import type { Outcome } from "../admin/api.js";
+import type { Outcome } from "../load/cache.js";
+import { type ErrorWording, jsonInit, request } from "../net/http.js";
 import { authMessage } from "../net/auth.js";
 import { messages as dictionary } from "../locale/current.js";
 import { socialMessage } from "./model.js";
@@ -21,33 +22,19 @@ import { socialMessage } from "./model.js";
 
 export const FRIEND_PAGE_SIZE = 20;
 
-async function call<T>(path: string, init?: RequestInit): Promise<Outcome<T>> {
-  let response: Response;
-  try {
-    response = await fetch(path, init);
-  } catch {
-    return { ok: false, message: dictionary().profile.unreachable };
-  }
-  const payload = (await response.json().catch(() => ({}))) as T & {
-    code?: string;
-    message?: string;
-  };
-  if (!response.ok) {
-    if (response.status === 401) return { ok: false, message: dictionary().profile.sessionExpired };
-    return {
-      ok: false,
-      message: socialMessage(payload.code) ?? authMessage(response.status, payload),
-    };
-  }
-  return { ok: true, value: payload };
-}
+const WORDING: ErrorWording = {
+  unreachable: () => dictionary().profile.unreachable,
+  describe: (status, payload) =>
+    status === 401
+      ? dictionary().profile.sessionExpired
+      : (socialMessage(payload.code) ?? authMessage(status, payload)),
+};
+
+const call = <T>(path: string, init?: RequestInit): Promise<Outcome<T>> =>
+  request<T>(path, init, WORDING);
 
 const write = <T>(method: "POST" | "DELETE", path: string, body?: unknown): Promise<Outcome<T>> =>
-  call<T>(path, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? null : JSON.stringify(body),
-  });
+  call<T>(path, jsonInit(method, body));
 
 const id = encodeURIComponent;
 

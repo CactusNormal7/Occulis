@@ -10,6 +10,7 @@ import {
   type Outcome,
   type Piece,
   type PlayerId,
+  rulesetFor,
 } from "@occulis/core";
 import type {
   AdminFrame,
@@ -20,7 +21,6 @@ import type {
   AdminPlayer,
   AdminStats,
 } from "@occulis/protocol";
-import { rulesetFor } from "../rulesets.js";
 import type { MatchFilter } from "./paging.js";
 
 /**

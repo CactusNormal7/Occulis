@@ -25,6 +25,7 @@ import {
 } from "./queries.js";
 import { decideRequest } from "./relations.js";
 import { prefixRange } from "./search.js";
+import { readBody } from "../http.js";
 
 /**
  * Les routes du système d'amis : `/api/friends/*`, `/api/players/search` et
@@ -73,7 +74,7 @@ export async function handleSocial(
   }
 
   if (method === "POST" && path === "/api/friends/requests") {
-    const { playerId } = (await request.json().catch(() => ({}))) as { playerId?: unknown };
+    const { playerId } = (await readBody(request)) as { playerId?: unknown };
     if (typeof playerId !== "string") return failure("UNKNOWN_PLAYER");
     const decision = decideRequest(
       self,
@@ -95,7 +96,7 @@ export async function handleSocial(
   }
 
   if (method === "POST" && path === "/api/blocks") {
-    const { playerId } = (await request.json().catch(() => ({}))) as { playerId?: unknown };
+    const { playerId } = (await readBody(request)) as { playerId?: unknown };
     if (typeof playerId !== "string" || playerId === self) return failure("UNKNOWN_PLAYER");
     if ((await handleOf(db, playerId)) === undefined) return failure("UNKNOWN_PLAYER");
     await block(db, self, playerId, now);
@@ -171,7 +172,7 @@ export async function handleSocial(
 
   if (method === "POST") {
     if (rest === "/messages") {
-      const { body } = (await request.json().catch(() => ({}))) as { body?: unknown };
+      const { body } = (await readBody(request)) as { body?: unknown };
       const checked = checkMessage(body);
       if (!checked.ok) return failure(checked.code);
       const message = await insertMessage(db, self, friend, checked.body, now);

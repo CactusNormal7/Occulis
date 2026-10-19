@@ -122,7 +122,7 @@ export const ROUTE_PATHS = {
 } as const;
 
 /** Où ramène le lien de vérification d'adresse, une fois l'adresse confirmée. */
-export const VERIFIED_PATH = "/?verified=1";
+const VERIFIED_PATH = "/?verified=1";
 
 /**
  * La traduction des refus. Elle s'accroche au **code** et jamais à la phrase : le

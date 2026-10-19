@@ -178,12 +178,6 @@ export function adminMessage(status: number, payload: { code?: string; message?:
   return payload.message ?? m.failed(status);
 }
 
-/** Deux lettres pour l'insigne d'un compte, faute d'avatar. */
-export function initials(name: string): string {
-  const letters = name.replace(/[^\p{L}\p{N}]/gu, "");
-  return (letters.slice(0, 2) || "?").toUpperCase();
-}
-
 /** Les durées proposées d'un clic dans la fenêtre de suspension. */
 export function banPresets(): readonly { readonly label: string; readonly days: string }[] {
   const m = messages().admin.ban.presets;

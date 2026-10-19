@@ -227,7 +227,8 @@ chaque ouverture du canal social.
 | `apps/web/src/net/match-channel.ts`             | Le canal d'une partie, assis (`connectToMatch`) ou spectateur (`watchMatch`)                                                                                                                   | non                                             |
 | `apps/web/src/net/social-channel.ts`            | Le canal social de la page (`/api/social`)                                                                                                                                                     | non                                             |
 | `apps/web/src/social/model.ts`                  | État social : liste d'amis retouchée par les poussées, défis, non-lus, relation à un joueur (`relationTo()`), refus traduits (`social.errors`)                                                 | oui                                             |
-| `apps/web/src/social/api.ts`                    | Appels des routes d'amis, partagés par le menu et le profil                                                                                                                                    | non                                             |
+| `apps/web/src/net/http.ts`                      | `request()` : un appel JSON qui ne rejette jamais, échec mis en mots par la famille d'appels (`ErrorWording`) ; `jsonInit()`                                                                   | non                                             |
+| `apps/web/src/social/api.ts`                    | Appels des routes d'amis, partagés par le menu et le profil ; comme `profile/api.ts` et `admin/api.ts`, sur `net/http.ts`                                                                      | non                                             |
 | `apps/web/src/ui/friends-panel.ts`              | Le panneau « Amis » du menu : défis reçus, présence, défier, regarder                                                                                                                          | non                                             |
 | `apps/web/src/net/channel.ts`                   | Transport WebSocket et reconnexion                                                                                                                                                             | non                                             |
 | `apps/web/src/net/backoff.ts`                   | Délai avant la n-ième tentative de reconnexion                                                                                                                                                 | oui                                             |
@@ -432,10 +433,11 @@ Constantes : `MIN_SCALE` 0,35 · `MAX_SCALE` 3 · `ZOOM_STEP` 1,12 ·
 
 ## `view/picking.ts` — quelle case est sous le curseur
 
-| Fonction                   | Rôle                                                                  |
-| -------------------------- | --------------------------------------------------------------------- |
-| `containsPoint()` (privée) | Point dans un quadrilatère convexe, par signe des produits vectoriels |
-| `tileAt()`                 | Point en espace de projection → `Coord` ou `undefined`                |
+| Fonction                   | Rôle                                                                                                                                    |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `containsPoint()` (privée) | Point dans un quadrilatère convexe, par signe des produits vectoriels                                                                   |
+| `tileAt()`                 | Point en espace de projection → `Coord` ou `undefined`                                                                                  |
+| `sameCoord()`              | Deux cases désignées (ou aucune) sont-elles la même — partagé par les gestes (`input/controls.ts`) et la scène (`render/pixi/scene.ts`) |
 
 **Pas de projection inverse analytique.** Inverser la matrice isométrique donnerait la
 case du _sol_ sous le curseur, ce qui est faux dès qu'un relief se dresse devant.
@@ -998,18 +1000,18 @@ mis à l'échelle d'un pixel du tampon et gardé par contexte.
 
 Les phrases sont dans `@occulis/i18n` (domaine `game`) ; ce module choisit laquelle dire.
 
-| Fonction                | Rôle                                                                          |
-| ----------------------- | ----------------------------------------------------------------------------- |
-| `formatCoord()`         | `Coord` → `"(x,y)"`                                                           |
-| `describeFault()`       | Faute de saisie → phrase                                                      |
-| `describeActionError()` | `ActionError` de `core` → phrase                                              |
-| `describeMove()`        | Compte rendu d'un coup joué                                                   |
-| `describeOutcome()`     | Fin de partie                                                                 |
-| `describeTurn()`        | Ligne d'état : tour, joueur au trait, point de vue, amis qui regardent        |
-| `describeWatching()`    | Ligne d'état d'un spectateur : tour, joueur au trait, ami regardé et son camp |
-| `describeTile()`        | Lecture d'une case désignée au clic                                           |
-| `describeRejection()`   | Un refus du serveur : règle de coup, d'équipe, siège ou phase                 |
-| `describeTeamError()`   | Pourquoi une équipe n'est pas déployable                                      |
+| Fonction                  | Rôle                                                                          |
+| ------------------------- | ----------------------------------------------------------------------------- |
+| `formatCoord()` (interne) | `Coord` → `"(x,y)"`                                                           |
+| `describeFault()`         | Faute de saisie → phrase                                                      |
+| `describeActionError()`   | `ActionError` de `core` → phrase                                              |
+| `describeMove()`          | Compte rendu d'un coup joué                                                   |
+| `describeOutcome()`       | Fin de partie                                                                 |
+| `describeTurn()`          | Ligne d'état : tour, joueur au trait, point de vue, amis qui regardent        |
+| `describeWatching()`      | Ligne d'état d'un spectateur : tour, joueur au trait, ami regardé et son camp |
+| `describeTile()`          | Lecture d'une case désignée au clic                                           |
+| `describeRejection()`     | Un refus du serveur : règle de coup, d'équipe, siège ou phase                 |
+| `describeTeamError()`     | Pourquoi une équipe n'est pas déployable                                      |
 
 `describeTile()` rend `"1,6 · height 0"` (`"1,6 · hauteur 0"` en français), avec
 `· impassable` le cas échéant. La
@@ -1272,7 +1274,6 @@ Les épaisseurs sont en **pixels du plateau** (`view/pixel.ts`), jamais en pixel
 | Fonction        | Rôle                                                                 |
 | --------------- | -------------------------------------------------------------------- |
 | `storedTheme()` | Le thème relu du stockage (`THEME_STORAGE_KEY`), ou celui par défaut |
-| `nextTheme()`   | Le suivant dans la liste, en boucle                                  |
 | `applyTheme()`  | Stockage, `<html data-theme>`, `setLook()`                           |
 
 Le bloc critique (`criticalHead()`) a déjà posé `data-theme` avant la première image, ce

@@ -2,6 +2,7 @@ import type { AdminMatchDetail, AdminMatchPage, AdminPlayer, AdminStats } from "
 import { messages } from "../locale/current.js";
 import { adminMessage, type MatchStatus } from "./model.js";
 import type { Outcome } from "../load/cache.js";
+import { type ErrorWording, jsonInit, request } from "../net/http.js";
 
 /**
  * Les appels du back-office. Deux familles, comme côté serveur :
@@ -38,27 +39,16 @@ export interface AdminSession {
 
 export const PAGE_SIZE = 25;
 
-async function call<T>(path: string, init?: RequestInit): Promise<Outcome<T>> {
-  let response: Response;
-  try {
-    response = await fetch(path, init);
-  } catch {
-    return { ok: false, message: messages().admin.unreachable };
-  }
-  const payload = (await response.json().catch(() => ({}))) as T & {
-    code?: string;
-    message?: string;
-  };
-  if (!response.ok) return { ok: false, message: adminMessage(response.status, payload) };
-  return { ok: true, value: payload };
-}
+const WORDING: ErrorWording = {
+  unreachable: () => messages().admin.unreachable,
+  describe: adminMessage,
+};
+
+const call = <T>(path: string, init?: RequestInit): Promise<Outcome<T>> =>
+  request<T>(path, init, WORDING);
 
 const send = <T>(path: string, body: unknown): Promise<Outcome<T>> =>
-  call<T>(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  call<T>(path, jsonInit("POST", body));
 
 // --- Routes du projet ----------------------------------------------------------
 

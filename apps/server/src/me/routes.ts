@@ -22,6 +22,7 @@ import {
   setDefaultPreset,
   updatePreset,
 } from "./presets.js";
+import { readBody } from "../http.js";
 
 /**
  * Les routes de la page de profil propres au projet, sous `/api/me/`. Le reste de la
@@ -99,7 +100,7 @@ export async function handleMe(
 
   if (request.method === "POST") {
     if (path === "/handle") {
-      const body = (await request.json().catch(() => ({}))) as { handle?: unknown };
+      const body = (await readBody(request)) as { handle?: unknown };
       const result = await changeHandle(env.DB, playerId, body.handle, now);
       if (!result.ok)
         return Response.json({ code: result.code }, { status: statusFor(result.code) });
@@ -109,25 +110,20 @@ export async function handleMe(
       });
     }
     if (path === "/spectators") {
-      const body = (await request.json().catch(() => ({}))) as { allow?: unknown };
+      const body = (await readBody(request)) as { allow?: unknown };
       if (typeof body.allow !== "boolean")
         return Response.json({ code: "INVALID" }, { status: 400 });
       await setAllowSpectators(env.DB, playerId, body.allow);
       return Response.json({ allowSpectators: body.allow });
     }
     if (path === "/showcase") {
-      const result = await setShowcase(env.DB, playerId, await request.json().catch(() => ({})));
+      const result = await setShowcase(env.DB, playerId, await readBody(request));
       return result.ok
         ? Response.json({ showcase: result.showcase })
         : Response.json({ code: result.code }, { status: 400 });
     }
     if (path === "/presets") {
-      const result = await createPreset(
-        env.DB,
-        playerId,
-        await request.json().catch(() => ({})),
-        now,
-      );
+      const result = await createPreset(env.DB, playerId, await readBody(request), now);
       return result.ok
         ? Response.json(result.preset)
         : Response.json({ code: result.code }, { status: presetStatus(result.code) });
@@ -152,13 +148,7 @@ export async function handleMe(
 
   const presetId = path.match(/^\/presets\/([\w-]+)$/)?.[1];
   if (presetId !== undefined && request.method === "PUT") {
-    const result = await updatePreset(
-      env.DB,
-      playerId,
-      presetId,
-      await request.json().catch(() => ({})),
-      now,
-    );
+    const result = await updatePreset(env.DB, playerId, presetId, await readBody(request), now);
     return result.ok
       ? Response.json(result.preset)
       : Response.json({ code: result.code }, { status: presetStatus(result.code) });

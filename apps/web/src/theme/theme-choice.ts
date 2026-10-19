@@ -1,4 +1,4 @@
-import { DEFAULT_THEME, THEME_NAMES, type ThemeName, isThemeName } from "@occulis/ui/tokens";
+import { DEFAULT_THEME, type ThemeName, isThemeName } from "@occulis/ui/tokens";
 import { THEME_STORAGE_KEY } from "@occulis/ui/critical";
 import { setLook } from "./theme.js";
 
@@ -16,11 +16,6 @@ export function storedTheme(): ThemeName {
   } catch {
     return DEFAULT_THEME;
   }
-}
-
-/** Le thème qui suit `current` dans la liste, en boucle. */
-export function nextTheme(current: ThemeName): ThemeName {
-  return THEME_NAMES[(THEME_NAMES.indexOf(current) + 1) % THEME_NAMES.length] ?? DEFAULT_THEME;
 }
 
 /** Applique un thème partout : stockage, document, rendu. Rend le thème appliqué. */

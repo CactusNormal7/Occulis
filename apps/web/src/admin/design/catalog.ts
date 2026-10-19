@@ -59,7 +59,7 @@ function balanced(source: string, from: number, open: string, close: string): st
 }
 
 /** Un commentaire `/** … *\/` sans ses astérisques, paragraphes conservés. */
-export function cleanDoc(comment: string): string {
+function cleanDoc(comment: string): string {
   return comment
     .replace(/^\/\*\*\s?/, "")
     .replace(/\s*\*\/$/, "")

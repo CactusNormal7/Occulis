@@ -8,7 +8,6 @@ import {
   describeBan,
   describeResult,
   formatDate,
-  initials,
   pageLabel,
   parseRoute,
   quickActions,
@@ -196,12 +195,6 @@ describe("actions rapides", () => {
 });
 
 describe("petites mises en forme", () => {
-  it("tire deux lettres d'un pseudo", () => {
-    expect(initials("cactus")).toBe("CA");
-    expect(initials("-x")).toBe("X");
-    expect(initials("--")).toBe("?");
-  });
-
   it("calcule un taux de victoire sur les seules parties conclues", () => {
     expect(winRate({ won: 1, lost: 3 })).toBe(25);
     expect(winRate({ won: 0, lost: 0 })).toBeNull();

@@ -15,7 +15,7 @@ import { look } from "../../theme/theme.js";
  */
 
 /** Le rayon du plateau autour du pivot, en cases : le cercle doit le contenir entier. */
-export function boardRadius(board: Board, proj: IsoProjection): number {
+function boardRadius(board: Board, proj: IsoProjection): number {
   let radius = 0;
   for (const tile of board.allTiles()) {
     const dx = Math.abs(tile.coord.x - proj.pivot.x) + 0.5;

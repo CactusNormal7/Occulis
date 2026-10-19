@@ -24,6 +24,7 @@ import { type LightMap, crestAt, lightAt, relight } from "../../view/reveal.js";
 import { type Landing, introLength, introOf, materializeAt } from "../../view/effects.js";
 import { easeOutCubic, phase } from "../../view/easing.js";
 import { breath, snap } from "../../view/pixel.js";
+import { sameCoord } from "../../view/picking.js";
 import { drawSigil } from "./ground.js";
 import { drawHover, drawLanding, drawSelection } from "./overlay.js";
 import { drawPiece } from "./pieces.js";
@@ -126,11 +127,6 @@ type Drawable =
 
 function isTile(drawable: Drawable): drawable is Extract<Drawable, { tile: Tile }> {
   return "tile" in drawable;
-}
-
-function sameCoord(a: Coord | undefined, b: Coord | undefined): boolean {
-  if (a === undefined || b === undefined) return a === b;
-  return a.x === b.x && a.y === b.y;
 }
 
 /** Les pièces réellement vues l'emportent sur un fantôme au même endroit. */

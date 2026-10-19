@@ -19,6 +19,7 @@ import {
   type MatchRow,
 } from "../admin/queries.js";
 import type { Page } from "../admin/paging.js";
+import { INITIAL_RATING } from "../rating.js";
 
 /**
  * Les lectures et écritures de la page de profil sur D1.
@@ -71,7 +72,7 @@ export async function readProfileRow(
     { handle_changed_at: number | null; allow_spectators: number; elo: number } | undefined;
   return {
     handleChangedAt: own?.handle_changed_at ?? null,
-    elo: own?.elo ?? 1200,
+    elo: own?.elo ?? INITIAL_RATING,
     createdAt: createdAt === undefined ? 0 : Date.parse(createdAt),
     hasPassword: linked.some(
       (account) => account.provider_id === "credential" && account.has_password === 1,

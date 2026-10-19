@@ -19,7 +19,7 @@ import { messages } from "../locale/current.js";
  * `@occulis/i18n`, dans la langue courante ; ce module choisit laquelle dire.
  */
 
-export function formatCoord(coord: Coord): string {
+function formatCoord(coord: Coord): string {
   return `(${coord.x},${coord.y})`;
 }
 

@@ -11,9 +11,11 @@ import {
   type ScenarioSnapshot,
   type TeamEntry,
   advanceMemory,
+  opponentOf,
   createGame,
   deployTeams,
   replayMemory,
+  rulesetFor,
   frozenScenario,
   validateTeam,
   viewFor,
@@ -28,8 +30,7 @@ import {
   encodeView,
   parseClientMessage,
 } from "@occulis/protocol";
-import { ratingChanges } from "./rating.js";
-import { rulesetFor } from "./rulesets.js";
+import { INITIAL_RATING, ratingChanges } from "./rating.js";
 import { type Seats, denyOutOfTurn, seatFor } from "./seating.js";
 
 /** Le tag d'un spectateur : distinct des tags de siège `A` / `B`, donc jamais un joueur. */
@@ -180,7 +181,7 @@ export class MatchDO extends DurableObject<Env> {
     // s'il n'est pas là sans qu'aucun départ ait été noté — une partie d'avant le forfait —,
     // commence à compter maintenant : sinon le joueur revenu l'attendrait à jamais.
     await this.ctx.storage.delete(absenceKey(player));
-    const other: PlayerId = player === "A" ? "B" : "A";
+    const other = opponentOf(player);
     if (
       !this.connected(other) &&
       (await this.ctx.storage.get<number>(absenceKey(other))) === undefined
@@ -597,7 +598,7 @@ export class MatchDO extends DurableObject<Env> {
       .prepare("SELECT id, elo FROM players WHERE id IN (?, ?)")
       .bind(A, B)
       .all<{ id: string; elo: number }>();
-    const elo = (id: string) => rows.results.find((row) => row.id === id)?.elo ?? 1200;
+    const elo = (id: string) => rows.results.find((row) => row.id === id)?.elo ?? INITIAL_RATING;
     const changes = ratingChanges(elo(A), elo(B), state.outcome.winner === "A" ? 1 : 0);
     const bump = db.prepare(
       `UPDATE players SET elo = elo + ? WHERE id = ?
@@ -614,7 +615,7 @@ export class MatchDO extends DurableObject<Env> {
     const config = await this.config();
     const deployment = (await this.scenario()).deployment;
     if (deployment === undefined) return;
-    const other: PlayerId = player === "A" ? "B" : "A";
+    const other = opponentOf(player);
     const deadline = (await this.ctx.storage.get<number>("deadline")) ?? Date.now();
     this.send(ws, {
       kind: "deployment",
@@ -710,7 +711,7 @@ export class MatchDO extends DurableObject<Env> {
 }
 
 function locksFor(teams: LockedTeams, player: PlayerId): Locks {
-  const other: PlayerId = player === "A" ? "B" : "A";
+  const other = opponentOf(player);
   return { self: teams[player] !== undefined, opponent: teams[other] !== undefined };
 }
 
@@ -719,7 +720,7 @@ function cardOf(config: MatchConfig, player: PlayerId): PlayerCard {
   return (
     config.cards?.[player] ?? {
       handle: config.players?.[player] ?? player,
-      elo: 1200,
+      elo: INITIAL_RATING,
       played: 0,
       won: 0,
       feats: [],

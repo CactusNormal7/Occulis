@@ -1,4 +1,5 @@
 import type { PlayerStats } from "./catalog.js";
+import { INITIAL_RATING } from "../rating.js";
 
 /** Une partie terminée telle que la lit `readPlayerStats()`. */
 export interface FinishedRow {
@@ -49,6 +50,6 @@ export async function readPlayerStats(db: D1Database, playerId: string): Promise
       )
       .bind(playerId),
   ]);
-  const rating = (player?.results[0] as { elo?: number } | undefined)?.elo ?? 1200;
+  const rating = (player?.results[0] as { elo?: number } | undefined)?.elo ?? INITIAL_RATING;
   return statsFrom((matches?.results ?? []) as FinishedRow[], playerId, rating);
 }

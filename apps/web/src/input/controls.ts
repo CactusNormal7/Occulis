@@ -1,4 +1,4 @@
-import { type Coord, coordEquals } from "@occulis/core";
+import type { Coord } from "@occulis/core";
 import {
   type Camera,
   RADIANS_PER_PIXEL,
@@ -10,6 +10,7 @@ import {
   zoomAt,
 } from "../view/camera.js";
 import type { ScreenPoint } from "../view/iso.js";
+import { sameCoord } from "../view/picking.js";
 
 /**
  * Les gestes sur le canevas du plateau. Il ne dessine rien et ne détient aucun état de
@@ -61,11 +62,6 @@ function dragKindOf(button: number): DragKind | undefined {
 function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
-}
-
-function sameCoord(a: Coord | undefined, b: Coord | undefined): boolean {
-  if (a === undefined || b === undefined) return a === b;
-  return coordEquals(a, b);
 }
 
 export function attachControls(options: ControlsOptions): void {

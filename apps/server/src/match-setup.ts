@@ -1,6 +1,10 @@
 import type { MatchConfig } from "./match-do.js";
-import { CURRENT_RULESET_VERSION } from "./rulesets.js";
-import { DEFAULT_SCENARIO, scenarioFor, snapshotScenario } from "@occulis/core";
+import {
+  CURRENT_RULESET_VERSION,
+  DEFAULT_SCENARIO,
+  scenarioFor,
+  snapshotScenario,
+} from "@occulis/core";
 import { readPlayerCard } from "./cards.js";
 import type { Seats } from "./seating.js";
 

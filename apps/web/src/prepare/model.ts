@@ -24,7 +24,7 @@ export function secondsLeft(ms: number): number {
  * a tout posé sans verrouiller garde son placement plutôt que celui par défaut. Le délai
  * laisse au message le temps d'arriver avant l'alarme du serveur.
  */
-export const AUTO_SEND_MS = 1500;
+const AUTO_SEND_MS = 1500;
 
 export function shouldAutoSend(
   remaining: number,
