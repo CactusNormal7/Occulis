@@ -1,5 +1,17 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
-import { AsideLayout, Badge, Button, Card, CodeBlock, EmptyState, NavList, Note, Prose, Stage, useMessages } from "@occulis/ui";
+import {
+  AsideLayout,
+  Badge,
+  Button,
+  Card,
+  CodeBlock,
+  EmptyState,
+  NavList,
+  Note,
+  Prose,
+  Stage,
+  useMessages,
+} from "@occulis/ui";
 import { routeHash } from "../model.js";
 import { COMPONENTS, type ComponentEntry, type Story } from "./sources.js";
 
@@ -30,7 +42,11 @@ export function Components({ selected }: { selected: string | null }) {
         </Card>
       }
     >
-      {current === undefined ? <EmptyState>{m.noStory}</EmptyState> : <ComponentPage key={current.name} entry={current} />}
+      {current === undefined ? (
+        <EmptyState>{m.noStory}</EmptyState>
+      ) : (
+        <ComponentPage key={current.name} entry={current} />
+      )}
     </AsideLayout>
   );
 }
@@ -45,16 +61,22 @@ function ComponentPage({ entry }: { entry: ComponentEntry }) {
           {entry.doc.length === 0 ? (
             <p>{m.noDoc}</p>
           ) : (
-            entry.doc.split(/\n\s*\n/).map((paragraph, index) => <p key={index}>{paragraph.replace(/\n/g, " ")}</p>)
+            entry.doc
+              .split(/\n\s*\n/)
+              .map((paragraph, index) => <p key={index}>{paragraph.replace(/\n/g, " ")}</p>)
           )}
         </Prose>
-        {entry.file !== undefined && <Note>{m.source(`packages/ui/src/components/${entry.file}`)}</Note>}
+        {entry.file !== undefined && (
+          <Note>{m.source(`packages/ui/src/components/${entry.file}`)}</Note>
+        )}
         {overlay && <Note>{m.overlayHint}</Note>}
       </Card>
       {entry.stories.length === 0 ? (
         <EmptyState>{m.noStory}</EmptyState>
       ) : (
-        entry.stories.map((story) => <StoryStage key={story.name} story={story} overlay={overlay} />)
+        entry.stories.map((story) => (
+          <StoryStage key={story.name} story={story} overlay={overlay} />
+        ))
       )}
       {entry.props !== undefined && (
         <Card title={m.props}>
@@ -134,6 +156,10 @@ class Contained extends Component<{ children: ReactNode }, { error: string | nul
   }
 
   override render() {
-    return this.state.error === null ? this.props.children : <EmptyState>{this.state.error}</EmptyState>;
+    return this.state.error === null ? (
+      this.props.children
+    ) : (
+      <EmptyState>{this.state.error}</EmptyState>
+    );
   }
 }

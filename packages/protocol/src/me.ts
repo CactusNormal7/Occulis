@@ -7,7 +7,7 @@
  * par coup, et jamais la position complète — le fog s'applique aussi après la partie.
  * Les horodatages sont en millisecondes.
  */
-import type { Action, Outcome, PlayerId, TeamEntry } from "@occulis/core";
+import type { Action, Outcome, PlayerId, TeamEntry, Tile } from "@occulis/core";
 
 export interface MeProfile {
   readonly handle: string;
@@ -158,5 +158,7 @@ export interface MeMatchDetail extends MeMatchSummary {
   readonly log: readonly MeLogEntry[];
   /** `frames[0]` est la position de départ, `frames[n + 1]` celle qui suit le coup `n`. */
   readonly frames: readonly MeFrame[];
+  /** Les cases de la carte que la partie a figée ; `null` si le rejeu n'a pas pu la lire. */
+  readonly board: readonly Tile[] | null;
   readonly replayError: string | null;
 }

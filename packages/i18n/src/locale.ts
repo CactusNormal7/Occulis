@@ -22,7 +22,10 @@ export function isLocale(value: unknown): value is Locale {
  * première langue connue de son navigateur (`Accept-Language` ou `navigator.languages`),
  * sinon l'anglais.
  */
-export function resolveLocale(saved: string | null | undefined, preferred: string | readonly string[] | null | undefined): Locale {
+export function resolveLocale(
+  saved: string | null | undefined,
+  preferred: string | readonly string[] | null | undefined,
+): Locale {
   if (isLocale(saved)) return saved;
   for (const tag of preferredTags(preferred)) {
     const base = tag.split("-")[0]?.toLowerCase();
@@ -32,7 +35,9 @@ export function resolveLocale(saved: string | null | undefined, preferred: strin
 }
 
 /** Les étiquettes d'un en-tête `Accept-Language`, par préférence décroissante. */
-function preferredTags(preferred: string | readonly string[] | null | undefined): readonly string[] {
+function preferredTags(
+  preferred: string | readonly string[] | null | undefined,
+): readonly string[] {
   if (preferred === null || preferred === undefined) return [];
   if (typeof preferred !== "string") return preferred;
   return preferred

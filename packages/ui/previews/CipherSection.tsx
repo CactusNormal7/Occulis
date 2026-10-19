@@ -1,6 +1,16 @@
 import { useState } from "react";
 import { Badge, Button, Card, Segmented, Stage } from "../src/index.js";
-import { CIPHER_ALPHABETS, CIPHER_CHARSET, CipherFrieze, CipherText, Glyph, alphabet, cipherGlyph, type CipherAlphabet, type CipherMode } from "../src/lab/index.js";
+import {
+  CIPHER_ALPHABETS,
+  CIPHER_CHARSET,
+  CipherFrieze,
+  CipherText,
+  Glyph,
+  alphabet,
+  cipherGlyph,
+  type CipherAlphabet,
+  type CipherMode,
+} from "../src/lab/index.js";
 
 const DIRECTIONS: Record<CipherAlphabet, { title: string; text: string }> = {
   lattice: {
@@ -34,8 +44,21 @@ function AlphabetTable({ name, decodable }: { name: CipherAlphabet; decodable: b
 function HoverLink({ label, name }: { label: string; name: CipherAlphabet }) {
   const [play, setPlay] = useState(0);
   return (
-    <a href="#cipher" className="occ-label" onMouseEnter={() => setPlay((value) => value + 1)} onFocus={() => setPlay((value) => value + 1)}>
-      <CipherText text={label} alphabet={name} mode={play === 0 ? "plain" : "decode"} pace="base" playKey={play} decodable={false} seed={play} />
+    <a
+      href="#cipher"
+      className="occ-label"
+      onMouseEnter={() => setPlay((value) => value + 1)}
+      onFocus={() => setPlay((value) => value + 1)}
+    >
+      <CipherText
+        text={label}
+        alphabet={name}
+        mode={play === 0 ? "plain" : "decode"}
+        pace="base"
+        playKey={play}
+        decodable={false}
+        seed={play}
+      />
     </a>
   );
 }
@@ -53,8 +76,9 @@ export function CipherSection() {
       <header>
         <h2 className="occ-label">2 · Cryptic glyphs</h2>
         <p>
-          Three directions, drawn in the same 9 × 11 cell with a one-pixel stroke. The text always exists for a screen reader:
-          glyphs are only clothing, never the sole carrier of information.
+          Three directions, drawn in the same 9 × 11 cell with a one-pixel stroke. The text always
+          exists for a screen reader: glyphs are only clothing, never the sole carrier of
+          information.
         </p>
       </header>
       <div className="occ-lab-row">
@@ -75,7 +99,9 @@ export function CipherSection() {
         />
       </div>
       <p className="occ-lab-note">{DIRECTIONS[name].text}</p>
-      <Stage title={`${DIRECTIONS[name].title} · ${set.pool.length} glyphs in the family · ${decodable ? "fixed key, one glyph per letter" : "random glyph per position, nothing to decode"}`}>
+      <Stage
+        title={`${DIRECTIONS[name].title} · ${set.pool.length} glyphs in the family · ${decodable ? "fixed key, one glyph per letter" : "random glyph per position, nothing to decode"}`}
+      >
         <AlphabetTable name={name} decodable={decodable} />
       </Stage>
       <Stage
@@ -105,24 +131,47 @@ export function CipherSection() {
         }
       >
         <div className="occ-lab-display">
-          <CipherText text="Occulis" alphabet={name} decodable={decodable} mode={mode} playKey={play} />
+          <CipherText
+            text="Occulis"
+            alphabet={name}
+            decodable={decodable}
+            mode={mode}
+            playKey={play}
+          />
         </div>
         <p className="occ-lab-note">
-          <CipherText text="Vision is the only weapon" alphabet={name} decodable={decodable} mode={mode} playKey={play} seed={3} />
+          <CipherText
+            text="Vision is the only weapon"
+            alphabet={name}
+            decodable={decodable}
+            mode={mode}
+            playKey={play}
+            seed={3}
+          />
         </p>
         <p className="occ-lab-note">
-          Just before a glyph yields its letter, it shows its true glyph for one tick: with a decodable alphabet, that is how
-          a patient player learns the key.
+          Just before a glyph yields its letter, it shows its true glyph for one tick: with a
+          decodable alphabet, that is how a patient player learns the key.
         </p>
       </Stage>
       <div className="occ-lab-grid">
         <Card title="Border">
           <CipherFrieze count={18} alphabet={name} live seed={11} />
-          <p className="occ-lab-note">A faint frieze along a frame, one glyph shifting every ~1.4 s. Off in calm and still.</p>
+          <p className="occ-lab-note">
+            A faint frieze along a frame, one glyph shifting every ~1.4 s. Off in calm and still.
+          </p>
         </Card>
         <Card title="Loading">
           <p className="occ-lab-note">
-            <CipherText text="Searching an opponent" alphabet={name} decodable={false} mode="decode" pace="slow" playKey={play} seed={5} />
+            <CipherText
+              text="Searching an opponent"
+              alphabet={name}
+              decodable={false}
+              mode="decode"
+              pace="slow"
+              playKey={play}
+              seed={5}
+            />
           </p>
           <CipherFrieze count={8} alphabet={name} live seed={4} />
         </Card>
@@ -132,11 +181,16 @@ export function CipherSection() {
             <HoverLink label="Friends" name={name} />
             <HoverLink label="Settings" name={name} />
           </div>
-          <p className="occ-lab-note">Label scrambles for 250 ms on hover or focus. The cheapest use; also the most likely to tire.</p>
+          <p className="occ-lab-note">
+            Label scrambles for 250 ms on hover or focus. The cheapest use; also the most likely to
+            tire.
+          </p>
         </Card>
         <Card title="Rarity">
           <Badge tone="dim">≤ 1 cipher event on screen</Badge>
-          <p className="occ-lab-note">Titles decode once per session; ornaments never compete with a timer or a game state.</p>
+          <p className="occ-lab-note">
+            Titles decode once per session; ornaments never compete with a timer or a game state.
+          </p>
         </Card>
       </div>
     </section>

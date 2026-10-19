@@ -1,8 +1,18 @@
 import type { TeamEntry } from "@occulis/core";
-import type { MeCurrentMatch, MeFeats, MeMatchDetail, MeMatchPage, MeProfile, MeSession, TeamPreset, TeamPresetList } from "@occulis/protocol";
-import { messages } from "../i18n/current.js";
+import type {
+  MeCurrentMatch,
+  MeFeats,
+  MeMatchDetail,
+  MeMatchPage,
+  MeProfile,
+  MeSession,
+  TeamPreset,
+  TeamPresetList,
+} from "@occulis/protocol";
+import { messages } from "../locale/current.js";
 import { authMessage, ROUTE_PATHS } from "../net/auth.js";
-import type { Outcome } from "../admin/api.js";
+import type { Outcome } from "../load/cache.js";
+import { type ErrorWording, jsonInit, request } from "../net/http.js";
 
 export type { Outcome };
 
@@ -18,35 +28,36 @@ export type { Outcome };
 
 export const PAGE_SIZE = 20;
 
-async function call<T>(path: string, init?: RequestInit): Promise<Outcome<T>> {
-  let response: Response;
-  try {
-    response = await fetch(path, init);
-  } catch {
-    return { ok: false, message: messages().profile.unreachable };
-  }
-  const payload = (await response.json().catch(() => ({}))) as T & { code?: string; message?: string };
-  if (!response.ok) {
-    if (response.status === 401) return { ok: false, message: messages().profile.sessionExpired };
-    const presetError = payload.code === undefined ? undefined : messages().team.presets.errors[payload.code];
-    if (presetError !== undefined) return { ok: false, message: presetError };
-    return { ok: false, message: authMessage(response.status, payload) };
-  }
-  return { ok: true, value: payload };
-}
+const WORDING: ErrorWording = {
+  unreachable: () => messages().profile.unreachable,
+  describe: (status, payload) => {
+    if (status === 401) return messages().profile.sessionExpired;
+    const presetError =
+      payload.code === undefined ? undefined : messages().team.presets.errors[payload.code];
+    return presetError ?? authMessage(status, payload);
+  },
+};
+
+const call = <T>(path: string, init?: RequestInit): Promise<Outcome<T>> =>
+  request<T>(path, init, WORDING);
 
 const send = <T>(path: string, body: unknown): Promise<Outcome<T>> =>
-  call<T>(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  call<T>(path, jsonInit("POST", body));
 
 export const profile = () => call<MeProfile>("/api/me");
 export const sessions = () => call<MeSession[]>("/api/me/sessions");
 export const currentMatch = () => call<MeCurrentMatch | null>("/api/me/current-match");
-export const matches = (offset: number) => call<MeMatchPage>(`/api/me/matches?limit=${PAGE_SIZE}&offset=${offset}`);
-export const match = (id: string) => call<MeMatchDetail>(`/api/me/matches/${encodeURIComponent(id)}`);
+export const matches = (offset: number) =>
+  call<MeMatchPage>(`/api/me/matches?limit=${PAGE_SIZE}&offset=${offset}`);
+export const match = (id: string) =>
+  call<MeMatchDetail>(`/api/me/matches/${encodeURIComponent(id)}`);
 
-export const changeHandle = (handle: string) => send<{ handle: string }>("/api/me/handle", { handle });
-export const revokeSession = (id: string) => send(`/api/me/sessions/${encodeURIComponent(id)}/revoke`, {});
-export const revokeOtherSessions = () => send<{ revoked: number }>("/api/me/sessions/revoke-others", {});
+export const changeHandle = (handle: string) =>
+  send<{ handle: string }>("/api/me/handle", { handle });
+export const revokeSession = (id: string) =>
+  send(`/api/me/sessions/${encodeURIComponent(id)}/revoke`, {});
+export const revokeOtherSessions = () =>
+  send<{ revoked: number }>("/api/me/sessions/revoke-others", {});
 
 /** Les autres sessions sont fermées par le serveur dans tous les cas (`hooks.before`). */
 export const changePassword = (currentPassword: string, newPassword: string) =>
@@ -61,7 +72,8 @@ export const requestPasswordSetup = (email: string) =>
   send("/api/auth/request-password-reset", { email, redirectTo: ROUTE_PATHS.reset });
 
 /** Le lien part vers l'**ancienne** adresse ; rien ne change avant les deux confirmations. */
-export const changeEmail = (newEmail: string) => send("/api/auth/change-email", { newEmail, callbackURL: "/profile/" });
+export const changeEmail = (newEmail: string) =>
+  send("/api/auth/change-email", { newEmail, callbackURL: "/profile/" });
 
 export const resendVerification = (email: string) =>
   send("/api/auth/send-verification-email", { email, callbackURL: "/profile/" });
@@ -69,22 +81,25 @@ export const resendVerification = (email: string) =>
 export const unlink = (providerId: string) => send("/api/auth/unlink-account", { providerId });
 
 /** N'efface rien : envoie le lien de confirmation, seul à pouvoir supprimer le compte. */
-export const requestDeletion = () => send("/api/auth/delete-user", { callbackURL: `${ROUTE_PATHS.signin}?deleted=1` });
+export const requestDeletion = () =>
+  send("/api/auth/delete-user", { callbackURL: `${ROUTE_PATHS.signin}?deleted=1` });
 
 export const feats = () => call<MeFeats>("/api/me/feats");
-export const setShowcase = (ids: readonly string[]) => send<{ showcase: string[] }>("/api/me/showcase", { feats: ids });
+export const setShowcase = (ids: readonly string[]) =>
+  send<{ showcase: string[] }>("/api/me/showcase", { feats: ids });
 
 /**
  * Les équipes préparées. Le jeu les lit aussi, au déploiement : c'est pourquoi ces appels
  * vivent avec ceux du profil, sous `/api/me/`, et non dans un module de partie.
  */
 export const presets = () => call<TeamPresetList>("/api/me/presets");
-export const createPreset = (name: string, team: readonly TeamEntry[]) => send<TeamPreset>("/api/me/presets", { name, team });
-export const updatePreset = (id: string, change: { readonly name?: string; readonly team?: readonly TeamEntry[] }) =>
-  call<TeamPreset>(`/api/me/presets/${encodeURIComponent(id)}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(change),
-  });
-export const deletePreset = (id: string) => call<{ deleted: number }>(`/api/me/presets/${encodeURIComponent(id)}`, { method: "DELETE" });
-export const setDefaultPreset = (id: string) => send<{ isDefault: boolean }>(`/api/me/presets/${encodeURIComponent(id)}/default`, {});
+export const createPreset = (name: string, team: readonly TeamEntry[]) =>
+  send<TeamPreset>("/api/me/presets", { name, team });
+export const updatePreset = (
+  id: string,
+  change: { readonly name?: string; readonly team?: readonly TeamEntry[] },
+) => call<TeamPreset>(`/api/me/presets/${encodeURIComponent(id)}`, jsonInit("PUT", change));
+export const deletePreset = (id: string) =>
+  call<{ deleted: number }>(`/api/me/presets/${encodeURIComponent(id)}`, { method: "DELETE" });
+export const setDefaultPreset = (id: string) =>
+  send<{ isDefault: boolean }>(`/api/me/presets/${encodeURIComponent(id)}/default`, {});

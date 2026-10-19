@@ -5,7 +5,7 @@
  * `admin` de Better Auth (`/api/auth/admin/*`), dont le format appartient à la
  * bibliothèque. Les horodatages sont en millisecondes, comme dans `matches` et `players`.
  */
-import type { Action, Outcome, PlayerId } from "@occulis/core";
+import type { Action, Outcome, PlayerId, Tile } from "@occulis/core";
 
 export interface AdminStats {
   readonly users: number;
@@ -82,6 +82,8 @@ export interface AdminMatchDetail extends AdminMatchSummary {
    * S'arrête au coup que le rejeu n'a pas su appliquer.
    */
   readonly frames: readonly AdminFrame[];
+  /** Les cases de la carte que la partie a figée ; `null` si le rejeu n'a pas pu la lire. */
+  readonly board: readonly Tile[] | null;
   /** Le coup où le rejeu échoue, et pourquoi — un log corrompu, ou un ruleset retiré. */
   readonly replayError: string | null;
 }

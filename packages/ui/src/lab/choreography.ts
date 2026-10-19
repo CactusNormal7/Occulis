@@ -19,7 +19,13 @@ const travel = easing(PROPOSED.easing.inOut);
  * le sommet monte de `peak` pixels, multiplié par l'amplitude du niveau d'intensité — un
  * glissement à plat en `calm` réduit, aucun arc en `still`.
  */
-export function hopAt(t: number, from: ScreenPoint, to: ScreenPoint, motion: Motion, peak: number = PROPOSED.distance.hop): ScreenPoint {
+export function hopAt(
+  t: number,
+  from: ScreenPoint,
+  to: ScreenPoint,
+  motion: Motion,
+  peak: number = PROPOSED.distance.hop,
+): ScreenPoint {
   const s = travel(t);
   const lift = Math.sin(Math.PI * s) * peak * motion.amplitude;
   return { x: from.x + (to.x - from.x) * s, y: from.y + (to.y - from.y) * s - lift };
@@ -29,9 +35,16 @@ export function hopAt(t: number, from: ScreenPoint, to: ScreenPoint, motion: Mot
  * Les images rémanentes d'un saut : leur avancement à l'instant `t`, chacune en retard d'un
  * pas sur la précédente. Aucune hors du niveau `full` — c'est un ornement du geste.
  */
-export function trailAt(t: number, motion: Motion, count: number = PROPOSED.trail.count, lag: number = PROPOSED.trail.lag): number[] {
+export function trailAt(
+  t: number,
+  motion: Motion,
+  count: number = PROPOSED.trail.count,
+  lag: number = PROPOSED.trail.lag,
+): number[] {
   if (motion.level !== "full") return [];
-  return Array.from({ length: count }, (_, index) => Math.max(0, t - lag * (index + 1))).filter((value) => value > 0 && value < 1);
+  return Array.from({ length: count }, (_, index) => Math.max(0, t - lag * (index + 1))).filter(
+    (value) => value > 0 && value < 1,
+  );
 }
 
 /**

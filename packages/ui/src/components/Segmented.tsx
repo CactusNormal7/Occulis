@@ -17,18 +17,32 @@ export interface SegmentedProps<T extends string> {
 }
 
 /** Un choix exclusif entre quelques options : filtres de liste, point de vue. */
-export function Segmented<T extends string>({ options, value, onChange, label }: SegmentedProps<T>) {
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+}: SegmentedProps<T>) {
   return (
     <nav className="occ-segmented" aria-label={label}>
       {options.map((option) => {
-        const className = cx("occ-segmented__option", option.camp !== undefined && `occ-segmented__option--${option.camp}`);
+        const className = cx(
+          "occ-segmented__option",
+          option.camp !== undefined && `occ-segmented__option--${option.camp}`,
+        );
         const current = option.value === value ? "true" : undefined;
         return option.href !== undefined ? (
           <a key={option.value} className={className} href={option.href} aria-current={current}>
             {option.label}
           </a>
         ) : (
-          <button key={option.value} type="button" className={className} aria-current={current} onClick={() => onChange?.(option.value)}>
+          <button
+            key={option.value}
+            type="button"
+            className={className}
+            aria-current={current}
+            onClick={() => onChange?.(option.value)}
+          >
             {option.label}
           </button>
         );

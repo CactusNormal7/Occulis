@@ -43,7 +43,9 @@ export interface SwatchProps {
 
 /** Un échantillon de couleur : la pastille, le nom du token, sa valeur. */
 export function Swatch({ color, name, value, onChange, edited = false }: SwatchProps) {
-  const chip = <span className="occ-swatch__chip" style={{ background: color }} aria-hidden="true" />;
+  const chip = (
+    <span className="occ-swatch__chip" style={{ background: color }} aria-hidden="true" />
+  );
   return (
     <div className={cx("occ-swatch", edited && "occ-swatch--edited")}>
       {onChange === undefined ? (
@@ -51,7 +53,12 @@ export function Swatch({ color, name, value, onChange, edited = false }: SwatchP
       ) : (
         <label className="occ-swatch__picker">
           {chip}
-          <input type="color" value={value} aria-label={name} onChange={(event) => onChange(event.target.value)} />
+          <input
+            type="color"
+            value={value}
+            aria-label={name}
+            onChange={(event) => onChange(event.target.value)}
+          />
         </label>
       )}
       <span className="occ-swatch__name">{name}</span>
@@ -122,7 +129,13 @@ export interface NavSection {
 }
 
 /** Une navigation par sections, en colonne : la table des matières d'un catalogue. */
-export function NavList({ sections, label }: { sections: readonly NavSection[]; label?: string | undefined }) {
+export function NavList({
+  sections,
+  label,
+}: {
+  sections: readonly NavSection[];
+  label?: string | undefined;
+}) {
   return (
     <nav className="occ-navlist" aria-label={label}>
       {sections.map((section) => (

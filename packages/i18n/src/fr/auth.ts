@@ -35,7 +35,8 @@ export const auth: Messages["auth"] = {
   redirects: {
     account_not_linked:
       "Un compte existe déjà avec cette adresse, mais elle n'a jamais été confirmée. Connectez-vous avec votre mot de passe, confirmez l'adresse, puis Google pourra y être lié.",
-    "email_doesn't_match": "Ce compte Google n'utilise pas la même adresse que votre compte Occulis.",
+    "email_doesn't_match":
+      "Ce compte Google n'utilise pas la même adresse que votre compte Occulis.",
     access_denied: "Connexion Google annulée.",
     state_mismatch: "La connexion a expiré en route. Réessayez.",
     please_restart_the_process: "La connexion a expiré en route. Réessayez.",

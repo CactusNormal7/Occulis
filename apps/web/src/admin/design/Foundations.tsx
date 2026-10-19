@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { Button, Card, CardGrid, Specimen, Swatch, SwatchGrid, Table, useMessages } from "@occulis/ui";
+import {
+  Button,
+  Card,
+  CardGrid,
+  Specimen,
+  Swatch,
+  SwatchGrid,
+  Table,
+  useMessages,
+} from "@occulis/ui";
 import { FONT, MOTION, SPACE, THEMES, cssColor, paletteVariables } from "@occulis/ui/tokens";
 import { useTweaks } from "./context.js";
 import { fromHex, paletteEntries, toHex } from "./tweaks.js";
@@ -8,9 +17,18 @@ import { fromHex, paletteEntries, toHex } from "./tweaks.js";
 export function Foundations() {
   const m = useMessages().admin.design;
   const tweaks = useTweaks();
-  const reference = new Map(paletteEntries(THEMES[tweaks.theme]).map((entry) => [entry.path, entry.value]));
+  const reference = new Map(
+    paletteEntries(THEMES[tweaks.theme]).map((entry) => [entry.path, entry.value]),
+  );
   const variables = paletteVariables(tweaks.palette);
-  const inks = ["--occ-ink", "--occ-ink-soft", "--occ-ink-dim", "--occ-ink-faint", "--occ-ink-line", "--occ-ink-ghost"];
+  const inks = [
+    "--occ-ink",
+    "--occ-ink-soft",
+    "--occ-ink-dim",
+    "--occ-ink-faint",
+    "--occ-ink-line",
+    "--occ-ink-ghost",
+  ];
 
   return (
     <>
@@ -42,7 +60,14 @@ export function Foundations() {
         <Card title={m.foundations.space}>
           {Object.entries(SPACE).map(([step, px]) => (
             <Specimen key={step} name={`--occ-space-${step}`} value={`${px}px`}>
-              <span style={{ display: "block", width: `var(--occ-space-${step})`, height: 8, background: "var(--occ-ink-dim)" }} />
+              <span
+                style={{
+                  display: "block",
+                  width: `var(--occ-space-${step})`,
+                  height: 8,
+                  background: "var(--occ-ink-dim)",
+                }}
+              />
             </Specimen>
           ))}
         </Card>
@@ -52,7 +77,9 @@ export function Foundations() {
           const name = `--occ-text-${step}`;
           return (
             <Specimen key={step} name={name} value={`${px}px`}>
-              <span style={{ fontSize: `var(${name})`, lineHeight: 1.2, whiteSpace: "nowrap" }}>{m.foundations.sample}</span>
+              <span style={{ fontSize: `var(${name})`, lineHeight: 1.2, whiteSpace: "nowrap" }}>
+                {m.foundations.sample}
+              </span>
             </Specimen>
           );
         })}
@@ -65,7 +92,10 @@ export function Foundations() {
       </Card>
       <MotionTokens />
       <Card title={m.foundations.variables(Object.keys(variables).length)}>
-        <Table columns={[m.foundations.name, m.foundations.value]} rowCount={Object.keys(variables).length}>
+        <Table
+          columns={[m.foundations.name, m.foundations.value]}
+          rowCount={Object.keys(variables).length}
+        >
           {Object.entries(variables).map(([name, value]) => (
             <tr key={name}>
               <td>
@@ -102,7 +132,15 @@ function MotionTokens() {
     >
       {durations.map(([name, value]) => (
         <Specimen key={name} name={name} value={value}>
-          <span style={{ display: "block", width: "100%", height: 8, borderBottom: "1px solid var(--occ-ink-line)", containerType: "inline-size" }}>
+          <span
+            style={{
+              display: "block",
+              width: "100%",
+              height: 8,
+              borderBottom: "1px solid var(--occ-ink-line)",
+              containerType: "inline-size",
+            }}
+          >
             <span
               style={{
                 display: "block",

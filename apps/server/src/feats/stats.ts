@@ -1,4 +1,5 @@
 import type { PlayerStats } from "./catalog.js";
+import { INITIAL_RATING } from "../rating.js";
 
 /** Une partie terminée telle que la lit `readPlayerStats()`. */
 export interface FinishedRow {
@@ -10,7 +11,11 @@ export interface FinishedRow {
  * Les statistiques d'un joueur, depuis ses parties terminées **dans l'ordre de leur fin**
  * — c'est l'ordre qui fait une série. Pur : la requête est à part.
  */
-export function statsFrom(rows: readonly FinishedRow[], playerId: string, rating: number): PlayerStats {
+export function statsFrom(
+  rows: readonly FinishedRow[],
+  playerId: string,
+  rating: number,
+): PlayerStats {
   let won = 0;
   let lost = 0;
   let streak = 0;
@@ -31,7 +36,11 @@ export function statsFrom(rows: readonly FinishedRow[], playerId: string, rating
 
 /** Lit en D1 de quoi calculer les statistiques d'un joueur. */
 export async function readPlayerStats(db: D1Database, playerId: string): Promise<PlayerStats> {
-  const [player, matches] = await db.batch<{ elo?: number; player_a?: string; winner?: string | null }>([
+  const [player, matches] = await db.batch<{
+    elo?: number;
+    player_a?: string;
+    winner?: string | null;
+  }>([
     db.prepare("SELECT elo FROM players WHERE id = ?").bind(playerId),
     db
       .prepare(
@@ -41,6 +50,6 @@ export async function readPlayerStats(db: D1Database, playerId: string): Promise
       )
       .bind(playerId),
   ]);
-  const rating = (player?.results[0] as { elo?: number } | undefined)?.elo ?? 1200;
+  const rating = (player?.results[0] as { elo?: number } | undefined)?.elo ?? INITIAL_RATING;
   return statsFrom((matches?.results ?? []) as FinishedRow[], playerId, rating);
 }

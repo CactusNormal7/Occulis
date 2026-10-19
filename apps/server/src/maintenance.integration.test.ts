@@ -56,16 +56,26 @@ describe("ménage périodique", () => {
   it("supprime les jetons de vérification expirés", async () => {
     const now = new Date().toISOString();
     await env.DB.batch([
-      env.DB
-        .prepare(
-          "INSERT INTO verifications (id, identifier, value, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-        )
-        .bind("verif-morte", "mort@occulis.test", "x", new Date(Date.now() - HOUR_MS).toISOString(), now, now),
-      env.DB
-        .prepare(
-          "INSERT INTO verifications (id, identifier, value, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-        )
-        .bind("verif-vive", "vif@occulis.test", "x", new Date(Date.now() + HOUR_MS).toISOString(), now, now),
+      env.DB.prepare(
+        "INSERT INTO verifications (id, identifier, value, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+      ).bind(
+        "verif-morte",
+        "mort@occulis.test",
+        "x",
+        new Date(Date.now() - HOUR_MS).toISOString(),
+        now,
+        now,
+      ),
+      env.DB.prepare(
+        "INSERT INTO verifications (id, identifier, value, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+      ).bind(
+        "verif-vive",
+        "vif@occulis.test",
+        "x",
+        new Date(Date.now() + HOUR_MS).toISOString(),
+        now,
+        now,
+      ),
     ]);
 
     await sweep();
@@ -78,12 +88,12 @@ describe("ménage périodique", () => {
 
   it("supprime les compteurs de débit retombés et garde les récents", async () => {
     await env.DB.batch([
-      env.DB
-        .prepare("INSERT INTO rate_limits (id, key, count, lastRequest) VALUES (?, ?, ?, ?)")
-        .bind("debit-vieux", "10.0.0.1|/sign-in/email", 5, Date.now() - 48 * HOUR_MS),
-      env.DB
-        .prepare("INSERT INTO rate_limits (id, key, count, lastRequest) VALUES (?, ?, ?, ?)")
-        .bind("debit-recent", "10.0.0.2|/sign-in/email", 5, Date.now()),
+      env.DB.prepare(
+        "INSERT INTO rate_limits (id, key, count, lastRequest) VALUES (?, ?, ?, ?)",
+      ).bind("debit-vieux", "10.0.0.1|/sign-in/email", 5, Date.now() - 48 * HOUR_MS),
+      env.DB.prepare(
+        "INSERT INTO rate_limits (id, key, count, lastRequest) VALUES (?, ?, ?, ?)",
+      ).bind("debit-recent", "10.0.0.2|/sign-in/email", 5, Date.now()),
     ]);
 
     await sweep();

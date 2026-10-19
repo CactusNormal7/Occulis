@@ -3,7 +3,7 @@
  *
  * Mise en page seulement. Aucune couleur en dur ici : les propriétés personnalisées
  * `--ink`, `--panel`, `--accepted` et `--refused` sont posées par `palette.ts` à
- * partir des tokens de `src/theme.ts`, seul détenteur du code couleur du client
+ * partir des tokens de `src/theme/theme.ts`, seul détenteur du code couleur du client
  * (docs/design.md 8.1).
  *
  * `palette.ts` y pose aussi toutes les propriétés `--occ-*` de la charte : les écrans
@@ -36,8 +36,7 @@
 html,
 html[data-theme] {
   background:
-    radial-gradient(ellipse 90% 60% at 50% -12%, var(--occ-aura) 0%, transparent 70%),
-    var(--occ-bg);
+    radial-gradient(ellipse 90% 60% at 50% -12%, var(--occ-aura) 0%, transparent 70%), var(--occ-bg);
 }
 
 html body,
@@ -85,7 +84,6 @@ body::after {
     animation: none;
   }
 }
-
 
 ::selection {
   background: var(--ink);
@@ -309,15 +307,30 @@ body::after {
 }
 
 [data-theme-choice="obsidian"] i {
-  background: linear-gradient(90deg, var(--occ-swatch-obsidian-a) 0 33%, var(--occ-swatch-obsidian-ink) 33% 66%, var(--occ-swatch-obsidian-b) 66%);
+  background: linear-gradient(
+    90deg,
+    var(--occ-swatch-obsidian-a) 0 33%,
+    var(--occ-swatch-obsidian-ink) 33% 66%,
+    var(--occ-swatch-obsidian-b) 66%
+  );
 }
 
 [data-theme-choice="reliquary"] i {
-  background: linear-gradient(90deg, var(--occ-swatch-reliquary-a) 0 33%, var(--occ-swatch-reliquary-ink) 33% 66%, var(--occ-swatch-reliquary-b) 66%);
+  background: linear-gradient(
+    90deg,
+    var(--occ-swatch-reliquary-a) 0 33%,
+    var(--occ-swatch-reliquary-ink) 33% 66%,
+    var(--occ-swatch-reliquary-b) 66%
+  );
 }
 
 [data-theme-choice="astral"] i {
-  background: linear-gradient(90deg, var(--occ-swatch-astral-a) 0 33%, var(--occ-swatch-astral-ink) 33% 66%, var(--occ-swatch-astral-b) 66%);
+  background: linear-gradient(
+    90deg,
+    var(--occ-swatch-astral-a) 0 33%,
+    var(--occ-swatch-astral-ink) 33% 66%,
+    var(--occ-swatch-astral-b) 66%
+  );
 }
 
 .settings__locales {
@@ -526,7 +539,9 @@ button.primary::after {
   right: 14px;
   color: var(--ink-dim);
   transform: translateY(-50%);
-  transition: color 150ms, transform 150ms;
+  transition:
+    color 150ms,
+    transform 150ms;
 }
 
 button.primary:hover:not(:disabled)::after,
@@ -682,14 +697,38 @@ button.primary:focus-visible::after {
   animation: orbit 1.6s linear infinite;
 }
 
-.waiting-orbit i:nth-child(1) { transform: rotate(0deg) translateY(-14px); animation-delay: 0s; }
-.waiting-orbit i:nth-child(2) { transform: rotate(45deg) translateY(-14px); animation-delay: -1.4s; }
-.waiting-orbit i:nth-child(3) { transform: rotate(90deg) translateY(-14px); animation-delay: -1.2s; }
-.waiting-orbit i:nth-child(4) { transform: rotate(135deg) translateY(-14px); animation-delay: -1s; }
-.waiting-orbit i:nth-child(5) { transform: rotate(180deg) translateY(-14px); animation-delay: -0.8s; }
-.waiting-orbit i:nth-child(6) { transform: rotate(225deg) translateY(-14px); animation-delay: -0.6s; }
-.waiting-orbit i:nth-child(7) { transform: rotate(270deg) translateY(-14px); animation-delay: -0.4s; }
-.waiting-orbit i:nth-child(8) { transform: rotate(315deg) translateY(-14px); animation-delay: -0.2s; }
+.waiting-orbit i:nth-child(1) {
+  transform: rotate(0deg) translateY(-14px);
+  animation-delay: 0s;
+}
+.waiting-orbit i:nth-child(2) {
+  transform: rotate(45deg) translateY(-14px);
+  animation-delay: -1.4s;
+}
+.waiting-orbit i:nth-child(3) {
+  transform: rotate(90deg) translateY(-14px);
+  animation-delay: -1.2s;
+}
+.waiting-orbit i:nth-child(4) {
+  transform: rotate(135deg) translateY(-14px);
+  animation-delay: -1s;
+}
+.waiting-orbit i:nth-child(5) {
+  transform: rotate(180deg) translateY(-14px);
+  animation-delay: -0.8s;
+}
+.waiting-orbit i:nth-child(6) {
+  transform: rotate(225deg) translateY(-14px);
+  animation-delay: -0.6s;
+}
+.waiting-orbit i:nth-child(7) {
+  transform: rotate(270deg) translateY(-14px);
+  animation-delay: -0.4s;
+}
+.waiting-orbit i:nth-child(8) {
+  transform: rotate(315deg) translateY(-14px);
+  animation-delay: -0.2s;
+}
 
 @keyframes orbit {
   from {

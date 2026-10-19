@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { constellationsOf, createMotes, createStars, fireflyAt, moteAt, shootingStarAt, starAlpha } from "./ambient.js";
+import {
+  constellationsOf,
+  createMotes,
+  createStars,
+  fireflyAt,
+  moteAt,
+  shootingStarAt,
+  starAlpha,
+} from "./ambient.js";
 
 describe("createMotes", () => {
   it("redonne la même nuée pour la même graine", () => {
@@ -41,7 +49,8 @@ describe("la voûte", () => {
 
   it("scintille sans dépasser l'éclat propre d'une étoile", () => {
     for (const star of stars.slice(0, 5)) {
-      for (const time of [0, 500, 1234]) expect(starAlpha(star, time)).toBeLessThanOrEqual(star.alpha);
+      for (const time of [0, 500, 1234])
+        expect(starAlpha(star, time)).toBeLessThanOrEqual(star.alpha);
     }
   });
 
@@ -57,7 +66,8 @@ describe("la voûte", () => {
 
   it("fait passer une étoile filante de temps en temps, jamais en permanence", () => {
     let shown = 0;
-    for (let time = 0; time < 60_000; time += 50) if (shootingStarAt(time, 800, 600, 6000, 5) !== undefined) shown += 1;
+    for (let time = 0; time < 60_000; time += 50)
+      if (shootingStarAt(time, 800, 600, 6000, 5) !== undefined) shown += 1;
     expect(shown).toBeGreaterThan(0);
     expect(shown).toBeLessThan(1200 / 3);
   });

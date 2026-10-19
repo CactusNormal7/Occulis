@@ -35,7 +35,9 @@ interface PresetRow {
 
 export async function listPresets(db: D1Database, playerId: string): Promise<TeamPresetList> {
   const rows = await db
-    .prepare("SELECT id, name, scenario, ruleset_version, team, is_default, updated_at FROM team_presets WHERE player_id = ? ORDER BY updated_at DESC")
+    .prepare(
+      "SELECT id, name, scenario, ruleset_version, team, is_default, updated_at FROM team_presets WHERE player_id = ? ORDER BY updated_at DESC",
+    )
     .bind(playerId)
     .all<PresetRow>();
   return {
@@ -46,23 +48,44 @@ export async function listPresets(db: D1Database, playerId: string): Promise<Tea
   };
 }
 
-export type PresetResult = { readonly ok: true; readonly preset: TeamPreset } | { readonly ok: false; readonly code: PresetError };
+export type PresetResult =
+  | { readonly ok: true; readonly preset: TeamPreset }
+  | { readonly ok: false; readonly code: PresetError };
 
 /** Crée un preset pour la carte et le ruleset courants. Le premier devient celui par défaut. */
-export async function createPreset(db: D1Database, playerId: string, body: unknown, now: number): Promise<PresetResult> {
+export async function createPreset(
+  db: D1Database,
+  playerId: string,
+  body: unknown,
+  now: number,
+): Promise<PresetResult> {
   const input = readInput(body, true);
   if (!input.ok) return input;
-  const count = await db.prepare("SELECT COUNT(*) AS n FROM team_presets WHERE player_id = ?").bind(playerId).first<{ n: number }>();
+  const count = await db
+    .prepare("SELECT COUNT(*) AS n FROM team_presets WHERE player_id = ?")
+    .bind(playerId)
+    .first<{ n: number }>();
   if ((count?.n ?? 0) >= PRESET_LIMIT) return { ok: false, code: "PRESET_LIMIT" };
 
   const id = crypto.randomUUID();
-  const isDefault = (count?.n ?? 0) === 0 ? 1 : 0;
+  // Le défaut se décide dans l'INSERT même, et non sur le décompte lu plus haut : deux
+  // premières créations simultanées en auraient marqué deux, ce que l'index unique
+  // `team_presets_one_default` refuserait alors (migration 0010).
   await db
     .prepare(
       `INSERT INTO team_presets (id, player_id, name, scenario, ruleset_version, team, is_default, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6,
+               NOT EXISTS (SELECT 1 FROM team_presets WHERE player_id = ?2 AND is_default = 1), ?7, ?7)`,
     )
-    .bind(id, playerId, input.name, DEFAULT_SCENARIO, CURRENT_RULESET_VERSION, JSON.stringify(input.team), isDefault, now, now)
+    .bind(
+      id,
+      playerId,
+      input.name,
+      DEFAULT_SCENARIO,
+      CURRENT_RULESET_VERSION,
+      JSON.stringify(input.team),
+      now,
+    )
     .run();
   return readPreset(db, playerId, id);
 }
@@ -71,7 +94,13 @@ export async function createPreset(db: D1Database, playerId: string, body: unkno
  * Renomme et/ou remplace l'équipe d'un preset. Il est alors **rattaché à la carte et au
  * ruleset courants** : c'est contre eux que la nouvelle équipe vient d'être validée.
  */
-export async function updatePreset(db: D1Database, playerId: string, id: string, body: unknown, now: number): Promise<PresetResult> {
+export async function updatePreset(
+  db: D1Database,
+  playerId: string,
+  id: string,
+  body: unknown,
+  now: number,
+): Promise<PresetResult> {
   const input = readInput(body, false);
   if (!input.ok) return input;
   const changed = await db
@@ -100,7 +129,10 @@ export async function updatePreset(db: D1Database, playerId: string, id: string,
 
 /** Supprime un preset ; s'il était celui par défaut, le plus récent des autres le devient. */
 export async function deletePreset(db: D1Database, playerId: string, id: string): Promise<boolean> {
-  const removed = await db.prepare("DELETE FROM team_presets WHERE id = ? AND player_id = ? RETURNING is_default").bind(id, playerId).first<{ is_default: number }>();
+  const removed = await db
+    .prepare("DELETE FROM team_presets WHERE id = ? AND player_id = ? RETURNING is_default")
+    .bind(id, playerId)
+    .first<{ is_default: number }>();
   if (removed === null) return false;
   if (removed.is_default === 1) {
     await db
@@ -115,20 +147,34 @@ export async function deletePreset(db: D1Database, playerId: string, id: string)
 }
 
 /** Fait d'un preset celui qui se précharge au déploiement — un seul à la fois. */
-export async function setDefaultPreset(db: D1Database, playerId: string, id: string): Promise<boolean> {
+export async function setDefaultPreset(
+  db: D1Database,
+  playerId: string,
+  id: string,
+): Promise<boolean> {
   const [, set] = await db.batch([
-    db.prepare("UPDATE team_presets SET is_default = 0 WHERE player_id = ? AND id != ? AND EXISTS (SELECT 1 FROM team_presets WHERE id = ? AND player_id = ?)").bind(playerId, id, id, playerId),
-    db.prepare("UPDATE team_presets SET is_default = 1 WHERE id = ? AND player_id = ?").bind(id, playerId),
+    db
+      .prepare(
+        "UPDATE team_presets SET is_default = 0 WHERE player_id = ? AND id != ? AND EXISTS (SELECT 1 FROM team_presets WHERE id = ? AND player_id = ?)",
+      )
+      .bind(playerId, id, id, playerId),
+    db
+      .prepare("UPDATE team_presets SET is_default = 1 WHERE id = ? AND player_id = ?")
+      .bind(id, playerId),
   ]);
   return (set?.meta.changes ?? 0) > 0;
 }
 
 async function readPreset(db: D1Database, playerId: string, id: string): Promise<PresetResult> {
   const row = await db
-    .prepare("SELECT id, name, scenario, ruleset_version, team, is_default, updated_at FROM team_presets WHERE id = ? AND player_id = ?")
+    .prepare(
+      "SELECT id, name, scenario, ruleset_version, team, is_default, updated_at FROM team_presets WHERE id = ? AND player_id = ?",
+    )
     .bind(id, playerId)
     .first<PresetRow>();
-  return row === null ? { ok: false, code: "PRESET_NOT_FOUND" } : { ok: true, preset: toPreset(row) };
+  return row === null
+    ? { ok: false, code: "PRESET_NOT_FOUND" }
+    : { ok: true, preset: toPreset(row) };
 }
 
 function toPreset(row: PresetRow): TeamPreset {
@@ -146,7 +192,11 @@ function toPreset(row: PresetRow): TeamPreset {
 }
 
 /** Valide une équipe écrite pour le camp A d'une carte, sous un ruleset. */
-export function isValid(scenario: string, rulesetVersion: string, team: readonly TeamEntry[]): boolean {
+export function isValid(
+  scenario: string,
+  rulesetVersion: string,
+  team: readonly TeamEntry[],
+): boolean {
   try {
     const zone = scenarioFor(scenario).deployment?.zones.A;
     return zone !== undefined && validateTeam(rulesetFor(rulesetVersion), zone, team).ok;
@@ -156,11 +206,16 @@ export function isValid(scenario: string, rulesetVersion: string, team: readonly
   }
 }
 
-type Input = { readonly ok: true; readonly name?: string; readonly team?: TeamEntry[] } | { readonly ok: false; readonly code: PresetError };
+type Input =
+  | { readonly ok: true; readonly name?: string; readonly team?: TeamEntry[] }
+  | { readonly ok: false; readonly code: PresetError };
 
 /** Le nom et l'équipe d'une requête ; `required` : les deux doivent y être (création). */
 function readInput(body: unknown, required: boolean): Input {
-  const { name, team } = (typeof body === "object" && body !== null ? body : {}) as { name?: unknown; team?: unknown };
+  const { name, team } = (typeof body === "object" && body !== null ? body : {}) as {
+    name?: unknown;
+    team?: unknown;
+  };
   let cleanName: string | undefined;
   if (name !== undefined || required) {
     if (typeof name !== "string") return { ok: false, code: "PRESET_NAME" };
@@ -171,9 +226,14 @@ function readInput(body: unknown, required: boolean): Input {
   let entries: TeamEntry[] | undefined;
   if (team !== undefined || required) {
     entries = parseTeam(team);
-    if (entries === undefined || !isValid(DEFAULT_SCENARIO, CURRENT_RULESET_VERSION, entries)) return { ok: false, code: "PRESET_TEAM" };
+    if (entries === undefined || !isValid(DEFAULT_SCENARIO, CURRENT_RULESET_VERSION, entries))
+      return { ok: false, code: "PRESET_TEAM" };
   }
-  return { ok: true, ...(cleanName === undefined ? {} : { name: cleanName }), ...(entries === undefined ? {} : { team: entries }) };
+  return {
+    ok: true,
+    ...(cleanName === undefined ? {} : { name: cleanName }),
+    ...(entries === undefined ? {} : { team: entries }),
+  };
 }
 
 function safeJson(text: string): unknown {

@@ -68,9 +68,24 @@ export function openChannel<TIn, TOut>(options: ChannelOptions<TIn, TOut>): Chan
     });
   };
 
-  connect();
+  // Une page pré-rendue au survol de son lien (`criticalHead()`) n'est pas encore ouverte :
+  // se connecter maintenant annoncerait le joueur sur une page qu'il n'a pas choisie.
+  if (document.prerendering === true) {
+    document.addEventListener(
+      "prerenderingchange",
+      () => {
+        if (!abandoned) connect();
+      },
+      { once: true },
+    );
+  } else {
+    connect();
+  }
 
   return {
+    // Hors connexion, le message est perdu, pas mis en attente : à la reconnexion, `hello`
+    // fait rediffuser l'état, et un coup rejoué à l'aveugle sur une position qui a pu
+    // changer serait pire qu'un coup à rejouer. L'appelant le sait par `onStatus`.
     send: (message) => {
       if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
     },

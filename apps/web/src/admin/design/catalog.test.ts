@@ -28,7 +28,8 @@ describe("fichiers", () => {
 
 describe("storySources", () => {
   it("découpe un fichier d'aperçus en exemples, du nom d'export au suivant", () => {
-    const source = 'import { Button } from "@occulis/ui";\n\nexport const One = () => <Button />;\n\nexport const Two = () => (\n  <Button variant="primary" />\n);\n';
+    const source =
+      'import { Button } from "@occulis/ui";\n\nexport const One = () => <Button />;\n\nexport const Two = () => (\n  <Button variant="primary" />\n);\n';
     const stories = storySources(source);
     expect([...stories.keys()]).toEqual(["One", "Two"]);
     expect(stories.get("One")).toBe("export const One = () => <Button />;");
@@ -110,7 +111,11 @@ describe("cssAnimations", () => {
   }
 }`;
     expect(cssAnimations(css)).toEqual([
-      { selector: "#status[data-fresh]", animation: "line-in 420ms ease both", note: "Une ligne qui se trace." },
+      {
+        selector: "#status[data-fresh]",
+        animation: "line-in 420ms ease both",
+        note: "Une ligne qui se trace.",
+      },
       { selector: ".bare", animation: "spin 1s linear infinite", note: "" },
     ]);
   });
@@ -136,7 +141,8 @@ describe("fieldNotes", () => {
 
 describe("Markdown", () => {
   it("isole une section jusqu'au titre suivant de même rang", () => {
-    const doc = "## 8. Choix\n\nintro\n\n### 8.1 DA\n\ncorps\n\n#### détail\n\nencore\n\n### 8.2 Autre\n\nfin";
+    const doc =
+      "## 8. Choix\n\nintro\n\n### 8.1 DA\n\ncorps\n\n#### détail\n\nencore\n\n### 8.2 Autre\n\nfin";
     expect(markdownSection(doc, "8.1")).toBe("### 8.1 DA\n\ncorps\n\n#### détail\n\nencore\n");
     expect(markdownSection(doc, "9")).toBeUndefined();
   });
@@ -157,8 +163,17 @@ describe("Markdown", () => {
     const blocks = markdownBlocks(
       "# Title\n\nOne line\ncontinued.\n\n- first\n  wrapped\n- second\n\n1. un\n2. deux\n\n```jsx\n<UiRoot />\n```\n",
     );
-    expect(blocks.map((block) => block.kind)).toEqual(["heading", "paragraph", "list", "list", "code"]);
-    expect(blocks[1]).toEqual({ kind: "paragraph", text: [{ kind: "text", text: "One line continued." }] });
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "heading",
+      "paragraph",
+      "list",
+      "list",
+      "code",
+    ]);
+    expect(blocks[1]).toEqual({
+      kind: "paragraph",
+      text: [{ kind: "text", text: "One line continued." }],
+    });
     expect(blocks[2]).toEqual({
       kind: "list",
       ordered: false,

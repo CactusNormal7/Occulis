@@ -2,7 +2,13 @@ import type { ReactNode } from "react";
 import { cx } from "../cx.js";
 
 /** Une liste d'éléments à choisir un par un : les emplacements d'une équipe, des presets. */
-export function ChoiceList({ children, label }: { children: ReactNode; label?: string | undefined }) {
+export function ChoiceList({
+  children,
+  label,
+}: {
+  children: ReactNode;
+  label?: string | undefined;
+}) {
   return (
     <ul className="occ-choices" aria-label={label}>
       {children}
@@ -29,13 +35,32 @@ export interface ChoiceRowProps {
  * droite ce qui reste interactif à part. La ligne choisie est marquée du trait de la
  * sélection — l'information « c'est celle-ci que vous déplacez ».
  */
-export function ChoiceRow({ children, end, selected = false, muted = false, onSelect, camp }: ChoiceRowProps) {
+export function ChoiceRow({
+  children,
+  end,
+  selected = false,
+  muted = false,
+  onSelect,
+  camp,
+}: ChoiceRowProps) {
   return (
-    <li className={cx("occ-choice", selected && "occ-choice--selected", muted && "occ-choice--muted", camp !== undefined && `occ-choice--${camp}`)}>
+    <li
+      className={cx(
+        "occ-choice",
+        selected && "occ-choice--selected",
+        muted && "occ-choice--muted",
+        camp !== undefined && `occ-choice--${camp}`,
+      )}
+    >
       {onSelect === undefined ? (
         <div className="occ-choice__main">{children}</div>
       ) : (
-        <button type="button" className="occ-choice__main" aria-pressed={selected} onClick={onSelect}>
+        <button
+          type="button"
+          className="occ-choice__main"
+          aria-pressed={selected}
+          onClick={onSelect}
+        >
           {children}
         </button>
       )}

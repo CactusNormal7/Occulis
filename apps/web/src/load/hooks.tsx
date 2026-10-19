@@ -1,4 +1,12 @@
-import { type ReactNode, useCallback, useEffect, useRef, useState, useSyncExternalStore, startTransition } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  startTransition,
+} from "react";
 import { EmptyState } from "@occulis/ui";
 import { type Loaded, type Resource, loadCache, loadedOf, pendingLoads } from "./cache.js";
 
@@ -28,6 +36,8 @@ export function useLoad<T>(resource: Resource<T>): { loaded: Loaded<T>; reload: 
     void loadCache.request(latest.current);
   }, [key]);
 
+  // `key` sans être lue : un `reload` neuf par ressource, comme l'effet ci-dessus.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const reload = useCallback(() => void loadCache.request(latest.current, { force: true }), [key]);
 
   // Une promesse qui ne rejette jamais : React rend de nouveau la vue à son arrivée.
@@ -54,7 +64,10 @@ export function whenReady<T>(loaded: Loaded<T>, render: (value: T) => ReactNode)
  * (`resourcesOf`), puis passe en transition : l'écran affiché reste en place jusqu'à ce
  * que le suivant soit complet, au lieu de se vider puis de se remplir par morceaux.
  */
-export function useHashRoute<R>(parse: (hash: string) => R, resourcesOf: (route: R) => readonly Resource<unknown>[]): R {
+export function useHashRoute<R>(
+  parse: (hash: string) => R,
+  resourcesOf: (route: R) => readonly Resource<unknown>[],
+): R {
   const [route, setRoute] = useState(() => parse(location.hash));
   useEffect(() => {
     const update = () => {
@@ -64,6 +77,9 @@ export function useHashRoute<R>(parse: (hash: string) => R, resourcesOf: (route:
     };
     window.addEventListener("hashchange", update);
     return () => window.removeEventListener("hashchange", update);
+    // Un seul écouteur pour la vie de la page : `parse` et `resourcesOf` sont des
+    // fonctions de module, que chaque rendu repasse sans qu'elles changent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return route;
 }

@@ -12,7 +12,8 @@ export const profile = {
   },
   arrival: {
     googleLinked: "Google is linked to your account.",
-    welcome: "Welcome to Occulis. Your handle comes from your Google name: you can change it below.",
+    welcome:
+      "Welcome to Occulis. Your handle comes from your Google name: you can change it below.",
   },
   verified: "verified address",
   unverified: "unverified address",
@@ -41,7 +42,8 @@ export const profile = {
     hint: "2 to 24 characters: letters, digits, spaces, dots, hyphens.",
   },
   emailEditor: {
-    doneVerified: (email: string) => `Confirmation link sent to ${email}. Nothing changes until you agree.`,
+    doneVerified: (email: string) =>
+      `Confirmation link sent to ${email}. Nothing changes until you agree.`,
     doneUnverified: (email: string) => `Verification link sent to ${email}.`,
     noteVerified: (email: string) =>
       `A link goes first to ${email} to confirm, then to the new address to verify it. Nothing changes before both.`,
@@ -65,7 +67,8 @@ export const profile = {
   },
   passwordSetup: {
     done: (email: string) => `Link sent to ${email}. It expires in one hour.`,
-    note: (email: string) => `A link to choose your password will be sent to ${email}: it proves the address is yours.`,
+    note: (email: string) =>
+      `A link to choose your password will be sent to ${email}: it proves the address is yours.`,
   },
   google: {
     unlinked: "Google is no longer linked to your account.",
@@ -96,14 +99,16 @@ export const profile = {
     closed: "Session closed.",
     impersonated: " · impersonation (administrator)",
     unknownIp: "unknown IP",
-    line: (ip: string, since: string, opened: string) => `${ip} · active ${since} · opened on ${opened}`,
+    line: (ip: string, since: string, opened: string) =>
+      `${ip} · active ${since} · opened on ${opened}`,
     failed: "The request failed.",
   },
   danger: {
     title: "Danger zone",
     delete: "Delete the account",
     final: "Permanent.",
-    description: "Address, sessions and sign-ins erased. Your matches remain replayable by your opponents, under an anonymous handle.",
+    description:
+      "Address, sessions and sign-ins erased. Your matches remain replayable by your opponents, under an anonymous handle.",
     deleteButton: "Delete…",
     sent: (email: string) => `Confirmation link sent to ${email}. It expires in 24 hours.`,
     dialog: (email: string) =>
@@ -111,7 +116,14 @@ export const profile = {
   },
   matches: {
     title: (total: number) => `My matches (${total})`,
-    columns: { start: "start", opponent: "opponent", side: "side", result: "result", moves: "moves", elo: "Elo" },
+    columns: {
+      start: "start",
+      opponent: "opponent",
+      side: "side",
+      result: "result",
+      moves: "moves",
+      elo: "Elo",
+    },
     ratingChange: (change: number) => (change > 0 ? `+${change}` : `${change}`),
     unrated: "unranked",
     empty: "No matches yet.",
@@ -137,7 +149,8 @@ export const profile = {
     move: (index: number, total: number, who: string, resigned: boolean) =>
       `move ${index} / ${total} — ${who}${resigned ? " — resignation" : ""}`,
     you: "you",
-    unknownMap: (map: string) => `Map “${map}” unknown to this client: the board cannot be redrawn.`,
+    unknownMap: (map: string) =>
+      `Map “${map}” unknown to this client: the board cannot be redrawn.`,
   },
   since: {
     now: "just now",

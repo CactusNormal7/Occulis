@@ -84,7 +84,12 @@ async function runDirect(id: string): Promise<void> {
   const action = ACTIONS.find((candidate) => candidate.id === id);
   if (action === undefined || action.direct !== true) {
     const direct = ACTIONS.filter((candidate) => candidate.direct === true);
-    consoleLog(action === undefined ? `Action inconnue : « ${id} ».` : `« ${id} » ne se lance que depuis le menu (pnpm infra).`, "fail");
+    consoleLog(
+      action === undefined
+        ? `Action inconnue : « ${id} ».`
+        : `« ${id} » ne se lance que depuis le menu (pnpm infra).`,
+      "fail",
+    );
     consoleLog(`Directes : ${direct.map((candidate) => candidate.id).join(", ")}`, "info");
     process.exitCode = 2;
     return;
@@ -106,8 +111,9 @@ const direct = process.argv[2];
 
 // Le menu sort par `process.exit` (Ink garde le terminal ouvert) ; une action directe se
 // termine d'elle-même, sans couper la sortie qui s'écrit encore dans un tube.
-(direct === undefined ? runMenu().then(() => process.exit(0)) : runDirect(direct))
-  .catch((error) => {
+(direct === undefined ? runMenu().then(() => process.exit(0)) : runDirect(direct)).catch(
+  (error) => {
     process.stderr.write(`${String(error)}\n`);
     process.exit(1);
-  });
+  },
+);

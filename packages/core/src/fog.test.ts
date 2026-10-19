@@ -102,15 +102,22 @@ describe("observe — mémoire du fog of war", () => {
   it("efface le fantôme quand la case mémorisée est revue vide", () => {
     // A garde (3,0) en vue ; b-cmd s'en va sous ses yeux. La maîtresse de A est
     // rangée sur l'autre rangée : sur la même, elle couperait la ligne du scout.
-    const state = createGame(Board.flat(8, 2), ruleset, [
-      placePiece("a-scout", "scout", "A", 0, 0),
-      placePiece("a-cmd", "commander", "A", 0, 1),
-      placePiece("b-cmd", "commander", "B", 3, 0),
-    ], "B");
+    const state = createGame(
+      Board.flat(8, 2),
+      ruleset,
+      [
+        placePiece("a-scout", "scout", "A", 0, 0),
+        placePiece("a-cmd", "commander", "A", 0, 1),
+        placePiece("b-cmd", "commander", "B", 3, 0),
+      ],
+      "B",
+    );
     const seen = observe(emptyKnowledge("A"), state);
     expect(seen.remembered.get("b-cmd")?.coord).toEqual({ x: 3, y: 0 });
 
-    const moved = unwrap(applyAction(state, { kind: "move", pieceId: "b-cmd", to: { x: 4, y: 0 } }));
+    const moved = unwrap(
+      applyAction(state, { kind: "move", pieceId: "b-cmd", to: { x: 4, y: 0 } }),
+    );
     const after = observe(seen, moved);
 
     expect(after.visible.has(coordKey({ x: 3, y: 0 }))).toBe(true);
@@ -123,7 +130,9 @@ describe("observe — mémoire du fog of war", () => {
     expect(seen.remembered.get("b-cmd")?.coord).toEqual({ x: 5, y: 0 });
 
     // A recule : (5,0) sort de sa portée de vision, le souvenir n'est pas démenti.
-    const withdrawn = unwrap(applyAction(state, { kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } }));
+    const withdrawn = unwrap(
+      applyAction(state, { kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } }),
+    );
     const after = observe(seen, withdrawn);
 
     expect(after.visible.has(coordKey({ x: 5, y: 0 }))).toBe(false);
@@ -162,7 +171,9 @@ describe("viewFor — redaction serveur-side", () => {
     const seen = observe(emptyKnowledge("A"), state);
     expect(viewFor(state, seen).visibleEnemies.map((p) => p.id)).toEqual(["b-cmd"]);
 
-    const withdrawn = unwrap(applyAction(state, { kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } }));
+    const withdrawn = unwrap(
+      applyAction(state, { kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } }),
+    );
     const view = viewFor(withdrawn, observe(seen, withdrawn));
 
     expect(view.visibleEnemies).toEqual([]);
@@ -195,8 +206,8 @@ describe("viewFor — les coups légaux transmis", () => {
     const after = unwrap(applyAction(state, legalActions(state)[0]!));
 
     expect(viewFor(after, observe(emptyKnowledge("A"), after)).legalActions).toEqual([]);
-    expect(
-      viewFor(after, observe(emptyKnowledge("B"), after)).legalActions.length,
-    ).toBeGreaterThan(0);
+    expect(viewFor(after, observe(emptyKnowledge("B"), after)).legalActions.length).toBeGreaterThan(
+      0,
+    );
   });
 });

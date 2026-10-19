@@ -63,7 +63,14 @@ function isResorb(value: string): value is PaperResorb {
  * `--occ-dur-resorb`, tempo compris), mode de résorption. Sous `still`, rien ne se propage :
  * l'inversion entière paraît et s'en va en fondu.
  */
-export function PaperInversion({ run, blend = "cover", resorb, onCovered, onDone, className }: PaperInversionProps) {
+export function PaperInversion({
+  run,
+  blend = "cover",
+  resorb,
+  onCovered,
+  onDone,
+  className,
+}: PaperInversionProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const renderer = useRef<PaperRenderer | null>(null);
   const callbacks = useRef({ onCovered, onDone });
@@ -169,11 +176,14 @@ export function PaperInversion({ run, blend = "cover", resorb, onCovered, onDone
           ? []
           : [
               window.setTimeout(() => (element.dataset.still = "out"), fade + timing.holdMs),
-              window.setTimeout(() => {
-                delete element.dataset.still;
-                clear();
-                callbacks.current.onDone?.();
-              }, fade * 2 + timing.holdMs),
+              window.setTimeout(
+                () => {
+                  delete element.dataset.still;
+                  clear();
+                  callbacks.current.onDone?.();
+                },
+                fade * 2 + timing.holdMs,
+              ),
             ]),
       ];
       return () => {
@@ -212,5 +222,11 @@ export function PaperInversion({ run, blend = "cover", resorb, onCovered, onDone
     };
   }, [runKey]);
 
-  return <canvas ref={canvas} className={cx("occ-paper", blend === "invert" && "occ-paper--invert", className)} aria-hidden="true" />;
+  return (
+    <canvas
+      ref={canvas}
+      className={cx("occ-paper", blend === "invert" && "occ-paper--invert", className)}
+      aria-hidden="true"
+    />
+  );
 }

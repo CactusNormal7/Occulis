@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# Rapports de couverture de `vitest run --coverage`.
+coverage/
 .DS_Store
 *.log
 .vite/
@@ -8,8 +10,8 @@ dist/
 .wrangler/
 .venv
 .venv/
-# Sauvegardes datées créées par « graphify update »
-graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
+# La carte de graphify est construite sur chaque machine, jamais versionnée (docs/graphify.md).
+graphify-out/
 .dev.vars
 
 # design-sync : scripts recopiés, build généré et état machine (voir .design-sync/NOTES.md).

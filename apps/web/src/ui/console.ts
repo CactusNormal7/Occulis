@@ -10,7 +10,7 @@ import {
   describeTurn,
   describeWatching,
 } from "./messages.js";
-import { messages } from "../i18n/current.js";
+import { messages } from "../locale/current.js";
 
 /**
  * Saisie de coups au clavier et comptes rendus de partie : le bandeau affiché
@@ -104,7 +104,9 @@ export function attachConsole(options: ConsoleOptions): GameConsole {
     if (next === status.textContent) return;
     status.textContent = next;
     // Le trait qui revient au joueur se signale plus fort qu'un simple changement de ligne.
-    status.dataset["yours"] = String(friend === undefined && current.activePlayer === current.player);
+    status.dataset["yours"] = String(
+      friend === undefined && current.activePlayer === current.player,
+    );
     freshen(status);
   };
 

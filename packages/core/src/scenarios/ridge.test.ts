@@ -42,7 +42,9 @@ describe("ridge-1", () => {
   it("pose des équipes par défaut valides, qui forment une position de départ", () => {
     const ruleset = provisionalRuleset();
     for (const player of ["A", "B"] as const) {
-      expect(validateTeam(ruleset, deployment.zones[player], deployment.defaultTeams[player]).ok).toBe(true);
+      expect(
+        validateTeam(ruleset, deployment.zones[player], deployment.defaultTeams[player]).ok,
+      ).toBe(true);
     }
     const pieces = deployTeams(ruleset, deployment, deployment.defaultTeams);
     expect(pieces.ok).toBe(true);
@@ -52,7 +54,11 @@ describe("ridge-1", () => {
 
 describe("ridge-1 : équipe écrite pour le camp A", () => {
   it("se pose à l'identique, en miroir, dans la zone du camp B", () => {
-    expect(teamForSide(deployment, deployment.defaultTeams.A, "B")).toEqual(deployment.defaultTeams.B);
-    expect(teamForSide(deployment, deployment.defaultTeams.A, "A")).toEqual(deployment.defaultTeams.A);
+    expect(teamForSide(deployment, deployment.defaultTeams.A, "B")).toEqual(
+      deployment.defaultTeams.B,
+    );
+    expect(teamForSide(deployment, deployment.defaultTeams.A, "A")).toEqual(
+      deployment.defaultTeams.A,
+    );
   });
 });

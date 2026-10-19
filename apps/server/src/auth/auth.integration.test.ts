@@ -49,7 +49,10 @@ describe("authentification", () => {
 
   it("ne reconnaît personne sans cookie, ni sur un jeton inventé", async () => {
     expect(await me()).toEqual({ signedIn: false, providers: [] });
-    expect(await me(`${SESSION_COOKIE}=jeton-inexistant`)).toEqual({ signedIn: false, providers: [] });
+    expect(await me(`${SESSION_COOKIE}=jeton-inexistant`)).toEqual({
+      signedIn: false,
+      providers: [],
+    });
   });
 
   it("protège le cookie de session", async () => {
@@ -81,7 +84,10 @@ describe("authentification", () => {
       .first<{ token: string }>();
 
     expect(stored?.token).toBeTruthy();
-    expect(await me(`${SESSION_COOKIE}=${stored?.token ?? ""}`)).toEqual({ signedIn: false, providers: [] });
+    expect(await me(`${SESSION_COOKIE}=${stored?.token ?? ""}`)).toEqual({
+      signedIn: false,
+      providers: [],
+    });
   });
 
   it("reconnecte avec le bon mot de passe et refuse le mauvais", async () => {
@@ -92,7 +98,10 @@ describe("authentification", () => {
     const good = await post("/api/auth/sign-in/email", { email, password: PASSWORD });
     expect(good.status).toBe(200);
 
-    const bad = await post("/api/auth/sign-in/email", { email, password: "un-mot-de-passe-different" });
+    const bad = await post("/api/auth/sign-in/email", {
+      email,
+      password: "un-mot-de-passe-different",
+    });
     expect(bad.status).toBe(401);
   });
 
@@ -134,7 +143,11 @@ describe("authentification", () => {
     await signUp(handle);
     const email = `${unique("hugo-bis")}@occulis.test`;
 
-    const response = await post("/api/auth/sign-up/email", { email, password: PASSWORD, name: handle });
+    const response = await post("/api/auth/sign-up/email", {
+      email,
+      password: PASSWORD,
+      name: handle,
+    });
     expect(response.ok).toBe(false);
 
     const orphan = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first();
@@ -170,7 +183,12 @@ describe("authentification", () => {
 
     const statuses: number[] = [];
     for (let attempt = 0; attempt < 8; attempt++) {
-      const response = await post("/api/auth/sign-in/email", { email, password: "faux" }, undefined, ip);
+      const response = await post(
+        "/api/auth/sign-in/email",
+        { email, password: "faux" },
+        undefined,
+        ip,
+      );
       statuses.push(response.status);
     }
 
@@ -260,10 +278,34 @@ describe("sans AUTH_SECRET", () => {
   it("refuse l'authentification et la file, mais sert encore le reste", async () => {
     const unconfigured = { ...env, AUTH_SECRET: "" };
     const call = (path: string) =>
-      worker.fetch(new Request(`https://occulis.test${path}`, { headers: { Origin: "https://occulis.test" } }), unconfigured);
+      worker.fetch(
+        new Request(`https://occulis.test${path}`, { headers: { Origin: "https://occulis.test" } }),
+        unconfigured,
+      );
 
     expect((await call("/api/auth/get-session")).status).toBe(503);
     expect((await call("/api/auth/me")).status).toBe(503);
     expect((await call("/api/queue")).status).toBe(503);
+  });
+});
+
+describe("comptes : un profil de jeu par compte", () => {
+  it("refuse qu'un second compte prenne le profil d'un autre", async () => {
+    const first = unique("ulysse");
+    const second = unique("vera");
+    await signUp(first);
+    await signUp(second);
+    const playerOf = async (name: string) =>
+      (
+        await env.DB.prepare("SELECT player_id FROM users WHERE name = ?")
+          .bind(name)
+          .first<{ player_id: string }>()
+      )?.player_id;
+
+    await expect(
+      env.DB.prepare("UPDATE users SET player_id = ? WHERE name = ?")
+        .bind(await playerOf(first), second)
+        .run(),
+    ).rejects.toThrow(/UNIQUE/);
   });
 });

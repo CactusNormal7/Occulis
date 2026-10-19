@@ -2,8 +2,10 @@ import { SELF, env, runDurableObjectAlarm, runInDurableObject } from "cloudflare
 import { describe, expect, it } from "vitest";
 import type { ClientMessage, ServerMessage } from "@occulis/protocol";
 import { PROTOCOL_VERSION } from "@occulis/protocol";
-import { type StartedMatch, startMatch } from "./match-setup.js";
-import { ABSENCE_MS, DEPLOYMENT_MS } from "./match-do.js";
+import type { StartedMatch } from "./match-setup.js";
+import { startTestMatch } from "./test-helpers.js";
+import { ABSENCE_MS, DEPLOYMENT_MS, type MatchConfig } from "./match-do.js";
+import type { ScenarioSnapshot } from "@occulis/core";
 
 /**
  * Tests d'intégration dans **workerd**, le runtime réel.
@@ -19,13 +21,8 @@ import { ABSENCE_MS, DEPLOYMENT_MS } from "./match-do.js";
  * l'hibernation et multiplie le coût par ~20 000 (docs/costs.md) — ferait taire ces
  * gestionnaires, et tout ce fichier échouerait.
  */
-async function createMatch(): Promise<StartedMatch> {
-  const response = await SELF.fetch("https://occulis.test/api/matches", {
-    method: "POST",
-    body: JSON.stringify({ playerA: `anne-${crypto.randomUUID()}`, playerB: `boris-${crypto.randomUUID()}` }),
-  });
-  expect(response.status).toBe(200);
-  return (await response.json()) as StartedMatch;
+function createMatch(): Promise<StartedMatch> {
+  return startTestMatch(`anne-${crypto.randomUUID()}`, `boris-${crypto.randomUUID()}`);
 }
 
 /** Un joueur connecté, dont on peut attendre un message d'un type donné. */
@@ -67,7 +64,9 @@ async function seat(matchId: string, token: string) {
 /** Attend que le DO ait noté le départ d'un siège : sa fermeture lui parvient en différé. */
 async function absentSince(stub: DurableObjectStub, side: "A" | "B"): Promise<number> {
   for (let attempt = 0; attempt < 50; attempt++) {
-    const since = await runInDurableObject(stub, (_instance, state) => state.storage.get<number>(`absent:${side}`));
+    const since = await runInDurableObject(stub, (_instance, state) =>
+      state.storage.get<number>(`absent:${side}`),
+    );
     if (since !== undefined) return since;
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
@@ -88,11 +87,56 @@ describe("MatchDO dans workerd", () => {
     const match = await createMatch();
 
     for (const token of ["", "A", "jeton-bidon"]) {
-      const response = await SELF.fetch(`https://occulis.test/match/${match.matchId}?seat=${token}`, {
-        headers: { Upgrade: "websocket" },
-      });
+      const response = await SELF.fetch(
+        `https://occulis.test/match/${match.matchId}?seat=${token}`,
+        {
+          headers: { Upgrade: "websocket" },
+        },
+      );
       expect(response.status).toBe(403);
     }
+  });
+
+  it("ne crée aucune partie ni aucun profil sur une requête anonyme", async () => {
+    const [playerA, playerB] = [`anne-${crypto.randomUUID()}`, `boris-${crypto.randomUUID()}`];
+    const response = await SELF.fetch("https://occulis.test/api/matches", {
+      method: "POST",
+      body: JSON.stringify({ playerA, playerB }),
+    });
+
+    expect(response.status).toBe(404);
+    const created = await env.DB.prepare("SELECT COUNT(*) AS n FROM players WHERE id IN (?, ?)")
+      .bind(playerA, playerB)
+      .first<{ n: number }>();
+    expect(created?.n).toBe(0);
+  });
+
+  it("fige la carte à la création, et la joue même si elle diffère du registre", async () => {
+    const match = await createMatch();
+    const row = await env.DB.prepare("SELECT map FROM matches WHERE id = ?")
+      .bind(match.matchId)
+      .first<{ map: string }>();
+    const map = JSON.parse(row?.map ?? "null") as ScenarioSnapshot;
+    expect(map.tiles.length).toBeGreaterThan(0);
+
+    const a = await seat(match.matchId, match.seats.A);
+    expect((await a.awaitKind("welcome")).board).toEqual(map.tiles);
+
+    // Une carte retouchée dans le registre ne doit rien changer : seule compte la copie figée.
+    const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
+    await runInDurableObject(stub, async (instance, state) => {
+      const config = await state.storage.get<MatchConfig>("config");
+      if (config?.map === undefined) throw new Error("carte absente de la configuration");
+      await state.storage.put("config", {
+        ...config,
+        map: { ...config.map, tiles: config.map.tiles.map((tile) => ({ ...tile, height: 0 })) },
+      });
+      (instance as unknown as { live: unknown }).live = null;
+    });
+    a.send({ kind: "hello", protocol: PROTOCOL_VERSION });
+    expect((await a.awaitKind("welcome")).board.every((tile) => tile.height === 0)).toBe(true);
+
+    a.socket.close();
   });
 
   it("ouvre la partie par le déploiement : zones, équipe par défaut, cartes des joueurs", async () => {
@@ -123,7 +167,10 @@ describe("MatchDO dans workerd", () => {
     expect((await a.awaitKind("rejected")).error).toEqual({ code: "wrong-phase" });
 
     a.send({ kind: "deploy", team: defaultTeam.slice(1) });
-    expect((await a.awaitKind("rejected")).error).toMatchObject({ code: "wrong-count", role: "commander" });
+    expect((await a.awaitKind("rejected")).error).toMatchObject({
+      code: "wrong-count",
+      role: "commander",
+    });
 
     a.send({ kind: "deploy", team: "n'importe quoi" as never });
     expect((await a.awaitKind("rejected")).error).toEqual({ code: "malformed-team" });
@@ -155,13 +202,24 @@ describe("MatchDO dans workerd", () => {
 
     const view = (await a.awaitKind("view")).view;
     expect(view.player).toBe("A");
-    expect(view.ownPieces.map((piece) => piece.id).sort()).toEqual(["a-0", "a-1", "a-2", "a-3", "a-4", "a-5", "a-6", "a-7"]);
+    expect(view.ownPieces.map((piece) => piece.id).sort()).toEqual([
+      "a-0",
+      "a-1",
+      "a-2",
+      "a-3",
+      "a-4",
+      "a-5",
+      "a-6",
+      "a-7",
+    ]);
     // Les zones de la carte n'ont pas de vue mutuelle : rien de B ne doit passer.
     expect(view.visibleEnemies).toEqual([]);
     expect(JSON.stringify(view)).not.toContain('"b-');
     await b.awaitKind("view");
 
-    const row = await env.DB.prepare("SELECT setup FROM matches WHERE id = ?").bind(match.matchId).first<{ setup: string | null }>();
+    const row = await env.DB.prepare("SELECT setup FROM matches WHERE id = ?")
+      .bind(match.matchId)
+      .first<{ setup: string | null }>();
     expect(JSON.parse(row?.setup ?? "[]")).toHaveLength(16);
 
     a.socket.close();
@@ -173,7 +231,9 @@ describe("MatchDO dans workerd", () => {
     const a = await seat(match.matchId, match.seats.A);
     const { defaultTeam } = await a.awaitKind("deployment");
     // Une équipe différente du défaut, pour vérifier qu'elle est bien celle retenue.
-    const mine = defaultTeam.map((entry, index) => (index === 0 ? { ...entry, coord: { x: 0, y: 8 } } : entry));
+    const mine = defaultTeam.map((entry, index) =>
+      index === 0 ? { ...entry, coord: { x: 0, y: 8 } } : entry,
+    );
     a.send({ kind: "deploy", team: mine });
     await a.awaitKind("deployment-update");
 
@@ -184,7 +244,9 @@ describe("MatchDO dans workerd", () => {
     const view = (await a.awaitKind("view")).view;
     expect(view.ownPieces.find((piece) => piece.id === "a-0")?.coord).toEqual({ x: 0, y: 8 });
 
-    const row = await env.DB.prepare("SELECT setup FROM matches WHERE id = ?").bind(match.matchId).first<{ setup: string }>();
+    const row = await env.DB.prepare("SELECT setup FROM matches WHERE id = ?")
+      .bind(match.matchId)
+      .first<{ setup: string }>();
     const setup = JSON.parse(row?.setup ?? "[]") as { owner: string }[];
     expect(setup.filter((piece) => piece.owner === "B")).toHaveLength(8);
 
@@ -199,7 +261,39 @@ describe("MatchDO dans workerd", () => {
     // `core` vérifie que la pièce est au trait, pas que l'expéditeur en est le
     // propriétaire : sans le contrôle du serveur, B jouerait les pièces de A.
     b.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
-    expect((await b.awaitKind("rejected")).error).toEqual({ code: "not-your-turn", activePlayer: "A" });
+    expect((await b.awaitKind("rejected")).error).toEqual({
+      code: "not-your-turn",
+      activePlayer: "A",
+    });
+
+    a.socket.close();
+    b.socket.close();
+  });
+
+  it("ignore un coup mal formé, sans rien écrire au log", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    await a.awaitKind("view");
+    await b.awaitKind("view");
+
+    // Des coordonnées en texte passeraient `coordKey()` et finiraient telles quelles en D1.
+    a.socket.send(
+      JSON.stringify({
+        kind: "action",
+        action: { kind: "move", pieceId: "a-4", to: { x: "1", y: "5" } },
+      }),
+    );
+    a.socket.send("pas du JSON");
+    a.drain();
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    expect((await a.awaitKind("view")).view.turn).toBe(1);
+
+    const logged = await env.DB.prepare("SELECT seq, action FROM match_actions WHERE match_id = ?")
+      .bind(match.matchId)
+      .all<{ seq: number; action: string }>();
+    expect(logged.results).toEqual([
+      { seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":1,"y":5}}' },
+    ]);
 
     a.socket.close();
     b.socket.close();
@@ -224,7 +318,9 @@ describe("MatchDO dans workerd", () => {
     const logged = await env.DB.prepare("SELECT seq, action FROM match_actions WHERE match_id = ?")
       .bind(match.matchId)
       .all<{ seq: number; action: string }>();
-    expect(logged.results).toEqual([{ seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":1,"y":5}}' }]);
+    expect(logged.results).toEqual([
+      { seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":1,"y":5}}' },
+    ]);
 
     a.socket.close();
     b.socket.close();
@@ -240,7 +336,10 @@ describe("MatchDO dans workerd", () => {
     a.drain();
 
     a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 9, y: 9 } } });
-    expect((await a.awaitKind("rejected")).error).toEqual({ code: "unreachable", to: { x: 9, y: 9 } });
+    expect((await a.awaitKind("rejected")).error).toEqual({
+      code: "unreachable",
+      to: { x: 9, y: 9 },
+    });
 
     a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
     const after = (await a.awaitKind("view")).view;
@@ -263,9 +362,15 @@ describe("MatchDO dans workerd", () => {
     const view = (await a.awaitKind("view")).view;
     expect(view.outcome).toEqual({ kind: "victory", winner: "B", reason: "resignation" });
 
-    const row = await env.DB.prepare("SELECT finished_at, outcome, rating_change_a FROM matches WHERE id = ?")
+    const row = await env.DB.prepare(
+      "SELECT finished_at, outcome, rating_change_a FROM matches WHERE id = ?",
+    )
       .bind(match.matchId)
-      .first<{ finished_at: number | null; outcome: string | null; rating_change_a: number | null }>();
+      .first<{
+        finished_at: number | null;
+        outcome: string | null;
+        rating_change_a: number | null;
+      }>();
     expect(row?.finished_at).not.toBeNull();
     expect(row?.outcome).toBe('{"kind":"victory","winner":"B","reason":"resignation"}');
     expect(row?.rating_change_a).toBeNull();
@@ -311,7 +416,9 @@ describe("MatchDO dans workerd", () => {
     expect(since).toBeTypeOf("number");
 
     // Le temps ne s'avance pas dans workerd : on recule le départ.
-    await runInDurableObject(stub, (_instance, state) => state.storage.put("absent:B", Date.now() - ABSENCE_MS - 1));
+    await runInDurableObject(stub, (_instance, state) =>
+      state.storage.put("absent:B", Date.now() - ABSENCE_MS - 1),
+    );
     expect(await runDurableObjectAlarm(stub)).toBe(true);
     const view = (await a.awaitKind("view")).view;
     expect(view.outcome).toEqual({ kind: "victory", winner: "A", reason: "resignation" });
@@ -335,7 +442,9 @@ describe("MatchDO dans workerd", () => {
 
     const back = await seat(match.matchId, match.seats.B);
     expect((await back.awaitKind("view")).view.outcome).toBeNull();
-    const cleared = await runInDurableObject(stub, (_instance, state) => state.storage.get("absent:B"));
+    const cleared = await runInDurableObject(stub, (_instance, state) =>
+      state.storage.get("absent:B"),
+    );
     expect(cleared).toBeUndefined();
 
     a.socket.close();
@@ -344,7 +453,7 @@ describe("MatchDO dans workerd", () => {
 
   it("fait varier l'Elo des deux joueurs à la fin d'une partie classée", async () => {
     const [anne, boris] = [`anne-${crypto.randomUUID()}`, `boris-${crypto.randomUUID()}`];
-    const match = await startMatch(env, anne, boris, { rated: true });
+    const match = await startTestMatch(anne, boris, { rated: true });
     const { a, b } = await deployed(match);
     await a.awaitKind("view");
     a.drain();
@@ -352,10 +461,17 @@ describe("MatchDO dans workerd", () => {
     a.send({ kind: "action", action: { kind: "resign" } });
     await a.awaitKind("view");
 
-    const elo = async (id: string) => (await env.DB.prepare("SELECT elo FROM players WHERE id = ?").bind(id).first<{ elo: number }>())?.elo;
+    const elo = async (id: string) =>
+      (
+        await env.DB.prepare("SELECT elo FROM players WHERE id = ?")
+          .bind(id)
+          .first<{ elo: number }>()
+      )?.elo;
     expect(await elo(anne)).toBe(1184);
     expect(await elo(boris)).toBe(1216);
-    const row = await env.DB.prepare("SELECT rated, rating_change_a, rating_change_b FROM matches WHERE id = ?")
+    const row = await env.DB.prepare(
+      "SELECT rated, rating_change_a, rating_change_b FROM matches WHERE id = ?",
+    )
       .bind(match.matchId)
       .first();
     expect(row).toEqual({ rated: 1, rating_change_a: -16, rating_change_b: 16 });
@@ -364,17 +480,81 @@ describe("MatchDO dans workerd", () => {
     b.socket.close();
   });
 
+  it("retente une clôture non inscrite sans compter l'Elo deux fois", async () => {
+    const [anne, boris] = [`anne-${crypto.randomUUID()}`, `boris-${crypto.randomUUID()}`];
+    const match = await startTestMatch(anne, boris, { rated: true });
+    const { a, b } = await deployed(match);
+    await a.awaitKind("view");
+    a.drain();
+    a.send({ kind: "action", action: { kind: "resign" } });
+    await a.awaitKind("view");
+
+    // Comme si D1 avait répondu en erreur après avoir pourtant écrit le lot.
+    const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
+    await runInDurableObject(stub, async (_instance, state) => {
+      await state.storage.put("unrecorded-outcome", true);
+      // Dans le futur : `runDurableObjectAlarm` la déclenche aussitôt, sans que le
+      // runtime la devance.
+      await state.storage.setAlarm(Date.now() + 60_000);
+    });
+    expect(await runDurableObjectAlarm(stub)).toBe(true);
+
+    const elo = async (id: string) =>
+      (
+        await env.DB.prepare("SELECT elo FROM players WHERE id = ?")
+          .bind(id)
+          .first<{ elo: number }>()
+      )?.elo;
+    expect(await elo(anne)).toBe(1184);
+    expect(await elo(boris)).toBe(1216);
+    expect(
+      await runInDurableObject(stub, (_instance, state) => state.storage.get("unrecorded-outcome")),
+    ).toBeUndefined();
+
+    a.socket.close();
+    b.socket.close();
+  });
+
+  it("rend les mêmes vues après éviction, l'état n'étant qu'un cache du log", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    await a.awaitKind("view");
+    await b.awaitKind("view");
+    a.drain();
+    b.drain();
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    const before = { A: (await a.awaitKind("view")).view, B: (await b.awaitKind("view")).view };
+
+    // Ce que l'hibernation fait au DO : la mémoire tombe, le stockage et D1 restent.
+    const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
+    await runInDurableObject(stub, (instance) => {
+      (instance as unknown as { live: unknown }).live = null;
+    });
+    a.send({ kind: "hello", protocol: PROTOCOL_VERSION });
+
+    expect((await a.awaitKind("view")).view).toEqual(before.A);
+    expect((await b.awaitKind("view")).view).toEqual(before.B);
+
+    a.socket.close();
+    b.socket.close();
+  });
+
   it("ferme la connexion d'un client au protocole incompatible", async () => {
     const match = await createMatch();
-    const response = await SELF.fetch(`https://occulis.test/match/${match.matchId}?seat=${match.seats.A}`, {
-      headers: { Upgrade: "websocket" },
-    });
+    const response = await SELF.fetch(
+      `https://occulis.test/match/${match.matchId}?seat=${match.seats.A}`,
+      {
+        headers: { Upgrade: "websocket" },
+      },
+    );
     const socket = response.webSocket;
     if (socket === null) throw new Error("pas de WebSocket dans la réponse");
     socket.accept();
 
     const refused = new Promise<ServerMessage>((resolve) => {
-      socket.addEventListener("message", (event) => resolve(JSON.parse(String(event.data)) as ServerMessage));
+      socket.addEventListener("message", (event) =>
+        resolve(JSON.parse(String(event.data)) as ServerMessage),
+      );
     });
     socket.send(JSON.stringify({ kind: "hello", protocol: PROTOCOL_VERSION + 1 }));
 

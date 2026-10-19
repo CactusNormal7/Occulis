@@ -18,7 +18,16 @@ import {
   type GlyphShape,
 } from "./glyphs.js";
 import { easing, motionFrom, parseRgb, type Motion } from "./motion.js";
-import { farthestCorner, paperAt, project, unproject, zoneDistances, zoneReach, zoneTexels, type PaperTiming } from "./paper.js";
+import {
+  farthestCorner,
+  paperAt,
+  project,
+  unproject,
+  zoneDistances,
+  zoneReach,
+  zoneTexels,
+  type PaperTiming,
+} from "./paper.js";
 import { PaperInversion } from "./PaperInversion.js";
 
 const signature = (glyph: GlyphShape): string => JSON.stringify(glyph);
@@ -40,8 +49,16 @@ describe("alphabets", () => {
   it("trace tout glyphe dans sa case", () => {
     for (const name of CIPHER_ALPHABETS) {
       for (const glyph of alphabet(name).pool) {
-        const xs = [...glyph.segments.flatMap(([x1, , x2]) => [x1, x2]), ...glyph.dots.map(([x]) => x), ...glyph.rings.flatMap(([x]) => [x - 2, x + 2])];
-        const ys = [...glyph.segments.flatMap(([, y1, , y2]) => [y1, y2]), ...glyph.dots.map(([, y]) => y), ...glyph.rings.flatMap(([, y]) => [y - 2, y + 2])];
+        const xs = [
+          ...glyph.segments.flatMap(([x1, , x2]) => [x1, x2]),
+          ...glyph.dots.map(([x]) => x),
+          ...glyph.rings.flatMap(([x]) => [x - 2, x + 2]),
+        ];
+        const ys = [
+          ...glyph.segments.flatMap(([, y1, , y2]) => [y1, y2]),
+          ...glyph.dots.map(([, y]) => y),
+          ...glyph.rings.flatMap(([, y]) => [y - 2, y + 2]),
+        ];
         expect(Math.min(...xs)).toBeGreaterThanOrEqual(0);
         expect(Math.max(...xs)).toBeLessThan(GLYPH_WIDTH);
         expect(Math.min(...ys)).toBeGreaterThanOrEqual(0);
@@ -60,17 +77,23 @@ describe("alphabets", () => {
   });
 
   it("chiffre toujours une lettre de la même façon quand l'alphabet est décodable, accents compris", () => {
-    expect(signature(cipherGlyph("e", 0, "stele", true))).toBe(signature(cipherGlyph("É", 9, "stele", true)));
+    expect(signature(cipherGlyph("e", 0, "stele", true))).toBe(
+      signature(cipherGlyph("É", 9, "stele", true)),
+    );
     expect(foldChar("é")).toBe("E");
   });
 
   it("ne garde aucun lien stable entre lettre et glyphe en ornement", () => {
-    const glyphs = Array.from({ length: 12 }, (_, index) => signature(cipherGlyph("E", index, "lattice", false, 1)));
+    const glyphs = Array.from({ length: 12 }, (_, index) =>
+      signature(cipherGlyph("E", index, "lattice", false, 1)),
+    );
     expect(new Set(glyphs).size).toBeGreaterThan(1);
   });
 
   it("est déterministe : mêmes entrées, mêmes glyphes", () => {
-    expect(signature(cipherGlyph("Q", 3, "orbit", false, 42))).toBe(signature(cipherGlyph("Q", 3, "orbit", false, 42)));
+    expect(signature(cipherGlyph("Q", 3, "orbit", false, 42))).toBe(
+      signature(cipherGlyph("Q", 3, "orbit", false, 42)),
+    );
   });
 });
 
@@ -81,7 +104,8 @@ describe("déchiffrement", () => {
     expect(cellAt(0, 7, 0, timing, "decode").state).toBe("cipher");
     expect(cellAt(6, 7, 900, timing, "decode").state).toBe("plain");
     expect(settleAt(0, 7, timing)).toBeLessThan(settleAt(6, 7, timing));
-    for (let index = 0; index < 7; index += 1) expect(settleAt(index, 7, timing)).toBeLessThanOrEqual(900);
+    for (let index = 0; index < 7; index += 1)
+      expect(settleAt(index, 7, timing)).toBeLessThanOrEqual(900);
   });
 
   it("montre le vrai glyphe pendant le dernier pas avant la lettre", () => {
@@ -92,7 +116,8 @@ describe("déchiffrement", () => {
 
   it("ne brouille rien quand le niveau l'interdit", () => {
     const calm = { ...timing, scramble: false };
-    for (let t = 0; t < 900; t += 10) expect(cellAt(2, 7, t, calm, "decode").state).not.toBe("scramble");
+    for (let t = 0; t < 900; t += 10)
+      expect(cellAt(2, 7, t, calm, "decode").state).not.toBe("scramble");
   });
 
   it("chiffre à l'inverse : des lettres aux glyphes", () => {
@@ -102,8 +127,12 @@ describe("déchiffrement", () => {
 
   it("fait frémir une frise un glyphe à la fois, pas en bloc", () => {
     const count = 16;
-    const before = Array.from({ length: count }, (_, index) => flickerVariant(index, count, 10_000, 1400));
-    const after = Array.from({ length: count }, (_, index) => flickerVariant(index, count, 10_000 + 1400, 1400));
+    const before = Array.from({ length: count }, (_, index) =>
+      flickerVariant(index, count, 10_000, 1400),
+    );
+    const after = Array.from({ length: count }, (_, index) =>
+      flickerVariant(index, count, 10_000 + 1400, 1400),
+    );
     const changed = before.filter((value, index) => value !== after[index]).length;
     expect(changed).toBeLessThanOrEqual(4);
   });
@@ -111,8 +140,16 @@ describe("déchiffrement", () => {
 
 describe("mouvement", () => {
   it("lit les boutons de la racine, et retombe sur le défaut si une surcharge est mal formée", () => {
-    expect(motionFrom({ level: " calm", amplitude: "0.4", tempo: "1.5" })).toEqual({ level: "calm", amplitude: 0.4, tempo: 1.5 });
-    expect(motionFrom({ level: "wild", amplitude: "x", tempo: "-2" })).toEqual({ level: "full", amplitude: 1, tempo: 1 });
+    expect(motionFrom({ level: " calm", amplitude: "0.4", tempo: "1.5" })).toEqual({
+      level: "calm",
+      amplitude: 0.4,
+      tempo: 1.5,
+    });
+    expect(motionFrom({ level: "wild", amplitude: "x", tempo: "-2" })).toEqual({
+      level: "full",
+      amplitude: 1,
+      tempo: 1,
+    });
     expect(motionFrom({ level: "still", amplitude: "1" }).amplitude).toBe(0);
   });
 
@@ -149,7 +186,13 @@ describe("mouvement", () => {
 });
 
 describe("papier", () => {
-  const timing: PaperTiming = { reach: 900, speed: 900, holdMs: 700, resorbMs: 600, resorb: "dither" };
+  const timing: PaperTiming = {
+    reach: 900,
+    speed: 900,
+    holdMs: 700,
+    resorbMs: 600,
+    resorb: "dither",
+  };
 
   it("avance à vitesse constante, tient, puis se dissout", () => {
     expect(paperAt(500, timing)).toMatchObject({ phase: "spread", front: 450, covered: false });
@@ -159,8 +202,14 @@ describe("papier", () => {
   });
 
   it("repart vers son origine en `recede`, reste en `none`", () => {
-    expect(paperAt(1700 + 500, { ...timing, resorb: "recede" })).toMatchObject({ phase: "resorb", front: 450 });
-    expect(paperAt(60_000, { ...timing, resorb: "none" })).toMatchObject({ phase: "hold", covered: true });
+    expect(paperAt(1700 + 500, { ...timing, resorb: "recede" })).toMatchObject({
+      phase: "resorb",
+      front: 450,
+    });
+    expect(paperAt(60_000, { ...timing, resorb: "none" })).toMatchObject({
+      phase: "hold",
+      covered: true,
+    });
   });
 
   it("couvre tout le cadre depuis n'importe quel point", () => {
@@ -216,7 +265,9 @@ describe("composants du labo", () => {
 
   it("rend une frise entièrement décorative", () => {
     const html = renderToStaticMarkup(<CipherFrieze count={5} />);
-    expect(html.startsWith('<span class="occ-frieze occ-frieze--row" aria-hidden="true"')).toBe(true);
+    expect(html.startsWith('<span class="occ-frieze occ-frieze--row" aria-hidden="true"')).toBe(
+      true,
+    );
     expect(html.match(/<svg/g)).toHaveLength(5);
   });
 

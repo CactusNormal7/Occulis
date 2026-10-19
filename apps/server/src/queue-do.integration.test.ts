@@ -74,7 +74,10 @@ describe("QueueDO dans workerd", () => {
     expect(proposal.remainingMs).toBeLessThanOrEqual(ACCEPT_MS);
     await anne.answer("accept");
     const update = await boris.awaiting("proposal-update");
-    expect(update.kind === "proposal-update" && update.accepted).toEqual({ self: false, opponent: true });
+    expect(update.kind === "proposal-update" && update.accepted).toEqual({
+      self: false,
+      opponent: true,
+    });
     await boris.answer("accept");
 
     const [forAnne, forBoris] = await Promise.all([
@@ -109,7 +112,10 @@ describe("QueueDO dans workerd", () => {
     await anne.answer("accept");
     await boris.answer("decline");
 
-    const [forAnne, forBoris] = await Promise.all([anne.awaiting("proposal-lapsed"), boris.awaiting("proposal-lapsed")]);
+    const [forAnne, forBoris] = await Promise.all([
+      anne.awaiting("proposal-lapsed"),
+      boris.awaiting("proposal-lapsed"),
+    ]);
     expect(forAnne).toEqual({ kind: "proposal-lapsed", requeued: true });
     expect(forBoris).toEqual({ kind: "proposal-lapsed", requeued: false });
 
@@ -133,7 +139,10 @@ describe("QueueDO dans workerd", () => {
     await boris.awaiting("proposal");
     boris.socket.close();
 
-    expect(await anne.awaiting("proposal-lapsed")).toEqual({ kind: "proposal-lapsed", requeued: true });
+    expect(await anne.awaiting("proposal-lapsed")).toEqual({
+      kind: "proposal-lapsed",
+      requeued: true,
+    });
     anne.socket.close();
   });
 
@@ -149,12 +158,21 @@ describe("QueueDO dans workerd", () => {
     const queue = env.QUEUE.get(env.QUEUE.idFromName("global"));
     await runInDurableObject(queue, async (_instance, state) => {
       const proposals = (await state.storage.get<{ deadline: number }[]>("proposals")) ?? [];
-      await state.storage.put("proposals", proposals.map((proposal) => ({ ...proposal, deadline: 0 })));
+      await state.storage.put(
+        "proposals",
+        proposals.map((proposal) => ({ ...proposal, deadline: 0 })),
+      );
     });
     expect(await runDurableObjectAlarm(queue)).toBe(true);
 
-    expect(await anne.awaiting("proposal-lapsed")).toEqual({ kind: "proposal-lapsed", requeued: true });
-    expect(await boris.awaiting("proposal-lapsed")).toEqual({ kind: "proposal-lapsed", requeued: false });
+    expect(await anne.awaiting("proposal-lapsed")).toEqual({
+      kind: "proposal-lapsed",
+      requeued: true,
+    });
+    expect(await boris.awaiting("proposal-lapsed")).toEqual({
+      kind: "proposal-lapsed",
+      requeued: false,
+    });
 
     anne.socket.close();
     boris.socket.close();

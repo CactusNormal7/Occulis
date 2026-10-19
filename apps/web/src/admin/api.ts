@@ -1,12 +1,8 @@
-import type {
-  AdminMatchDetail,
-  AdminMatchPage,
-  AdminPlayer,
-  AdminStats,
-} from "@occulis/protocol";
-import { messages } from "../i18n/current.js";
+import type { AdminMatchDetail, AdminMatchPage, AdminPlayer, AdminStats } from "@occulis/protocol";
+import { messages } from "../locale/current.js";
 import { adminMessage, type MatchStatus } from "./model.js";
 import type { Outcome } from "../load/cache.js";
+import { type ErrorWording, jsonInit, request } from "../net/http.js";
 
 /**
  * Les appels du back-office. Deux familles, comme côté serveur :
@@ -43,20 +39,16 @@ export interface AdminSession {
 
 export const PAGE_SIZE = 25;
 
-async function call<T>(path: string, init?: RequestInit): Promise<Outcome<T>> {
-  let response: Response;
-  try {
-    response = await fetch(path, init);
-  } catch {
-    return { ok: false, message: messages().admin.unreachable };
-  }
-  const payload = (await response.json().catch(() => ({}))) as T & { code?: string; message?: string };
-  if (!response.ok) return { ok: false, message: adminMessage(response.status, payload) };
-  return { ok: true, value: payload };
-}
+const WORDING: ErrorWording = {
+  unreachable: () => messages().admin.unreachable,
+  describe: adminMessage,
+};
+
+const call = <T>(path: string, init?: RequestInit): Promise<Outcome<T>> =>
+  request<T>(path, init, WORDING);
 
 const send = <T>(path: string, body: unknown): Promise<Outcome<T>> =>
-  call<T>(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  call<T>(path, jsonInit("POST", body));
 
 // --- Routes du projet ----------------------------------------------------------
 
@@ -68,20 +60,28 @@ export function matches(filter: {
   offset: number;
   limit?: number;
 }): Promise<Outcome<AdminMatchPage>> {
-  const parameters = new URLSearchParams({ limit: String(filter.limit ?? PAGE_SIZE), offset: String(filter.offset) });
+  const parameters = new URLSearchParams({
+    limit: String(filter.limit ?? PAGE_SIZE),
+    offset: String(filter.offset),
+  });
   if (filter.player !== undefined) parameters.set("player", filter.player);
   if (filter.status != null) parameters.set("status", filter.status);
   return call(`/api/admin/matches?${parameters}`);
 }
 
-export const match = (id: string) => call<AdminMatchDetail>(`/api/admin/matches/${encodeURIComponent(id)}`);
-export const player = (id: string) => call<AdminPlayer>(`/api/admin/players/${encodeURIComponent(id)}`);
+export const match = (id: string) =>
+  call<AdminMatchDetail>(`/api/admin/matches/${encodeURIComponent(id)}`);
+export const player = (id: string) =>
+  call<AdminPlayer>(`/api/admin/players/${encodeURIComponent(id)}`);
 export const rename = (playerId: string, handle: string) =>
   send<{ handle: string }>(`/api/admin/players/${encodeURIComponent(playerId)}/handle`, { handle });
 
 // --- Greffon Better Auth -------------------------------------------------------
 
-export function users(search: string, offset: number): Promise<Outcome<{ users: AdminUser[]; total: number }>> {
+export function users(
+  search: string,
+  offset: number,
+): Promise<Outcome<{ users: AdminUser[]; total: number }>> {
   const parameters = new URLSearchParams({
     limit: String(PAGE_SIZE),
     offset: String(offset),
@@ -99,12 +99,16 @@ export function users(search: string, offset: number): Promise<Outcome<{ users: 
   return call(`/api/auth/admin/list-users?${parameters}`);
 }
 
-export const user = (id: string) => call<AdminUser>(`/api/auth/admin/get-user?id=${encodeURIComponent(id)}`);
+export const user = (id: string) =>
+  call<AdminUser>(`/api/auth/admin/get-user?id=${encodeURIComponent(id)}`);
 export const sessions = (userId: string) =>
   send<{ sessions: AdminSession[] }>("/api/auth/admin/list-user-sessions", { userId });
-export const revokeSession = (sessionToken: string) => send("/api/auth/admin/revoke-user-session", { sessionToken });
-export const revokeSessions = (userId: string) => send("/api/auth/admin/revoke-user-sessions", { userId });
-export const setRole = (userId: string, role: string) => send("/api/auth/admin/set-role", { userId, role });
+export const revokeSession = (sessionToken: string) =>
+  send("/api/auth/admin/revoke-user-session", { sessionToken });
+export const revokeSessions = (userId: string) =>
+  send("/api/auth/admin/revoke-user-sessions", { userId });
+export const setRole = (userId: string, role: string) =>
+  send("/api/auth/admin/set-role", { userId, role });
 export const ban = (userId: string, banReason: string, banExpiresIn: number | undefined) =>
   send("/api/auth/admin/ban-user", {
     userId,

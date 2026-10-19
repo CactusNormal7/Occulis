@@ -20,9 +20,9 @@ import {
  * dans `PlayerView.legalActions`, précisément parce qu'une hypothèse ne peut pas la
  * calculer juste.
  *
- * Elle reste fausse dans les deux sens — cases occupées crues libres, menaces cachées
- * ignorées, attaquants crus libres de passer là où une pièce invisible les bloque.
- * C'est pourquoi rien de décisif ne doit en être tiré.
+ * Elle reste fausse dans les deux sens — cases tenues par une pièce invisible crues
+ * libres, routes crues ouvertes là où cette pièce les barre. C'est pourquoi rien de
+ * décisif ne doit en être tiré.
  *
  * Les fantômes sont exclus : un souvenir peut être périmé, et l'ériger en obstacle
  * masquerait des coups réellement jouables (docs/implementation-notes #16).

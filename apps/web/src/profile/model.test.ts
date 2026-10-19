@@ -1,4 +1,4 @@
-import { setLocale } from "../i18n/current.js";
+import { setLocale } from "../locale/current.js";
 import { describe, expect, it } from "vitest";
 import {
   arrivalMessage,
@@ -60,7 +60,10 @@ describe("messages d'arrivée", () => {
   });
 
   it("confirme une liaison et explique un refus", () => {
-    expect(arrivalMessage("?linked=google")).toEqual({ ok: true, text: "Google est lié à votre compte." });
+    expect(arrivalMessage("?linked=google")).toEqual({
+      ok: true,
+      text: "Google est lié à votre compte.",
+    });
     expect(arrivalMessage("?error=email_doesn't_match")?.ok).toBe(false);
     expect(arrivalMessage("")).toBeUndefined();
   });
@@ -69,7 +72,9 @@ describe("messages d'arrivée", () => {
 describe("ce que le compte permet", () => {
   it("annonce le délai de pseudo, puis se tait", () => {
     const now = Date.UTC(2026, 9, 9);
-    expect(handleCooldownLabel({ nextHandleChangeAt: now + 86_400_000 }, now)).toContain("Prochain changement");
+    expect(handleCooldownLabel({ nextHandleChangeAt: now + 86_400_000 }, now)).toContain(
+      "Prochain changement",
+    );
     expect(handleCooldownLabel({ nextHandleChangeAt: null }, now)).toBeUndefined();
     expect(handleCooldownLabel({ nextHandleChangeAt: now - 1 }, now)).toBeUndefined();
   });

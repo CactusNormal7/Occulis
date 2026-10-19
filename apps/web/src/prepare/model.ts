@@ -24,15 +24,27 @@ export function secondsLeft(ms: number): number {
  * a tout posé sans verrouiller garde son placement plutôt que celui par défaut. Le délai
  * laisse au message le temps d'arriver avant l'alarme du serveur.
  */
-export const AUTO_SEND_MS = 1500;
+const AUTO_SEND_MS = 1500;
 
-export function shouldAutoSend(remaining: number, valid: boolean, locked: boolean, sent: boolean): boolean {
+export function shouldAutoSend(
+  remaining: number,
+  valid: boolean,
+  locked: boolean,
+  sent: boolean,
+): boolean {
   return remaining <= AUTO_SEND_MS && valid && !locked && !sent;
 }
 
 /** Les presets jouables dans cette partie : valides, et préparés pour sa carte et ses règles. */
-export function usablePresets(presets: readonly TeamPreset[], scenario: string, rulesetVersion: string): TeamPreset[] {
-  return presets.filter((preset) => preset.valid && preset.scenario === scenario && preset.rulesetVersion === rulesetVersion);
+export function usablePresets(
+  presets: readonly TeamPreset[],
+  scenario: string,
+  rulesetVersion: string,
+): TeamPreset[] {
+  return presets.filter(
+    (preset) =>
+      preset.valid && preset.scenario === scenario && preset.rulesetVersion === rulesetVersion,
+  );
 }
 
 /**
@@ -52,6 +64,8 @@ export function initialTeam(
   side: PlayerId,
   fallback: readonly TeamEntry[],
 ): readonly TeamEntry[] {
-  const preferred = usablePresets(presets, scenario, rulesetVersion).find((preset) => preset.isDefault);
+  const preferred = usablePresets(presets, scenario, rulesetVersion).find(
+    (preset) => preset.isDefault,
+  );
   return preferred === undefined ? fallback : presetTeam(preferred, side);
 }

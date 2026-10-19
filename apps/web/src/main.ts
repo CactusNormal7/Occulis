@@ -1,11 +1,5 @@
 import type { QueueIntent } from "@occulis/protocol";
-import {
-  type Action,
-  type ActionError,
-  type Coord,
-  type Result,
-  rulesetFor,
-} from "@occulis/core";
+import { type Action, type ActionError, type Coord, type Result, rulesetFor } from "@occulis/core";
 import { type MoveAnimation, advance as step, startMove } from "./view/animation.js";
 import type { Movement } from "./game/movement-diff.js";
 import {
@@ -20,11 +14,21 @@ import {
 } from "./view/camera.js";
 import { tileAt } from "./view/picking.js";
 import { OnlineMatch } from "./game/online-match.js";
-import { boardForScenario } from "./game/scenario.js";
-import { type MatchChannel, type MatchHandlers, connectToMatch, watchMatch } from "./net/match-channel.js";
+import {
+  type MatchChannel,
+  type MatchHandlers,
+  connectToMatch,
+  watchMatch,
+} from "./net/match-channel.js";
 import { type SocialChannel, openSocial } from "./net/social-channel.js";
 import * as friends from "./social/api.js";
-import { EMPTY_SOCIAL, type SocialState, challenged, receive, withOverview } from "./social/model.js";
+import {
+  EMPTY_SOCIAL,
+  type SocialState,
+  challenged,
+  receive,
+  withOverview,
+} from "./social/model.js";
 import { attachFriendsPanel } from "./ui/friends-panel.js";
 import type { SocialServerMessage } from "@occulis/protocol";
 import { type QueueChannel, joinQueue } from "./net/queue-channel.js";
@@ -34,20 +38,26 @@ import { mountAccount } from "./account/mount.js";
 import { arrivalNotice, cleanedSearch, routeOf } from "./account/model.js";
 import { START, type QueueSeeking, type Stage, advance } from "./ui/flow.js";
 import { type Selection, resolveClick } from "./game/selection.js";
-import type { Board } from "./scene/board.js";
+import type { Board } from "./render/pixi/board.js";
 import { type GameConsole, attachConsole } from "./ui/console.js";
-import { applyPalette } from "./ui/palette.js";
-import { applyTheme, storedTheme } from "./ui/theme-choice.js";
+import { applyPalette } from "./theme/palette.js";
+import { applyTheme, storedTheme } from "./theme/theme-choice.js";
 import { attachSettings } from "./ui/settings.js";
 import { sweepVeil } from "./ui/veil.js";
-import { resendVerification, signOut, stopImpersonating, whoAmI, type Identity } from "./net/auth.js";
-import { chooseLocale, initLocale, translateDom } from "./i18n/browser.js";
-import { currentLocale, messages, onLocaleChange } from "./i18n/current.js";
+import {
+  resendVerification,
+  signOut,
+  stopImpersonating,
+  whoAmI,
+  type Identity,
+} from "./net/auth.js";
+import { chooseLocale, initLocale, translateDom } from "./locale/browser.js";
+import { currentLocale, messages, onLocaleChange } from "./locale/current.js";
 import type { TeamPreset, TeamPresetList } from "@occulis/protocol";
 import { mountDeployment, mountMatchFound } from "./prepare/mount.js";
 import type { DeploymentProps } from "./prepare/Deployment.js";
 import type { MatchFoundProps } from "./prepare/MatchFound.js";
-import { mountTeams } from "./teams/mount.js";
+import { mountTeams } from "./presets/mount.js";
 import { currentMatch } from "./profile/api.js";
 import { loadCache } from "./load/cache.js";
 import { friendsOverview, presets as presetsResource } from "./profile/resources.js";
@@ -66,7 +76,7 @@ function main(): void {
   translateDom(document);
 
   const host = element<HTMLDivElement>("app");
-  /** Le plateau Pixi, chargé à part (`scene/board.ts`) ; absent tant qu'il n'est pas prêt. */
+  /** Le plateau Pixi, chargé à part (`render/pixi/board.ts`) ; absent tant qu'il n'est pas prêt. */
   let board: Board | undefined;
   let boardLoading: Promise<Board | undefined> | undefined;
 
@@ -125,7 +135,9 @@ function main(): void {
     shell.render(stage);
     // Hors des écrans pleine page seulement, partie comprise : c'est sur le plateau qu'un
     // design se juge.
-    settings.setAvailable(stage.kind !== "deploying" && stage.kind !== "teams" && stage.kind !== "boot");
+    settings.setAvailable(
+      stage.kind !== "deploying" && stage.kind !== "teams" && stage.kind !== "boot",
+    );
   };
 
   /**
@@ -191,7 +203,8 @@ function main(): void {
   const handlersFor = (spectating: boolean): MatchHandlers => {
     // Les équipes préparées déjà lues (l'écran des équipes les a peut-être chargées) servent
     // aussitôt ; elles se relisent pendant l'annonce, et l'écran reprend la réponse.
-    let presets: readonly TeamPreset[] = loadCache.value<TeamPresetList>(presetsResource.key)?.presets ?? [];
+    let presets: readonly TeamPreset[] =
+      loadCache.value<TeamPresetList>(presetsResource.key)?.presets ?? [];
     let lastRemaining: number | undefined;
     if (!spectating) {
       void loadCache.request(presetsResource, { force: true }).then((outcome) => {
@@ -204,10 +217,10 @@ function main(): void {
       });
     }
     return {
-      onSeated: ({ player, scenario, rulesetVersion, view }) => {
+      onSeated: ({ player, board, rulesetVersion, view }) => {
         clearTimeout(watchDeadline);
         match = new OnlineMatch(
-          boardForScenario(scenario),
+          board,
           rulesetFor(rulesetVersion),
           player,
           // Un spectateur n'envoie rien : le serveur refuserait de toute façon.
@@ -220,15 +233,18 @@ function main(): void {
         go({ kind: "seated", spectating });
         adopt();
       },
-      onDeployment: ({ player, scenario, rulesetVersion, deployment }) => {
+      onDeployment: ({ player, scenario, board, rulesetVersion, deployment }) => {
         // Le compte à rebours repart de chaque annonce (une reconnexion en renvoie une),
         // pas d'un simple changement de verrou, qui ne dit rien du temps.
         const receivedAt =
-          deploying === undefined || deployment.remainingMs !== lastRemaining ? performance.now() : deploying.receivedAt;
+          deploying === undefined || deployment.remainingMs !== lastRemaining
+            ? performance.now()
+            : deploying.receivedAt;
         lastRemaining = deployment.remainingMs;
         deploying = {
           player,
           scenario,
+          board,
           rulesetVersion,
           deployment,
           receivedAt,
@@ -316,7 +332,10 @@ function main(): void {
    * sans elle — mieux vaut un panneau en retard qu'un menu qui n'arrive pas.
    */
   const friendsBeforeMenu = (force: boolean): Promise<void> =>
-    Promise.race([reloadFriends({ force }), new Promise<void>((resolve) => setTimeout(resolve, MENU_DEADLINE_MS))]);
+    Promise.race([
+      reloadFriends({ force }),
+      new Promise<void>((resolve) => setTimeout(resolve, MENU_DEADLINE_MS)),
+    ]);
 
   const onSocial = (message: SocialServerMessage): void => {
     if (message.kind === "matched") {
@@ -475,7 +494,8 @@ function main(): void {
   const initialRoute = routeOf(location.pathname, location.search);
   let arrival = arrivalNotice(location.pathname, location.search);
   const cleaned = cleanedSearch(location.search);
-  if (cleaned !== location.search) history.replaceState(null, "", `${location.pathname}${cleaned}${location.hash}`);
+  if (cleaned !== location.search)
+    history.replaceState(null, "", `${location.pathname}${cleaned}${location.hash}`);
 
   const friendsPanel = attachFriendsPanel({
     elements: {
@@ -632,7 +652,7 @@ function main(): void {
    * il ne coûte que la partie, qui ne s'affichera pas.
    */
   function ensureBoard(): Promise<Board | undefined> {
-    boardLoading ??= import("./scene/board.js")
+    boardLoading ??= import("./render/pixi/board.js")
       .then(({ mountBoard }) =>
         mountBoard(host, {
           onResize: () => {

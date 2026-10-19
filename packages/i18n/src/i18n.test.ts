@@ -21,7 +21,10 @@ describe("dictionnaires", () => {
       const empty = shape(messagesFor(locale)).filter((leaf) => leaf.endsWith(":string"));
       for (const leaf of empty) {
         const path = leaf.slice(0, -":string".length);
-        expect(lookup(messagesFor(locale), path)?.trim().length, `${locale} ${path}`).toBeGreaterThan(0);
+        expect(
+          lookup(messagesFor(locale), path)?.trim().length,
+          `${locale} ${path}`,
+        ).toBeGreaterThan(0);
       }
     }
   });

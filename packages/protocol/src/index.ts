@@ -3,10 +3,20 @@
  *
  * Paquet partagé, et non module de `apps/server` : `apps/web` doit parler exactement
  * le même protocole, et deux définitions séparées auraient dérivé au premier ajout.
- * Il ne contient que des types et la conversion de sérialisation — aucune règle de
- * jeu (elle vit dans `@occulis/core`), aucun transport (il vit dans chaque app).
+ * Il ne contient que des types, la conversion de sérialisation et la lecture des
+ * messages entrants (`parse.ts`) — aucune règle de jeu (elle vit dans `@occulis/core`),
+ * aucun transport (il vit dans chaque app).
  */
-import type { Action, ActionError, Coord, PlayerId, PlayerView, TeamEntry, TeamError } from "@occulis/core";
+import type {
+  Action,
+  ActionError,
+  Coord,
+  PlayerId,
+  PlayerView,
+  TeamEntry,
+  TeamError,
+  Tile,
+} from "@occulis/core";
 
 /**
  * Refus prononcé par le serveur et non par les règles : le siège qui a envoyé
@@ -23,7 +33,7 @@ export type SeatDenial =
  * doit pouvoir le refuser explicitement plutôt que le laisser diverger en silence
  * (docs/architecture.md section 1).
  */
-export const PROTOCOL_VERSION = 6;
+export const PROTOCOL_VERSION = 7;
 
 /** `PlayerView` contient des `Set`/`Map`, que `JSON.stringify` sérialise en `{}`. */
 export interface WireView {
@@ -87,17 +97,32 @@ export interface Locks {
   readonly opponent: boolean;
 }
 
+/**
+ * L'ordre dans lequel le client les reçoit, et sur lequel `apps/web/src/net/session.ts`
+ * s'appuie :
+ *
+ * - un joueur : `hello` → `welcome` → `spectators`, puis, pendant le déploiement,
+ *   `deployment` et des `deployment-update`, jusqu'à la première `view` ; ensuite des
+ *   `view` après chaque coup ;
+ * - un spectateur : `hello` → `watching`, puis des `view` — aucune pendant le déploiement.
+ *
+ * Chaque `hello`, reconnexion comprise, rediffuse les vues **aux deux joueurs** : c'est ce
+ * qui tient lieu de protocole de reprise, et c'est pourquoi un client peut recevoir une
+ * `view` avant son propre `welcome`. Un refus (`rejected`) ne part qu'à l'émetteur.
+ */
 export type ServerMessage =
   /**
    * Envoyé une fois la version acceptée. Dit au client de quel camp il tient le
    * siège — il ne le sait pas autrement, c'est le jeton qui le détermine — et sur
-   * quelle carte se joue la partie : le client doit dessiner exactement celle sur
-   * laquelle le serveur calcule, et les deux registres sont encore séparés.
+   * quelle carte se joue la partie : ses cases mêmes, figées à la création, et non son
+   * seul nom — le client doit dessiner exactement celle sur laquelle le serveur calcule,
+   * même si le registre a changé depuis.
    */
   | {
       readonly kind: "welcome";
       readonly player: PlayerId;
       readonly scenario: string;
+      readonly board: readonly Tile[];
       readonly rulesetVersion: string;
     }
   /**
@@ -108,6 +133,7 @@ export type ServerMessage =
       readonly kind: "watching";
       readonly side: PlayerId;
       readonly scenario: string;
+      readonly board: readonly Tile[];
       readonly rulesetVersion: string;
     }
   /**
@@ -184,7 +210,10 @@ export type QueueServerMessage =
    */
   | { readonly kind: "proposal"; readonly proposalId: string; readonly remainingMs: number }
   /** Qui a accepté, du point de vue du destinataire. */
-  | { readonly kind: "proposal-update"; readonly accepted: { readonly self: boolean; readonly opponent: boolean } }
+  | {
+      readonly kind: "proposal-update";
+      readonly accepted: { readonly self: boolean; readonly opponent: boolean };
+    }
   /**
    * La proposition est tombée. `requeued` : le destinataire avait accepté, il est remis en
    * tête de file et attend de nouveau ; sinon il est sorti de la file.
@@ -199,6 +228,7 @@ export type QueueServerMessage =
     }
   | { readonly kind: "protocol-mismatch"; readonly expected: number };
 
+export * from "./parse.js";
 export type * from "./admin.js";
 export type * from "./me.js";
 export type * from "./social.js";

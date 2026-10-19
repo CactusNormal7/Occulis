@@ -1,4 +1,4 @@
-import { setLocale } from "../i18n/current.js";
+import { setLocale } from "../locale/current.js";
 import { describe, expect, it } from "vitest";
 import type { AdminMatchSummary } from "@occulis/protocol";
 import {
@@ -8,7 +8,6 @@ import {
   describeBan,
   describeResult,
   formatDate,
-  initials,
   pageLabel,
   parseRoute,
   quickActions,
@@ -30,10 +29,22 @@ describe("routes du back-office", () => {
   });
 
   it("lit les listes, leurs filtres et leurs fiches", () => {
-    expect(parseRoute("#/users?q=anne&offset=25")).toEqual({ view: "users", search: "anne", offset: 25 });
+    expect(parseRoute("#/users?q=anne&offset=25")).toEqual({
+      view: "users",
+      search: "anne",
+      offset: 25,
+    });
     expect(parseRoute("#/users/u-1")).toEqual({ view: "user", id: "u-1" });
-    expect(parseRoute("#/matches?status=ongoing")).toEqual({ view: "matches", status: "ongoing", offset: 0 });
-    expect(parseRoute("#/matches?status=autre&offset=-3")).toEqual({ view: "matches", status: null, offset: 0 });
+    expect(parseRoute("#/matches?status=ongoing")).toEqual({
+      view: "matches",
+      status: "ongoing",
+      offset: 0,
+    });
+    expect(parseRoute("#/matches?status=autre&offset=-3")).toEqual({
+      view: "matches",
+      status: null,
+      offset: 0,
+    });
     expect(parseRoute("#/players/p-1")).toEqual({ view: "player", id: "p-1" });
   });
 
@@ -55,10 +66,26 @@ describe("routes du back-office", () => {
   });
 
   it("lit les pages du design system, et retombe sur ses fondations", () => {
-    expect(parseRoute("#/design")).toEqual({ view: "design", page: "foundations", component: null });
-    expect(parseRoute("#/design/inconnue")).toEqual({ view: "design", page: "foundations", component: null });
-    expect(parseRoute("#/design/components/Dialog")).toEqual({ view: "design", page: "components", component: "Dialog" });
-    expect(parseRoute("#/design/motion/Dialog")).toEqual({ view: "design", page: "motion", component: null });
+    expect(parseRoute("#/design")).toEqual({
+      view: "design",
+      page: "foundations",
+      component: null,
+    });
+    expect(parseRoute("#/design/inconnue")).toEqual({
+      view: "design",
+      page: "foundations",
+      component: null,
+    });
+    expect(parseRoute("#/design/components/Dialog")).toEqual({
+      view: "design",
+      page: "components",
+      component: "Dialog",
+    });
+    expect(parseRoute("#/design/motion/Dialog")).toEqual({
+      view: "design",
+      page: "motion",
+      component: null,
+    });
     expect(sectionOf({ view: "design", page: "conventions", component: null })).toBe("design");
   });
 
@@ -85,13 +112,18 @@ describe("mise en mots", () => {
   it("nomme le vainqueur par son siège", () => {
     expect(describeResult(match)).toBe("en cours");
     expect(
-      describeResult({ ...match, outcome: { kind: "victory", winner: "B", reason: "resignation" } }),
+      describeResult({
+        ...match,
+        outcome: { kind: "victory", winner: "B", reason: "resignation" },
+      }),
     ).toBe("victoire de bruno (abandon)");
   });
 
   it("décrit un coup", () => {
     expect(describeAction({ kind: "resign" })).toBe("abandon");
-    expect(describeAction({ kind: "move", pieceId: "A-scout-1", to: { x: 2, y: 5 } })).toBe("A-scout-1 → 2,5");
+    expect(describeAction({ kind: "move", pieceId: "A-scout-1", to: { x: 2, y: 5 } })).toBe(
+      "A-scout-1 → 2,5",
+    );
   });
 
   it("formate les deux représentations de date", () => {
@@ -109,7 +141,9 @@ describe("mise en mots", () => {
 
   it("décrit une suspension", () => {
     expect(describeBan({ banned: false })).toBe("actif");
-    expect(describeBan({ banned: true, banReason: "triche" })).toBe("suspendu définitivement — triche");
+    expect(describeBan({ banned: true, banReason: "triche" })).toBe(
+      "suspendu définitivement — triche",
+    );
   });
 });
 
@@ -138,7 +172,13 @@ describe("actions rapides", () => {
 
   it("ferme sur soi-même ce qui enfermerait dehors", () => {
     const self = closed(quickActions({ ...player, name: "chef", role: "admin" }, "chef"));
-    expect(self).toMatchObject({ role: true, ban: true, impersonate: true, delete: true, verify: false });
+    expect(self).toMatchObject({
+      role: true,
+      ban: true,
+      impersonate: true,
+      delete: true,
+      verify: false,
+    });
   });
 
   it("n'usurpe ni un administrateur ni un compte suspendu", () => {
@@ -147,18 +187,14 @@ describe("actions rapides", () => {
   });
 
   it("propose de lever une suspension en cours", () => {
-    const ban = quickActions({ ...player, banned: true }, "chef").find((action) => action.kind === "ban");
+    const ban = quickActions({ ...player, banned: true }, "chef").find(
+      (action) => action.kind === "ban",
+    );
     expect(ban?.label).toBe("Lever la suspension");
   });
 });
 
 describe("petites mises en forme", () => {
-  it("tire deux lettres d'un pseudo", () => {
-    expect(initials("cactus")).toBe("CA");
-    expect(initials("-x")).toBe("X");
-    expect(initials("--")).toBe("?");
-  });
-
   it("calcule un taux de victoire sur les seules parties conclues", () => {
     expect(winRate({ won: 1, lost: 3 })).toBe(25);
     expect(winRate({ won: 0, lost: 0 })).toBeNull();
@@ -172,9 +208,13 @@ describe("petites mises en forme", () => {
 describe("navigateur d'une session", () => {
   it("résume la chaîne en navigateur et système", () => {
     expect(
-      shortAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36"),
+      shortAgent(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36",
+      ),
     ).toBe("Chrome · Windows");
-    expect(shortAgent("Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0")).toBe("Firefox · Linux");
+    expect(
+      shortAgent("Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0"),
+    ).toBe("Firefox · Linux");
     expect(shortAgent(null)).toBe("inconnu");
   });
 });

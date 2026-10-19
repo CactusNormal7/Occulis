@@ -23,7 +23,13 @@ export function Conventions() {
 }
 
 function Markdown({ source }: { source: string }) {
-  return <Prose>{markdownBlocks(source).map((block, index) => <BlockView key={index} block={block} />)}</Prose>;
+  return (
+    <Prose>
+      {markdownBlocks(source).map((block, index) => (
+        <BlockView key={index} block={block} />
+      ))}
+    </Prose>
+  );
 }
 
 function BlockView({ block }: { block: Block }) {
@@ -49,7 +55,11 @@ function BlockView({ block }: { block: Block }) {
       return block.ordered ? <ol>{items}</ol> : <ul>{items}</ul>;
     }
     case "code":
-      return <CodeBlock label={block.language.length > 0 ? block.language : undefined}>{block.text}</CodeBlock>;
+      return (
+        <CodeBlock label={block.language.length > 0 ? block.language : undefined}>
+          {block.text}
+        </CodeBlock>
+      );
   }
 }
 

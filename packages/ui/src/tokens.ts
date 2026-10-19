@@ -12,7 +12,7 @@
  *   lueur signifie toujours quelque chose.
  *
  * Deux consommateurs, deux formats :
- * - `apps/web/src/theme.ts` (PixiJS) reprend les entiers 0xRRGGBB ;
+ * - `apps/web/src/theme/theme.ts` (PixiJS) reprend les entiers 0xRRGGBB ;
  * - les composants de ce paquet lisent les propriétés CSS `--occ-*` de
  *   `generated/tokens.css`, produit depuis ce fichier par `pnpm --filter @occulis/ui
  *   tokens` et verrouillé par un test : il ne se modifie jamais à la main.
@@ -76,7 +76,13 @@ export const THEMES = {
     background: 0x050505,
     surface: 0x0d0d0e,
     ink: 0xe9e6df,
-    terrain: { top: 0x1a1a1c, peak: 0x3d3d42, fog: 0x0b0b0c, sideLight: 0x131315, sideShade: 0x09090a },
+    terrain: {
+      top: 0x1a1a1c,
+      peak: 0x3d3d42,
+      fog: 0x0b0b0c,
+      sideLight: 0x131315,
+      sideShade: 0x09090a,
+    },
     camp: { A: 0x9be7ff, B: 0xff4d5e },
     state: { selection: 0xffd166, legalMove: 0x7d9cff, climb: 0xc49bff, threat: 0xff4d5e },
     sky: { star: 0xe9e6df, aura: 0x2a2a30 },
@@ -85,7 +91,13 @@ export const THEMES = {
     background: 0x070504,
     surface: 0x110c09,
     ink: 0xf2dcb0,
-    terrain: { top: 0x1e1610, peak: 0x4d3721, fog: 0x0c0806, sideLight: 0x18110b, sideShade: 0x0d0906 },
+    terrain: {
+      top: 0x1e1610,
+      peak: 0x4d3721,
+      fog: 0x0c0806,
+      sideLight: 0x18110b,
+      sideShade: 0x0d0906,
+    },
     camp: { A: 0x72f5c4, B: 0xff7a45 },
     state: { selection: 0xfff0a0, legalMove: 0x5ec8ff, climb: 0xd49bff, threat: 0xff7a45 },
     sky: { star: 0xf2dcb0, aura: 0x8fe8a0 },
@@ -94,7 +106,13 @@ export const THEMES = {
     background: 0x040307,
     surface: 0x0d0a12,
     ink: 0xece6ff,
-    terrain: { top: 0x17121f, peak: 0x3e2b54, fog: 0x09070d, sideLight: 0x120e19, sideShade: 0x0a0810 },
+    terrain: {
+      top: 0x17121f,
+      peak: 0x3e2b54,
+      fog: 0x09070d,
+      sideLight: 0x120e19,
+      sideShade: 0x0a0810,
+    },
     camp: { A: 0x5ef0ff, B: 0xff4fd8 },
     state: { selection: 0xffe066, legalMove: 0x8b7bff, climb: 0xb98bff, threat: 0xff4fd8 },
     sky: { star: 0xece6ff, aura: 0x6b3fa0 },
@@ -267,7 +285,9 @@ export function paletteVariables(palette: Palette): Record<string, string> {
     "--occ-text-display": `${FONT.size.display}px`,
     "--occ-caps": FONT.caps,
     "--occ-wordmark": FONT.wordmark,
-    ...Object.fromEntries(Object.entries(SPACE).map(([step, px]) => [`--occ-space-${step}`, `${px}px`])),
+    ...Object.fromEntries(
+      Object.entries(SPACE).map(([step, px]) => [`--occ-space-${step}`, `${px}px`]),
+    ),
     "--occ-ease": MOTION.ease,
     "--occ-fast": MOTION.fast,
     "--occ-base": MOTION.base,
@@ -413,11 +433,20 @@ export function proposedVariables(): Record<string, string> {
   return {
     "--occ-tempo": "1",
     ...motionLevelVariables("full"),
-    ...Object.fromEntries(Object.entries(space).map(([step, px]) => [`--occ-space-${step}`, `${px}px`])),
-    ...Object.fromEntries(Object.entries(leading).map(([name, value]) => [`--occ-leading-${name}`, String(value)])),
-    ...Object.fromEntries(Object.entries(duration).map(([name, ms]) => [`--occ-dur-${name}`, tempoed(ms)])),
     ...Object.fromEntries(
-      Object.entries(distance).map(([name, px]) => [`--occ-dist-${name}`, `calc(${px}px * var(--occ-motion-amplitude))`]),
+      Object.entries(space).map(([step, px]) => [`--occ-space-${step}`, `${px}px`]),
+    ),
+    ...Object.fromEntries(
+      Object.entries(leading).map(([name, value]) => [`--occ-leading-${name}`, String(value)]),
+    ),
+    ...Object.fromEntries(
+      Object.entries(duration).map(([name, ms]) => [`--occ-dur-${name}`, tempoed(ms)]),
+    ),
+    ...Object.fromEntries(
+      Object.entries(distance).map(([name, px]) => [
+        `--occ-dist-${name}`,
+        `calc(${px}px * var(--occ-motion-amplitude))`,
+      ]),
     ),
     "--occ-ease-out": easing.out,
     "--occ-ease-in": easing.in,

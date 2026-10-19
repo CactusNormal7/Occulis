@@ -1,6 +1,6 @@
 import type { Action, PlayerId } from "@occulis/core";
 import type { AdminMatchSummary } from "@occulis/protocol";
-import { messages } from "../i18n/current.js";
+import { messages } from "../locale/current.js";
 
 /**
  * Ce que le back-office décide sans toucher ni au DOM ni au réseau : la route lue dans
@@ -72,7 +72,8 @@ export function routeHash(route: Route): string {
       return `#/players/${encodeURIComponent(route.id)}`;
     case "design":
       if (route.page === "foundations") return "#/design";
-      if (route.component !== null) return `#/design/components/${encodeURIComponent(route.component)}`;
+      if (route.component !== null)
+        return `#/design/components/${encodeURIComponent(route.component)}`;
       return `#/design/${route.page}`;
   }
 }
@@ -140,7 +141,9 @@ export function pageLabel(offset: number, shown: number, total: number): string 
  * en secondes ; une valeur illisible ou nulle est refusée plutôt que lue comme
  * « définitif », qui serait la pire erreur possible dans ce sens.
  */
-export function banDuration(days: string): { ok: true; seconds: number | undefined } | { ok: false } {
+export function banDuration(
+  days: string,
+): { ok: true; seconds: number | undefined } | { ok: false } {
   const text = days.trim();
   if (text.length === 0) return { ok: true, seconds: undefined };
   const value = Number(text.replace(",", "."));
@@ -158,7 +161,8 @@ export function describeBan(user: BanState): string {
   const m = messages().admin.ban;
   if (user.banned !== true) return m.active;
   const until = user.banExpires == null ? m.forever : m.until(formatDate(user.banExpires));
-  const reason = user.banReason == null || user.banReason.length === 0 ? "" : ` — ${user.banReason}`;
+  const reason =
+    user.banReason == null || user.banReason.length === 0 ? "" : ` — ${user.banReason}`;
   return m.suspended(until, reason);
 }
 
@@ -174,12 +178,6 @@ export function adminMessage(status: number, payload: { code?: string; message?:
   return payload.message ?? m.failed(status);
 }
 
-/** Deux lettres pour l'insigne d'un compte, faute d'avatar. */
-export function initials(name: string): string {
-  const letters = name.replace(/[^\p{L}\p{N}]/gu, "");
-  return (letters.slice(0, 2) || "?").toUpperCase();
-}
-
 /** Les durées proposées d'un clic dans la fenêtre de suspension. */
 export function banPresets(): readonly { readonly label: string; readonly days: string }[] {
   const m = messages().admin.ban.presets;
@@ -191,7 +189,8 @@ export function banPresets(): readonly { readonly label: string; readonly days: 
   ];
 }
 
-export type QuickActionKind = "view" | "verify" | "role" | "ban" | "impersonate" | "revoke" | "delete";
+export type QuickActionKind =
+  "view" | "verify" | "role" | "ban" | "impersonate" | "revoke" | "delete";
 
 export interface QuickAction {
   readonly kind: QuickActionKind;
@@ -266,12 +265,20 @@ export function shortAgent(agent: string | null | undefined): string {
   const m = messages().admin.agent;
   if (agent == null || agent.length === 0) return m.unknown;
   const browser =
-    [["Edg/", "Edge"], ["Firefox/", "Firefox"], ["Chrome/", "Chrome"], ["Safari/", "Safari"]].find(([token]) =>
-      agent.includes(token as string),
-    )?.[1] ?? m.browser;
+    [
+      ["Edg/", "Edge"],
+      ["Firefox/", "Firefox"],
+      ["Chrome/", "Chrome"],
+      ["Safari/", "Safari"],
+    ].find(([token]) => agent.includes(token as string))?.[1] ?? m.browser;
   const system =
-    [["Android", "Android"], ["iPhone", "iOS"], ["iPad", "iOS"], ["Windows", "Windows"], ["Mac OS", "macOS"], ["Linux", "Linux"]].find(
-      ([token]) => agent.includes(token as string),
-    )?.[1] ?? m.system;
+    [
+      ["Android", "Android"],
+      ["iPhone", "iOS"],
+      ["iPad", "iOS"],
+      ["Windows", "Windows"],
+      ["Mac OS", "macOS"],
+      ["Linux", "Linux"],
+    ].find(([token]) => agent.includes(token as string))?.[1] ?? m.system;
   return `${browser} · ${system}`;
 }

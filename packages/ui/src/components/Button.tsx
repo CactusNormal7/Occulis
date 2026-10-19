@@ -23,7 +23,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   ref,
 ) {
   return (
-    <button ref={ref} type={type} className={cx("occ-button", `occ-button--${variant}`, `occ-button--${size}`, className)} {...rest}>
+    <button
+      ref={ref}
+      type={type}
+      className={cx("occ-button", `occ-button--${variant}`, `occ-button--${size}`, className)}
+      {...rest}
+    >
       {icon !== undefined && <Icon name={icon} size={14} />}
       {children}
     </button>

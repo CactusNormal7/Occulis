@@ -33,7 +33,8 @@ export const prepare = {
     opponentLocked: "Your opponent is ready.",
     opponentPending: "Your opponent is still deploying.",
     remaining: (seconds: number) => `${seconds} s left`,
-    timeoutNote: "When time runs out, your current layout is used if complete, otherwise the default one.",
+    timeoutNote:
+      "When time runs out, your current layout is used if complete, otherwise the default one.",
     preset: "Team",
     noPreset: "Current layout",
     loadPreset: "Load",

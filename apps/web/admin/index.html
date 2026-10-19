@@ -8,7 +8,10 @@
     <!-- Le fond et le thème sombre sont injectés au build, en tête de <head>
          (`criticalPaint`, vite.config.ts) : aucune couleur écrite ici. -->
     <style>
-      html, body { margin: 0; }
+      html,
+      body {
+        margin: 0;
+      }
     </style>
   </head>
   <body>
@@ -18,6 +21,8 @@
       acceptent de lui rendre.
     -->
     <div id="admin"></div>
-    <script type="module" src="/src/admin/main.tsx"></script>
+    <!-- Bloque le rendu jusqu'à son exécution : il doit écouter `pagereveal` avant la
+         première image (`load/page.tsx`). -->
+    <script type="module" blocking="render" src="/src/admin/main.tsx"></script>
   </body>
 </html>

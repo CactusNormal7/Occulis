@@ -1,6 +1,7 @@
 # Reprend .gitignore (que .graphifyignore remplace, il ne s'y ajoute pas)
 node_modules/
 dist/
+coverage/
 .DS_Store
 *.log
 .vite/

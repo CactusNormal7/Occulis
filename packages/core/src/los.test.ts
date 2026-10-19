@@ -134,7 +134,6 @@ describe("visibleFrom", () => {
   });
 });
 
-
 describe("visibleFrom — avec des pièces", () => {
   it("s'arrête sur la pièce qui bloque, sans la masquer elle-même", () => {
     const board = Board.flat(5, 1);

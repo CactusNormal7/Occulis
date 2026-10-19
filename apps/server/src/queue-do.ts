@@ -1,9 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 import {
   PROTOCOL_VERSION,
-  type QueueClientMessage,
-  type QueueIntent,
   type QueueServerMessage,
+  parseQueueClientMessage,
 } from "@occulis/protocol";
 import { startMatch } from "./match-setup.js";
 import { type Waiting, dequeue, enqueue, requeueFront, takePairing } from "./pairing.js";
@@ -64,7 +63,8 @@ export class QueueDO extends DurableObject<Env> {
 
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
     if (typeof raw !== "string") return;
-    const message = JSON.parse(raw) as QueueClientMessage;
+    const message = parseQueueClientMessage(raw);
+    if (message === undefined) return;
     if (message.kind === "accept" || message.kind === "decline") {
       const entry = this.waitingOf(ws);
       if (entry === undefined) return;
@@ -87,11 +87,9 @@ export class QueueDO extends DurableObject<Env> {
     // la fois dans la file et dans un salon, sous peine d'être apparié deux fois.
     await this.forget(entry.connectionId);
 
-    // Un client d'une autre version n'arrive pas jusqu'ici : la négociation l'a déjà
-    // refusé. L'intention absente est donc une anomalie, traitée comme un appariement.
-    const intent = message.intent as QueueIntent | undefined;
-    if (intent?.kind === "host") return this.host(ws, entry);
-    if (intent?.kind === "join") return this.join(ws, entry, normalizeCode(intent.code));
+    const { intent } = message;
+    if (intent.kind === "host") return this.host(ws, entry);
+    if (intent.kind === "join") return this.join(ws, entry, normalizeCode(intent.code));
     return this.queueUp(ws, entry);
   }
 
@@ -114,7 +112,10 @@ export class QueueDO extends DurableObject<Env> {
     // Un joueur déjà sous proposition, depuis un autre onglet, la quitte : il ne doit
     // attendre qu'à un seul endroit à la fois.
     const pending = proposalOfPlayer(await this.proposals(), entry.playerId);
-    const other = pending === undefined ? undefined : membersOf(pending).find((member) => member.playerId === entry.playerId);
+    const other =
+      pending === undefined
+        ? undefined
+        : membersOf(pending).find((member) => member.playerId === entry.playerId);
     if (other !== undefined) await this.withdraw(other.connectionId);
     await this.ctx.storage.put("queue", enqueue(await this.queue(), entry));
     this.send(ws, { kind: "waiting" });
@@ -189,7 +190,12 @@ export class QueueDO extends DurableObject<Env> {
     await this.saveProposals([...(await this.proposals()), proposal]);
     for (const member of membersOf(proposal)) {
       const socket = this.socketOf(member.connectionId);
-      if (socket !== undefined) this.send(socket, { kind: "proposal", proposalId: proposal.id, remainingMs: proposal.deadline - Date.now() });
+      if (socket !== undefined)
+        this.send(socket, {
+          kind: "proposal",
+          proposalId: proposal.id,
+          remainingMs: proposal.deadline - Date.now(),
+        });
     }
   }
 
@@ -198,6 +204,10 @@ export class QueueDO extends DurableObject<Env> {
     const { proposals, proposal } = accept(await this.proposals(), proposalId, entry.connectionId);
     if (proposal === undefined) return;
     if (isSettled(proposal)) {
+      // Réglée et retirée **avant** `seat()`, qui attend la création de la partie : les
+      // input gates ne couvrent pas cet appel sortant, et une acceptation arrivée entre-
+      // temps doit trouver la proposition déjà consommée, sans quoi elle en créerait une
+      // seconde.
       await this.saveProposals(settle(proposals, proposal.id));
       await this.seat(proposal.a, proposal.b, true);
       return;
@@ -209,7 +219,10 @@ export class QueueDO extends DurableObject<Env> {
       if (socket === undefined) continue;
       this.send(socket, {
         kind: "proposal-update",
-        accepted: { self: proposal.accepted.includes(member.connectionId), opponent: proposal.accepted.includes(opponent.connectionId) },
+        accepted: {
+          self: proposal.accepted.includes(member.connectionId),
+          opponent: proposal.accepted.includes(opponent.connectionId),
+        },
       });
     }
   }
@@ -308,7 +321,14 @@ export class QueueDO extends DurableObject<Env> {
   }
 
   private send(ws: WebSocket, message: QueueServerMessage): void {
-    ws.send(JSON.stringify(message));
+    // Un socket en train de se fermer lève ici. Sans cette garde, `seat()` s'arrêterait
+    // au premier joueur parti : l'autre, déjà retiré de la file, ne recevrait jamais son
+    // siège et perdrait la partie par forfait d'absence.
+    try {
+      ws.send(JSON.stringify(message));
+    } catch {
+      // Rien à dire à qui s'en va.
+    }
   }
 }
 

@@ -60,7 +60,9 @@ describe("advance", () => {
   });
 
   it("attend la réponse d'un ami défié en le nommant", () => {
-    expect(advance({ kind: "menu" }, { kind: "seek", seeking: "challenge", friend: "Bob" })).toEqual({
+    expect(
+      advance({ kind: "menu" }, { kind: "seek", seeking: "challenge", friend: "Bob" }),
+    ).toEqual({
       kind: "waiting",
       seeking: "challenge",
       code: undefined,
@@ -70,7 +72,10 @@ describe("advance", () => {
 
   it("entre en spectateur dans la partie d'un ami", () => {
     const opening = advance({ kind: "menu" }, { kind: "seek", seeking: "watch", friend: "Bob" });
-    expect(advance(opening, { kind: "seated", spectating: true })).toEqual({ kind: "game", spectating: true });
+    expect(advance(opening, { kind: "seated", spectating: true })).toEqual({
+      kind: "game",
+      spectating: true,
+    });
   });
 
   it("ouvre la fenêtre d'acceptation pendant l'attente rapide, et seulement là", () => {
@@ -86,8 +91,12 @@ describe("advance", () => {
       seeking: "quick",
       code: undefined,
     });
-    expect(advance({ kind: "proposal" }, { kind: "lapsed", requeued: false })).toEqual({ kind: "menu" });
-    expect(advance({ kind: "game" }, { kind: "lapsed", requeued: false })).toEqual({ kind: "game" });
+    expect(advance({ kind: "proposal" }, { kind: "lapsed", requeued: false })).toEqual({
+      kind: "menu",
+    });
+    expect(advance({ kind: "game" }, { kind: "lapsed", requeued: false })).toEqual({
+      kind: "game",
+    });
   });
 
   it("passe par le déploiement avant la partie, depuis la file comme depuis un salon", () => {

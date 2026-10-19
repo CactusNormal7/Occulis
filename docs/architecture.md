@@ -4,7 +4,8 @@
 hébergement, base de données, environnements, distribution. Il consigne les décisions
 prises et, comme le design doc, les points encore ouverts.
 
-Rien de ce qui suit n'est implémenté à ce jour : il n'existe ni serveur, ni base, ni CI.
+Ces décisions sont en œuvre — Worker, Durable Objects, D1, environnements, CI/CD —, sauf la
+distribution Electron, pas encore construite, et les points ouverts de la section 7.
 
 ## 1. Cible de distribution
 
@@ -31,6 +32,13 @@ une partie peut durer des jours et traverser un déploiement.
 **Décision : on versionne la partie, pas la connexion.** Une partie démarrée sous le ruleset
 v3 se termine en v3. Le serveur garde plusieurs versions de règles chargeables — peu coûteux
 puisque `core` est pur et sans dépendance.
+
+**La carte suit la même règle, plus strictement encore** (décision du 2026-10-18) : elle est
+**figée dans la partie** à sa création (`matches.map`, `ScenarioSnapshot`), cases, position
+fixe et déploiement compris, au lieu d'être retrouvée par son nom dans le registre. Retoucher
+une carte ne change donc ni les parties en cours ni les replays des parties finies, et le
+client dessine les cases que le serveur lui envoie, pas celles que son propre registre porte
+sous ce nom.
 
 ## 2. Hébergement : Cloudflare Worker + Durable Objects
 
@@ -285,6 +293,7 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
 
     Restent ouverts : Discord, Apple, et le cas Steam, qui n'est pas de l'OAuth mais un
     ticket Steamworks qu'aucune bibliothèque d'authentification ne couvre.
+
 11. **Le client Electron n'est plus de même origine, et l'authentification s'en aperçoit.**
     Deux blocages connus, aucun encore traité : le cookie `SameSite=Lax` ne partira pas sur une
     requête inter-origine — il faudra soit `SameSite=None`, soit un jeton porteur rangé dans

@@ -35,7 +35,12 @@ export function IconButton({
       aria-label={label}
       data-tip={disabledReason ?? label}
       disabled={disabledReason !== undefined || disabled === true}
-      className={cx("occ-icon-button", danger && "occ-icon-button--danger", tipAlign === "end" && "occ-tip--end", className)}
+      className={cx(
+        "occ-icon-button",
+        danger && "occ-icon-button--danger",
+        tipAlign === "end" && "occ-tip--end",
+        className,
+      )}
       {...rest}
     >
       <Icon name={icon} />
@@ -52,5 +57,9 @@ export interface QuickBarProps {
 
 /** Une rangée de `IconButton` : les actions rapides d'un objet, au même endroit d'une vue à l'autre. */
 export function QuickBar({ children, framed = false, className }: QuickBarProps) {
-  return <div className={cx("occ-quick-bar", framed && "occ-quick-bar--framed", className)}>{children}</div>;
+  return (
+    <div className={cx("occ-quick-bar", framed && "occ-quick-bar--framed", className)}>
+      {children}
+    </div>
+  );
 }

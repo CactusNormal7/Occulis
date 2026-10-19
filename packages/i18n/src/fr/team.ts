@@ -30,7 +30,8 @@ export const team: Messages["team"] = {
   errors: {
     noTeamRules: "Cette partie ne se joue pas avec un déploiement d'équipe.",
     unknownKind: (kind) => `Type de pièce inconnu : ${kind}.`,
-    wrongCount: (role, expected, actual) => `${role} : ${expected} attendue(s), ${actual} choisie(s).`,
+    wrongCount: (role, expected, actual) =>
+      `${role} : ${expected} attendue(s), ${actual} choisie(s).`,
     outsideZone: (x, y) => `${x},${y} est hors de votre zone de déploiement.`,
     sameTile: (x, y) => `Deux pièces sur ${x},${y}.`,
     wrongPhase: "Ce n'est pas le moment.",
@@ -49,7 +50,8 @@ export const team: Messages["team"] = {
     makeDefault: "Utiliser par défaut",
     default: "par défaut",
     invalid: "règles changées",
-    invalidHint: "Les règles ont changé depuis l'enregistrement de cette équipe : modifiez-la pour la réutiliser.",
+    invalidHint:
+      "Les règles ont changé depuis l'enregistrement de cette équipe : modifiez-la pour la réutiliser.",
     name: "Nom",
     namePlaceholder: "Mon équipe",
     save: "Enregistrer",

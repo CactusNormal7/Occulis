@@ -38,13 +38,25 @@ describe("compte à rebours", () => {
 
 describe("équipe préchargée", () => {
   it("prend le preset par défaut, transposé au camp tenu", () => {
-    expect(initialTeam([preset({})], "ridge-1", "provisional-1", "B", [])).toEqual(deployment.defaultTeams.B);
+    expect(initialTeam([preset({})], "ridge-1", "provisional-1", "B", [])).toEqual(
+      deployment.defaultTeams.B,
+    );
   });
 
   it("retombe sur l'équipe de la carte sans preset jouable", () => {
     const fallback = deployment.defaultTeams.A;
-    expect(initialTeam([preset({ valid: false })], "ridge-1", "provisional-1", "A", fallback)).toBe(fallback);
-    expect(initialTeam([preset({ isDefault: false })], "ridge-1", "provisional-1", "A", fallback)).toBe(fallback);
-    expect(usablePresets([preset({ rulesetVersion: "provisional-0" }), preset({ scenario: "demo-0" })], "ridge-1", "provisional-1")).toEqual([]);
+    expect(initialTeam([preset({ valid: false })], "ridge-1", "provisional-1", "A", fallback)).toBe(
+      fallback,
+    );
+    expect(
+      initialTeam([preset({ isDefault: false })], "ridge-1", "provisional-1", "A", fallback),
+    ).toBe(fallback);
+    expect(
+      usablePresets(
+        [preset({ rulesetVersion: "provisional-0" }), preset({ scenario: "demo-0" })],
+        "ridge-1",
+        "provisional-1",
+      ),
+    ).toEqual([]);
   });
 });

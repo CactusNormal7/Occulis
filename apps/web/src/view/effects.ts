@@ -4,7 +4,7 @@ import { clamp01, easeOutBack, easeOutCubic, phase } from "./easing.js";
 /**
  * Les effets du plateau qui ne dépendent que du temps : entrée du plateau, cascade des
  * destinations, retombée d'une pièce, matérialisation. Module pur : il dit **où en est**
- * chaque effet, la scène (`scene/`) le dessine.
+ * chaque effet, la scène (`render/pixi/`) le dessine.
  */
 
 /**
@@ -22,12 +22,20 @@ export function introOf(
 }
 
 /** La durée totale de l'entrée du plateau. */
-export function introLength(timing: { readonly introMs: number; readonly introSpreadMs: number }): number {
+export function introLength(timing: {
+  readonly introMs: number;
+  readonly introSpreadMs: number;
+}): number {
   return timing.introMs + timing.introSpreadMs;
 }
 
 /** L'ouverture d'une destination, par distance à la pièce sélectionnée : 0 fermée, 1 ouverte. */
-export function cascadeOf(distance: number, elapsed: number, perTileMs: number, durationMs: number): number {
+export function cascadeOf(
+  distance: number,
+  elapsed: number,
+  perTileMs: number,
+  durationMs: number,
+): number {
   return easeOutBack(phase(elapsed, Math.max(0, distance - 1) * perTileMs, durationMs), 2.2);
 }
 
@@ -63,7 +71,14 @@ export function landingAt(
   landing: Landing,
   now: number,
   durationMs: number,
-): { readonly ring: number; readonly ringAlpha: number; readonly spark: number; readonly sparkAlpha: number } | undefined {
+):
+  | {
+      readonly ring: number;
+      readonly ringAlpha: number;
+      readonly spark: number;
+      readonly sparkAlpha: number;
+    }
+  | undefined {
   const t = phase(now, landing.start, durationMs);
   if (t >= 1 || now < landing.start) return undefined;
   return {
@@ -84,5 +99,9 @@ export function materializeAt(
   durationMs: number,
 ): { readonly alpha: number; readonly drop: number; readonly flash: number } {
   const t = phase(now, start, durationMs);
-  return { alpha: easeOutCubic(t), drop: (1 - easeOutCubic(t)) * 6, flash: t < 1 ? Math.sin(Math.PI * t) : 0 };
+  return {
+    alpha: easeOutCubic(t),
+    drop: (1 - easeOutCubic(t)) * 6,
+    flash: t < 1 ? Math.sin(Math.PI * t) : 0,
+  };
 }

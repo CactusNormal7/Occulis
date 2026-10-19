@@ -3,7 +3,7 @@ import conventions from "../../../../../.design-sync/conventions.md?raw";
 import designDoc from "../../../../../docs/design.md?raw";
 import charterCss from "../../../../../packages/ui/src/styles.css?raw";
 import gameCss from "../../ui/ui.css?raw";
-import themeSource from "../../theme.ts?raw";
+import themeSource from "../../theme/theme.ts?raw";
 import {
   baseName,
   categoryOf,
@@ -32,13 +32,19 @@ import {
 
 type StoryModule = Record<string, ComponentType>;
 
-const previewModules = import.meta.glob<StoryModule>("../../../../../.design-sync/previews/*.tsx", { eager: true });
+const previewModules = import.meta.glob<StoryModule>("../../../../../.design-sync/previews/*.tsx", {
+  eager: true,
+});
 const previewTexts = import.meta.glob<string>("../../../../../.design-sync/previews/*.tsx", {
   eager: true,
   query: "?raw",
   import: "default",
 });
-const cards = import.meta.glob<string>("../../../../../.design-sync/docs/*.md", { eager: true, query: "?raw", import: "default" });
+const cards = import.meta.glob<string>("../../../../../.design-sync/docs/*.md", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+});
 const componentTexts = import.meta.glob<string>("../../../../../packages/ui/src/components/*.tsx", {
   eager: true,
   query: "?raw",
@@ -60,7 +66,16 @@ export interface ComponentEntry extends ComponentDoc {
 }
 
 /** L'ordre des catégories, des fondations aux fenêtres : celui de Claude Design. */
-const CATEGORY_ORDER = ["Foundations", "Layout", "Actions", "Forms", "Data", "Status", "Players", "Overlays"];
+const CATEGORY_ORDER = [
+  "Foundations",
+  "Layout",
+  "Actions",
+  "Forms",
+  "Data",
+  "Status",
+  "Players",
+  "Overlays",
+];
 
 function byName<T>(files: Record<string, T>): Map<string, T> {
   return new Map(
@@ -75,7 +90,8 @@ function catalogue(): ComponentEntry[] {
   const texts = byName(previewTexts);
   const docs = new Map<string, ComponentDoc & { file: string }>();
   for (const [file, source] of byName(componentTexts)) {
-    for (const [name, doc] of componentDocs(source)) docs.set(name, { ...doc, file: `${file}.tsx` });
+    for (const [name, doc] of componentDocs(source))
+      docs.set(name, { ...doc, file: `${file}.tsx` });
   }
   const entries = [...byName(cards)].map(([name, card]): ComponentEntry => {
     const module = modules.get(name) ?? {};
@@ -100,7 +116,9 @@ function catalogue(): ComponentEntry[] {
     const index = CATEGORY_ORDER.indexOf(category);
     return index === -1 ? CATEGORY_ORDER.length : index;
   };
-  return entries.sort((a, b) => rank(a.category) - rank(b.category) || a.name.localeCompare(b.name));
+  return entries.sort(
+    (a, b) => rank(a.category) - rank(b.category) || a.name.localeCompare(b.name),
+  );
 }
 
 export const COMPONENTS: readonly ComponentEntry[] = catalogue();

@@ -8,10 +8,17 @@ import type { MatchStatus, Route } from "./model.js";
  * ressources, et `resourcesOf()` les précharge toutes à l'arrivée sur une route, pour que
  * l'écran paraisse d'un seul tenant au lieu d'enchaîner ses lectures.
  */
-export const identity = resource("identity", async () => ({ ok: true as const, value: await whoAmI() }));
+export const identity = resource("identity", async () => ({
+  ok: true as const,
+  value: await whoAmI(),
+}));
 
 export const overview = resource("overview", async () => {
-  const [stats, recent, newcomers] = await Promise.all([api.stats(), api.matches({ offset: 0, limit: 6 }), api.users("", 0)]);
+  const [stats, recent, newcomers] = await Promise.all([
+    api.stats(),
+    api.matches({ offset: 0, limit: 6 }),
+    api.users("", 0),
+  ]);
   if (!stats.ok) return stats;
   return { ok: true as const, value: { stats: stats.value, recent, newcomers } };
 });
@@ -34,7 +41,10 @@ export const user = (id: string) =>
 
 export const player = (id: string) =>
   resource(`player:${id}`, async () => {
-    const [found, history] = await Promise.all([api.player(id), api.matches({ player: id, offset: 0, limit: 100 })]);
+    const [found, history] = await Promise.all([
+      api.player(id),
+      api.matches({ player: id, offset: 0, limit: 100 }),
+    ]);
     if (!found.ok) return found;
     return { ok: true as const, value: { player: found.value, history } };
   });
@@ -49,7 +59,10 @@ export const match = (id: string) => resource(`match:${id}`, () => api.match(id)
  * les sources qu'elle montre, que le reste du back-office n'a pas à télécharger. Comme une
  * lecture, elle part avec l'écran et le fait attendre en entier.
  */
-export const designSystem = resource("design-system", async () => ({ ok: true as const, value: await import("./design/DesignSystem.js") }));
+export const designSystem = resource("design-system", async () => ({
+  ok: true as const,
+  value: await import("./design/DesignSystem.js"),
+}));
 
 export function resourcesOf(route: Route): readonly Resource<unknown>[] {
   switch (route.view) {

@@ -15,7 +15,14 @@ import {
   setAllowSpectators,
 } from "./queries.js";
 import { readMyFeats, setShowcase } from "./feats.js";
-import { createPreset, deletePreset, listPresets, setDefaultPreset, updatePreset } from "./presets.js";
+import {
+  createPreset,
+  deletePreset,
+  listPresets,
+  setDefaultPreset,
+  updatePreset,
+} from "./presets.js";
+import { readBody } from "../http.js";
 
 /**
  * Les routes de la page de profil propres au projet, sous `/api/me/`. Le reste de la
@@ -27,7 +34,12 @@ import { createPreset, deletePreset, listPresets, setDefaultPreset, updatePreset
  * ne prend d'identifiant de joueur ou de compte, et chaque requête SQL est bornée par
  * celui de la session (`me/queries.ts`).
  */
-export async function handleMe(auth: Auth, env: Env, request: Request, url: URL): Promise<Response | undefined> {
+export async function handleMe(
+  auth: Auth,
+  env: Env,
+  request: Request,
+  url: URL,
+): Promise<Response | undefined> {
   if (url.pathname !== "/api/me" && !url.pathname.startsWith("/api/me/")) return undefined;
 
   const caller = await guardCaller(auth, request, url);
@@ -57,10 +69,12 @@ export async function handleMe(auth: Auth, env: Env, request: Request, url: URL)
       };
       return Response.json(profile);
     }
-    if (path === "/sessions") return Response.json(await listSessions(env.DB, user.id, session.session.id, now));
+    if (path === "/sessions")
+      return Response.json(await listSessions(env.DB, user.id, session.session.id, now));
     if (path === "/feats") return Response.json(await readMyFeats(env.DB, playerId));
     if (path === "/presets") return Response.json(await listPresets(env.DB, playerId));
-    if (path === "/matches") return Response.json(await listMyMatches(env.DB, playerId, parsePage(url.searchParams)));
+    if (path === "/matches")
+      return Response.json(await listMyMatches(env.DB, playerId, parsePage(url.searchParams)));
     if (path === "/current-match") {
       // Une session d'emprunt est en lecture seule : elle ne s'assied pas à la place du joueur.
       const current = impersonating ? undefined : await readCurrentMatch(env.DB, playerId);
@@ -86,24 +100,33 @@ export async function handleMe(auth: Auth, env: Env, request: Request, url: URL)
 
   if (request.method === "POST") {
     if (path === "/handle") {
-      const body = (await request.json().catch(() => ({}))) as { handle?: unknown };
+      const body = (await readBody(request)) as { handle?: unknown };
       const result = await changeHandle(env.DB, playerId, body.handle, now);
-      if (!result.ok) return Response.json({ code: result.code }, { status: statusFor(result.code) });
-      return Response.json({ handle: result.handle, nextHandleChangeAt: result.nextHandleChangeAt });
+      if (!result.ok)
+        return Response.json({ code: result.code }, { status: statusFor(result.code) });
+      return Response.json({
+        handle: result.handle,
+        nextHandleChangeAt: result.nextHandleChangeAt,
+      });
     }
     if (path === "/spectators") {
-      const body = (await request.json().catch(() => ({}))) as { allow?: unknown };
-      if (typeof body.allow !== "boolean") return Response.json({ code: "INVALID" }, { status: 400 });
+      const body = (await readBody(request)) as { allow?: unknown };
+      if (typeof body.allow !== "boolean")
+        return Response.json({ code: "INVALID" }, { status: 400 });
       await setAllowSpectators(env.DB, playerId, body.allow);
       return Response.json({ allowSpectators: body.allow });
     }
     if (path === "/showcase") {
-      const result = await setShowcase(env.DB, playerId, await request.json().catch(() => ({})));
-      return result.ok ? Response.json({ showcase: result.showcase }) : Response.json({ code: result.code }, { status: 400 });
+      const result = await setShowcase(env.DB, playerId, await readBody(request));
+      return result.ok
+        ? Response.json({ showcase: result.showcase })
+        : Response.json({ code: result.code }, { status: 400 });
     }
     if (path === "/presets") {
-      const result = await createPreset(env.DB, playerId, await request.json().catch(() => ({})), now);
-      return result.ok ? Response.json(result.preset) : Response.json({ code: result.code }, { status: presetStatus(result.code) });
+      const result = await createPreset(env.DB, playerId, await readBody(request), now);
+      return result.ok
+        ? Response.json(result.preset)
+        : Response.json({ code: result.code }, { status: presetStatus(result.code) });
     }
     const defaultId = path.match(/^\/presets\/([\w-]+)\/default$/)?.[1];
     if (defaultId !== undefined) {
@@ -112,7 +135,9 @@ export async function handleMe(auth: Auth, env: Env, request: Request, url: URL)
         : Response.json({ code: "PRESET_NOT_FOUND" }, { status: 404 });
     }
     if (path === "/sessions/revoke-others") {
-      return Response.json({ revoked: await revokeOtherSessions(env.DB, user.id, session.session.id) });
+      return Response.json({
+        revoked: await revokeOtherSessions(env.DB, user.id, session.session.id),
+      });
     }
     const sessionId = path.match(/^\/sessions\/([\w-]+)\/revoke$/)?.[1];
     if (sessionId !== undefined) {
@@ -123,8 +148,10 @@ export async function handleMe(auth: Auth, env: Env, request: Request, url: URL)
 
   const presetId = path.match(/^\/presets\/([\w-]+)$/)?.[1];
   if (presetId !== undefined && request.method === "PUT") {
-    const result = await updatePreset(env.DB, playerId, presetId, await request.json().catch(() => ({})), now);
-    return result.ok ? Response.json(result.preset) : Response.json({ code: result.code }, { status: presetStatus(result.code) });
+    const result = await updatePreset(env.DB, playerId, presetId, await readBody(request), now);
+    return result.ok
+      ? Response.json(result.preset)
+      : Response.json({ code: result.code }, { status: presetStatus(result.code) });
   }
   if (presetId !== undefined && request.method === "DELETE") {
     return (await deletePreset(env.DB, playerId, presetId))

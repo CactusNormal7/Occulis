@@ -118,6 +118,29 @@ function criticalPaint(): Plugin {
 }
 
 /**
+ * Rend `blocking="render"` au script d'entrée des pages qui le déclarent : Vite réécrit
+ * cette balise au build et n'en garde que `type`, `crossorigin` et `src`. Le profil et le
+ * back-office en ont besoin pour écouter `pagereveal` avant leur première image
+ * (`src/load/page.tsx`).
+ */
+function keepRenderBlocking(): Plugin {
+  return {
+    name: "occulis-keep-render-blocking",
+    transformIndexHtml: {
+      order: "post",
+      handler: async (html, { filename }) => {
+        const source = await readFile(filename, "utf8");
+        if (!/<script type="module" blocking="render"/.test(source)) return html;
+        return html.replace(
+          /<script type="module"(?![^>]*blocking=)/,
+          '<script type="module" blocking="render"',
+        );
+      },
+    },
+  };
+}
+
+/**
  * Trois pages : le jeu, le back-office sous `/admin/` et le profil sous `/profile/`.
  * Séparées pour que les deux dernières ne chargent ni Pixi ni le moteur, et que le jeu
  * n'embarque rien d'elles.
@@ -171,7 +194,13 @@ function redirectLab(): Plugin {
 }
 
 export default defineConfig(({ mode }) => ({
-  plugins: [criticalPaint(), serveMockups(), redirectLab(), ...(mode === MOCKUPS_MODE ? [embedMockups()] : [])],
+  plugins: [
+    criticalPaint(),
+    keepRenderBlocking(),
+    serveMockups(),
+    redirectLab(),
+    ...(mode === MOCKUPS_MODE ? [embedMockups()] : []),
+  ],
   resolve: {
     alias: [{ find: /^@occulis\/ui$/, replacement: UI_ENTRY }],
     dedupe: ["react", "react-dom"],

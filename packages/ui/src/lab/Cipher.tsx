@@ -39,10 +39,20 @@ export function Glyph({ glyph, className }: GlyphProps) {
       {glyph.rings.map(([x, y], index) => (
         // L'anneau est cranté comme les cadres de la charte : un carré de cinq pas aux
         // coins coupés, la façon dont le pixel art trace un cercle.
-        <polygon key={`r${index}`} points={`${x - 1},${y - 2} ${x + 1},${y - 2} ${x + 2},${y - 1} ${x + 2},${y + 1} ${x + 1},${y + 2} ${x - 1},${y + 2} ${x - 2},${y + 1} ${x - 2},${y - 1}`} />
+        <polygon
+          key={`r${index}`}
+          points={`${x - 1},${y - 2} ${x + 1},${y - 2} ${x + 2},${y - 1} ${x + 2},${y + 1} ${x + 1},${y + 2} ${x - 1},${y + 2} ${x - 2},${y + 1} ${x - 2},${y - 1}`}
+        />
       ))}
       {glyph.dots.map(([x, y], index) => (
-        <rect key={`d${index}`} className="occ-glyph__dot" x={x - 0.5} y={y - 0.5} width={1.5} height={1.5} />
+        <rect
+          key={`d${index}`}
+          className="occ-glyph__dot"
+          x={x - 0.5}
+          y={y - 0.5}
+          width={1.5}
+          height={1.5}
+        />
       ))}
     </svg>
   );
@@ -53,7 +63,12 @@ export function Glyph({ glyph, className }: GlyphProps) {
  * l'arrêt. Le temps est rattaché à `runKey` : à l'image où l'on relance, l'ancien temps n'est
  * plus rendu — sans quoi une animation rejouée se croirait déjà finie.
  */
-function useClock(running: boolean, stepMs: number, runKey: string, untilMs = Number.POSITIVE_INFINITY): number | null {
+function useClock(
+  running: boolean,
+  stepMs: number,
+  runKey: string,
+  untilMs = Number.POSITIVE_INFINITY,
+): number | null {
   const [clock, setClock] = useState<{ key: string; elapsed: number } | null>(null);
   useEffect(() => {
     if (!running) return;
@@ -122,7 +137,13 @@ export function CipherText({
   const chars = useMemo(() => Array.from(text), [text]);
   const animated = mode === "decode" || mode === "encode";
   const runKey = `${mode}:${String(playKey)}`;
-  const [timing, setTiming] = useState<{ key: string; durationMs: number; tickMs: number; scramble: boolean; still: boolean }>({
+  const [timing, setTiming] = useState<{
+    key: string;
+    durationMs: number;
+    tickMs: number;
+    scramble: boolean;
+    still: boolean;
+  }>({
     key: "",
     durationMs: 0,
     tickMs: PROPOSED.duration.tick,
@@ -167,7 +188,8 @@ export function CipherText({
   chars.forEach((char, index) => {
     if (isGap(char)) return;
     const previous = words[words.length - 1];
-    if (previous !== undefined && previous.start + previous.chars.length === index) previous.chars.push(char);
+    if (previous !== undefined && previous.start + previous.chars.length === index)
+      previous.chars.push(char);
     else words.push({ start: index, chars: [char] });
   });
 
@@ -215,20 +237,43 @@ export interface CipherFriezeProps {
  * Une frise de glyphes sans texte : un ornement de bordure, de chargement ou de couronne.
  * Entièrement `aria-hidden` — elle ne dit rien et ne doit jamais rien dire.
  */
-export function CipherFrieze({ count, alphabet = "lattice", seed = 0, live = false, layout = "row", className }: CipherFriezeProps) {
-  const [loop, setLoop] = useState<{ running: boolean; flickerMs: number }>({ running: false, flickerMs: PROPOSED.cipher.flicker });
+export function CipherFrieze({
+  count,
+  alphabet = "lattice",
+  seed = 0,
+  live = false,
+  layout = "row",
+  className,
+}: CipherFriezeProps) {
+  const [loop, setLoop] = useState<{ running: boolean; flickerMs: number }>({
+    running: false,
+    flickerMs: PROPOSED.cipher.flicker,
+  });
   useEffect(() => {
     const motion = readMotion();
-    setLoop({ running: live && motion.level === "full", flickerMs: PROPOSED.cipher.flicker * motion.tempo });
+    setLoop({
+      running: live && motion.level === "full",
+      flickerMs: PROPOSED.cipher.flicker * motion.tempo,
+    });
   }, [live]);
   const elapsed = useClock(loop.running, loop.flickerMs / 2, `frieze:${seed}`) ?? 0;
 
   return (
-    <span className={cx("occ-frieze", `occ-frieze--${layout}`, className)} aria-hidden="true" style={{ ["--frieze-count" as string]: count }}>
+    <span
+      className={cx("occ-frieze", `occ-frieze--${layout}`, className)}
+      aria-hidden="true"
+      style={{ ["--frieze-count" as string]: count }}
+    >
       {Array.from({ length: count }, (_, index) => {
-        const variant = loop.running ? flickerVariant(index, count, elapsed, loop.flickerMs, seed) : 0;
+        const variant = loop.running
+          ? flickerVariant(index, count, elapsed, loop.flickerMs, seed)
+          : 0;
         return (
-          <span key={index} className="occ-frieze__cell" style={{ ["--frieze-index" as string]: index }}>
+          <span
+            key={index}
+            className="occ-frieze__cell"
+            style={{ ["--frieze-index" as string]: index }}
+          >
             <Glyph glyph={scrambleGlyph(index, variant, alphabet, seed)} />
           </span>
         );

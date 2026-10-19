@@ -9,7 +9,10 @@ import { readPlayerStats } from "./feats/stats.js";
  */
 export async function readPlayerCard(db: D1Database, playerId: string): Promise<PlayerCard> {
   const [row, stats] = await Promise.all([
-    db.prepare("SELECT handle, showcase FROM players WHERE id = ?").bind(playerId).first<{ handle: string; showcase: string | null }>(),
+    db
+      .prepare("SELECT handle, showcase FROM players WHERE id = ?")
+      .bind(playerId)
+      .first<{ handle: string; showcase: string | null }>(),
     readPlayerStats(db, playerId),
   ]);
   return {

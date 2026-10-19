@@ -1,4 +1,4 @@
-import { messages } from "../i18n/current.js";
+import { messages } from "../locale/current.js";
 
 /**
  * Appels d'authentification. Le jeton de session n'apparaît jamais ici : il vit dans
@@ -36,10 +36,19 @@ export async function whoAmI(): Promise<Identity> {
   }
 }
 
-export async function register(email: string, password: string, handle: string): Promise<AuthOutcome> {
+export async function register(
+  email: string,
+  password: string,
+  handle: string,
+): Promise<AuthOutcome> {
   // Better Auth appelle `name` ce que le jeu appelle pseudo. La traduction s'arrête
   // ici : `players.handle` reste le nom du concept partout ailleurs.
-  return submit("/api/auth/sign-up/email", { email, password, name: handle, callbackURL: VERIFIED_PATH });
+  return submit("/api/auth/sign-up/email", {
+    email,
+    password,
+    name: handle,
+    callbackURL: VERIFIED_PATH,
+  });
 }
 
 export async function signIn(email: string, password: string): Promise<AuthOutcome> {
@@ -113,7 +122,7 @@ export const ROUTE_PATHS = {
 } as const;
 
 /** Où ramène le lien de vérification d'adresse, une fois l'adresse confirmée. */
-export const VERIFIED_PATH = "/?verified=1";
+const VERIFIED_PATH = "/?verified=1";
 
 /**
  * La traduction des refus. Elle s'accroche au **code** et jamais à la phrase : le
@@ -122,7 +131,10 @@ export const VERIFIED_PATH = "/?verified=1";
  * Fonction pure, donc éprouvable sans réseau — c'est la seule partie de ce module qui
  * décide quoi que ce soit.
  */
-export function authMessage(status: number, payload: { code?: string | undefined; message?: string | undefined }): string {
+export function authMessage(
+  status: number,
+  payload: { code?: string | undefined; message?: string | undefined },
+): string {
   const m = messages().auth;
   if (status === 429 && payload.code !== "HANDLE_COOLDOWN") return m.tooManyAttempts;
 
@@ -154,9 +166,16 @@ export function redirectMessage(error: string): string {
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
-async function post(path: string, body: unknown): Promise<{ response: Response; payload: Record<string, unknown> } | undefined> {
+async function post(
+  path: string,
+  body: unknown,
+): Promise<{ response: Response; payload: Record<string, unknown> } | undefined> {
   try {
-    const response = await fetch(path, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+    const response = await fetch(path, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify(body),
+    });
     const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     return { response, payload };
   } catch {

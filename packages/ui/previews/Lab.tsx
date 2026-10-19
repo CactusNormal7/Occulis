@@ -1,6 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Button, Segmented, UiRoot, Wordmark } from "../src/index.js";
-import { MOTION_LEVEL_NAMES, PROPOSED, THEME_NAMES, isMotionLevel, isThemeName, type MotionLevel, type ThemeName } from "../src/tokens.js";
+import {
+  MOTION_LEVEL_NAMES,
+  PROPOSED,
+  THEME_NAMES,
+  isMotionLevel,
+  isThemeName,
+  type MotionLevel,
+  type ThemeName,
+} from "../src/tokens.js";
 import { CipherSection } from "./CipherSection.js";
 import { MotionSection } from "./MotionSection.js";
 import { PaperSection } from "./PaperSection.js";
@@ -71,7 +79,14 @@ function Range({
   const value = Number.parseFloat(overrides[name] ?? String(fallback));
   return (
     <Knob label={`${label} · ${value}${unit}`}>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(name, `${event.target.value}${unit}`)} />
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(name, `${event.target.value}${unit}`)}
+      />
     </Knob>
   );
 }
@@ -85,8 +100,10 @@ export function Lab() {
     root.dataset.theme = knobs.theme;
     if (knobs.motion === "full") delete root.dataset.motion;
     else root.dataset.motion = knobs.motion;
-    for (const name of [...root.style].filter((property) => property.startsWith("--occ-"))) root.style.removeProperty(name);
-    for (const [name, value] of Object.entries(knobs.overrides)) root.style.setProperty(name, value);
+    for (const name of [...root.style].filter((property) => property.startsWith("--occ-")))
+      root.style.removeProperty(name);
+    for (const [name, value] of Object.entries(knobs.overrides))
+      root.style.setProperty(name, value);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(knobs));
     } catch {
@@ -102,7 +119,8 @@ export function Lab() {
     return () => query.removeEventListener("change", update);
   }, []);
 
-  const override = (name: string, value: string): void => setKnobs((current) => ({ ...current, overrides: { ...current.overrides, [name]: value } }));
+  const override = (name: string, value: string): void =>
+    setKnobs((current) => ({ ...current, overrides: { ...current.overrides, [name]: value } }));
   // Changer d'intensité ou de tempo remonte les démonstrations : chacune relit les réglages
   // à son départ, comme le ferait une page à son ouverture.
   const revision = `${knobs.motion}:${knobs.overrides["--occ-tempo"] ?? "1"}`;
@@ -125,10 +143,49 @@ export function Lab() {
             onChange={(motion) => setKnobs((current) => ({ ...current, motion }))}
           />
         </Knob>
-        <Range label="Tempo" name="--occ-tempo" min={0.25} max={3} step={0.25} fallback={1} overrides={knobs.overrides} onChange={override} />
-        <Range label="Paper speed" name="--occ-paper-speed" min={150} max={3000} step={50} fallback={PROPOSED.paper.speed} unit="" overrides={knobs.overrides} onChange={override} />
-        <Range label="Paper grid" name="--occ-paper-grid" min={4} max={24} step={2} fallback={PROPOSED.paper.grid} unit="px" overrides={knobs.overrides} onChange={override} />
-        <Range label="Paper dot" name="--occ-paper-dot-size" min={1} max={4} step={1} fallback={PROPOSED.paper.dot} unit="px" overrides={knobs.overrides} onChange={override} />
+        <Range
+          label="Tempo"
+          name="--occ-tempo"
+          min={0.25}
+          max={3}
+          step={0.25}
+          fallback={1}
+          overrides={knobs.overrides}
+          onChange={override}
+        />
+        <Range
+          label="Paper speed"
+          name="--occ-paper-speed"
+          min={150}
+          max={3000}
+          step={50}
+          fallback={PROPOSED.paper.speed}
+          unit=""
+          overrides={knobs.overrides}
+          onChange={override}
+        />
+        <Range
+          label="Paper grid"
+          name="--occ-paper-grid"
+          min={4}
+          max={24}
+          step={2}
+          fallback={PROPOSED.paper.grid}
+          unit="px"
+          overrides={knobs.overrides}
+          onChange={override}
+        />
+        <Range
+          label="Paper dot"
+          name="--occ-paper-dot-size"
+          min={1}
+          max={4}
+          step={1}
+          fallback={PROPOSED.paper.dot}
+          unit="px"
+          overrides={knobs.overrides}
+          onChange={override}
+        />
         <Knob label="Paper resorb">
           <Segmented
             options={["dither", "recede", "none"].map((value) => ({ value, label: value }))}
@@ -136,7 +193,11 @@ export function Lab() {
             onChange={(value) => override("--occ-paper-resorb", value)}
           />
         </Knob>
-        <Button size="sm" variant="ghost" onClick={() => setKnobs({ theme: "obsidian", motion: "full", overrides: {} })}>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setKnobs({ theme: "obsidian", motion: "full", overrides: {} })}
+        >
           Reset
         </Button>
       </div>

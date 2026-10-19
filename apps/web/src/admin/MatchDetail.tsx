@@ -1,12 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
-import { BackLink, Banner, Card, EmptyState, FactStrip, IconButton, MoveList, QuickBar, Segmented, Toolbar, ToolbarText, Versus, useMessages, type MoveEntry } from "@occulis/ui";
+import { Board } from "@occulis/core";
+import {
+  BackLink,
+  Banner,
+  Card,
+  EmptyState,
+  FactStrip,
+  IconButton,
+  MoveList,
+  QuickBar,
+  Segmented,
+  Toolbar,
+  ToolbarText,
+  Versus,
+  useMessages,
+  type MoveEntry,
+} from "@occulis/ui";
 import type { AdminMatchDetail } from "@occulis/protocol";
-import { boardForScenario } from "../game/scenario.js";
 import { useLoad, whenReady } from "../load/hooks.js";
 import * as R from "./resources.js";
 import { formatDate, routeHash } from "./model.js";
-import { ReplayBoard } from "./ReplayBoard.js";
-import { clampFrame, describeEntry, frameLabel, type Perspective } from "./replay.js";
+import { ReplayBoard } from "../replay/ReplayBoard.js";
+import { clampFrame, describeEntry, frameLabel, type Perspective } from "../replay/replay.js";
 import { ResultBadge } from "./shared.js";
 
 export function MatchDetail({ id }: { id: string }) {
@@ -50,14 +65,8 @@ function Replay({ match: m }: { match: AdminMatchDetail }) {
   const [perspective, setPerspective] = useState<Perspective>("all");
   const [turns, setTurns] = useState(0);
 
-  const board = useMemo(() => {
-    try {
-      return boardForScenario(m.scenario);
-    } catch {
-      // Une carte retirée du registre : le log reste lisible, le plateau ne l'est plus.
-      return undefined;
-    }
-  }, [m.scenario]);
+  // La carte que la partie a figée ; `null` quand le serveur n'a pas su la relire.
+  const board = useMemo(() => (m.board === null ? undefined : new Board(m.board)), [m.board]);
 
   const pin = (index: number) => {
     const next = clampFrame(index, count);
@@ -69,6 +78,9 @@ function Replay({ match: m }: { match: AdminMatchDetail }) {
     pin(index);
   };
 
+  // Sans liste : la lecture se réarme à chaque rendu, donc repart de zéro dès que l'image
+  // affichée change, quelle qu'en soit la cause.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!playing) return;
     if (pinned >= count - 1) {
@@ -146,7 +158,13 @@ function Replay({ match: m }: { match: AdminMatchDetail }) {
               <IconButton icon="rotateRight" label={t.rotate} onClick={() => setTurns(turns + 1)} />
             </QuickBar>
           </Toolbar>
-          <ReplayBoard board={board} frames={m.frames} index={shown} perspective={perspective} turns={turns} />
+          <ReplayBoard
+            board={board}
+            frames={m.frames}
+            index={shown}
+            perspective={perspective}
+            turns={turns}
+          />
         </div>
       )}
     </Card>

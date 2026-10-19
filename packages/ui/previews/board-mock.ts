@@ -51,7 +51,9 @@ export function onBoard(tile: Tile): boolean {
 }
 
 export function allTiles(): Tile[] {
-  return Array.from({ length: ROWS }, (_, y) => Array.from({ length: COLUMNS }, (_, x) => ({ x, y }))).flat();
+  return Array.from({ length: ROWS }, (_, y) =>
+    Array.from({ length: COLUMNS }, (_, x) => ({ x, y })),
+  ).flat();
 }
 
 export function chebyshev(a: Tile, b: Tile): number {
@@ -109,7 +111,8 @@ export function destinations(piece: MockPiece, pieces: readonly MockPiece[]): Ma
     for (let dx = -1; dx <= 1; dx += 1) {
       for (let dy = -1; dy <= 1; dy += 1) {
         const next = { x: tile.x + dx, y: tile.y + dy };
-        if (!onBoard(next) || isWall(next) || occupied.has(key(next)) || reached.has(key(next))) continue;
+        if (!onBoard(next) || isWall(next) || occupied.has(key(next)) || reached.has(key(next)))
+          continue;
         reached.set(key(next), distance + 1);
         queue.push(next);
       }

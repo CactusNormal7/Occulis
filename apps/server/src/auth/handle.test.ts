@@ -10,7 +10,10 @@ describe("validation du pseudo", () => {
 
   it("borne la longueur en caractères, pas en octets", () => {
     expect(checkHandle("a")).toEqual({ ok: false, code: "HANDLE_LENGTH" });
-    expect(checkHandle("x".repeat(MAX_HANDLE_LENGTH + 1))).toEqual({ ok: false, code: "HANDLE_LENGTH" });
+    expect(checkHandle("x".repeat(MAX_HANDLE_LENGTH + 1))).toEqual({
+      ok: false,
+      code: "HANDLE_LENGTH",
+    });
     expect(checkHandle("é".repeat(MAX_HANDLE_LENGTH)).ok).toBe(true);
     expect(checkHandle(42)).toEqual({ ok: false, code: "HANDLE_LENGTH" });
   });

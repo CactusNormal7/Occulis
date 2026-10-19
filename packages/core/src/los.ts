@@ -88,6 +88,8 @@ export function hasLineOfSight(
 
   const path = rasterizeLine(start, end);
   const lastStep = path.length - 1;
+  // Deux cases voisines se voient toujours : aucune case ne s'intercale entre elles,
+  // quel que soit le dénivelé.
   if (lastStep <= 1) return true;
 
   const eyeFrom = fromTile.height + EYE_HEIGHT;
@@ -99,8 +101,11 @@ export function hasLineOfSight(
     const tileHeight = board.heightAt(coord);
     if (tileHeight === undefined) continue;
 
-    const obstacleHeight =
-      tileHeight + (occupied.has(coordKey(coord)) ? PIECE_HEIGHT : 0);
+    const obstacleHeight = tileHeight + (occupied.has(coordKey(coord)) ? PIECE_HEIGHT : 0);
+    // Multiplier avant de diviser : la hauteur du regard tombe alors exactement sur les
+    // entiers quand elle doit y tomber, et `>=` tranche sans erreur d'arrondi le cas d'un
+    // obstacle à hauteur d'œil, qui bloque (implementation-notes #11). `(d / lastStep) * i`
+    // arrondirait d'abord, et ferait passer ou non ce regard selon la longueur du tracé.
     const sightlineHeight = eyeFrom + ((eyeTo - eyeFrom) * i) / lastStep;
     if (obstacleHeight >= sightlineHeight) return false;
   }

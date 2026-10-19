@@ -33,7 +33,14 @@ export interface Settings {
   refresh(): void;
 }
 
-export function attachSettings({ elements, theme, locale, hint, chooseTheme, chooseLocale }: SettingsOptions): Settings {
+export function attachSettings({
+  elements,
+  theme,
+  locale,
+  hint,
+  chooseTheme,
+  chooseLocale,
+}: SettingsOptions): Settings {
   const { toggle, panel } = elements;
   let closing = false;
 
@@ -45,7 +52,9 @@ export function attachSettings({ elements, theme, locale, hint, chooseTheme, cho
     panel.hidden = false;
     toggle.setAttribute("aria-expanded", "true");
     void revealWindow(panel, "open", "pointer");
-    panel.querySelector<HTMLButtonElement>("button[aria-current='true']")?.focus({ preventScroll: true });
+    panel
+      .querySelector<HTMLButtonElement>("button[aria-current='true']")
+      ?.focus({ preventScroll: true });
   };
 
   const close = (immediately = false): void => {
@@ -77,9 +86,12 @@ export function attachSettings({ elements, theme, locale, hint, chooseTheme, cho
   toggle.addEventListener("click", () => (isOpen() ? close() : open()));
   panel.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
-    const chosenTheme = target.closest<HTMLButtonElement>("button[data-theme-choice]")?.dataset["themeChoice"];
+    const chosenTheme = target.closest<HTMLButtonElement>("button[data-theme-choice]")?.dataset[
+      "themeChoice"
+    ];
     if (isThemeName(chosenTheme) && chosenTheme !== theme()) chooseTheme(chosenTheme);
-    const chosenLocale = target.closest<HTMLButtonElement>("button[data-locale]")?.dataset["locale"];
+    const chosenLocale =
+      target.closest<HTMLButtonElement>("button[data-locale]")?.dataset["locale"];
     if (isLocale(chosenLocale) && chosenLocale !== locale()) chooseLocale(chosenLocale);
   });
   document.addEventListener("pointerdown", (event) => {

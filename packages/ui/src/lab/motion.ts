@@ -36,14 +36,16 @@ export function motionFrom(raw: { level?: string; amplitude?: string; tempo?: st
   const resolved: MotionLevel = isMotionLevel(level) ? level : "full";
   return {
     level: resolved,
-    amplitude: resolved === "still" ? 0 : positive(raw.amplitude, PROPOSED.motion[resolved].amplitude),
+    amplitude:
+      resolved === "still" ? 0 : positive(raw.amplitude, PROPOSED.motion[resolved].amplitude),
     tempo: positive(raw.tempo, 1) || 1,
   };
 }
 
 /** Le mouvement en vigueur sur `element` (la racine du document par défaut). */
 export function readMotion(element?: Element): Motion {
-  if (typeof getComputedStyle !== "function" || typeof document === "undefined") return DEFAULT_MOTION;
+  if (typeof getComputedStyle !== "function" || typeof document === "undefined")
+    return DEFAULT_MOTION;
   const style = getComputedStyle(element ?? document.documentElement);
   return motionFrom({
     level: style.getPropertyValue("--occ-motion-level"),
@@ -60,14 +62,18 @@ export function durationMs(role: keyof typeof PROPOSED.duration, motion: Motion)
 /** Une propriété numérique de la racine (`--occ-paper-speed`), ou `fallback`. */
 export function readNumber(name: string, fallback: number, element?: Element): number {
   if (typeof getComputedStyle !== "function" || typeof document === "undefined") return fallback;
-  const value = Number.parseFloat(getComputedStyle(element ?? document.documentElement).getPropertyValue(name));
+  const value = Number.parseFloat(
+    getComputedStyle(element ?? document.documentElement).getPropertyValue(name),
+  );
   return Number.isFinite(value) ? value : fallback;
 }
 
 /** Une propriété textuelle de la racine (`--occ-paper-resorb`), ou `fallback`. */
 export function readText(name: string, fallback: string, element?: Element): string {
   if (typeof getComputedStyle !== "function" || typeof document === "undefined") return fallback;
-  const value = getComputedStyle(element ?? document.documentElement).getPropertyValue(name).trim();
+  const value = getComputedStyle(element ?? document.documentElement)
+    .getPropertyValue(name)
+    .trim();
   return value.length > 0 ? value : fallback;
 }
 
@@ -100,10 +106,12 @@ export function readColor(name: string, element: Element): [number, number, numb
  * demain dans PixiJS). Une courbe illisible retombe sur la droite.
  */
 export function easing(css: string): (t: number) => number {
-  const match = /cubic-bezier\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/.exec(css);
+  const match =
+    /cubic-bezier\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/.exec(css);
   if (match === null) return (t) => Math.min(1, Math.max(0, t));
   const [x1, y1, x2, y2] = match.slice(1, 5).map(Number) as [number, number, number, number];
-  const at = (a: number, b: number, s: number): number => 3 * a * s * (1 - s) ** 2 + 3 * b * s ** 2 * (1 - s) + s ** 3;
+  const at = (a: number, b: number, s: number): number =>
+    3 * a * s * (1 - s) ** 2 + 3 * b * s ** 2 * (1 - s) + s ** 3;
   return (t) => {
     if (t <= 0) return 0;
     if (t >= 1) return 1;

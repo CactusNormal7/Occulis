@@ -30,16 +30,21 @@ describe("criticalHead", () => {
     expect(head).toContain("prefers-reduced-motion:reduce");
   });
 
-  it("ne précharge ni l'API ni les parties", () => {
+  it("ne précharge ni l'API ni les parties, et ne pré-rend que le profil et le back-office", () => {
     const json = head.match(/<script type="speculationrules">(.*)<\/script>/)?.[1];
     const rules = JSON.parse(json ?? "null") as {
       prefetch: { where: unknown; eagerness: string }[];
+      prerender: { where: unknown; eagerness: string }[];
     };
     expect(rules.prefetch[0]?.eagerness).toBe("moderate");
     expect(JSON.stringify(rules.prefetch[0]?.where)).toContain(
       '"not":{"href_matches":["/api/*","/match/*"',
     );
-    expect(head).not.toContain("prerender");
+    // Pré-rendre exécute le script de la page : jamais celle du jeu, qui ouvre bien plus
+    // qu'un canal de présence.
+    expect(rules.prerender).toEqual([
+      { where: { href_matches: ["/profile/*", "/admin/*"] }, eagerness: "moderate" },
+    ]);
   });
 
   it("se place après l'encodage, avant la feuille et le script", () => {

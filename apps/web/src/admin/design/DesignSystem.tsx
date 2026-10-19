@@ -1,7 +1,13 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Button, Card, Note, PageHead, Segmented, useMessages, useToast } from "@occulis/ui";
-import { THEME_NAMES, THEMES, paletteVariables, type Palette, type ThemeName } from "@occulis/ui/tokens";
-import { storedTheme } from "../../ui/theme-choice.js";
+import {
+  THEME_NAMES,
+  THEMES,
+  paletteVariables,
+  type Palette,
+  type ThemeName,
+} from "@occulis/ui/tokens";
+import { storedTheme } from "../../theme/theme-choice.js";
 import { sweepVeil } from "../../ui/veil.js";
 import { routeHash, type DesignPage, type Route } from "../model.js";
 import { Components } from "./Components.js";

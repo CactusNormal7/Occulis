@@ -29,7 +29,8 @@ export const team = {
   errors: {
     noTeamRules: "This match does not use team deployment.",
     unknownKind: (kind: string) => `Unknown piece type: ${kind}.`,
-    wrongCount: (role: string, expected: number, actual: number) => `${role}: ${expected} required, ${actual} chosen.`,
+    wrongCount: (role: string, expected: number, actual: number) =>
+      `${role}: ${expected} required, ${actual} chosen.`,
     outsideZone: (x: number, y: number) => `${x},${y} is outside your deployment zone.`,
     sameTile: (x: number, y: number) => `Two pieces on ${x},${y}.`,
     wrongPhase: "This is not the moment for that.",

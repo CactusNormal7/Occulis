@@ -57,10 +57,10 @@ Le plateau n'est pas un simple array de valeurs (1 = mur, 2 = pièce...), mais u
 - Visibilité (LOS) : détermine ce qui est affiché à l'écran du joueur. Une pièce hors LOS n'est même pas rendue (fog of war confirmé — voir 5.4).
 - Portée : détermine ce qui peut être effectivement atteint/attaqué. Une pièce peut être vue sans être atteignable.
 - Une tour ne peut pas voir un élément derrière un mur, ni un élément positionné sur un mur (si elle-même n'est pas en hauteur). Si elle grimpe sur le mur, elle peut voir plus loin, mais toujours pas à travers un autre mur.
-- **Une pièce occulte, comme aux échecs — tranché.** Une pièce coupe la ligne de vue *et* la ligne de déplacement, sans distinction de camp : on ne voit pas derrière elle, on ne la traverse pas, on ne va pas sur sa case. Trois précisions actées avec la règle :
+- **Une pièce occulte, comme aux échecs — tranché.** Une pièce coupe la ligne de vue _et_ la ligne de déplacement, sans distinction de camp : on ne voit pas derrière elle, on ne la traverse pas, on ne va pas sur sa case. Trois précisions actées avec la règle :
   - **Alliées comprises.** Si seules les pièces adverses occultaient, la ligne de vue cesserait d'être symétrique entre les deux camps — un joueur verrait l'autre sans être vu. C'est un invariant du moteur, il prime.
   - **Une pièce vaut un mur d'un niveau posé sur sa case.** L'occultation reste donc cohérente avec la hauteur : deux pièces au même niveau se masquent mutuellement ce qui est derrière elles, mais une pièce perchée voit par-dessus une pièce restée en contrebas. Une pièce occupe exactement la hauteur d'où elle regarde.
-  - La pièce qui bloque reste, elle, parfaitement visible : elle n'occulte que ce qui est *derrière* elle.
+  - La pièce qui bloque reste, elle, parfaitement visible : elle n'occulte que ce qui est _derrière_ elle.
 
 ### 5.3 Règles de hauteur (mêlée / adjacence)
 
@@ -124,8 +124,8 @@ Décision actée : **un coup qui laisse sa propre pièce maîtresse capturable a
 
 Deux autres lectures avaient été posées et sont écartées :
 
-- *Illégal seulement si la menace est visible.* Aucune fuite d'information, mais la légalité d'un coup dépendrait alors de la connaissance du joueur : `packages/core` aurait dû prendre un `PlayerKnowledge` en paramètre, et le mat serait devenu « aucune parade parmi les menaces connues » — une notion différente pour chaque camp.
-- *Jamais illégal (capture du roi).* La partie se termine à la capture effective de la maîtresse. Le plus simple, mais le pilier « victoire par mat » de la section 1 disparaît : il n'y aurait plus de mat, seulement des captures.
+- _Illégal seulement si la menace est visible._ Aucune fuite d'information, mais la légalité d'un coup dépendrait alors de la connaissance du joueur : `packages/core` aurait dû prendre un `PlayerKnowledge` en paramètre, et le mat serait devenu « aucune parade parmi les menaces connues » — une notion différente pour chaque camp.
+- _Jamais illégal (capture du roi)._ La partie se termine à la capture effective de la maîtresse. Le plus simple, mais le pilier « victoire par mat » de la section 1 disparaît : il n'y aurait plus de mat, seulement des captures.
 
 Conséquence assumée : le moteur peut refuser un coup à cause d'une menace que le joueur ne voit pas, ce qui lui apprend indirectement qu'elle existe. C'est le prix payé pour garder une notion de mat unique et symétrique. La vue transmise à un joueur porte donc un drapeau `check` pour sa propre pièce maîtresse — jamais pour celle de l'adversaire, qui trahirait sa position.
 
@@ -139,7 +139,7 @@ Conséquence d'information, actée : **le serveur transmet à chaque joueur la l
 
 Le point était explicitement reporté (« éviter des parties qui tournent en rond sans jamais qu'aucune pièce maîtresse ne soit menacée »). Décision actée : **les deux règles des échecs modernes, et toutes deux automatiques.**
 
-- **Triple répétition** : la même position atteinte trois fois met fin à la partie. Une position, c'est la disposition des pièces *et* le camp au trait ; les pièces y sont identifiées par leur camp et leur type, pas par leur identifiant — deux éclaireurs d'un même camp qui échangent leurs cases rendent bien la même position.
+- **Triple répétition** : la même position atteinte trois fois met fin à la partie. Une position, c'est la disposition des pièces _et_ le camp au trait ; les pièces y sont identifiées par leur camp et leur type, pas par leur identifiant — deux éclaireurs d'un même camp qui échangent leurs cases rendent bien la même position.
 - **Coups sans capture** : au-delà d'un certain nombre d'actions sans qu'aucune pièce ne tombe, la partie est nulle. C'est cette règle qui couvre le vrai risque décrit plus haut, celui d'une partie qui tourne en rond en variant légèrement.
 
 Automatiques et non proposées : deux joueurs obstinés pourraient sinon bloquer indéfiniment, ce qui est précisément ce qu'on cherche à empêcher.
@@ -164,8 +164,8 @@ artistique a été refondue à la demande du porteur du projet. Ils restent **pr
 et sont consignés ici pour que le code ne soit pas la seule trace d'une décision de DA.
 
 - **Direction : un pixel art léger, mystique et cryptique.** Inspirations données par le
-  porteur du projet : *Animal Well*, *Helix: Descent n Ascent*, *Void Stranger* et
-  *Octopath Traveler*. On en retient : des pixels **visibles mais très fins** (un pixel du
+  porteur du projet : _Animal Well_, _Helix: Descent n Ascent_, _Void Stranger_ et
+  _Octopath Traveler_. On en retient : des pixels **visibles mais très fins** (un pixel du
   plateau couvre deux pixels physiques, quel que soit l'écran) ; des animations
   **jamais saccadées**, à la manière d'Octopath — la matière est en pixels, le mouvement et
   la lumière restent continus (glissements interpolés à chaque image, lueurs qui respirent,
@@ -174,9 +174,9 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   lentement, des poussières en suspension. Ce qui a été écarté : le pixel art « gros
   grain », et toute animation par paliers.
 - **Plusieurs propositions, comparées par le porteur du projet.** Trois thèmes coexistent,
-  choisis depuis le menu et en pleine partie (bouton « Design ») : *Obsidienne* (le noir de
-  Void Stranger, neutre et sévère), *Reliquaire* (le noir chaud d'Animal Well, or ancien,
-  lucioles, sceau tournant) et *Astral* (le ciel d'Helix, constellations, étoiles filantes,
+  choisis depuis le menu et en pleine partie (bouton « Design ») : _Obsidienne_ (le noir de
+  Void Stranger, neutre et sévère), _Reliquaire_ (le noir chaud d'Animal Well, or ancien,
+  lucioles, sceau tournant) et _Astral_ (le ciel d'Helix, constellations, étoiles filantes,
   nuées). Retours du porteur ayant motivé cette étape : le fond doit être **plus noir et
   moins bleuté** que la première refonte (violet-noir, écartée) ; **la voûte d'étoiles est
   retenue** comme marqueur du ton cryptique et poétique, présente dans les trois ; **le sceau
@@ -224,7 +224,7 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   menace) : une lueur signifie toujours quelque chose. La contrainte est verrouillée
   mécaniquement — une règle ESLint interdit toute valeur de couleur hors de
   `packages/ui/src/tokens.ts`, seul détenteur du code couleur, que le rendu PixiJS
-  (`apps/web/src/theme.ts`) et la charte d'interface (`@occulis/ui`) partagent.
+  (`apps/web/src/theme/theme.ts`) et la charte d'interface (`@occulis/ui`) partagent.
 - **Faces pleines, et non plus filaire.** Le rendu filaire des débuts a été abandonné avec
   la refonte : les faces opaques rétablissent l'occlusion par surface (une pièce derrière
   un relief est cachée par une matière, plus seulement par l'ordre des traits), et c'est
@@ -243,7 +243,7 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   destination l'y déplace, cliquer un adversaire adjacent le capture sans bouger. Au
   clavier : taper les coordonnées (`1,6 2,5` déplace, `1,6 2,5 x 3,5` capture, `abandon`
   abandonne) dans un champ HTML posé par-dessus le canevas. Le clavier reste nécessaire
-  pour enchaîner un déplacement *et* une capture dans le même tour, que le clic ne sait
+  pour enchaîner un déplacement _et_ une capture dans le même tour, que le clic ne sait
   pas exprimer. Aucune des deux n'est une décision d'interface arrêtée : ce sont des
   moyens d'exercer la logique déjà implémentée. La partie est **toujours arbitrée par le
   serveur** : il n'existe aucun mode local, et le client ne voit jamais que sa propre vue —
@@ -263,7 +263,6 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   déplacer la vue. Le facteur de zoom vit dans la projection et non dans la transformation
   du conteneur de rendu, afin que l'épaisseur des traits reste constante à l'écran quel que
   soit le niveau de zoom — une arête reste large d'un seul pixel du plateau.
-
 
 ## 9. Nom du projet
 

@@ -51,7 +51,11 @@ export function TopBar({ section, brandHref, tabs = [], end }: TopBarProps) {
       {tabs.length > 0 && (
         <nav className="occ-top-bar__tabs">
           {tabs.map((tab) => (
-            <a key={tab.href} href={tab.href} aria-current={tab.current === true ? "page" : undefined}>
+            <a
+              key={tab.href}
+              href={tab.href}
+              aria-current={tab.current === true ? "page" : undefined}
+            >
               {tab.label}
             </a>
           ))}

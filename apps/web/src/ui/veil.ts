@@ -32,6 +32,8 @@ export function sweepVeil(swap: () => void): void {
   const veil = document.createElement("div");
   veil.className = "theme-veil";
   document.body.append(veil);
+  // Un peu après la fin de l'animation, jamais pile dessus : retiré à `VEIL_MS` exactement,
+  // le voile pourrait disparaître avant d'avoir peint sa dernière image.
   window.setTimeout(() => veil.remove(), VEIL_MS + 80);
   window.setTimeout(swap, VEIL_SWAP_MS);
 }

@@ -52,7 +52,10 @@ const TONE_ICONS: Record<NonNullable<FormMessageProps["tone"]>, IconName> = {
  */
 export function FormMessage({ tone = "info", children, action }: FormMessageProps) {
   return (
-    <div className={`occ-form-message occ-form-message--${tone}`} role={tone === "error" ? "alert" : "status"}>
+    <div
+      className={`occ-form-message occ-form-message--${tone}`}
+      role={tone === "error" ? "alert" : "status"}
+    >
       <Icon name={TONE_ICONS[tone]} />
       <span>{children}</span>
       {action}
@@ -77,7 +80,13 @@ export interface ProviderButtonProps extends ButtonHTMLAttributes<HTMLButtonElem
  * « Continuer avec Google ». Le logo est monochrome, en `currentColor`, comme toute icône
  * de la charte : la couleur reste réservée à l'information de partie.
  */
-export function ProviderButton({ provider, className, children, type = "button", ...rest }: ProviderButtonProps) {
+export function ProviderButton({
+  provider,
+  className,
+  children,
+  type = "button",
+  ...rest
+}: ProviderButtonProps) {
   const m = useMessages();
   return (
     <button type={type} className={cx("occ-provider", className)} {...rest}>
@@ -89,7 +98,13 @@ export function ProviderButton({ provider, className, children, type = "button",
 
 function GoogleMark() {
   return (
-    <svg className="occ-provider__mark" viewBox="0 0 48 48" width={18} height={18} aria-hidden="true">
+    <svg
+      className="occ-provider__mark"
+      viewBox="0 0 48 48"
+      width={18}
+      height={18}
+      aria-hidden="true"
+    >
       <path
         fill="currentColor"
         d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.2C12.4 13.7 17.7 9.5 24 9.5z"

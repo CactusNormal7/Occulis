@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Board } from "@occulis/core";
 import { type IsoProjection, project } from "./iso.js";
-import { tileAt } from "./picking.js";
+import { sameCoord, tileAt } from "./picking.js";
 
 function projection(overrides: Partial<IsoProjection> = {}): IsoProjection {
   return {
@@ -48,5 +48,14 @@ describe("tileAt", () => {
 
   it("ne désigne rien hors du plateau", () => {
     expect(tileAt({ x: 10_000, y: 10_000 }, FLAT, projection())).toBeUndefined();
+  });
+});
+
+describe("sameCoord", () => {
+  it("compare deux cases, et n'égale « aucune » qu'à « aucune »", () => {
+    expect(sameCoord({ x: 1, y: 2 }, { x: 1, y: 2 })).toBe(true);
+    expect(sameCoord({ x: 1, y: 2 }, { x: 2, y: 1 })).toBe(false);
+    expect(sameCoord(undefined, undefined)).toBe(true);
+    expect(sameCoord({ x: 0, y: 0 }, undefined)).toBe(false);
   });
 });

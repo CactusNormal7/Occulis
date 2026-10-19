@@ -21,7 +21,12 @@ export function expectedScore(a: number, b: number): number {
  * (défaite) ou ½ (nulle). Arrondies à l'entier, et **opposées** : ce que l'un gagne,
  * l'autre le perd, pour que la somme des Elo ne dérive pas.
  */
-export function ratingChanges(a: number, b: number, scoreA: number, k = K_FACTOR): { readonly a: number; readonly b: number } {
+export function ratingChanges(
+  a: number,
+  b: number,
+  scoreA: number,
+  k = K_FACTOR,
+): { readonly a: number; readonly b: number } {
   const change = Math.round(k * (scoreA - expectedScore(a, b)));
   return { a: change, b: -change };
 }

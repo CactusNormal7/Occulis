@@ -1,12 +1,22 @@
 import { Suspense, useState, type ReactNode } from "react";
-import { Button, EmptyState, LocaleSwitch, ProgressBar, ToastProvider, TopBar, UiRoot, useMessages } from "@occulis/ui";
-import { chooseLocale, initLocale } from "../i18n/browser.js";
+import {
+  Button,
+  EmptyState,
+  LocaleSwitch,
+  ProgressBar,
+  ToastProvider,
+  TopBar,
+  UiRoot,
+  useMessages,
+} from "@occulis/ui";
+import { chooseLocale, initLocale } from "../locale/browser.js";
 import { stopImpersonating, type Identity } from "../net/auth.js";
 import { useHashRoute, useLoad, usePending, whenReady } from "../load/hooks.js";
 import { MatchDetail } from "./MatchDetail.js";
 import { parseRoute, routeHash, sectionOf, type Route } from "./model.js";
 import { designSystem, identity as identityResource, resourcesOf } from "./resources.js";
 import { MatchList, Overview, PlayerDetail, UserDetail, UserList } from "./views.js";
+import { ScreenReady } from "../load/page.js";
 
 /**
  * La racine du back-office. La vérification du rôle faite ici n'est qu'une politesse :
@@ -20,6 +30,7 @@ export function App() {
       {/* La seule frontière d'attente de la page : rien ne paraît avant que l'écran entier
           — barre du haut comprise — ait ses données (« Chargement et premier rendu »). */}
       <Suspense fallback={<ProgressBar active />}>
+        <ScreenReady />
         <Page
           localeSwitch={
             <LocaleSwitch
@@ -84,7 +95,16 @@ function Gate({ identity, route }: { identity: Identity; route: Route }) {
     // La session est celle du joueur incarné : le back-office lui est fermé, mais le
     // chemin du retour doit rester à portée.
     return (
-      <EmptyState action={<Button variant="primary" onClick={() => void stopImpersonating().then(() => location.reload())}>{m.stop}</Button>}>
+      <EmptyState
+        action={
+          <Button
+            variant="primary"
+            onClick={() => void stopImpersonating().then(() => location.reload())}
+          >
+            {m.stop}
+          </Button>
+        }
+      >
         {m.impersonating(identity.handle ?? m.aPlayer)}
       </EmptyState>
     );

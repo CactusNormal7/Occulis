@@ -8,8 +8,12 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const source = (path) => readFileSync(new URL(`../src/${path}`, import.meta.url), "utf8");
 const styles = source("styles.css").replace(/^@import "\.\/generated\/tokens\.css";\n/m, "");
-if (styles.includes("@import")) throw new Error("styles.css importe autre chose que les tokens : à intégrer ici");
+if (styles.includes("@import"))
+  throw new Error("styles.css importe autre chose que les tokens : à intégrer ici");
 
 mkdirSync(new URL("../dist", import.meta.url), { recursive: true });
-writeFileSync(new URL("../dist/styles.css", import.meta.url), `${source("generated/tokens.css")}\n${styles}`);
+writeFileSync(
+  new URL("../dist/styles.css", import.meta.url),
+  `${source("generated/tokens.css")}\n${styles}`,
+);
 console.log("dist/styles.css écrit (tokens inclus)");

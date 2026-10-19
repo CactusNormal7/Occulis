@@ -31,7 +31,11 @@ const LIVE_MATCHES_PER_FRIEND = 3;
 const FRIEND_OF = `EXISTS (SELECT 1 FROM friendships f
   WHERE (f.player_low = ?1 AND f.player_high = p.id) OR (f.player_low = p.id AND f.player_high = ?1))`;
 
-export async function readFacts(db: D1Database, self: string, other: string): Promise<RelationFacts> {
+export async function readFacts(
+  db: D1Database,
+  self: string,
+  other: string,
+): Promise<RelationFacts> {
   const row = await db
     .prepare(
       `SELECT EXISTS (SELECT 1 FROM users u WHERE u.player_id = p.id) AS has_account,
@@ -71,8 +75,14 @@ export async function pendingRequests(db: D1Database, self: string): Promise<num
   return row?.total ?? 0;
 }
 
-export async function handleOf(db: D1Database, playerId: string): Promise<SocialPlayer | undefined> {
-  const row = await db.prepare("SELECT id, handle FROM players WHERE id = ?").bind(playerId).first<SocialPlayer>();
+export async function handleOf(
+  db: D1Database,
+  playerId: string,
+): Promise<SocialPlayer | undefined> {
+  const row = await db
+    .prepare("SELECT id, handle FROM players WHERE id = ?")
+    .bind(playerId)
+    .first<SocialPlayer>();
   return row ?? undefined;
 }
 
@@ -184,7 +194,12 @@ export async function readOverview(db: D1Database, self: string): Promise<Friend
   };
 }
 
-function liveMatch(row: LiveRow, friend: string, self: string, allowSpectators: boolean): LiveMatch {
+function liveMatch(
+  row: LiveRow,
+  friend: string,
+  self: string,
+  allowSpectators: boolean,
+): LiveMatch {
   const side: PlayerId = row.player_a === friend ? "A" : "B";
   const opponentId = side === "A" ? row.player_b : row.player_a;
   return {
@@ -202,8 +217,8 @@ function requestOf(row: RequestRow): FriendRequest {
 }
 
 /**
- * Recherche par préfixe de pseudo. Ni soi, ni les profils sans compte (anonymisés ou
- * créés par `POST /api/matches`), ni ceux qui vous ont bloqué.
+ * Recherche par préfixe de pseudo. Ni soi, ni les profils sans compte (anonymisés),
+ * ni ceux qui vous ont bloqué.
  */
 export async function searchPlayers(
   db: D1Database,
@@ -242,9 +257,16 @@ export async function searchPlayers(
   }));
 }
 
-export async function sendRequest(db: D1Database, self: string, other: string, now: number): Promise<void> {
+export async function sendRequest(
+  db: D1Database,
+  self: string,
+  other: string,
+  now: number,
+): Promise<void> {
   await db
-    .prepare("INSERT OR IGNORE INTO friend_requests (sender, recipient, created_at) VALUES (?, ?, ?)")
+    .prepare(
+      "INSERT OR IGNORE INTO friend_requests (sender, recipient, created_at) VALUES (?, ?, ?)",
+    )
     .bind(self, other, now)
     .run();
 }
@@ -254,7 +276,12 @@ export async function sendRequest(db: D1Database, self: string, other: string, n
  * encore, dans la même transaction qui l'efface : deux acceptations simultanées ne
  * peuvent pas rendre deux succès pour une seule demande.
  */
-export async function acceptRequest(db: D1Database, self: string, sender: string, now: number): Promise<boolean> {
+export async function acceptRequest(
+  db: D1Database,
+  self: string,
+  sender: string,
+  now: number,
+): Promise<boolean> {
   const [low, high] = pairOf(self, sender);
   const [inserted] = await db.batch([
     db
@@ -272,7 +299,11 @@ export async function acceptRequest(db: D1Database, self: string, sender: string
   return (inserted?.meta.changes ?? 0) > 0;
 }
 
-export async function deleteRequest(db: D1Database, sender: string, recipient: string): Promise<boolean> {
+export async function deleteRequest(
+  db: D1Database,
+  sender: string,
+  recipient: string,
+): Promise<boolean> {
   const result = await db
     .prepare("DELETE FROM friend_requests WHERE sender = ? AND recipient = ?")
     .bind(sender, recipient)
@@ -290,10 +321,17 @@ export async function removeFriend(db: D1Database, self: string, other: string):
 }
 
 /** Bloquer coupe tout : l'amitié et les demandes, dans les deux sens. */
-export async function block(db: D1Database, self: string, other: string, now: number): Promise<void> {
+export async function block(
+  db: D1Database,
+  self: string,
+  other: string,
+  now: number,
+): Promise<void> {
   const [low, high] = pairOf(self, other);
   await db.batch([
-    db.prepare("INSERT OR IGNORE INTO blocks (blocker, blocked, created_at) VALUES (?, ?, ?)").bind(self, other, now),
+    db
+      .prepare("INSERT OR IGNORE INTO blocks (blocker, blocked, created_at) VALUES (?, ?, ?)")
+      .bind(self, other, now),
     db.prepare("DELETE FROM friendships WHERE player_low = ? AND player_high = ?").bind(low, high),
     db
       .prepare(
@@ -304,11 +342,18 @@ export async function block(db: D1Database, self: string, other: string, now: nu
 }
 
 export async function unblock(db: D1Database, self: string, other: string): Promise<boolean> {
-  const result = await db.prepare("DELETE FROM blocks WHERE blocker = ? AND blocked = ?").bind(self, other).run();
+  const result = await db
+    .prepare("DELETE FROM blocks WHERE blocker = ? AND blocked = ?")
+    .bind(self, other)
+    .run();
   return result.meta.changes > 0;
 }
 
-export async function readFriendProfile(db: D1Database, self: string, friend: string): Promise<FriendProfile | undefined> {
+export async function readFriendProfile(
+  db: D1Database,
+  self: string,
+  friend: string,
+): Promise<FriendProfile | undefined> {
   const [low, high] = pairOf(self, friend);
   const [player, record] = await db.batch([
     db
@@ -353,7 +398,12 @@ function messageOf(row: MessageRow): ChatMessage {
   };
 }
 
-export async function listMessages(db: D1Database, self: string, friend: string, before: number): Promise<ChatPage> {
+export async function listMessages(
+  db: D1Database,
+  self: string,
+  friend: string,
+  before: number,
+): Promise<ChatPage> {
   const rows = await db
     .prepare(
       `SELECT id, sender, recipient, body, created_at, read_at FROM messages
@@ -391,9 +441,16 @@ export async function insertMessage(
   return { id, sender: self, recipient: friend, body, createdAt: now, readAt: null };
 }
 
-export async function markRead(db: D1Database, self: string, friend: string, now: number): Promise<number> {
+export async function markRead(
+  db: D1Database,
+  self: string,
+  friend: string,
+  now: number,
+): Promise<number> {
   const result = await db
-    .prepare("UPDATE messages SET read_at = ? WHERE sender = ? AND recipient = ? AND read_at IS NULL")
+    .prepare(
+      "UPDATE messages SET read_at = ? WHERE sender = ? AND recipient = ? AND read_at IS NULL",
+    )
     .bind(now, friend, self)
     .run();
   return result.meta.changes;
@@ -407,7 +464,11 @@ export interface WatchRow {
   readonly allowSpectators: boolean;
 }
 
-export async function readWatchRow(db: D1Database, matchId: string, side: PlayerId): Promise<WatchRow | undefined> {
+export async function readWatchRow(
+  db: D1Database,
+  matchId: string,
+  side: PlayerId,
+): Promise<WatchRow | undefined> {
   const row = await db
     .prepare(
       `SELECT m.finished_at, m.player_a, m.player_b, p.allow_spectators
@@ -415,7 +476,12 @@ export async function readWatchRow(db: D1Database, matchId: string, side: Player
        WHERE m.id = ?1`,
     )
     .bind(matchId, side)
-    .first<{ finished_at: number | null; player_a: string; player_b: string; allow_spectators: number }>();
+    .first<{
+      finished_at: number | null;
+      player_a: string;
+      player_b: string;
+      allow_spectators: number;
+    }>();
   if (row === null) return undefined;
   return {
     finished: row.finished_at !== null,

@@ -39,7 +39,9 @@ export async function sendLetter(env: Env, letter: Letter): Promise<void> {
       subject: letter.subject,
       text: letter.text,
       html: letter.html,
-      ...(env.MAIL_REPLY_TO === undefined || env.MAIL_REPLY_TO.length === 0 ? {} : { reply_to: env.MAIL_REPLY_TO }),
+      ...(env.MAIL_REPLY_TO === undefined || env.MAIL_REPLY_TO.length === 0
+        ? {}
+        : { reply_to: env.MAIL_REPLY_TO }),
     }),
   });
 
@@ -67,7 +69,12 @@ export function resetLetter(locale: Locale, to: string, url: string): Letter {
 }
 
 /** Envoyé à l'**ancienne** adresse : c'est elle qui doit consentir au changement. */
-export function changeEmailLetter(locale: Locale, to: string, newEmail: string, url: string): Letter {
+export function changeEmailLetter(
+  locale: Locale,
+  to: string,
+  newEmail: string,
+  url: string,
+): Letter {
   const m = messagesFor(locale).mail.changeEmail;
   return compose(locale, to, {
     subject: m.subject,
@@ -81,15 +88,26 @@ export function changeEmailLetter(locale: Locale, to: string, newEmail: string, 
 
 export function deleteAccountLetter(locale: Locale, to: string, url: string): Letter {
   const m = messagesFor(locale).mail;
-  return compose(locale, to, { ...m.deleteAccount, action: { label: m.deleteAccount.action, url } });
+  return compose(locale, to, {
+    ...m.deleteAccount,
+    action: { label: m.deleteAccount.action, url },
+  });
 }
 
 export function passwordChangedLetter(locale: Locale, to: string, securityUrl: string): Letter {
   const m = messagesFor(locale).mail;
-  return compose(locale, to, { ...m.passwordChanged, action: { label: m.passwordChanged.action, url: securityUrl } });
+  return compose(locale, to, {
+    ...m.passwordChanged,
+    action: { label: m.passwordChanged.action, url: securityUrl },
+  });
 }
 
-export function providerLinkedLetter(locale: Locale, to: string, provider: string, securityUrl: string): Letter {
+export function providerLinkedLetter(
+  locale: Locale,
+  to: string,
+  provider: string,
+  securityUrl: string,
+): Letter {
   const m = messagesFor(locale).mail.providerLinked;
   return compose(locale, to, {
     subject: m.subject(provider),
@@ -112,7 +130,12 @@ interface Content {
 }
 
 function compose(locale: Locale, to: string, content: Content): Letter {
-  return { to, subject: content.subject, text: plainText(locale, content), html: html(locale, content) };
+  return {
+    to,
+    subject: content.subject,
+    text: plainText(locale, content),
+    html: html(locale, content),
+  };
 }
 
 function plainText(locale: Locale, content: Content): string {
@@ -194,7 +217,13 @@ ${paragraphs}
 </html>`;
 }
 
-const ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const ESCAPES: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
 
 export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => ESCAPES[character] ?? character);

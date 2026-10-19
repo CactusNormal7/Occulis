@@ -29,9 +29,10 @@ export function TokensSection() {
       <header>
         <h2 className="occ-label">1 · Tokens and motion</h2>
         <p>
-          Three layers: values (tokens.ts), roles (--occ-dur-window, --occ-paper…) that stylesheets read, and three knobs
-          (--occ-tempo, --occ-motion-amplitude, --occ-motion-loop) that a runtime override sets on the root. Use the bar above
-          to try them: every demo on this page reads them when it starts.
+          Three layers: values (tokens.ts), roles (--occ-dur-window, --occ-paper…) that stylesheets
+          read, and three knobs (--occ-tempo, --occ-motion-amplitude, --occ-motion-loop) that a
+          runtime override sets on the root. Use the bar above to try them: every demo on this page
+          reads them when it starts.
         </p>
       </header>
       <Stage
@@ -52,11 +53,13 @@ export function TokensSection() {
       </Stage>
       <Stage title="Easings · over --occ-dur-slow">
         <div className="occ-lab-grid">
-          {Object.entries({ out: "out", in: "in", "in-out": "inOut", sweep: "sweep" } as const).map(([css, key]) => (
-            <Specimen key={css} name={`--occ-ease-${css}`} value={PROPOSED.easing[key]}>
-              <Track duration="var(--occ-dur-slow)" easing={`var(--occ-ease-${css})`} run={run} />
-            </Specimen>
-          ))}
+          {Object.entries({ out: "out", in: "in", "in-out": "inOut", sweep: "sweep" } as const).map(
+            ([css, key]) => (
+              <Specimen key={css} name={`--occ-ease-${css}`} value={PROPOSED.easing[key]}>
+                <Track duration="var(--occ-dur-slow)" easing={`var(--occ-ease-${css})`} run={run} />
+              </Specimen>
+            ),
+          )}
         </div>
       </Stage>
       <Stage title="Intensity levels">
@@ -64,11 +67,18 @@ export function TokensSection() {
           {MOTION_LEVEL_NAMES.map((level) => {
             const { amplitude, loop, scramble } = PROPOSED.motion[level];
             return (
-              <Specimen key={level} name={`data-motion="${level}"`} value={`amplitude ${amplitude} · loops ${loop} · scramble ${scramble ? "yes" : "no"}`}>
+              <Specimen
+                key={level}
+                name={`data-motion="${level}"`}
+                value={`amplitude ${amplitude} · loops ${loop} · scramble ${scramble ? "yes" : "no"}`}
+              >
                 <span className="occ-lab-note">
-                  {level === "full" && "Everything: arcs, trails, scrambling glyphs, looping ornaments."}
-                  {level === "calm" && "Shorter distances, no trail, no loop; glyphs yield their letter without scrambling."}
-                  {level === "still" && "Nothing travels; changes cross-fade. Forced by prefers-reduced-motion."}
+                  {level === "full" &&
+                    "Everything: arcs, trails, scrambling glyphs, looping ornaments."}
+                  {level === "calm" &&
+                    "Shorter distances, no trail, no loop; glyphs yield their letter without scrambling."}
+                  {level === "still" &&
+                    "Nothing travels; changes cross-fade. Forced by prefers-reduced-motion."}
                 </span>
               </Specimen>
             );
@@ -84,7 +94,9 @@ export function TokensSection() {
           ))}
         </div>
       </Stage>
-      <CodeBlock label="Runtime override — what the back-office will do">{OVERRIDE_EXAMPLE}</CodeBlock>
+      <CodeBlock label="Runtime override — what the back-office will do">
+        {OVERRIDE_EXAMPLE}
+      </CodeBlock>
     </section>
   );
 }
