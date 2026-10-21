@@ -100,6 +100,12 @@ const OUTCOME_RETRY_MS = 5_000;
 /** Une fin acquise au log mais pas encore inscrite dans `matches` (`closeMatch()`). */
 const UNRECORDED = "unrecorded-outcome";
 
+/**
+ * La partie est finie. Retenu dans le stockage, qui survit à l'hibernation, et non lu dans
+ * le cache : sinon l'alarme du battement de cœur la croirait en cours à chaque réveil.
+ */
+const FINISHED = "finished";
+
 function absenceKey(player: PlayerId): string {
   return `absent:${player}`;
 }
@@ -425,16 +431,17 @@ export class MatchDO extends DurableObject<Env> {
   }
 
   private async forfeitIfDue(now: number): Promise<void> {
-    const live = await this.load();
     const since = await this.absences();
-    if (live.state.outcome === null) {
-      const due = (["A", "B"] as const)
-        .filter((seat) => since[seat] !== undefined && now >= (since[seat] ?? 0) + ABSENCE_MS)
-        .filter((seat) => !this.connected(seat))
-        .sort((x, y) => (since[x] ?? 0) - (since[y] ?? 0))[0];
-      if (due === undefined) return;
-      await this.commit(live, { kind: "resign", player: due });
-    }
+    const due = (["A", "B"] as const)
+      .filter((seat) => since[seat] !== undefined && now >= (since[seat] ?? 0) + ABSENCE_MS)
+      .filter((seat) => !this.connected(seat))
+      .sort((x, y) => (since[x] ?? 0) - (since[y] ?? 0))[0];
+    // Rien d'échu : inutile de relire la partie. L'alarme passe chaque minute pour le
+    // battement de cœur, et le DO a le plus souvent hiberné entre-temps : relire le log à
+    // chaque passage coûterait une lecture D1 et un rejeu complet, par minute et par partie.
+    if (due === undefined) return;
+    const live = await this.load();
+    if (live.state.outcome === null) await this.commit(live, { kind: "resign", player: due });
     await this.ctx.storage.delete([absenceKey("A"), absenceKey("B")]);
   }
 
@@ -460,9 +467,7 @@ export class MatchDO extends DurableObject<Env> {
         if (at !== undefined) next = Math.min(next ?? Infinity, at + ABSENCE_MS);
       }
       // Une partie qui dure, avec un joueur en ligne : surveiller son battement de cœur.
-      // Une partie dont l'issue n'est pas en cache est supposée en cours ; l'alarme qui la
-      // relira saura.
-      const running = this.live === null || this.live.state.outcome === null;
+      const running = !(await this.ctx.storage.get<boolean>(FINISHED));
       const watched = this.ctx.getWebSockets("A").length + this.ctx.getWebSockets("B").length > 0;
       if (running && watched) next = Math.min(next ?? Infinity, Date.now() + HEARTBEAT_CHECK_MS);
     }
@@ -631,7 +636,7 @@ export class MatchDO extends DurableObject<Env> {
    * serait jamais rattrapée, `forfeitAbsent()` ignorant les parties déjà closes.
    */
   private async closeMatch(state: GameState): Promise<void> {
-    await this.ctx.storage.put(UNRECORDED, true);
+    await this.ctx.storage.put({ [FINISHED]: true, [UNRECORDED]: true });
     try {
       await this.recordOutcome(state);
       await this.ctx.storage.delete(UNRECORDED);

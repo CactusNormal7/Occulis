@@ -635,6 +635,27 @@ describe("MatchDO dans workerd", () => {
     b.socket.close();
   });
 
+  it("ne surveille le battement de cœur que tant que la partie dure", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    await a.awaitKind("view");
+    await b.awaitKind("view");
+    const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
+    const alarm = () => runInDurableObject(stub, (_instance, state) => state.storage.getAlarm());
+    expect(await alarm()).not.toBeNull();
+
+    a.drain();
+    a.send({ kind: "action", action: { kind: "resign" } });
+    expect((await a.awaitKind("view")).view.outcome).not.toBeNull();
+
+    // La partie finie, l'alarme qui passe ne se réarme plus : aucun réveil inutile.
+    await runDurableObjectAlarm(stub);
+    expect(await alarm()).toBeNull();
+
+    a.socket.close();
+    b.socket.close();
+  });
+
   it("répond au battement de cœur sans passer par le protocole", async () => {
     const match = await createMatch();
     const response = await exports.default.fetch(
