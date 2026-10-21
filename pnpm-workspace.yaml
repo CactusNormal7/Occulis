@@ -2,3 +2,9 @@ packages:
   - "packages/*"
   - "apps/*"
   - "tooling/*"
+
+# Seuls paquets autorisés à lancer un script d'installation (binaires natifs). pnpm 10
+# ne lit plus ce réglage dans le champ `pnpm` de package.json.
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
