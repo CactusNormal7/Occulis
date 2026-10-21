@@ -1,4 +1,4 @@
-import { type Coord, type CoordKey, chebyshevDistance } from "@occulis/core";
+import { type Coord, type CoordKey, type PlayerView, chebyshevDistance } from "@occulis/core";
 import { easeInOutSine } from "./easing.js";
 
 /**
@@ -27,6 +27,20 @@ export interface RevealTiming {
   readonly revealPerTileMs: number;
   readonly dimMs: number;
   readonly dimPerTileMs: number;
+}
+
+/**
+ * Les cases que la vue éclaire. Une partie finie s'éteint : la vue se retire de tout le
+ * plateau, qui reste lisible dans l'ombre — la position finale n'est pas effacée, elle
+ * est close. `outcome` vaut `null` tant que la partie dure, jamais `undefined`.
+ */
+export function litTiles(view: PlayerView): ReadonlySet<CoordKey> {
+  return view.outcome === null ? view.visible : new Set();
+}
+
+/** Le joueur a le trait dans une partie qui dure. */
+export function awaitsMove(view: PlayerView): boolean {
+  return view.outcome === null && view.activePlayer === view.player;
 }
 
 function progress(transition: Transition, now: number): number {

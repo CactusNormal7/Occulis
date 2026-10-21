@@ -45,7 +45,9 @@ export function MatchDetail({ id }: { id: string }) {
           { label: t.facts.id, value: <code>{m.id}</code> },
         ]}
       />
-      {m.replayError !== null && <Banner>{t.replayError(m.replayError)}</Banner>}
+      {m.replayError !== null && (
+        <Banner>{t.replayError(m.replayError.seq, m.replayError.code)}</Banner>
+      )}
       <Replay match={m} />
     </>
   ));

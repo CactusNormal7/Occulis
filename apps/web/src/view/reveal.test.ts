@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { CoordKey } from "@occulis/core";
-import { crestAt, lightAt, relight, settling } from "./reveal.js";
+import type { CoordKey, PlayerView } from "@occulis/core";
+import { awaitsMove, crestAt, lightAt, litTiles, relight, settling } from "./reveal.js";
 
 const timing = { revealMs: 400, revealPerTileMs: 50, dimMs: 300, dimPerTileMs: 10 };
 const keys = ["0,0", "1,0", "4,0"] as CoordKey[];
@@ -39,5 +39,39 @@ describe("relight", () => {
     expect(crestAt(map, "0,0" as CoordKey, 400)).toBe(0);
     const dark = relight(map, keys, new Set(), [], 1000, timing);
     expect(crestAt(dark, "0,0" as CoordKey, 1100)).toBe(0);
+  });
+});
+
+describe("litTiles et awaitsMove", () => {
+  // Le protocole transmet `outcome: null` tant que la partie dure : une comparaison à
+  // `undefined` laissait le plateau entièrement éteint et la pulsation du tour muette.
+  const view: PlayerView = {
+    player: "A",
+    activePlayer: "A",
+    turn: 3,
+    outcome: null,
+    legalActions: [],
+    visible: new Set(keys),
+    ownPieces: [],
+    visibleEnemies: [],
+    ghosts: [],
+  };
+  const finished: PlayerView = {
+    ...view,
+    outcome: { kind: "victory", winner: "B", reason: "resignation" },
+  };
+
+  it("éclaire les cases en vue tant que la partie dure", () => {
+    expect([...litTiles(view)]).toEqual(keys);
+  });
+
+  it("n'éclaire plus rien une fois la partie finie", () => {
+    expect(litTiles(finished).size).toBe(0);
+  });
+
+  it("dit qu'un coup est attendu seulement au trait et en cours de partie", () => {
+    expect(awaitsMove(view)).toBe(true);
+    expect(awaitsMove({ ...view, activePlayer: "B" })).toBe(false);
+    expect(awaitsMove(finished)).toBe(false);
   });
 });

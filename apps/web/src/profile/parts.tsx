@@ -178,7 +178,9 @@ export function MatchReplayView({ match: m, back, friend }: MatchReplayViewProps
           { label: t.facts.moves, value: String(m.log.length) },
         ]}
       />
-      {m.replayError !== null && <Banner>{t.replayError(m.replayError)}</Banner>}
+      {m.replayError !== null && (
+        <Banner>{t.replayError(m.replayError.seq, m.replayError.code)}</Banner>
+      )}
       <Replay match={m} friend={friend} />
     </>
   );
