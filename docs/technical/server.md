@@ -15,16 +15,10 @@ ligne. Voir [README.md](../../README.md) pour l'état fonctionnel du prototype.
    sert le client via ASSETS        envoie à chacun son viewFor()        users
 ```
 
-Trois principes, actés dans `docs/architecture.md` :
+Invariants dans [docs/architecture.md](../architecture.md#invariants) (déterminisme, log source de vérité, règles versionnées, hibernation, fog structurel, pas de verrou). Ici :
 
-- **1 Durable Object = 1 partie.** Il détient le `GameState` et les deux
-  `PlayerKnowledge`, et envoie à chaque joueur **son propre** `viewFor()`. Le fog est
-  donc structurel : un client ne peut pas recevoir ce que le DO ne lui envoie pas.
-- **Le DO est mono-threadé**, donc la sérialisation des tours est acquise. **Ne pas
-  ajouter de verrous.**
-- **Le log d'actions en D1 est la source de vérité ; l'état du DO n'est qu'un cache
-  reconstructible.** Cela dépend entièrement de l'invariant de déterminisme de
-  `packages/core`.
+- **1 Durable Object = 1 partie** : il détient le `GameState` et les deux
+  `PlayerKnowledge`, et envoie à chaque joueur **son propre** `viewFor()`.
 
 ## Fichiers
 
@@ -226,9 +220,7 @@ this.ctx.acceptWebSocket(pair[1], [player]);
 ```
 
 `acceptWebSocket()` — et **non** `server.accept()` — est ce qui autorise l'hibernation.
-Sans lui, le DO reste en mémoire tant que le socket est ouvert, pour un coût **~20 000
-fois supérieur** et aucune différence fonctionnelle (`docs/costs.md`). C'est le piège le
-plus coûteux de tout le projet.
+Sans lui le DO n'hiberne pas (invariant 4, [docs/architecture.md](../architecture.md#invariants) ; chiffrage dans `docs/costs.md`).
 
 Le second argument est une **étiquette** (`[player]`, donc `"A"` ou `"B"`) : c'est elle
 qui permet à `broadcastViews()` de retrouver les sockets d'un joueur donné via
@@ -393,10 +385,8 @@ occasion de diverger de la règle.
 Un rejeu qui échoue lève `Corrupted log for <matchId> at move <seq>` — volontairement fatal :
 poursuivre sur un état divergent serait pire.
 
-**Cette méthode n'est correcte que parce que `packages/core` est strictement
-déterministe.** Un `Math.random` ou un `Date.now` glissé dans `core` la casserait
-silencieusement, et la mémoire fantôme reconstruite ne correspondrait plus à celle que les
-joueurs ont réellement eue.
+Cette méthode suppose le déterminisme de `core` (invariant 1) : sans lui, la mémoire
+fantôme reconstruite ne correspondrait plus à celle des joueurs.
 
 ---
 
@@ -1142,10 +1132,8 @@ du roster (`packages/core/src/pieces/roster/`). Client et
 serveur doivent appliquer exactement les mêmes règles, donc une seule définition — voir
 [core.md](core.md), section `pieces/`.
 
-**Les règles sont versionnées par partie, pas par connexion.** Une partie démarrée sous un
-ruleset s'y termine, y compris à travers un déploiement — le pilier « temps de réflexion
-illimité » implique des parties qui traversent les mises en production. Conséquence
-directe : **les anciennes versions doivent rester chargeables ici indéfiniment**. Ne jamais
+Règles versionnées par partie (invariant 3, [docs/architecture.md](../architecture.md#invariants)). Conséquence ici :
+**les anciennes versions doivent rester chargeables indéfiniment**. Ne jamais
 retirer une entrée du registre tant qu'une partie peut la référencer.
 
 **Attention** : ni le roster ni les cartes ne sont actés (`docs/design.md` points ouverts 5
@@ -1167,8 +1155,7 @@ qui se cherche, se classe ou s'agrège va donc en D1.
 | `matches`       | Une partie                 | `ruleset_version` **figée à la création** ; index par joueur et date                  |
 | `match_actions` | Un enregistrement par coup | `PRIMARY KEY (match_id, seq)` ; `action` est l'`Action` de `@occulis/core` sérialisée |
 
-`match_actions` est **la source de vérité**. Rejouer ses lignes reconstruit l'état exact,
-mémoire fantôme comprise.
+`match_actions` est le log source de vérité (invariant 2) ; le rejouer reconstruit l'état exact, mémoire fantôme comprise.
 
 ### `migrations/0002_users.sql` et `0003_sessions.sql`
 
@@ -1337,7 +1324,7 @@ les types (`Cloudflare.Env`, `GlobalProps.mainModule`).
 | `social/social.integration.test.ts`  | workerd | Demande → acceptation → liste → retrait, **demande croisée**, soi et inconnu refusés, **401 et autre origine**, recherche par préfixe sans casse, **blocage : amitié coupée, bloqueur invisible, demande et message refusés**, **fiche et historique refusés à un non-ami, replay vu du camp de l'ami**, message poussé en direct, non-lus, **débit de 20 par minute**, **présence annoncée puis retirée à la fermeture**, **défi accepté une seule fois, `matched` des deux côtés**, défi refusé sans le jeu, **spectateur : vue identique sans coups légaux, action refusée, compteur ; adversaire, non-ami et refus rejetés**, **suppression du compte qui efface relations et messages**                                                                                                                                                                                                                                                                                                                  |
 | `maintenance.integration.test.ts`    | workerd | Purge des sessions périmées, des vérifications expirées et des compteurs retombés, **des seuls profils orphelins anciens sans partie**, et **format de conversion des horodatages de la migration**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
-**Les tests d'intégration sont aussi le test d'hibernation** que `CLAUDE.md` réclame :
+**Les tests d'intégration sont aussi le test d'hibernation** que `docs/architecture.md` (§7, point 7) réclame :
 `webSocketMessage()` et `webSocketClose()` ne sont appelés que sur un socket accepté par
 `ctx.acceptWebSocket()`. Passer à `server.accept()` — la variante qui empêche
 l'hibernation et multiplie le coût par ~20 000 — ferait taire ces gestionnaires et
@@ -1373,36 +1360,32 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
 
 ## Invariants à ne pas casser
 
-1. **`acceptWebSocket()`, jamais `accept()`.** Sinon le DO n'hiberne plus et le coût
-   explose (~20 000×).
-2. **Aucun verrou dans le DO.** Il est mono-threadé ; la sérialisation est acquise.
-3. **Écrire le log avant de diffuser.** Sinon un client peut voir un état que la source de
+1. **Invariants 1 à 5 de [docs/architecture.md](../architecture.md#invariants).** `acceptWebSocket()` jamais `accept()`, aucun verrou
+   dans le DO, `viewFor()` seul envoyé, déterminisme de `core` (dépendance dure de `load()`).
+2. **Écrire le log avant de diffuser.** Sinon un client peut voir un état que la source de
    vérité ignore.
-4. **Ne jamais retirer une version du registre de rulesets** tant qu'une partie peut la
+3. **Ne jamais retirer une version du registre de rulesets** tant qu'une partie peut la
    référencer.
-5. **Ne jamais envoyer autre chose qu'un `viewFor()` par joueur.** Envoyer le `GameState`
-   complet et masquer côté client rendrait le fog contournable via les devtools.
-6. **Le déterminisme de `packages/core` est une dépendance dure de `load()`.**
-7. **Tout DO qui accepte des sockets hibernables définit `webSocketClose()`.** Sans lui,
+4. **Tout DO qui accepte des sockets hibernables définit `webSocketClose()`.** Sans lui,
    le runtime lève une exception non rattrapée à chaque déconnexion.
-8. **Le schéma des tables Better Auth est généré, jamais édité.** `auth:schema` fait foi ;
+5. **Le schéma des tables Better Auth est généré, jamais édité.** `auth:schema` fait foi ;
    une colonne renommée à la main casse silencieusement les requêtes de la bibliothèque.
-9. **Les échéances en base sont du texte ISO 8601.** Les comparer à un nombre de
+6. **Les échéances en base sont du texte ISO 8601.** Les comparer à un nombre de
    millisecondes est toujours faux et ne signale rien.
-10. **Le pseudo s'écrit dans les deux tables à la fois.** `users.name` et
+7. **Le pseudo s'écrit dans les deux tables à la fois.** `users.name` et
     `players.handle` ne changent que par `renamePlayer()` (admin) et `changeHandle()`
     (joueur), et à la création par le crochet d'inscription ; le crochet qui refuse `name`
     sur les routes de Better Auth en est la garde. Tout pseudo passe `checkHandle()`.
-11. **Toute route `/api/admin/*` passe par la garde de rôle de `handleAdmin()`.** Une
+8. **Toute route `/api/admin/*` passe par la garde de rôle de `handleAdmin()`.** Une
     route ajoutée hors de ce préfixe ne la reçoit pas.
-12. **Toute requête de `me/queries.ts` est bornée par l'identifiant de la session.** Jamais
+9. **Toute requête de `me/queries.ts` est bornée par l'identifiant de la session.** Jamais
     par le seul identifiant venu de l'URL.
-13. **Une session d'emprunt ne modifie pas le compte.** Une route de compte ajoutée à
+10. **Une session d'emprunt ne modifie pas le compte.** Une route de compte ajoutée à
     Better Auth (un greffon) doit rejoindre `ACCOUNT_MUTATIONS`, une route `/api/me/*` en
     `POST` hérite de la garde de `handleMe()`.
-14. **Le replay joueur ne contient que la vue de son siège.** Jamais `frameOf()` (la
+11. **Le replay joueur ne contient que la vue de son siège.** Jamais `frameOf()` (la
     position complète du back-office), jamais le coup adverse détaillé.
-15. **Google n'est pas un `trustedProvider`.** L'y déclarer lèverait les deux garde-fous de
+12. **Google n'est pas un `trustedProvider`.** L'y déclarer lèverait les deux garde-fous de
     la liaison automatique, dont celui qui empêche la capture d'un compte par une adresse
     inscrite d'avance.
 
@@ -1444,7 +1427,7 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
   production, et non plus sur un workerd de 2024. Le plugin a remplacé
   `@cloudflare/vitest-pool-workers`, déprécié.
 - **`VITE_SERVER_URL` n'existe nulle part dans le code**, contrairement à ce que
-  `CLAUDE.md` laisse entendre. Sur le web, le client étant servi par le même Worker, une
+  `tooling/infra/CLAUDE.md` laisse entendre. Sur le web, le client étant servi par le même Worker, une
   URL relative suffit. La contrainte « URL gravée dans le binaire » ne vaudra que pour la
   future distribution Electron, où le client n'est plus de même origine.
 

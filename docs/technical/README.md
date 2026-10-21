@@ -65,11 +65,8 @@ le laisser diverger.
 - **Trois façons d'entrer en partie**, toutes par le même canal de file
   (`apps/web/src/net/queue-channel.ts` → `apps/server/src/queue-do.ts`) : appariement
   rapide, ouverture d'un salon privé avec un code, entrée par code.
-- **Le log d'actions en D1 est la source de vérité** ; l'état du Durable Object est un
-  cache reconstructible par rejeu.
-
-Le fog est donc structurel : un client ne peut pas recevoir ce que le serveur ne lui envoie
-pas.
+Les invariants du système (déterminisme, log source de vérité, règles versionnées,
+hibernation, fog structurel) sont énoncés une fois dans [docs/architecture.md](../architecture.md#invariants).
 
 ## Règle de maintenance
 

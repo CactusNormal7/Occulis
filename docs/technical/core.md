@@ -8,12 +8,8 @@ exactement les mêmes règles.
 
 ## Deux invariants fondateurs
 
-**1. Déterminisme strict.** Aucun `Math.random`, aucun `Date.now`, aucune source
-d'entropie ni d'horloge. Toute la persistance repose là-dessus : le serveur reconstruit
-l'état d'une partie en rejouant son log d'actions (`MatchDO.load()`,
-`apps/server/src/match-do.ts`). Un appel non déterministe ici casserait silencieusement
-cette reconstruction. Si un aléa devient nécessaire, il devra entrer par un seed explicite
-passé en paramètre.
+**1. Déterminisme strict**, énoncé dans [docs/architecture.md](../architecture.md#invariants). Le serveur s'en sert pour rejouer le log
+(`MatchDO.load()`, `apps/server/src/match-do.ts`).
 
 **2. Immuabilité.** `Board`, `GameState`, `PlayerKnowledge` et `PlayerView` ne sont jamais
 mutés : `applyAction()` et `observe()` renvoient de nouvelles valeurs. Le client s'appuie
@@ -254,7 +250,7 @@ propre fichier.
 | `kinds()`                | Les types déclarés                                                                                          |
 | `kindsOf()`              | Les types d'un rôle : ce qu'un joueur peut choisir pour un emplacement                                      |
 
-Les règles sont **versionnées par partie et non par connexion** : un `Ruleset` est
+Les règles sont versionnées par partie ([docs/architecture.md](../architecture.md#invariants)). Un `Ruleset` est
 construit une fois au démarrage et ne change plus, ce qui suppose qu'il **ne détient aucun
 état**.
 
@@ -656,12 +652,11 @@ Il n'existe par conséquent **aucune notion de « case mémorisée »** : seulem
 `visible` (éclairée) contre tout le reste (estompé). Le souvenir ne concerne que les
 pièces.
 
-### Pourquoi c'est le fog structurel
+### Le fog structurel
 
-`viewFor()` produit un objet qui **ne contient pas** les données hors LOS — elles ne sont
-pas masquées à l'affichage, elles sont absentes. C'est exactement ce que le serveur envoie
-(`encodeView()`, `packages/protocol/src/index.ts`). Un fog appliqué seulement côté client
-serait contournable via les devtools.
+`viewFor()` produit un objet qui **ne contient pas** les données hors LOS (invariant 5,
+[docs/architecture.md](../architecture.md#invariants)). C'est exactement ce que le serveur envoie (`encodeView()`,
+`packages/protocol/src/index.ts`).
 
 ---
 
