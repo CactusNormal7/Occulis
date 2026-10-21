@@ -37,7 +37,6 @@ export const prepare = {
       "When time runs out, your current layout is used if complete, otherwise the default one.",
     preset: "Team",
     noPreset: "Current layout",
-    loadPreset: "Load",
   },
   remaining: "Time left",
 };

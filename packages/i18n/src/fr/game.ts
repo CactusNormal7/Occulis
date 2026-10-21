@@ -39,9 +39,12 @@ export const game: Messages["game"] = {
   roomFault: {
     unknown: "Aucune partie sous ce code : vérifiez la saisie, ou faites-le renvoyer.",
     own: "C'est votre propre code : transmettez-le à votre adversaire.",
+    unavailable: "La partie n'a pas pu être créée : réessayez.",
+    replaced: "Vous attendez désormais depuis un autre onglet.",
   },
   outdated: (expected) => `Client trop ancien : le serveur attend le protocole ${expected}.`,
   reconnecting: "Connexion perdue, reprise en cours…",
+  connectionLost: "Cette partie n'est plus joignable : elle est peut-être terminée.",
   console: {
     label: "Partie en cours",
     move: "Coup",
@@ -50,8 +53,9 @@ export const game: Messages["game"] = {
       resign: "abandon",
     },
     leave: "Quitter la partie",
-    leaveConfirm:
-      "Quitter la partie, c'est l'abandonner : votre adversaire l'emporte. Quitter quand même ?",
+    leaveTitle: "Quitter la partie ?",
+    leaveConfirm: "Quitter la partie, c'est l'abandonner : votre adversaire l'emporte.",
+    leaveAction: "Abandonner et quitter",
     pending: "Coup déjà envoyé : réponse du serveur en attente.",
     spectating: "Vous regardez cette partie : aucun coup à jouer.",
     resigned: "Abandon.",

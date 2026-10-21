@@ -71,5 +71,6 @@ describe("localeFromCookie", () => {
     expect(localeFromCookie("a=1; occulis-locale=fr; b=2")).toBe("fr");
     expect(localeFromCookie("a=1")).toBeUndefined();
     expect(localeFromCookie(null)).toBeUndefined();
+    expect(localeFromCookie("occulis-locale=%E0")).toBeUndefined();
   });
 });

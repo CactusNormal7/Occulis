@@ -160,5 +160,15 @@ export interface MeMatchDetail extends MeMatchSummary {
   readonly frames: readonly MeFrame[];
   /** Les cases de la carte que la partie a figée ; `null` si le rejeu n'a pas pu la lire. */
   readonly board: readonly Tile[] | null;
-  readonly replayError: string | null;
+  readonly replayError: ReplayFailure | null;
+}
+
+/**
+ * Le coup où un rejeu s'arrête, et pourquoi : le code d'erreur de `core` (log corrompu,
+ * ruleset retiré), ou `unreadable` sans coup quand la partie elle-même ne se lit pas. Un
+ * code et non un texte : le client le met en mots, et la cause brute reste au serveur.
+ */
+export interface ReplayFailure {
+  readonly seq: number | null;
+  readonly code: string;
 }

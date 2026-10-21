@@ -133,7 +133,10 @@ export const profile = {
     against: (opponent: string) => `vs ${opponent}`,
     side: (seat: string) => `side ${seat}`,
     facts: { start: "start", end: "end", rules: "rules", map: "map", moves: "moves" },
-    replayError: (error: string) => `Replay interrupted — ${error}`,
+    replayError: (seq: number | null, code: string) =>
+      seq === null
+        ? "Replay interrupted — unreadable match"
+        : `Replay interrupted at move ${seq} — ${code}`,
   },
   results: {
     won: "victory",

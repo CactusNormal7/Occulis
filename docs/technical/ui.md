@@ -67,10 +67,18 @@ proposition dans ses propres couleurs.
 `@occulis/ui/tokens` — un sous-chemin sans React, pour que le jeu n'embarque rien d'autre.
 Le serveur fait de même pour ses courriers (`apps/server/src/auth/mail.ts`).
 
+**Deux exceptions assumées**, hors du jeu et de la charte : la TUI de `tooling/infra`
+(couleurs de terminal d'Ink, dont `#7aa2f7`) et les maquettes de `docs/mockups/`, servies
+sous `/mockups` hors production. Ni l'une ni les autres ne sont soumises à la règle.
+
 **La règle est mécanique.** `eslint.config.js` interdit tout littéral de couleur dans
 `apps/web/src/**`, `apps/server/src/**` et `packages/ui/src/**` — et dans les aperçus du labo,
-`packages/ui/previews/**` et `apps/web/lab/**` —, tests compris, avec une seule exception : `tokens.ts`. Les feuilles
-de style échappent à ESLint ; `tokens.test.ts` les garde à la place :
+`packages/ui/previews/**` et `apps/web/lab/**` —, tests compris, avec une seule exception : `tokens.ts`.
+Elle voit une couleur seule (`"#ffffff"`, `0xffffff`) comme glissée dans une valeur plus longue
+(`"1px solid #fff"`, `` `rgb(${r} …)` ``) ; les deux tests qui vérifient le format de
+`cssColor()` et de `parseRgb()` s'en exemptent ligne par ligne, en le disant. Les feuilles
+de style échappent à ESLint ; `tokens.test.ts` garde celles de la charte, et
+`apps/web/src/theme/colors.test.ts` celles du client et ses quatre `index.html` :
 
 - `generated/tokens.css` doit égaler `tokensStylesheet()` — le fichier ne dérive pas de sa
   source ;
@@ -130,8 +138,9 @@ l'attribut `data-tip`. Toutes les animations s'éteignent sous `prefers-reduced-
 
 Quelques comportements à connaître :
 
-- **`Dialog`** s'appuie sur `<dialog>` natif (focus piégé, Échap, page inerte). `onConfirm`
-  rend `true` pour fermer, `false` pour rester ouverte sur un refus. Elle s'ouvre et se
+- **`Dialog`** s'appuie sur `<dialog>` natif (focus piégé, Échap, page inerte), nommé par son
+  titre (`aria-labelledby`). `onConfirm` rend `true` pour fermer, `false` pour rester ouverte
+  sur un refus ; une promesse rejetée vaut `false` et rend le bouton de nouveau actif. Elle s'ouvre et se
   referme depuis son centre (`revealWindow`) ; la fermeture attend la fin de l'animation avant
   d'appeler `onClose`, et son voile tramé se pose en fondu.
 - **`IconButton`** exige un `label` ; `disabledReason` grise le bouton **et** remplace

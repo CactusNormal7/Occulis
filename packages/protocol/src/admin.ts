@@ -6,13 +6,14 @@
  * bibliothèque. Les horodatages sont en millisecondes, comme dans `matches` et `players`.
  */
 import type { Action, Outcome, PlayerId, Tile } from "@occulis/core";
+import type { ReplayFailure } from "./me.js";
 
 export interface AdminStats {
   readonly users: number;
   readonly verifiedUsers: number;
   readonly bannedUsers: number;
   readonly admins: number;
-  /** Profils de jeu, dont ceux créés sans compte par `POST /api/matches`. */
+  /** Profils de jeu, dont ceux restés sans compte (compte supprimé, inscription interrompue). */
   readonly players: number;
   readonly matches: number;
   readonly ongoingMatches: number;
@@ -85,7 +86,7 @@ export interface AdminMatchDetail extends AdminMatchSummary {
   /** Les cases de la carte que la partie a figée ; `null` si le rejeu n'a pas pu la lire. */
   readonly board: readonly Tile[] | null;
   /** Le coup où le rejeu échoue, et pourquoi — un log corrompu, ou un ruleset retiré. */
-  readonly replayError: string | null;
+  readonly replayError: ReplayFailure | null;
 }
 
 export interface AdminPlayer {
@@ -93,7 +94,7 @@ export interface AdminPlayer {
   readonly handle: string;
   readonly elo: number;
   readonly createdAt: number;
-  /** Absent pour un profil créé sans compte. */
+  /** Absent pour un profil sans compte (compte supprimé, inscription interrompue). */
   readonly userId: string | null;
   readonly record: {
     readonly played: number;
