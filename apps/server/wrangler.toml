@@ -10,6 +10,11 @@ compatibility_date = "2026-08-27"
 # du Worker n'en utilise aucune, et son comportement est inchangé.
 compatibility_flags = ["nodejs_compat"]
 
+# Minifié : 2,2 Mo → 1 Mo envoyés (281 Kio gzip au lieu de 414), donc moins à analyser au
+# démarrage à froid. Les source maps envoyées avec rendent les piles d'erreur lisibles.
+minify = true
+upload_source_maps = true
+
 [assets]
 directory = "../web/dist"
 binding = "ASSETS"
@@ -46,11 +51,26 @@ binding = "DB"
 database_name = "occulis-local"
 database_id = "local"
 
-# Ménage nocturne : sessions périmées, jetons de vérification expirés et compteurs de
-# débit retombés. Aucun n'est visible du joueur, et rien ne les effacerait autrement.
+# Ménage nocturne (`src/maintenance.ts`) : sessions périmées, jetons de vérification
+# expirés, compteurs de débit retombés, profils orphelins et messages de plus de 90 jours.
+# Aucun n'est visible du joueur, et rien ne les effacerait autrement.
 # `triggers` n'est pas hérité par les environnements nommés : chacun redéclare le sien.
 [triggers]
 crons = ["0 4 * * *"]
+
+# Local et tests seulement : sans clé Resend, les courriers s'écrivent dans la console,
+# liens de vérification et de réinitialisation compris. `vars` n'étant **pas hérité**
+# par les environnements nommés, recette, production et branches ne l'ont jamais : un
+# jeton de réinitialisation ne doit pas finir dans des journaux hébergés.
+[vars]
+MAIL_TO_CONSOLE = "on"
+
+# Workers Logs : ce que `console.error` écrit (`append-failed`, `outcome-failed`,
+# `purge-failed`, `start-match-failed`…) reste consultable après coup, quand `wrangler tail`
+# ne montre que le direct. Le plan gratuit en garde un volume quotidien limité, que ces
+# seuls journaux d'échec sont loin d'atteindre. Identifiants seulement, jamais de position.
+[observability]
+enabled = true
 
 # --- Recette -----------------------------------------------------------------
 [env.staging]
@@ -83,6 +103,10 @@ database_id = "b0c5894c-1032-4ef4-9647-b9ff1ce9048b"
 
 [env.staging.triggers]
 crons = ["0 4 * * *"]
+
+# Un environnement hébergé n'écrit jamais un courrier dans ses journaux (`auth/mail.ts`).
+[env.staging.vars]
+MAIL_TO_CONSOLE = "off"
 
 # --- Production --------------------------------------------------------------
 [env.production]
@@ -122,3 +146,7 @@ database_id = "a26529e1-ba11-4c6f-9ba8-4865a3b0c6af"
 
 [env.production.triggers]
 crons = ["0 4 * * *"]
+
+# Un environnement hébergé n'écrit jamais un courrier dans ses journaux (`auth/mail.ts`).
+[env.production.vars]
+MAIL_TO_CONSOLE = "off"

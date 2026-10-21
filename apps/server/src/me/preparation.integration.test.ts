@@ -1,4 +1,4 @@
-import { SELF, env } from "cloudflare:test";
+import { env, exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SCENARIO, scenarioFor } from "@occulis/core";
 import type { MeFeats, MeProfile, TeamPreset, TeamPresetList } from "@occulis/protocol";
@@ -13,7 +13,7 @@ let addresses = 0;
 
 function request(method: string, path: string, cookie: string, body?: unknown): Promise<Response> {
   addresses += 1;
-  return SELF.fetch(`https://occulis.test${path}`, {
+  return exports.default.fetch(`https://occulis.test${path}`, {
     method,
     headers: {
       Cookie: cookie,

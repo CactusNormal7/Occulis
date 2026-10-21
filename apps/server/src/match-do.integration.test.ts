@@ -1,7 +1,8 @@
-import { SELF, env, runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
+import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
+import { env, exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import type { ClientMessage, ServerMessage } from "@occulis/protocol";
-import { PROTOCOL_VERSION } from "@occulis/protocol";
+import { HEARTBEAT, PROTOCOL_VERSION } from "@occulis/protocol";
 import type { StartedMatch } from "./match-setup.js";
 import { startTestMatch } from "./test-helpers.js";
 import { ABSENCE_MS, DEPLOYMENT_MS, type MatchConfig } from "./match-do.js";
@@ -27,9 +28,12 @@ function createMatch(): Promise<StartedMatch> {
 
 /** Un joueur connecté, dont on peut attendre un message d'un type donné. */
 async function seat(matchId: string, token: string) {
-  const response = await SELF.fetch(`https://occulis.test/match/${matchId}?seat=${token}`, {
-    headers: { Upgrade: "websocket" },
-  });
+  const response = await exports.default.fetch(
+    `https://occulis.test/match/${matchId}?seat=${token}`,
+    {
+      headers: { Upgrade: "websocket" },
+    },
+  );
   expect(response.status).toBe(101);
 
   const socket = response.webSocket;
@@ -87,7 +91,7 @@ describe("MatchDO dans workerd", () => {
     const match = await createMatch();
 
     for (const token of ["", "A", "jeton-bidon"]) {
-      const response = await SELF.fetch(
+      const response = await exports.default.fetch(
         `https://occulis.test/match/${match.matchId}?seat=${token}`,
         {
           headers: { Upgrade: "websocket" },
@@ -99,7 +103,7 @@ describe("MatchDO dans workerd", () => {
 
   it("ne crée aucune partie ni aucun profil sur une requête anonyme", async () => {
     const [playerA, playerB] = [`anne-${crypto.randomUUID()}`, `boris-${crypto.randomUUID()}`];
-    const response = await SELF.fetch("https://occulis.test/api/matches", {
+    const response = await exports.default.fetch("https://occulis.test/api/matches", {
       method: "POST",
       body: JSON.stringify({ playerA, playerB }),
     });
@@ -530,7 +534,9 @@ describe("MatchDO dans workerd", () => {
     await runInDurableObject(stub, (instance) => {
       (instance as unknown as { live: unknown }).live = null;
     });
+    // Un `hello` ne renvoie sa vue qu'à qui le dit : chaque camp redemande la sienne.
     a.send({ kind: "hello", protocol: PROTOCOL_VERSION });
+    b.send({ kind: "hello", protocol: PROTOCOL_VERSION });
 
     expect((await a.awaitKind("view")).view).toEqual(before.A);
     expect((await b.awaitKind("view")).view).toEqual(before.B);
@@ -539,9 +545,116 @@ describe("MatchDO dans workerd", () => {
     b.socket.close();
   });
 
+  it("n'ouvre la partie qu'une fois quand une équipe arrive pendant l'alarme d'échéance", async () => {
+    const match = await createMatch();
+    const a = await seat(match.matchId, match.seats.A);
+    const b = await seat(match.matchId, match.seats.B);
+    a.send({ kind: "deploy", team: (await a.awaitKind("deployment")).defaultTeam });
+    const { defaultTeam } = await b.awaitKind("deployment");
+    await b.awaitKind("deployment-update");
+    const mine = defaultTeam.map((entry, index) =>
+      index === 0 ? { ...entry, coord: { x: 13, y: 1 } } : entry,
+    );
+
+    // L'équipe de B et l'alarme de l'échéance se croisent : l'une des deux ouvre la
+    // partie, l'autre doit trouver le déploiement clos — jamais un second départ.
+    const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
+    await runInDurableObject(stub, (_instance, state) => state.storage.put("deadline", 0));
+    b.send({ kind: "deploy", team: mine });
+    await runDurableObjectAlarm(stub);
+    await a.awaitKind("view");
+
+    const stored = await runInDurableObject(stub, (_instance, state) =>
+      state.storage.get<unknown[]>("setup"),
+    );
+    const row = await env.DB.prepare("SELECT setup FROM matches WHERE id = ?")
+      .bind(match.matchId)
+      .first<{ setup: string }>();
+    expect(JSON.parse(row?.setup ?? "null")).toEqual(stored);
+
+    a.socket.close();
+    b.socket.close();
+  });
+
+  it("se resynchronise sur le log quand l'écriture d'un coup aboutit sans réponse", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    await a.awaitKind("view");
+    await b.awaitKind("view");
+    a.drain();
+    b.drain();
+
+    // D1 écrit le coup, mais sa réponse se perd : le DO reçoit une erreur.
+    const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
+    await runInDurableObject(stub, (instance) => {
+      const real = env.DB;
+      const lossy = new Proxy(real, {
+        get(target, key) {
+          if (key !== "prepare") {
+            const value: unknown = Reflect.get(target, key, target);
+            return typeof value === "function" ? value.bind(target) : value;
+          }
+          return (sql: string) => {
+            const statement = target.prepare(sql);
+            if (!sql.startsWith("INSERT INTO match_actions")) return statement;
+            return {
+              bind: (...values: unknown[]) => ({
+                run: async () => {
+                  await statement.bind(...values).run();
+                  throw new Error("réponse perdue");
+                },
+              }),
+            };
+          };
+        },
+      });
+      (instance as unknown as { env: Env }).env = { ...env, DB: lossy };
+    });
+
+    // Le coup est au log : relue de D1, la position le montre joué, et le trait passe.
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    expect((await a.awaitKind("view")).view.activePlayer).toBe("B");
+    const forB = (await b.awaitKind("view")).view;
+    expect(forB.activePlayer).toBe("B");
+
+    // Le cache ne reste pas figé : le coup suivant s'inscrit sans buter sur la clé du log.
+    await runInDurableObject(stub, (instance) => {
+      (instance as unknown as { env: Env }).env = env;
+    });
+    const reply = forB.legalActions[0];
+    if (reply === undefined) throw new Error("aucun coup légal pour B");
+    b.send({ kind: "action", action: reply });
+    expect((await a.awaitKind("view")).view.turn).toBe(2);
+
+    const logged = await env.DB.prepare("SELECT seq FROM match_actions WHERE match_id = ?")
+      .bind(match.matchId)
+      .all<{ seq: number }>();
+    expect(logged.results.map((row) => row.seq)).toEqual([0, 1]);
+
+    a.socket.close();
+    b.socket.close();
+  });
+
+  it("répond au battement de cœur sans passer par le protocole", async () => {
+    const match = await createMatch();
+    const response = await exports.default.fetch(
+      `https://occulis.test/match/${match.matchId}?seat=${match.seats.A}`,
+      { headers: { Upgrade: "websocket" } },
+    );
+    const socket = response.webSocket;
+    if (socket === null) throw new Error("pas de WebSocket dans la réponse");
+    socket.accept();
+    const reply = new Promise<string>((resolve) => {
+      socket.addEventListener("message", (event) => resolve(String(event.data)));
+    });
+    socket.send(HEARTBEAT.ping);
+    expect(await reply).toBe(HEARTBEAT.pong);
+    socket.close();
+  });
+
   it("ferme la connexion d'un client au protocole incompatible", async () => {
     const match = await createMatch();
-    const response = await SELF.fetch(
+    const response = await exports.default.fetch(
       `https://occulis.test/match/${match.matchId}?seat=${match.seats.A}`,
       {
         headers: { Upgrade: "websocket" },

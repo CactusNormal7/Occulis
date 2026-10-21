@@ -10,7 +10,7 @@ import type {
   MeResult,
   MeSession,
 } from "@occulis/protocol";
-import { checkHandle, type HandleError } from "../auth/handle.js";
+import { checkHandle, handleKey, type HandleError } from "../auth/handle.js";
 import {
   MATCH_COLUMNS,
   MATCH_DETAIL_COLUMNS,
@@ -161,10 +161,10 @@ export async function changeHandle(
     const [player] = await db.batch([
       db
         .prepare(
-          `UPDATE players SET handle = ?1, handle_changed_at = ?2
+          `UPDATE players SET handle = ?1, handle_key = ?5, handle_changed_at = ?2
            WHERE id = ?3 AND (handle_changed_at IS NULL OR handle_changed_at <= ?4)`,
         )
-        .bind(handle, now, playerId, now - HANDLE_COOLDOWN_MS),
+        .bind(handle, now, playerId, now - HANDLE_COOLDOWN_MS, handleKey(handle)),
       db
         .prepare(
           `UPDATE users SET name = ?1, updated_at = ?2

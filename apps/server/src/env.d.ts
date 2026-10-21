@@ -14,8 +14,13 @@ interface Env {
    */
   readonly AUTH_SECRET: string;
 
-  /** Clé Resend. Absente, les messages sont journalisés au lieu d'être envoyés. */
+  /**
+   * Clé Resend. Absente, les messages ne partent pas : ils s'écrivent dans la console en
+   * local (`MAIL_TO_CONSOLE`), et ne laissent ailleurs qu'une erreur sans leur contenu.
+   */
   readonly RESEND_API_KEY?: string;
+  /** `on` en local et en test seulement (`wrangler.toml`, `[vars]` non hérité). */
+  readonly MAIL_TO_CONSOLE?: string;
   readonly MAIL_FROM?: string;
   /** Adresse de réponse des courriers ; sans elle, ils partent sans `Reply-To`. */
   readonly MAIL_REPLY_TO?: string;

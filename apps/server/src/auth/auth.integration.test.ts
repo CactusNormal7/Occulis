@@ -1,4 +1,4 @@
-import { SELF, env } from "cloudflare:test";
+import { env, exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import worker from "../index.js";
 import { PASSWORD, SESSION_COOKIE, cookieFrom, post, signUp, unique } from "../test-helpers.js";
@@ -10,7 +10,7 @@ import { PASSWORD, SESSION_COOKIE, cookieFrom, post, signUp, unique } from "../t
  * réel — c'est là qu'elle lit ses bindings.
  */
 async function me(cookie?: string): Promise<unknown> {
-  const response = await SELF.fetch("https://occulis.test/api/auth/me", {
+  const response = await exports.default.fetch("https://occulis.test/api/auth/me", {
     headers: cookie === undefined ? {} : { Cookie: cookie },
   });
   return response.json();
@@ -265,7 +265,7 @@ describe("authentification", () => {
     });
     const cookie = cookieFrom(response);
 
-    const refused = await SELF.fetch("https://occulis.test/api/queue", {
+    const refused = await exports.default.fetch("https://occulis.test/api/queue", {
       headers: { Upgrade: "websocket", Cookie: cookie },
     });
     expect(refused.status).toBe(403);
