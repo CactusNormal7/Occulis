@@ -11,7 +11,7 @@ justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ic
 | Question                                        | Document                                                   |
 | ----------------------------------------------- | ---------------------------------------------------------- |
 | Comment ça marche, quelle fonction, où ?        | **ici, `docs/technical/`**                                 |
-| Pourquoi cette règle de jeu ?                   | [docs/design.md](../design.md)                             |
+| Pourquoi cette règle de jeu ?                   | [docs/design/rules.md](../design/rules.md) (sommaire : [design.md](../design.md)) |
 | Pourquoi cette infrastructure ?                 | [docs/architecture.md](../architecture.md)                 |
 | Qu'a-t-il fallu interpréter faute de décision ? | [docs/implementation-notes.md](../implementation-notes.md) |
 | Comment installer et déployer ?                 | [docs/setup.md](../setup.md)                               |
