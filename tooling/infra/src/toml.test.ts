@@ -70,6 +70,10 @@ describe("appendEnvBlock", () => {
     // Chaque Durable Object du Worker doit être lié, sinon l'environnement démarre
     // sans file d'attente ni canal social.
     for (const name of ["MATCH", "QUEUE", "SOCIAL"]) expect(toml).toContain(`name = "${name}"`);
+    // `triggers` n'est pas hérité : sans lui, le ménage nocturne ne tourne jamais.
+    expect(toml).toContain("[env.feature-x.triggers]");
+    // Un environnement hébergé n'écrit jamais un courrier, liens à jeton compris, dans ses journaux.
+    expect(toml).toContain('MAIL_TO_CONSOLE = "off"');
     expect(toml).toContain('database_name = "occulis-feature-x"');
     // Sans base créée, l'identifiant reste un placeholder : c'est lui que
     // guardPlaceholder() attend pour refuser migrations et déploiement.

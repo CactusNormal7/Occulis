@@ -38,14 +38,20 @@ permissions:
   contents: write
 
 # Deux déclenchements de la même action sur la même cible ne doivent pas se chevaucher
-# (ex: deux migrations concurrentes) ; des actions ou cibles différentes, si.
+# (ex: deux migrations concurrentes) ; des actions ou cibles différentes, si. `deploy` et
+# `migrate` partagent en plus le groupe `deploy-<env>` du job de déploiement de ci.yml :
+# un push et un déploiement manuel ne touchent jamais le même environnement ensemble.
 concurrency:
-  group: infra-${{ inputs.action }}-${{ inputs.branch || inputs.env || github.ref }}
+  group: ${{ (inputs.action == 'deploy' || inputs.action == 'migrate') && format('deploy-{0}', inputs.env) || format('infra-{0}-{1}', inputs.action, inputs.branch || inputs.env || github.ref) }}
 
 jobs:
   infra:
     name: ${{ inputs.action }}
     runs-on: ubuntu-latest
+    # L'environnement GitHub visé, comme le job de déploiement de ci.yml : ses règles de
+    # protection (approbation de la production) valent aussi pour une action manuelle.
+    # Sans `env` (statut, liste, création d'environnement), aucun.
+    environment: ${{ inputs.env }}
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -71,6 +77,21 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Un environnement se déploie et se migre depuis la branche que le manifeste lui
+      # attribue, et d'aucune autre : sinon du code non fusionné partirait en production.
+      - name: Vérifier la branche de l'environnement
+        if: inputs.action == 'deploy' || inputs.action == 'migrate'
+        env:
+          TARGET_ENV: ${{ inputs.env }}
+          SOURCE_BRANCH: ${{ inputs.branch || github.ref_name }}
+        run: |
+          owner=$(jq -r --arg e "$TARGET_ENV" \
+            'to_entries[] | select(.value.wranglerEnv == $e) | .key' .github/deploy-environments.json)
+          if [ -n "$owner" ] && [ "$owner" != "$SOURCE_BRANCH" ]; then
+            echo "::error::« $TARGET_ENV » se déploie depuis « $owner », pas depuis « $SOURCE_BRANCH »."
+            exit 1
+          fi
 
       - uses: pnpm/action-setup@v4
 

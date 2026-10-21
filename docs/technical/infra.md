@@ -74,7 +74,9 @@ client ni Pixi ni React) ; et aucune couleur en dur hors de `tokens.ts`.
 **La couverture** se mesure dans `pnpm test` même (`vitest run --coverage`) pour
 `packages/core`, `packages/protocol` et les modules purs d'`apps/web` (liste dans son
 `vitest.config.ts`) : sous le seuil, le test échoue. Les seuils sont ceux mesurés à leur
-introduction, un plancher qui ne fait que monter. Le serveur n'en a pas : ses suites
+introduction, recalés le 2026-10-21 sur la mesure de vitest 4 (qui compte autrement, par
+l'arbre syntaxique) : un plancher qui ne fait que monter. Les doublons iCloud `* 2.*` en
+sont exclus, sans quoi ils compteraient à 0 %. Le serveur n'en a pas : ses suites
 tournent dans workerd, où la couverture v8 ne s'applique pas, et ses Durable Objects sont
 éprouvés par les tests d'intégration.
 
@@ -93,7 +95,10 @@ branche n'y figure pas, les sorties sont vides et un `::notice::` l'annonce.
 
 Conditionné à `needs.target.outputs.wrangler_env != ''`. Utilise l'environnement GitHub
 homonyme (`environment:`), ce qui permet d'y attacher des secrets et des règles de
-protection. Trois étapes, **dans cet ordre** :
+protection. Son groupe de concurrence, `deploy-<env>`, est aussi celui des actions `deploy`
+et `migrate` d'`infra.yml` : un push et un déploiement manuel ne migrent ni ne déploient
+jamais le même environnement en même temps. Le `GITHUB_TOKEN` de ce workflow est en lecture
+seule (`permissions: contents: read`). Trois étapes, **dans cet ordre** :
 
 1. **Build du client** — `pnpm --filter @occulis/web build` en production,
    `build:local` (`--mode mockups`) partout ailleurs (recette, branches) : le bundle du jeu
@@ -103,14 +108,18 @@ protection. Trois étapes, **dans cet ordre** :
    commit** que le serveur, sinon les deux n'ont pas le même `core`.
 2. **Migrations D1** — `wrangler d1 migrations apply … --remote --env <env>`. Avant le
    déploiement : un Worker servi contre un schéma non migré échoue à la première requête.
-3. **Déploiement** — `wrangler deploy --env <env>`.
+3. **Déploiement** — `wrangler deploy --env <env>`. Le Worker part **minifié**, avec ses
+   source maps (`minify`, `upload_source_maps` dans `wrangler.toml`, hérités par chaque
+   environnement), et **Workers Logs** est actif (`[observability]`) : les journaux d'échec
+   des Durable Objects et du ménage nocturne restent consultables après coup.
 
 Secrets attendus : `CLOUDFLARE_API_TOKEN` et `CLOUDFLARE_ACCOUNT_ID`.
 
 ### Concurrence
 
 Les vérifications redondantes d'une pull request sont annulées ; **un déploiement en cours
-ne l'est pas** — d'où `cancel-in-progress` restreint à `pull_request`.
+ne l'est pas** — d'où `cancel-in-progress` restreint à `pull_request`. Le job `deploy` porte
+en plus le groupe `deploy-<env>`, partagé avec `deploy` et `migrate` d'`infra.yml`.
 
 ---
 
@@ -159,7 +168,7 @@ qui n'a pas de code de sortie.
 | `dbName()`                                      | Environnement → nom de base. Table fixe pour `local`/`staging`/`production`, sinon `occulis-<env>`      |
 | `isBranchEnv()`                                 | Faux pour les trois environnements fixes, vrai pour tous les autres — donc pour tout ce qui est jetable |
 | `listEnvNames()`                                | **Découvre** les environnements en lisant les en-têtes `[env.X]` du toml                                |
-| `slugifyBranch()`                               | Nom de branche → nom d'environnement (`/` → `-`)                                                        |
+| `slugifyBranch()`                               | Nom de branche → nom d'environnement : minuscules, hors `[a-z0-9-]` → `-`, 55 caractères au plus        |
 | `envFlag()`                                     | `[]` pour `local`, `["--env", env]` sinon                                                               |
 
 `listEnvNames()` découvre dynamiquement plutôt que de maintenir une liste figée : tout
@@ -170,14 +179,14 @@ environnement de branche déjà créé apparaît sans intervention.
 **Pas de bibliothèque TOML** : manipulation ligne à ligne, cohérente entre les quatre
 fonctions.
 
-| Fonction                 | Rôle                                                                                                                          |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `envBlockExists()`       | Le bloc `[env.X]` est-il présent                                                                                              |
-| `appendEnvBlock()`       | Ajoute un bloc complet (route, assets, les trois DO `MATCH` / `QUEUE` / `SOCIAL`, D1) sur le modèle exact des blocs existants |
-| `removeEnvBlock()`       | Retire le bloc et tous ses sous-blocs, plus les lignes vides qui le précèdent. Inverse d'`appendEnvBlock()`                   |
-| `patchDatabaseId()`      | Remplace `database_id` sous le bloc D1 de l'environnement visé                                                                |
-| `configuredDatabaseId()` | Lit ce `database_id`, ou `null`                                                                                               |
-| `blockHeader()` (privée) | `[[d1_databases]]` pour `local`, `[[env.X.d1_databases]]` sinon                                                               |
+| Fonction                 | Rôle                                                                                                                                |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `envBlockExists()`       | Le bloc `[env.X]` est-il présent                                                                                                    |
+| `appendEnvBlock()`       | Ajoute un bloc complet (route, assets, les trois DO `MATCH` / `QUEUE` / `SOCIAL`, D1, cron) sur le modèle exact des blocs existants |
+| `removeEnvBlock()`       | Retire le bloc et tous ses sous-blocs, plus les lignes vides qui le précèdent. Inverse d'`appendEnvBlock()`                         |
+| `patchDatabaseId()`      | Remplace `database_id` sous le bloc D1 de l'environnement visé                                                                      |
+| `configuredDatabaseId()` | Lit ce `database_id`, ou `null`                                                                                                     |
+| `blockHeader()` (privée) | `[[d1_databases]]` pour `local`, `[[env.X.d1_databases]]` sinon                                                                     |
 
 `configuredDatabaseId()` ne juge **que l'environnement visé** : un placeholder resté sur la
 production ne doit pas empêcher de travailler sur la recette.
@@ -186,13 +195,13 @@ production ne doit pas empêcher de travailler sur la recette.
 
 Contrairement au toml, c'est du JSON réel : pas de manipulation ligne à ligne.
 
-| Fonction                    | Rôle                                                                                                                              |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `upsertDeployEnvironment()` | Ajoute ou met à jour une entrée ; renvoie `"created"` ou `"updated"`                                                              |
-| `listDeployEnvironments()`  | Le manifeste sous forme de liste `{ branch, wranglerEnv, d1Database }`                                                            |
-| `findDeployEnvironment()`   | Résout une cible donnée **par nom de branche ou par slug wrangler** — les deux ne diffèrent que sur les branches contenant un `/` |
-| `listBranchEnvNames()`      | Les environnements supprimables : union du toml et du manifeste, moins les fixes                                                  |
-| `removeDeployEnvironment()` | Retire l'entrée ; renvoie `false` si absente                                                                                      |
+| Fonction                    | Rôle                                                                                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `upsertDeployEnvironment()` | Ajoute ou met à jour une entrée ; renvoie `"created"` ou `"updated"`                                                                                          |
+| `listDeployEnvironments()`  | Le manifeste sous forme de liste `{ branch, wranglerEnv, d1Database }`                                                                                        |
+| `findDeployEnvironment()`   | Résout une cible donnée **par nom de branche ou par slug wrangler** — les deux diffèrent dès que la branche contient un caractère normalisé (`/`, majuscule…) |
+| `listBranchEnvNames()`      | Les environnements supprimables : union du toml et du manifeste, moins les fixes                                                                              |
+| `removeDeployEnvironment()` | Retire l'entrée ; renvoie `false` si absente                                                                                                                  |
 
 `listBranchEnvNames()` fait l'**union** des deux sources plutôt que de croire le seul
 manifeste : un environnement à moitié défait (bloc toml sans entrée, ou l'inverse) reste
@@ -238,28 +247,33 @@ Catalogue dans `ACTIONS` (`tooling/infra/src/actions.ts`). Chaque `ActionDef` d�
 (restreint le sélecteur aux environnements de branche), `prompt` (saisie libre) et
 `interactive` (prend le contrôle du terminal).
 
-| Action                                    | Ce qu'elle fait                                                                                                                        |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Statut                                    | Rapport de configuration, via `checkConfig()`                                                                                          |
-| Lister les bases D1                       | `wrangler d1 list`                                                                                                                     |
-| Créer une base distante                   | Crée la base et écrit son identifiant dans le toml                                                                                     |
-| **Créer un environnement de branche**     | Voir ci-dessous — branche courante                                                                                                     |
-| **Supprimer un environnement de branche** | Voir ci-dessous — **n'importe quelle cible, depuis n'importe quelle branche**                                                          |
-| Appliquer les migrations                  | `wrangler d1 migrations apply`                                                                                                         |
-| Lancer le serveur en local                | `build:local` du client, migrations locales, puis `wrangler dev` (interactive)                                                         |
-| Déployer                                  | Typecheck, lint et tests, build du client, migrations, puis `wrangler deploy --env …` — **la première étape en échec annule la suite** |
-| Exécuter une requête SQL                  | `wrangler d1 execute` avec saisie libre                                                                                                |
-| Décrire une base                          | `wrangler d1 info`                                                                                                                     |
-| Logs en direct                            | `wrangler tail` (interactive)                                                                                                          |
-| Historique des déploiements               | `wrangler deployments list`                                                                                                            |
-| Connexion Cloudflare                      | `wrangler login` (interactive)                                                                                                         |
+| Action                                    | Ce qu'elle fait                                                                                                                                                                                              |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Statut                                    | Rapport de configuration, via `checkConfig()`                                                                                                                                                                |
+| Lister les bases D1                       | `wrangler d1 list`                                                                                                                                                                                           |
+| Créer une base distante                   | Crée la base et écrit son identifiant dans le toml                                                                                                                                                           |
+| **Créer un environnement de branche**     | Voir ci-dessous — branche courante                                                                                                                                                                           |
+| **Supprimer un environnement de branche** | Voir ci-dessous — **n'importe quelle cible, depuis n'importe quelle branche**                                                                                                                                |
+| Appliquer les migrations                  | `wrangler d1 migrations apply`                                                                                                                                                                               |
+| Lancer le serveur en local                | `build:local` du client, migrations locales, puis `wrangler dev` (interactive)                                                                                                                               |
+| Déployer                                  | Typecheck, lint, format et tests (comme la CI), build du client (`build` en production, `build:local` ailleurs), migrations, puis `wrangler deploy --env …` — **la première étape en échec annule la suite** |
+| Exécuter une requête SQL                  | `wrangler d1 execute` avec saisie libre                                                                                                                                                                      |
+| Décrire une base                          | `wrangler d1 info`                                                                                                                                                                                           |
+| Logs en direct                            | `wrangler tail` (interactive)                                                                                                                                                                                |
+| Historique des déploiements               | `wrangler deployments list`                                                                                                                                                                                  |
+| Connexion Cloudflare                      | `wrangler login` (interactive)                                                                                                                                                                               |
 
 « Lancer le serveur en local » construit le client avec **`build:local` et non `build`** : le
 Worker ne sert que `../web/dist`, et seul le build local y dépose les maquettes de
 `docs/mockups/`, accessibles sous `/mockups`, et le labo de la refonte sous `/lab/` (voir
 l'invariant 16 de [engine.md](engine.md)) — le serveur local sert donc les mêmes pages que
-`pnpm dev`. Le déploiement, lui, reste sur `build` — les maquettes ne partent
-jamais en production.
+`pnpm dev`. « Déployer » choisit comme la CI : `build` en production — les maquettes n'y
+partent jamais —, `build:local` sur la recette et les branches.
+
+**Un échec de wrangler est toujours signalé** : `stream()` journalise en `fail` toute
+commande qui sort avec un code non nul, et c'est un `fail` qui fait sortir `ci.ts` en
+erreur, donc virer au rouge `infra.yml`. Un enfant tué par un signal (Ctrl+C, manque de
+mémoire) n'a pas de code de sortie : `runStreaming()` le compte comme un échec (130).
 
 Deux garde-fous transverses : `guardPlaceholder()` refuse d'agir tant que le
 `database_id` de l'environnement visé est un placeholder ; `checkConfig()` signale les
@@ -269,8 +283,11 @@ placeholders restants et l'absence de `.wrangler/` dans `.gitignore`.
 
 Sur la branche courante, dans cet ordre :
 
-1. Refuse `main` et `staging` — ils ont un environnement fixe.
-2. `appendEnvBlock()` ajoute `[env.<slug>]` au toml (route `occulis-<slug>.0kl.fr`).
+1. Refuse `main` et `staging` — ils ont un environnement fixe —, ainsi qu'une branche dont le
+   slug désigne un environnement fixe (`production`, `local`) : `isBranchEnv()` ; et un slug
+   déjà attribué à une autre branche, le slug n'étant pas bijectif.
+2. `appendEnvBlock()` ajoute `[env.<slug>]` au toml (route `occulis-<slug>.0kl.fr`, le cron
+   du ménage nocturne, `triggers` n'étant pas hérité, et `MAIL_TO_CONSOLE = "off"`).
 3. Crée la base D1 si elle n'existe pas déjà, puis `patchDatabaseId()` inscrit son
    identifiant.
 4. Applique les migrations en distant.
@@ -293,7 +310,10 @@ accepte indifféremment le slug ou le nom de branche.
 **L'ordre est important** : le Worker se supprime via `--env`, qui lit encore son bloc dans
 `wrangler.toml` — donc **avant** de retirer ce bloc. Ensuite seulement viennent la
 suppression de la base, `removeEnvBlock()`, `removeDeployEnvironment()`, puis commit et
-push.
+push. **Si Cloudflare refuse l'une des deux suppressions, l'action s'arrête avant de toucher
+aux fichiers** — sauf quand wrangler répond que la ressource n'existe pas (`saysMissing()`) :
+un environnement retiré du toml et du manifeste n'est plus listé nulle part, et ses
+ressources resteraient orphelines.
 
 Une fois les ressources Cloudflare détruites, **plus rien n'interrompt le compte rendu** :
 un HEAD détaché ou un push en échec est signalé, pas levé — l'utilisateur doit savoir ce
@@ -315,11 +335,11 @@ retrait se fait depuis Settings → Environments.
 `tooling/infra/src/*.test.ts`, exécutés par `pnpm test` à la racine — donc par la CI, qui
 n'a rien eu à déclarer pour cela.
 
-| Fichier                   | Ce qu'il verrouille                                                                                                                                                                                                                                           |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `config.test.ts`          | `dbName()`, `slugifyBranch()`, `envFlag()` et surtout **`isBranchEnv()`**, le prédicat qui empêche la suppression d'atteindre la production ou la recette                                                                                                     |
-| `toml.test.ts`            | Le bloc généré est complet (route, assets, **chacun des trois DO**, D1) ; `appendEnvBlock()` est idempotent ; **`removeEnvBlock()` annule exactement `appendEnvBlock()`** et ne mange pas le bloc suivant ; `patchDatabaseId()` n'écrit que sous le bloc visé |
-| `deploy-manifest.test.ts` | La résolution d'une cible par nom de branche **ou** par slug ; viser `main` renvoie l'entrée `production` ; `listBranchEnvNames()` fait bien l'union toml ∪ manifeste                                                                                         |
+| Fichier                   | Ce qu'il verrouille                                                                                                                                                                                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config.test.ts`          | `dbName()`, `slugifyBranch()`, `envFlag()` et surtout **`isBranchEnv()`**, le prédicat qui empêche la suppression d'atteindre la production ou la recette                                                                                                           |
+| `toml.test.ts`            | Le bloc généré est complet (route, assets, **chacun des trois DO**, D1, cron) ; `appendEnvBlock()` est idempotent ; **`removeEnvBlock()` annule exactement `appendEnvBlock()`** et ne mange pas le bloc suivant ; `patchDatabaseId()` n'écrit que sous le bloc visé |
+| `deploy-manifest.test.ts` | La résolution d'une cible par nom de branche **ou** par slug ; viser `main` renvoie l'entrée `production` ; `listBranchEnvNames()` fait bien l'union toml ∪ manifeste                                                                                               |
 
 Ces trois modules écrivent dans des fichiers dont le chemin vient de `config.ts` : les tests
 détournent `TOML` et `DEPLOY_MANIFEST` vers des fichiers temporaires (`vi.mock` sur

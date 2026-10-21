@@ -150,9 +150,12 @@ assets statiques, l'ensemble part du même commit — donc du même `core`.
 La recette stable est distincte des previews de branche : le pilier « validation du fun par
 beta avec de vrais testeurs » (design doc section 2) suppose une URL fixe sur un build intégré.
 
-**Slug de branche :** nom complet normalisé, `/` → `-` (`feature/test2` → `feature-test2`,
-donc `occulis-feature-test2.0kl.fr`). Bijectif, donc sans collision. Le séparateur est un tiret
-et jamais un point, pour la raison de certificat ci-dessus.
+**Slug de branche :** nom complet normalisé — minuscules, tout caractère hors `[a-z0-9-]`
+devenu `-`, 55 caractères au plus (`feature/test2` → `feature-test2`, donc
+`occulis-feature-test2.0kl.fr`). Le slug devient un nom de Worker, de base D1 et un label DNS,
+qui n'admettent rien d'autre ; il n'est donc pas bijectif (`Feature/X` et `feature-x` se
+rejoignent), et la création refuse un slug déjà pris par une autre branche. Le séparateur est
+un tiret et jamais un point, pour la raison de certificat ci-dessus.
 
 ### Sélection des branches hébergées
 

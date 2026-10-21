@@ -45,11 +45,13 @@ export function runStreaming(
     child.stdout.on("data", (c) => pump(c, "out"));
     child.stderr.on("data", (c) => pump(c, "err"));
     child.on("error", reject);
-    child.on("close", (code) => {
+    child.on("close", (code, signal) => {
       for (const stream of ["out", "err"] as const) {
         if (buffers[stream]) onLine?.(buffers[stream], stream);
       }
-      resolvePromise({ code: code ?? 0, stdout });
+      // Tué par un signal (Ctrl+C, manque de mémoire), l'enfant n'a pas de code : ce
+      // n'est pas un succès.
+      resolvePromise({ code: code ?? (signal === null ? 0 : 130), stdout });
     });
   });
 }

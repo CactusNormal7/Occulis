@@ -42,9 +42,19 @@ export function listEnvNames(): EnvName[] {
   return ["local", ...found];
 }
 
-// Nom de branche complet normalisé, `/` → `-` (docs/architecture.md section 4).
+// `occulis-<slug>` devient un nom de Worker, de base D1 et un label DNS : 63 caractères
+// au plus, d'où 55 pour le slug.
+const MAX_SLUG_LENGTH = 63 - "occulis-".length;
+
+// Nom de branche → nom d'environnement (docs/architecture.md section 4) : minuscules,
+// chiffres et tirets seulement, comme l'exigent Cloudflare et le DNS. Le slug est aussi
+// écrit tel quel dans wrangler.toml, où rien d'autre ne doit pouvoir passer.
 export function slugifyBranch(branch: string): string {
-  return branch.replace(/\//g, "-");
+  return branch
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .slice(0, MAX_SLUG_LENGTH)
+    .replace(/^-+|-+$/g, "");
 }
 
 // Les bindings ne sont pas hérités par les environnements nommés : toute commande
