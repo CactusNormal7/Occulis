@@ -543,7 +543,7 @@ modifier le contenu, dans un commit séparé de toute retouche.
 
 **O7. Prettier vérifié en CI** — R faible, G faible. 258 des 524 fichiers suivis ne passent pas `prettier --check`, `graphify-out/` compris. Il faudrait un `.prettierignore`, puis **un seul commit de reformatage isolé** (à ignorer par `git blame` via `.git-blame-ignore-revs`), puis `format:check` en CI. Le coût est surtout un diff massif, sans impact sur les invariants.
 
-**O8. `graphify-out/` et `.claude/`** — R faible, G moyen. **Fait le 2026-10-18** (option « tout ignorer ») : `graphify-out/` sort de git, le hook au chemin Linux est retiré, l'usage est décrit dans [graphify.md](graphify.md).
+**O8. `graphify-out/` et `.claude/`** — R faible, G moyen. **Fait le 2026-10-18** (option « tout ignorer ») : `graphify-out/` sort de git, le hook au chemin Linux est retiré, l'usage est décrit dans [graphify.md](../graphify.md).
 
 - **Constat** :
   - `graphify-out/` pèse 9,6 Mo suivis (234 fichiers), caches compris ;
