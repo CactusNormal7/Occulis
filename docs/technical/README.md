@@ -8,14 +8,14 @@ où elle se trouve, et comment les morceaux s'appellent entre eux.
 Ces fichiers décrivent **le code tel qu'il est**. Ils ne portent ni décision ni
 justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ici.
 
-| Question                                        | Document                                                   |
-| ----------------------------------------------- | ---------------------------------------------------------- |
-| Comment ça marche, quelle fonction, où ?        | **ici, `docs/technical/`**                                 |
+| Question                                        | Document                                                                          |
+| ----------------------------------------------- | --------------------------------------------------------------------------------- |
+| Comment ça marche, quelle fonction, où ?        | **ici, `docs/technical/`**                                                        |
 | Pourquoi cette règle de jeu ?                   | [docs/design/rules.md](../design/rules.md) (sommaire : [design.md](../design.md)) |
-| Pourquoi cette infrastructure ?                 | [docs/architecture.md](../architecture.md)                 |
-| Qu'a-t-il fallu interpréter faute de décision ? | [docs/implementation-notes.md](../implementation-notes.md) |
-| Comment installer et déployer ?                 | [docs/setup.md](../setup.md)                               |
-| Combien ça coûte ?                              | [docs/costs.md](../costs.md)                               |
+| Pourquoi cette infrastructure ?                 | [docs/architecture.md](../architecture.md)                                        |
+| Qu'a-t-il fallu interpréter faute de décision ? | [docs/implementation-notes.md](../implementation-notes.md)                        |
+| Comment installer et déployer ?                 | [docs/setup.md](../setup.md)                                                      |
+| Combien ça coûte ?                              | [docs/costs.md](../costs.md)                                                      |
 
 ## Les cinq documents
 
@@ -65,8 +65,8 @@ le laisser diverger.
 - **Trois façons d'entrer en partie**, toutes par le même canal de file
   (`apps/web/src/net/queue-channel.ts` → `apps/server/src/queue-do.ts`) : appariement
   rapide, ouverture d'un salon privé avec un code, entrée par code.
-Les invariants du système (déterminisme, log source de vérité, règles versionnées,
-hibernation, fog structurel) sont énoncés une fois dans [docs/architecture.md](../architecture.md#invariants).
+  Les invariants du système (déterminisme, log source de vérité, règles versionnées,
+  hibernation, fog structurel) sont énoncés une fois dans [docs/architecture.md](../architecture.md#invariants).
 
 ## Règle de maintenance
 

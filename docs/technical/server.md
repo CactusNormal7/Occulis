@@ -1373,13 +1373,13 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
 6. **Les échéances en base sont du texte ISO 8601.** Les comparer à un nombre de
    millisecondes est toujours faux et ne signale rien.
 7. **Le pseudo s'écrit dans les deux tables à la fois.** `users.name` et
-    `players.handle` ne changent que par `renamePlayer()` (admin) et `changeHandle()`
-    (joueur), et à la création par le crochet d'inscription ; le crochet qui refuse `name`
-    sur les routes de Better Auth en est la garde. Tout pseudo passe `checkHandle()`.
+   `players.handle` ne changent que par `renamePlayer()` (admin) et `changeHandle()`
+   (joueur), et à la création par le crochet d'inscription ; le crochet qui refuse `name`
+   sur les routes de Better Auth en est la garde. Tout pseudo passe `checkHandle()`.
 8. **Toute route `/api/admin/*` passe par la garde de rôle de `handleAdmin()`.** Une
-    route ajoutée hors de ce préfixe ne la reçoit pas.
+   route ajoutée hors de ce préfixe ne la reçoit pas.
 9. **Toute requête de `me/queries.ts` est bornée par l'identifiant de la session.** Jamais
-    par le seul identifiant venu de l'URL.
+   par le seul identifiant venu de l'URL.
 10. **Une session d'emprunt ne modifie pas le compte.** Une route de compte ajoutée à
     Better Auth (un greffon) doit rejoindre `ACCOUNT_MUTATIONS`, une route `/api/me/*` en
     `POST` hérite de la garde de `handleMe()`.
