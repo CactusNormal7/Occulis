@@ -242,8 +242,8 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
 
 ## 7. Points ouverts
 
-1. **Versionnement du protocole et du ruleset** — la décision de section 1 ci-dessus est actée
-   mais ne figure pas dans les points ouverts du design doc. À y reporter.
+1. **Versionnement du protocole et du ruleset** — la décision de section 1 est actée et en
+   œuvre pour le ruleset ; reste le versionnement du **protocole** du fil.
 2. **Rattachement des hostnames de branche — mécanisme trouvé, reste à généraliser.** La
    production utilise `routes = [{ pattern = …, custom_domain = true }]`, que wrangler applique
    lui-même au déploiement : ni DNS wildcard ni appel à l'API Cloudflare. Reste à générer ce
@@ -269,7 +269,9 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
    entendu que la sélection explicite des branches le rend de toute façon peu contraignant.
 7. **Test d'hibernation.** Rien ne signale au développeur qu'un Durable Object n'hiberne pas :
    le jeu fonctionne à l'identique et seule la facture change (facteur ~20 000, section 6).
-   À couvrir par un test dédié dès l'implémentation du DO.
+   **Couvert indirectement** : les tests d'intégration de `match-do` échouent si
+   `acceptWebSocket()` est remplacé par `accept()` (docs/technical/server.md). Pas de test
+   dédié mesurant l'hibernation elle-même.
 8. **Marque.** Les environnements vivent sous `0kl.fr`, donc plus aucune URL ne dépend
    d'`occulis.fr`. Mais le risque de marque sur le **nom** « Occulis » lui-même (proximité avec
    Oculus, design doc section 9) reste entier et n'a jamais été vérifié — il porte sur le nom du

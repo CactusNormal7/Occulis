@@ -1,6 +1,6 @@
 # Occulis — Document de conception (récapitulatif d'itération)
 
-Ce document est une synthèse d'une session de brainstorming critique. Il capture l'état des décisions prises, les décisions encore ouvertes, et l'historique des itérations pour éviter de revalider des idées déjà écartées. Aucun code, aucune architecture technique définitive n'a été produit à ce stade — c'est un document de game design.
+Ce document est une synthèse d'une session de brainstorming critique. Il capture l'état des décisions prises, les décisions encore ouvertes, et l'historique des itérations pour éviter de revalider des idées déjà écartées. C'est un document de game design : l'infrastructure est dans `docs/architecture.md`, le code dans `docs/technical/`.
 
 ## 1. Pitch
 
@@ -240,11 +240,9 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   quel angle intermédiaire.
 - **Deux façons de jouer un coup, toutes deux provisoires.** À la souris : cliquer une de
   ses pièces la sélectionne et fait apparaître ses destinations légales, cliquer une
-  destination l'y déplace, cliquer un adversaire adjacent le capture sans bouger. Au
-  clavier : taper les coordonnées (`1,6 2,5` déplace, `1,6 2,5 x 3,5` capture, `abandon`
-  abandonne) dans un champ HTML posé par-dessus le canevas. Le clavier reste nécessaire
-  pour enchaîner un déplacement _et_ une capture dans le même tour, que le clic ne sait
-  pas exprimer. Aucune des deux n'est une décision d'interface arrêtée : ce sont des
+  destination l'y déplace, une pièce adverse n'est qu'un obstacle (la capture est retirée, 3.1). Au
+  clavier : taper les coordonnées (`1,6 2,5` déplace, `abandon`
+  abandonne) dans un champ HTML posé par-dessus le canevas. Aucune des deux n'est une décision d'interface arrêtée : ce sont des
   moyens d'exercer la logique déjà implémentée. La partie est **toujours arbitrée par le
   serveur** : il n'existe aucun mode local, et le client ne voit jamais que sa propre vue —
   conformément au pilier « pas de local multiplayer » de la section 2.
