@@ -88,7 +88,10 @@ describe("freeCode", () => {
     const taken = codeFrom(new Uint8Array([0, 0, 0, 0, 0]));
     const rooms = openRoom([], anne, taken).rooms;
 
-    const code = freeCode(rooms, [new Uint8Array([0, 0, 0, 0, 0]), new Uint8Array([1, 1, 1, 1, 1])]);
+    const code = freeCode(rooms, [
+      new Uint8Array([0, 0, 0, 0, 0]),
+      new Uint8Array([1, 1, 1, 1, 1]),
+    ]);
 
     expect(code).toBe(codeFrom(new Uint8Array([1, 1, 1, 1, 1])));
   });

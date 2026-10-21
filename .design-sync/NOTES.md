@@ -1,6 +1,8 @@
 # Notes de synchronisation — Occulis UI
 
 Projet Claude Design : « Occulis UI » (`projectId` dans `config.json`), forme `package`, sans Storybook.
+Le projet d'origine a été supprimé et recréé le 2026-10-19 (nouvel identifiant) : son ancre `_ds_sync.json`
+date de ce jour-là.
 
 ## Préparer un re-sync
 
@@ -11,6 +13,12 @@ Projet Claude Design : « Occulis UI » (`projectId` dans `config.json`), forme 
   Depuis le 2026-10-15 : **Playwright 1.64.0**, Chromium révision 1248, installé par
   `cd .ds-sync && npx playwright install chromium` (le cache 1234 avait disparu du poste). Un autre cache
   demandera une autre version (voir `node_modules/playwright-core/browsers.json`).
+- **Sous WSL (`~/docs/Occulis`, 2026-10-19)** : le cache Playwright contient Chromium **1228**, donc
+  `npm i playwright@1.61.0` dans `.ds-sync/`. Le headless shell y échoue au lancement (« Target page, context
+  or browser has been closed ») faute de `libasound.so.2` : sans `sudo`, `apt-get download libasound2t64` puis
+  `dpkg-deb -x` dans un dossier temporaire, et exporter `LD_LIBRARY_PATH=<dossier>/usr/lib/x86_64-linux-gnu`
+  avant `package-validate.mjs` et `package-capture.mjs`. Le shell est zsh : une variable contenant plusieurs
+  fichiers n'est pas découpée, les nommer un à un.
 - **Le dossier est sur le Bureau, synchronisé par iCloud, qui fabrique des copies numérotées** (`Button 3.jsx`,
   `react 2.js`, `Reveal 2.tsx`…) jusque dans `ds-bundle/`. Le `.gitignore` les écarte de git (`* 2.*`), mais pas
   de l'envoi : **filtrer la liste d'envoi** (`grep -vE ' [0-9]+(\.[A-Za-z.]+)?$'`). Dans `.design-sync/previews/`,
@@ -37,6 +45,19 @@ Projet Claude Design : « Occulis UI » (`projectId` dans `config.json`), forme 
   ne s'en sert qu'avec « or », l'aperçu aussi.
 - `LocaleProvider` garde la carte minimale : un fournisseur sans rendu propre.
 
+## Le design system du back-office
+
+- **Les aperçus de `previews/` sont aussi montés tels quels dans le back-office** (`#/design`,
+  `apps/web/src/admin/design/`), avec leur code et la catégorie de `docs/`. Renommer un export, en
+  retirer un ou casser un aperçu se voit donc aussi là. Un aperçu doit se rendre seul sous `UiRoot`
+  et `ToastProvider` ; une fenêtre modale (catégorie `Overlays`) ne s'y monte qu'à la demande.
+- `vite.config.ts` résout `@occulis/ui` et React pour ces fichiers, hors de tout paquet, et compile
+  leur JSX en runtime automatique : rien à faire ici, mais ne pas déplacer `previews/` sans le dire
+  à `sources.ts`.
+- Huit composants ajoutés à la charte pour cette page (`Showcase.tsx` : `CodeBlock`, `Swatch`,
+  `SwatchGrid`, `Specimen`, `Stage`, `Prose`, `NavList`, `AsideLayout`), avec aperçus et fiches.
+  **Pas encore envoyés** à Claude Design : ils partiront au prochain re-sync.
+
 ## Avertissements connus
 
 - `[RENDER_THIN] Dialog` — hauteur mesurée 0 px : la fenêtre modale vit dans la couche supérieure du navigateur,
@@ -51,7 +72,12 @@ Projet Claude Design : « Occulis UI » (`projectId` dans `config.json`), forme 
   au composant (comme `error`) n'atteint le contrat qu'en la reportant à la main.
 - `conventions.md` annonce `--occ-space-1…8` alors que `--occ-space-7` n'existe pas, et ne cite aucun composant
   des parcours de compte (`FormPanel`, `PasswordField`, `SettingRow`…) : correction proposée, pas encore faite.
+- **`conventions.md` décrit encore la DA d'avant la refonte** (relevé le 2026-10-16, en l'affichant dans le
+  back-office) : « thin white wireframe », « the monospace font » (c'est Tiny5, une police pixel), aucun mot des
+  trois thèmes (`data-theme`), des coins crantés (`--pixel-notch`), de l'ouverture des fenêtres (`revealWindow`,
+  réservée aux fenêtres qu'un clic ouvre) ni du voile tramé verrouillé. À réécrire avec le porteur du projet au
+  re-sync qui suivra le choix du thème (tâche Notion « Resynchroniser la charte vers Claude Design »).
 - Les tokens sont générés depuis `packages/ui/src/tokens.ts` ; `tokens.test.ts` garde `generated/tokens.css`
   synchrone, mais seul le build met `dist/styles.css` à jour — reconstruire avant tout re-sync.
-- Le rendu n'a été vérifié qu'en Chromium 1234 (headless shell) ; aucune police n'est servie, la monospace est
+- Le rendu n'a été vérifié qu'en Chromium 1234 puis 1228 (headless shell) ; aucune police n'est servie, la monospace est
   celle du système — elle diffère d'une machine à l'autre, volontairement.

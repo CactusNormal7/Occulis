@@ -48,12 +48,23 @@ export interface PagerProps {
 /** La pagination d'une liste : précédents, « 26–50 sur 132 », suivants. */
 export function Pager({ offset, shown, total, pageSize, hrefFor }: PagerProps) {
   const m = useMessages();
-  const label = total === 0 || shown === 0 ? m.ui.pager.none : m.ui.pager.range(offset + 1, offset + shown, total);
+  const label =
+    total === 0 || shown === 0
+      ? m.ui.pager.none
+      : m.ui.pager.range(offset + 1, offset + shown, total);
   return (
     <nav className="occ-pager">
-      {offset > 0 ? <a href={hrefFor(Math.max(offset - pageSize, 0))}>{m.ui.pager.previous}</a> : <span />}
+      {offset > 0 ? (
+        <a href={hrefFor(Math.max(offset - pageSize, 0))}>{m.ui.pager.previous}</a>
+      ) : (
+        <span />
+      )}
       <span>{label}</span>
-      {offset + pageSize < total ? <a href={hrefFor(offset + pageSize)}>{m.ui.pager.next}</a> : <span />}
+      {offset + pageSize < total ? (
+        <a href={hrefFor(offset + pageSize)}>{m.ui.pager.next}</a>
+      ) : (
+        <span />
+      )}
     </nav>
   );
 }

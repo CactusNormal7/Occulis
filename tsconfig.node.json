@@ -1,0 +1,14 @@
+{
+  // Les fichiers de configuration (Vite, Vitest, tsup) et les scripts lancés par Node :
+  // sans ce projet, aucun `tsc` ne les lisait, et une erreur de type n'y apparaissait
+  // qu'à l'exécution. Étendu par chaque paquet qui en a.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "allowImportingTsExtensions": true
+  }
+}

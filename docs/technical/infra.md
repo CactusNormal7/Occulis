@@ -5,12 +5,12 @@ environnement de branche.
 
 ## Les quatre environnements
 
-| Environnement | Domaine | Base D1 | Déclenché par |
-|---|---|---|---|
-| local | `wrangler dev` | `occulis-local` (SQLite local) | manuel |
-| branche | `occulis-<branche>.0kl.fr` | `occulis-<branche>` | push sur une branche **listée au manifeste** |
-| recette | `occulis-staging.0kl.fr` | `occulis-staging` | push sur `staging` |
-| production | `occulis.0kl.fr` | `occulis-prod` | push sur `main` |
+| Environnement | Domaine                    | Base D1                        | Déclenché par                                |
+| ------------- | -------------------------- | ------------------------------ | -------------------------------------------- |
+| local         | `wrangler dev`             | `occulis-local` (SQLite local) | manuel                                       |
+| branche       | `occulis-<branche>.0kl.fr` | `occulis-<branche>`            | push sur une branche **listée au manifeste** |
+| recette       | `occulis-staging.0kl.fr`   | `occulis-staging`              | push sur `staging`                           |
+| production    | `occulis.0kl.fr`           | `occulis-prod`                 | push sur `main`                              |
 
 **Une branche = un environnement complet** (client + Worker + DO + base), jamais un
 preview du client seul : une branche qui touche `packages/core` change les règles et
@@ -23,8 +23,8 @@ automatiquement. Le mécanisme de sélection est le manifeste ci-dessous.
 
 ```json
 {
-  "main":           { "wranglerEnv": "production",     "d1Database": "occulis-prod" },
-  "staging":        { "wranglerEnv": "staging",        "d1Database": "occulis-staging" },
+  "main": { "wranglerEnv": "production", "d1Database": "occulis-prod" },
+  "staging": { "wranglerEnv": "staging", "d1Database": "occulis-staging" },
   "feature/engine": { "wranglerEnv": "feature-engine", "d1Database": "occulis-feature-engine" }
 }
 ```
@@ -52,12 +52,37 @@ Déclenché sur `push` de **toute** branche et sur toute `pull_request`.
 
 ### `checks` — les vérifications
 
-Node 22, pnpm, `pnpm install --frozen-lockfile`, puis dans l'ordre :
-`pnpm typecheck` → `pnpm lint` → `pnpm test` → `pnpm build`.
+Node (version lue dans `.nvmrc`), pnpm, `pnpm install --frozen-lockfile`, puis dans l'ordre :
+`pnpm typecheck` → `pnpm lint` → `pnpm format:check` → `pnpm test` → `pnpm build`.
 
-`pnpm -r test` n'exécute que les paquets déclarant un script `test` : `packages/core`,
-`apps/web` et `tooling/infra` en déclarent un. Ajouter des tests à `apps/server` suffira
-donc à les voir passer ici, **sans toucher au workflow**.
+**Le format** est celui de Prettier (`.prettierrc.json`, largeur 100) : `pnpm format` réécrit,
+`pnpm format:check` vérifie. `.prettierignore` exclut ce que git suit sans qu'on le formate
+(fichiers générés, lockfile, manifeste réécrit par `pnpm infra`, `.design-sync/`, le voile
+verrouillé). Le commit du reformatage initial est listé dans `.git-blame-ignore-revs`.
+
+`pnpm -r test` n'exécute que les paquets déclarant un script `test` — aujourd'hui tous.
+Ajouter des tests à un paquet suffit donc à les voir passer ici, **sans toucher au workflow**.
+
+**Ce que `pnpm lint` exige** (`eslint.config.js`, **zéro avertissement** : `--max-warnings 0`) :
+les règles recommandées de typescript-eslint ; sur les sources, trois règles qui lisent les
+types — promesse ni attendue ni marquée `void`, promesse passée là où une fonction synchrone
+est attendue, `switch` non exhaustif sur une union ; les règles des hooks React
+(`rules-of-hooks`, `exhaustive-deps`, chaque exception justifiée en commentaire) ; les
+frontières de CLAUDE.md (`core` n'importe rien, le protocole que `core`, les modules purs du
+client ni Pixi ni React) ; et aucune couleur en dur hors de `tokens.ts`.
+
+**La couverture** se mesure dans `pnpm test` même (`vitest run --coverage`) pour
+`packages/core`, `packages/protocol` et les modules purs d'`apps/web` (liste dans son
+`vitest.config.ts`) : sous le seuil, le test échoue. Les seuils sont ceux mesurés à leur
+introduction, un plancher qui ne fait que monter. Le serveur n'en a pas : ses suites
+tournent dans workerd, où la couverture v8 ne s'applique pas, et ses Durable Objects sont
+éprouvés par les tests d'intégration.
+
+**Ce que `pnpm typecheck` lit.** Chaque paquet étend `tsconfig.base.json` (strict, et qui
+exclut les doublons iCloud `* 2.*`). Les fichiers lancés par Node — configurations de Vite,
+Vitest et tsup, scripts comme `apps/server/scripts/generate-schema.mts` — sont vérifiés par un
+second projet, `tsconfig.node.json` à la racine (types de Node), étendu par
+`apps/web`, `apps/server` et `packages/ui` : leur script `typecheck` enchaîne les deux.
 
 ### `target` — résoudre la branche
 
@@ -70,7 +95,10 @@ Conditionné à `needs.target.outputs.wrangler_env != ''`. Utilise l'environneme
 homonyme (`environment:`), ce qui permet d'y attacher des secrets et des règles de
 protection. Trois étapes, **dans cet ordre** :
 
-1. **Build du client** — `pnpm --filter @occulis/web build`. Le Worker sert
+1. **Build du client** — `pnpm --filter @occulis/web build` en production,
+   `build:local` (`--mode mockups`) partout ailleurs (recette, branches) : le bundle du jeu
+   est identique, s'y ajoutent le labo de la refonte sous `/lab/` et les maquettes sous
+   `/mockups/`, qui n'atteignent donc jamais la production. Le Worker sert
    `../web/dist` : le client doit exister avant le déploiement, et provenir du **même
    commit** que le serveur, sinon les deux n'ont pas le même `core`.
 2. **Migrations D1** — `wrangler d1 migrations apply … --remote --env <env>`. Avant le
@@ -91,35 +119,48 @@ ne l'est pas** — d'où `cancel-in-progress` restreint à `pull_request`.
 Lancée par `pnpm infra`. Interface Ink (React dans le terminal) qui pilote wrangler, édite
 `wrangler.toml` et le manifeste, et enchaîne les commandes git.
 
+**Sans le menu** : `pnpm infra <id>` lance directement l'action d'identifiant `<id>`
+(`runDirect()` dans `cli.tsx`), pourvu qu'elle soit marquée `direct` (`ActionDef.direct`) :
+aujourd'hui `status`, `list`, `dev` et `login` — aucune qui crée, déploie ou pousse. Sinon la
+commande refuse, liste les actions directes et sort en code 2 ; une action qui a journalisé
+un échec sort en code 1. `pnpm local` est le raccourci de `pnpm infra dev`, « Lancer le
+serveur en local ». Une action directe se termine d'elle-même au lieu de `process.exit` :
+sortie en tube, un `exit` immédiat tronquerait ses derniers messages.
+
+« Lancer le serveur en local » s'arrête à la première étape en échec ou interrompue (un
+Ctrl+C pendant le build ne lance ni les migrations ni wrangler sur un dist partiel).
+`runInherited()` et `runWranglerInherited()` rendent 130 pour un enfant tué par un signal,
+qui n'a pas de code de sortie.
+
 ### Modules
 
-| Fichier | Rôle |
-|---|---|
-| `tooling/infra/src/cli.tsx` | Point d'entrée : montage Ink, restauration du terminal, boucle des commandes interactives |
-| `tooling/infra/src/components/App.tsx` | Menu, sélection d'environnement, saisie, exécution |
-| `tooling/infra/src/components/SelectList.tsx` | Liste sélectionnable (clavier et souris) |
-| `tooling/infra/src/components/OutputPane.tsx` | Panneau de sortie en flux |
-| `tooling/infra/src/components/useMouse.ts` | Suivi souris via séquences ANSI |
-| `tooling/infra/src/components/theme.ts` | Couleurs et préfixes par niveau de log |
-| `tooling/infra/src/actions.ts` | **Le catalogue des actions** |
-| `tooling/infra/src/config.ts` | Chemins, noms de bases, découverte des environnements |
-| `tooling/infra/src/toml.ts` | Lecture/écriture de `wrangler.toml` |
-| `tooling/infra/src/deploy-manifest.ts` | Lecture/écriture du manifeste de déploiement |
-| `tooling/infra/src/git.ts` | Branche courante, commit ciblé, push |
-| `tooling/infra/src/wrangler.ts` | Exécution de processus et parsing de la sortie wrangler |
-| `tooling/infra/src/*.test.ts` | Tests de `config.ts`, `toml.ts` et `deploy-manifest.ts` (Vitest) |
+| Fichier                                       | Rôle                                                                                                                          |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `tooling/infra/src/cli.tsx`                   | Point d'entrée : montage Ink, restauration du terminal, boucle des commandes interactives, action directe (`pnpm infra <id>`) |
+| `tooling/infra/src/components/App.tsx`        | Menu, sélection d'environnement, saisie, exécution                                                                            |
+| `tooling/infra/src/components/SelectList.tsx` | Liste sélectionnable (clavier et souris)                                                                                      |
+| `tooling/infra/src/components/OutputPane.tsx` | Panneau de sortie en flux                                                                                                     |
+| `tooling/infra/src/components/useMouse.ts`    | Suivi souris via séquences ANSI                                                                                               |
+| `tooling/infra/src/components/theme.ts`       | Couleurs et préfixes par niveau de log                                                                                        |
+| `tooling/infra/src/actions.ts`                | **Le catalogue des actions**                                                                                                  |
+| `tooling/infra/src/config.ts`                 | Chemins, noms de bases, découverte des environnements                                                                         |
+| `tooling/infra/src/toml.ts`                   | Lecture/écriture de `wrangler.toml`                                                                                           |
+| `tooling/infra/src/deploy-manifest.ts`        | Lecture/écriture du manifeste de déploiement                                                                                  |
+| `tooling/infra/src/git.ts`                    | Branche courante, commit ciblé, push                                                                                          |
+| `tooling/infra/src/wrangler.ts`               | Exécution de processus et parsing de la sortie wrangler                                                                       |
+| `tooling/infra/src/*.test.ts`                 | Tests de `config.ts`, `toml.ts` et `deploy-manifest.ts` (Vitest)                                                              |
 
 ### `config.ts` — chemins et conventions
 
-| Fonction / constante | Rôle |
-|---|---|
-| `ROOT`, `SERVER_DIR`, `TOML`, `DEPLOY_MANIFEST` | Chemins absolus, dérivés de `import.meta.url` |
-| `PLACEHOLDER` | `"REMPLACER_PAR_L_ID"` — marque un `database_id` non renseigné |
-| `dbName()` | Environnement → nom de base. Table fixe pour `local`/`staging`/`production`, sinon `occulis-<env>` |
-| `isBranchEnv()` | Faux pour les trois environnements fixes, vrai pour tous les autres — donc pour tout ce qui est jetable |
-| `listEnvNames()` | **Découvre** les environnements en lisant les en-têtes `[env.X]` du toml |
-| `slugifyBranch()` | Nom de branche → nom d'environnement (`/` → `-`) |
-| `envFlag()` | `[]` pour `local`, `["--env", env]` sinon |
+| Fonction / constante                            | Rôle                                                                                                    |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `ROOT`, `SERVER_DIR`, `TOML`, `DEPLOY_MANIFEST` | Chemins absolus, dérivés de `import.meta.url`                                                           |
+| `PLACEHOLDER`                                   | `"REMPLACER_PAR_L_ID"` — marque un `database_id` non renseigné                                          |
+| `dbName()`                                      | Environnement → nom de base. Table fixe pour `local`/`staging`/`production`, sinon `occulis-<env>`      |
+| `isBranchEnv()`                                 | Faux pour les trois environnements fixes, vrai pour tous les autres — donc pour tout ce qui est jetable |
+| `listEnvNames()`                                | **Découvre** les environnements en lisant les en-têtes `[env.X]` du toml                                |
+| `slugifyBranch()`                               | Nom de branche → nom d'environnement (`/` → `-`)                                                        |
+| `envFlag()`                                     | `[]` pour `local`, `["--env", env]` sinon                                                               |
 
 `listEnvNames()` découvre dynamiquement plutôt que de maintenir une liste figée : tout
 environnement de branche déjà créé apparaît sans intervention.
@@ -129,14 +170,14 @@ environnement de branche déjà créé apparaît sans intervention.
 **Pas de bibliothèque TOML** : manipulation ligne à ligne, cohérente entre les quatre
 fonctions.
 
-| Fonction | Rôle |
-|---|---|
-| `envBlockExists()` | Le bloc `[env.X]` est-il présent |
-| `appendEnvBlock()` | Ajoute un bloc complet (route, assets, les trois DO `MATCH` / `QUEUE` / `SOCIAL`, D1) sur le modèle exact des blocs existants |
-| `removeEnvBlock()` | Retire le bloc et tous ses sous-blocs, plus les lignes vides qui le précèdent. Inverse d'`appendEnvBlock()` |
-| `patchDatabaseId()` | Remplace `database_id` sous le bloc D1 de l'environnement visé |
-| `configuredDatabaseId()` | Lit ce `database_id`, ou `null` |
-| `blockHeader()` (privée) | `[[d1_databases]]` pour `local`, `[[env.X.d1_databases]]` sinon |
+| Fonction                 | Rôle                                                                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `envBlockExists()`       | Le bloc `[env.X]` est-il présent                                                                                              |
+| `appendEnvBlock()`       | Ajoute un bloc complet (route, assets, les trois DO `MATCH` / `QUEUE` / `SOCIAL`, D1) sur le modèle exact des blocs existants |
+| `removeEnvBlock()`       | Retire le bloc et tous ses sous-blocs, plus les lignes vides qui le précèdent. Inverse d'`appendEnvBlock()`                   |
+| `patchDatabaseId()`      | Remplace `database_id` sous le bloc D1 de l'environnement visé                                                                |
+| `configuredDatabaseId()` | Lit ce `database_id`, ou `null`                                                                                               |
+| `blockHeader()` (privée) | `[[d1_databases]]` pour `local`, `[[env.X.d1_databases]]` sinon                                                               |
 
 `configuredDatabaseId()` ne juge **que l'environnement visé** : un placeholder resté sur la
 production ne doit pas empêcher de travailler sur la recette.
@@ -145,13 +186,13 @@ production ne doit pas empêcher de travailler sur la recette.
 
 Contrairement au toml, c'est du JSON réel : pas de manipulation ligne à ligne.
 
-| Fonction | Rôle |
-|---|---|
-| `upsertDeployEnvironment()` | Ajoute ou met à jour une entrée ; renvoie `"created"` ou `"updated"` |
-| `listDeployEnvironments()` | Le manifeste sous forme de liste `{ branch, wranglerEnv, d1Database }` |
-| `findDeployEnvironment()` | Résout une cible donnée **par nom de branche ou par slug wrangler** — les deux ne diffèrent que sur les branches contenant un `/` |
-| `listBranchEnvNames()` | Les environnements supprimables : union du toml et du manifeste, moins les fixes |
-| `removeDeployEnvironment()` | Retire l'entrée ; renvoie `false` si absente |
+| Fonction                    | Rôle                                                                                                                              |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `upsertDeployEnvironment()` | Ajoute ou met à jour une entrée ; renvoie `"created"` ou `"updated"`                                                              |
+| `listDeployEnvironments()`  | Le manifeste sous forme de liste `{ branch, wranglerEnv, d1Database }`                                                            |
+| `findDeployEnvironment()`   | Résout une cible donnée **par nom de branche ou par slug wrangler** — les deux ne diffèrent que sur les branches contenant un `/` |
+| `listBranchEnvNames()`      | Les environnements supprimables : union du toml et du manifeste, moins les fixes                                                  |
+| `removeDeployEnvironment()` | Retire l'entrée ; renvoie `false` si absente                                                                                      |
 
 `listBranchEnvNames()` fait l'**union** des deux sources plutôt que de croire le seul
 manifeste : un environnement à moitié défait (bloc toml sans entrée, ou l'inverse) reste
@@ -159,26 +200,26 @@ ainsi visible et réparable depuis la TUI.
 
 ### `git.ts`
 
-| Fonction | Rôle |
-|---|---|
-| `currentBranch()` | Nom de branche, ou `null` si HEAD détaché |
-| `pathsHaveChanges()` | `git status --porcelain` restreint à des chemins |
-| `commitPaths()` | Committe **uniquement** ces chemins (pathspec), quel que soit le reste de l'index |
-| `pushCurrentBranch()` | `git push`, avec `-u origin <branche>` si aucun amont |
+| Fonction              | Rôle                                                                              |
+| --------------------- | --------------------------------------------------------------------------------- |
+| `currentBranch()`     | Nom de branche, ou `null` si HEAD détaché                                         |
+| `pathsHaveChanges()`  | `git status --porcelain` restreint à des chemins                                  |
+| `commitPaths()`       | Committe **uniquement** ces chemins (pathspec), quel que soit le reste de l'index |
+| `pushCurrentBranch()` | `git push`, avec `-u origin <branche>` si aucun amont                             |
 
 `commitPaths()` utilise un pathspec délibérément : **l'outil ne s'approprie jamais les
 autres changements du dépôt.**
 
 ### `wrangler.ts` — exécution de processus
 
-| Fonction | Rôle |
-|---|---|
-| `runStreaming()` | Runner générique : streame chaque ligne, accumule stdout, peut alimenter stdin |
-| `runWrangler()` | `pnpm exec wrangler …` depuis `apps/server`, en flux |
-| `runWranglerInherited()` | Pour les commandes exigeant un vrai TTY (login, `dev`, `tail`) |
-| `runInherited()` | Idem, commande quelconque |
-| `listRemoteDatabases()` | `wrangler d1 list --json`, parsé |
-| `remoteDatabaseId()` | Nom de base → identifiant distant, ou `""` |
+| Fonction                 | Rôle                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------ |
+| `runStreaming()`         | Runner générique : streame chaque ligne, accumule stdout, peut alimenter stdin |
+| `runWrangler()`          | `pnpm exec wrangler …` depuis `apps/server`, en flux                           |
+| `runWranglerInherited()` | Pour les commandes exigeant un vrai TTY (login, `dev`, `tail`)                 |
+| `runInherited()`         | Idem, commande quelconque                                                      |
+| `listRemoteDatabases()`  | `wrangler d1 list --json`, parsé                                               |
+| `remoteDatabaseId()`     | Nom de base → identifiant distant, ou `""`                                     |
 
 Deux détails qui évitent des bugs pénibles : le paramètre `input` alimente stdin puis le
 ferme, de quoi répondre « y » aux confirmations de wrangler sans TTY ;
@@ -197,26 +238,27 @@ Catalogue dans `ACTIONS` (`tooling/infra/src/actions.ts`). Chaque `ActionDef` d�
 (restreint le sélecteur aux environnements de branche), `prompt` (saisie libre) et
 `interactive` (prend le contrôle du terminal).
 
-| Action | Ce qu'elle fait |
-|---|---|
-| Statut | Rapport de configuration, via `checkConfig()` |
-| Lister les bases D1 | `wrangler d1 list` |
-| Créer une base distante | Crée la base et écrit son identifiant dans le toml |
-| **Créer un environnement de branche** | Voir ci-dessous — branche courante |
-| **Supprimer un environnement de branche** | Voir ci-dessous — **n'importe quelle cible, depuis n'importe quelle branche** |
-| Appliquer les migrations | `wrangler d1 migrations apply` |
-| Lancer le serveur en local | `build:local` du client, migrations locales, puis `wrangler dev` (interactive) |
-| Déployer | `wrangler deploy --env …` |
-| Exécuter une requête SQL | `wrangler d1 execute` avec saisie libre |
-| Décrire une base | `wrangler d1 info` |
-| Logs en direct | `wrangler tail` (interactive) |
-| Historique des déploiements | `wrangler deployments list` |
-| Connexion Cloudflare | `wrangler login` (interactive) |
+| Action                                    | Ce qu'elle fait                                                                                                                        |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Statut                                    | Rapport de configuration, via `checkConfig()`                                                                                          |
+| Lister les bases D1                       | `wrangler d1 list`                                                                                                                     |
+| Créer une base distante                   | Crée la base et écrit son identifiant dans le toml                                                                                     |
+| **Créer un environnement de branche**     | Voir ci-dessous — branche courante                                                                                                     |
+| **Supprimer un environnement de branche** | Voir ci-dessous — **n'importe quelle cible, depuis n'importe quelle branche**                                                          |
+| Appliquer les migrations                  | `wrangler d1 migrations apply`                                                                                                         |
+| Lancer le serveur en local                | `build:local` du client, migrations locales, puis `wrangler dev` (interactive)                                                         |
+| Déployer                                  | Typecheck, lint et tests, build du client, migrations, puis `wrangler deploy --env …` — **la première étape en échec annule la suite** |
+| Exécuter une requête SQL                  | `wrangler d1 execute` avec saisie libre                                                                                                |
+| Décrire une base                          | `wrangler d1 info`                                                                                                                     |
+| Logs en direct                            | `wrangler tail` (interactive)                                                                                                          |
+| Historique des déploiements               | `wrangler deployments list`                                                                                                            |
+| Connexion Cloudflare                      | `wrangler login` (interactive)                                                                                                         |
 
 « Lancer le serveur en local » construit le client avec **`build:local` et non `build`** : le
 Worker ne sert que `../web/dist`, et seul le build local y dépose les maquettes de
-`docs/mockups/`, accessibles sous `/mockups` (voir l'invariant 16 de
-[engine.md](engine.md)). Le déploiement, lui, reste sur `build` — les maquettes ne partent
+`docs/mockups/`, accessibles sous `/mockups`, et le labo de la refonte sous `/lab/` (voir
+l'invariant 16 de [engine.md](engine.md)) — le serveur local sert donc les mêmes pages que
+`pnpm dev`. Le déploiement, lui, reste sur `build` — les maquettes ne partent
 jamais en production.
 
 Deux garde-fous transverses : `guardPlaceholder()` refuse d'agir tant que le
@@ -240,7 +282,7 @@ Le push déclenche la CI, qui applique les migrations puis déploie.
 ### « Supprimer un environnement de branche »
 
 **La cible est explicite, jamais la branche courante** : l'action prend un environnement en
-paramètre (`needsEnv` + `branchEnvsOnly`), désigné par son slug wrangler *ou* par le nom de
+paramètre (`needsEnv` + `branchEnvsOnly`), désigné par son slug wrangler _ou_ par le nom de
 sa branche. Un environnement reste donc supprimable après la fusion ou l'effacement de sa
 branche — sans quoi il ne resterait plus qu'à le défaire à la main dans le dashboard.
 
@@ -273,11 +315,11 @@ retrait se fait depuis Settings → Environments.
 `tooling/infra/src/*.test.ts`, exécutés par `pnpm test` à la racine — donc par la CI, qui
 n'a rien eu à déclarer pour cela.
 
-| Fichier | Ce qu'il verrouille |
-|---|---|
-| `config.test.ts` | `dbName()`, `slugifyBranch()`, `envFlag()` et surtout **`isBranchEnv()`**, le prédicat qui empêche la suppression d'atteindre la production ou la recette |
-| `toml.test.ts` | Le bloc généré est complet (route, assets, **chacun des trois DO**, D1) ; `appendEnvBlock()` est idempotent ; **`removeEnvBlock()` annule exactement `appendEnvBlock()`** et ne mange pas le bloc suivant ; `patchDatabaseId()` n'écrit que sous le bloc visé |
-| `deploy-manifest.test.ts` | La résolution d'une cible par nom de branche **ou** par slug ; viser `main` renvoie l'entrée `production` ; `listBranchEnvNames()` fait bien l'union toml ∪ manifeste |
+| Fichier                   | Ce qu'il verrouille                                                                                                                                                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config.test.ts`          | `dbName()`, `slugifyBranch()`, `envFlag()` et surtout **`isBranchEnv()`**, le prédicat qui empêche la suppression d'atteindre la production ou la recette                                                                                                     |
+| `toml.test.ts`            | Le bloc généré est complet (route, assets, **chacun des trois DO**, D1) ; `appendEnvBlock()` est idempotent ; **`removeEnvBlock()` annule exactement `appendEnvBlock()`** et ne mange pas le bloc suivant ; `patchDatabaseId()` n'écrit que sous le bloc visé |
+| `deploy-manifest.test.ts` | La résolution d'une cible par nom de branche **ou** par slug ; viser `main` renvoie l'entrée `production` ; `listBranchEnvNames()` fait bien l'union toml ∪ manifeste                                                                                         |
 
 Ces trois modules écrivent dans des fichiers dont le chemin vient de `config.ts` : les tests
 détournent `TOML` et `DEPLOY_MANIFEST` vers des fichiers temporaires (`vi.mock` sur
@@ -292,10 +334,10 @@ sinon il référence des liaisons pas encore initialisées.
 
 ## Points d'attention
 
-- **Node 22 est requis par wrangler**, malgré son message d'erreur qui annonce v20. La CI
-  l'utilise, `.nvmrc` épingle Node 24 en local et `package.json` déclare
-  `engines.node: ">=22"` — les trois sont cohérents, mais **CI et poste de travail ne
-  tournent pas sur la même version majeure**. Sur une machine en Node 20,
+- **Une seule version de Node, celle de `.nvmrc` (24)** : la CI la lit (`node-version-file`)
+  et `package.json` déclare `engines.node: ">=24"`, donc CI et poste de travail tournent sur
+  la même version majeure. wrangler exige un Node récent, malgré un message d'erreur qui
+  annonce v20. Sur une machine en Node 20,
   les commandes wrangler (donc une grande partie de la TUI) échouent — la TUI elle-même,
   Ink et tsx, tourne pourtant sans problème, ce qui rend le diagnostic trompeur.
 - **`.wrangler/` doit rester dans `.gitignore`** : c'est de l'état local. `checkConfig()`

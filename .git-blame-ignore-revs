@@ -1,0 +1,6 @@
+# Commits de pure mise en forme, que `git blame` doit traverser pour retrouver l'auteur
+# d'une ligne. GitHub lit ce fichier de lui-même ; en local :
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Tout le dépôt au format Prettier (2026-10-18).
+c7e2bfd66a126d60f069f4d5378308f2e7d9b4f6

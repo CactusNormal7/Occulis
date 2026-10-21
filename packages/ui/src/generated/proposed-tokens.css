@@ -1,0 +1,62 @@
+/* Généré depuis src/tokens.ts (PROPOSED) par `pnpm --filter @occulis/ui tokens` — ne pas modifier.
+   Proposition de refonte, importée par le seul labo (src/lab/lab.css). */
+:root {
+  --occ-tempo: 1;
+  --occ-motion-level: full;
+  --occ-motion-amplitude: 1;
+  --occ-motion-loop: running;
+  --occ-space-10: 40px;
+  --occ-space-12: 48px;
+  --occ-space-16: 64px;
+  --occ-leading-tight: 1.25;
+  --occ-leading-base: 1.5;
+  --occ-leading-loose: 1.75;
+  --occ-dur-tick: calc(70ms * var(--occ-tempo));
+  --occ-dur-fast: calc(150ms * var(--occ-tempo));
+  --occ-dur-window: calc(220ms * var(--occ-tempo));
+  --occ-dur-base: calc(250ms * var(--occ-tempo));
+  --occ-dur-slow: calc(420ms * var(--occ-tempo));
+  --occ-dur-screen: calc(520ms * var(--occ-tempo));
+  --occ-dur-decode: calc(900ms * var(--occ-tempo));
+  --occ-dur-hold: calc(700ms * var(--occ-tempo));
+  --occ-dur-resorb: calc(600ms * var(--occ-tempo));
+  --occ-dur-breath: calc(3200ms * var(--occ-tempo));
+  --occ-dur-wave: calc(45ms * var(--occ-tempo));
+  --occ-dur-cascade: calc(38ms * var(--occ-tempo));
+  --occ-dist-rise: calc(8px * var(--occ-motion-amplitude));
+  --occ-dist-lift: calc(3px * var(--occ-motion-amplitude));
+  --occ-dist-hop: calc(14px * var(--occ-motion-amplitude));
+  --occ-ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --occ-ease-in: cubic-bezier(0.55, 0, 0.8, 0.3);
+  --occ-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --occ-ease-sweep: cubic-bezier(0.3, 0.1, 0.4, 1);
+  --occ-cipher-unit: 1px;
+  --occ-cipher-stroke: 1px;
+  --occ-cipher-ink: var(--occ-ink-soft);
+  --occ-cipher-ink-faint: var(--occ-ink-faint);
+  --occ-dur-flicker: calc(1400ms * var(--occ-tempo));
+  --occ-paper: var(--occ-ink);
+  --occ-paper-dot: var(--occ-bg);
+  --occ-paper-grid: 8px;
+  --occ-paper-dot-size: 2px;
+  --occ-paper-speed: 900;
+  --occ-paper-resorb: dither;
+}
+:root[data-motion="calm"] {
+  --occ-motion-level: calm;
+  --occ-motion-amplitude: 0.4;
+  --occ-motion-loop: paused;
+}
+:root[data-motion="still"] {
+  --occ-motion-level: still;
+  --occ-motion-amplitude: 0;
+  --occ-motion-loop: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  :root[data-motion] {
+    --occ-motion-level: still;
+    --occ-motion-amplitude: 0;
+    --occ-motion-loop: paused;
+  }
+}

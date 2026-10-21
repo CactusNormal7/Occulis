@@ -12,14 +12,21 @@
  * delta, et disparaît une fois la migration écrite.
  */
 import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { fileURLToPath } from "node:url";
 import { getMigrations } from "better-auth/db/migration";
 import { buildAuth } from "../src/auth/better-auth.js";
 
 const database = new DatabaseSync(":memory:");
-const directory = new URL("../migrations/", import.meta.url);
-for (const file of readdirSync(directory).filter((name) => name.endsWith(".sql")).sort()) {
-  database.exec(readFileSync(new URL(file, directory), "utf8"));
+// Un chemin et non une `URL` : le script voit à la fois les types de Node et ceux des
+// Workers, qui déclarent chacun leur `URL` globale, et les fonctions de `node:fs`
+// n'acceptent que la première.
+const directory = join(dirname(fileURLToPath(import.meta.url)), "../migrations");
+for (const file of readdirSync(directory)
+  .filter((name) => name.endsWith(".sql"))
+  .sort()) {
+  database.exec(readFileSync(join(directory, file), "utf8"));
 }
 
 const env = { DB: database } as unknown as Env;

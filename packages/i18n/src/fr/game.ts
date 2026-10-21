@@ -50,7 +50,8 @@ export const game: Messages["game"] = {
       resign: "abandon",
     },
     leave: "Quitter la partie",
-    leaveConfirm: "Quitter la partie, c'est l'abandonner : votre adversaire l'emporte. Quitter quand même ?",
+    leaveConfirm:
+      "Quitter la partie, c'est l'abandonner : votre adversaire l'emporte. Quitter quand même ?",
     pending: "Coup déjà envoyé : réponse du serveur en attente.",
     spectating: "Vous regardez cette partie : aucun coup à jouer.",
     resigned: "Abandon.",
@@ -81,8 +82,10 @@ export const game: Messages["game"] = {
     line: (turn, whose, seat) => `Tour ${turn} · ${whose} · vous jouez ${seat}`,
     yours: "à vous de jouer",
     theirs: "au trait : l'adversaire",
-    watchers: (count) => (count === 1 ? " · 1 ami vous regarde" : ` · ${count} amis vous regardent`),
-    watching: (turn, whose, friend, side) => `Tour ${turn} · ${whose} · vous regardez ${friend} (${side})`,
+    watchers: (count) =>
+      count === 1 ? " · 1 ami vous regarde" : ` · ${count} amis vous regardent`,
+    watching: (turn, whose, friend, side) =>
+      `Tour ${turn} · ${whose} · vous regardez ${friend} (${side})`,
     friendToMove: (friend) => `au trait : ${friend}`,
     opponentToMove: "au trait : son adversaire",
   },

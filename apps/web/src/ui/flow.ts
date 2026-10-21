@@ -87,10 +87,14 @@ export function advance(stage: Stage, event: FlowEvent): Stage {
 
     case "lapsed":
       if (stage.kind !== "proposal" && stage.kind !== "waiting") return stage;
-      return event.requeued ? { kind: "waiting", seeking: "quick", code: undefined } : { kind: "menu" };
+      return event.requeued
+        ? { kind: "waiting", seeking: "quick", code: undefined }
+        : { kind: "menu" };
 
     case "deploying":
-      return stage.kind === "boot" || stage.kind === "auth" || stage.kind === "game" ? stage : { kind: "deploying" };
+      return stage.kind === "boot" || stage.kind === "auth" || stage.kind === "game"
+        ? stage
+        : { kind: "deploying" };
 
     case "seated":
       return event.spectating === true ? { kind: "game", spectating: true } : { kind: "game" };

@@ -12,7 +12,9 @@ export const SEARCH_LIMIT = 10;
  * de l'index `players_handle_nocase`. U+10FFFF est le plus grand point de code : en
  * UTF-8, aucun caractère ne se range après lui.
  */
-export function prefixRange(raw: unknown): { readonly from: string; readonly to: string } | undefined {
+export function prefixRange(
+  raw: unknown,
+): { readonly from: string; readonly to: string } | undefined {
   if (typeof raw !== "string") return undefined;
   const prefix = normalizeHandle(raw);
   if ([...prefix].length < MIN_SEARCH_LENGTH) return undefined;

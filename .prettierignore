@@ -1,0 +1,12 @@
+# Prettier lit aussi .gitignore : ne reste ici que ce que git suit sans qu'on le formate.
+
+# Généré : tokens.test.ts compare la feuille au générateur, octet pour octet.
+packages/ui/src/generated/
+pnpm-lock.yaml
+# Réécrit par `pnpm infra` (JSON.stringify) à chaque création ou suppression d'environnement.
+.github/deploy-environments.json
+# Synchronisé avec Claude Design (.design-sync/NOTES.md) et outillage tiers.
+.design-sync/
+.claude/
+# Doublons de la synchronisation iCloud.
+**/* 2.*

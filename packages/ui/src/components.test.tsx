@@ -1,10 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
+  AsideLayout,
   Badge,
   Banner,
   Button,
   Card,
+  CodeBlock,
   ChipGroup,
   ChoiceList,
   ChoiceRow,
@@ -22,18 +24,24 @@ import {
   MessageComposer,
   MessageThread,
   MoveList,
+  NavList,
   Pager,
   PasswordField,
   Person,
   PlayerPlate,
   ProviderButton,
+  Prose,
   Reveal,
   Segmented,
   Skeleton,
   SettingEditor,
   SettingList,
   SettingRow,
+  Specimen,
+  Stage,
   StatTile,
+  Swatch,
+  SwatchGrid,
   Table,
   TextField,
   TileAvatar,
@@ -60,7 +68,9 @@ describe("composants", () => {
   });
 
   it("donne la raison d'un bouton à icône inactif en infobulle", () => {
-    const markup = html(<IconButton icon="trash" label="Supprimer" disabledReason="Votre propre compte." />);
+    const markup = html(
+      <IconButton icon="trash" label="Supprimer" disabledReason="Votre propre compte." />,
+    );
     expect(markup).toContain('data-tip="Votre propre compte."');
     expect(markup).toContain("disabled");
     expect(markup).toContain('aria-label="Supprimer"');
@@ -74,25 +84,35 @@ describe("composants", () => {
   });
 
   it("marque l'onglet courant et l'option choisie", () => {
-    expect(html(<TopBar section="back-office" tabs={[{ href: "#/", label: "Vue", current: true }]} />)).toContain(
-      'aria-current="page"',
-    );
+    expect(
+      html(<TopBar section="back-office" tabs={[{ href: "#/", label: "Vue", current: true }]} />),
+    ).toContain('aria-current="page"');
     const segmented = html(
-      <Segmented options={[{ value: "a", label: "A", camp: "A" }, { value: "b", label: "B" }]} value="a" />,
+      <Segmented
+        options={[
+          { value: "a", label: "A", camp: "A" },
+          { value: "b", label: "B" },
+        ]}
+        value="a"
+      />,
     );
     expect(segmented).toContain("occ-segmented__option--A");
     expect(segmented).toContain('aria-current="true"');
   });
 
   it("cède la place à l'état vide quand une table n'a pas de ligne", () => {
-    expect(html(<Table columns={["a"]} rowCount={0} empty="Aucune partie." />)).toContain("Aucune partie.");
-    expect(html(<Pager offset={25} shown={25} total={132} pageSize={25} hrefFor={(o) => `#${o}`} />)).toContain(
-      "26–50 of 132",
+    expect(html(<Table columns={["a"]} rowCount={0} empty="Aucune partie." />)).toContain(
+      "Aucune partie.",
     );
+    expect(
+      html(<Pager offset={25} shown={25} total={132} pageSize={25} hrefFor={(o) => `#${o}`} />),
+    ).toContain("26–50 of 132");
   });
 
   it("parle la langue que lui fixe UiRoot", () => {
-    const pager = <Pager offset={25} shown={25} total={132} pageSize={25} hrefFor={(o) => `#${o}`} />;
+    const pager = (
+      <Pager offset={25} shown={25} total={132} pageSize={25} hrefFor={(o) => `#${o}`} />
+    );
     expect(html(<UiRoot locale="fr">{pager}</UiRoot>)).toContain("26–50 sur 132");
     expect(html(<UiRoot locale="fr">{pager}</UiRoot>)).toContain('lang="fr"');
     expect(html(<UiRoot>{pager}</UiRoot>)).toContain("26–50 of 132");
@@ -114,9 +134,19 @@ describe("composants", () => {
         <Banner>suspendu définitivement</Banner>
         <FactStrip facts={[{ label: "début", value: "2026-10-02" }]} />
         <InlineEdit label="pseudo" action="Renommer" onSubmit={() => undefined} />
-        <ChipGroup options={[{ value: "1", label: "1 jour" }]} value="1" onChange={() => undefined} />
+        <ChipGroup
+          options={[{ value: "1", label: "1 jour" }]}
+          value="1"
+          onChange={() => undefined}
+        />
         <MoveList entries={[{ number: "1", seat: "A", text: "1,1 → 2,1" }]} pinned={0} />
-        <Dialog open={false} title="Suspendre" confirmLabel="Suspendre" onConfirm={() => true} onClose={() => undefined} />
+        <Dialog
+          open={false}
+          title="Suspendre"
+          confirmLabel="Suspendre"
+          onConfirm={() => true}
+          onClose={() => undefined}
+        />
         <ToastStack messages={[{ id: 1, text: "Compte suspendu.", ok: true }]} />
       </UiRoot>
     );
@@ -124,7 +154,9 @@ describe("composants", () => {
   });
 
   it("rattache l'aide et l'erreur d'un champ par aria-describedby", () => {
-    const markup = html(<TextField label="Adresse" name="email" hint="Celle du compte." error="Adresse invalide." />);
+    const markup = html(
+      <TextField label="Adresse" name="email" hint="Celle du compte." error="Adresse invalide." />,
+    );
     expect(markup).toContain('aria-invalid="true"');
     expect(markup).toContain("occ-field--error");
     const described = markup.match(/aria-describedby="([^"]+)"/)?.[1]?.split(" ") ?? [];
@@ -133,7 +165,14 @@ describe("composants", () => {
   });
 
   it("garde le champ de mot de passe reconnaissable par les gestionnaires", () => {
-    const markup = html(<PasswordField label="Mot de passe" name="password" autoComplete="new-password" minLength={10} />);
+    const markup = html(
+      <PasswordField
+        label="Mot de passe"
+        name="password"
+        autoComplete="new-password"
+        minLength={10}
+      />,
+    );
     expect(markup).toContain('type="password"');
     expect(markup).toContain('autoComplete="new-password"');
     expect(markup).toContain('minLength="10"');
@@ -144,7 +183,11 @@ describe("composants", () => {
 
   it("rend les briques des parcours de compte", () => {
     const panel = html(
-      <FormPanel title="Connexion" lead="Bon retour." footer={<a href="/sign-up">Créer un compte</a>}>
+      <FormPanel
+        title="Connexion"
+        lead="Bon retour."
+        footer={<a href="/sign-up">Créer un compte</a>}
+      >
         <ProviderButton provider="google" />
         <Divider>ou</Divider>
         <FormMessage tone="error">Identifiants invalides.</FormMessage>
@@ -166,7 +209,12 @@ describe("composants", () => {
   it("montre un réglage en lecture, puis son éditeur à la place de la valeur", () => {
     const reading = html(
       <SettingList>
-        <SettingRow label="Pseudo" value="anne" description="Visible par vos adversaires." onEdit={() => undefined} />
+        <SettingRow
+          label="Pseudo"
+          value="anne"
+          description="Visible par vos adversaires."
+          onEdit={() => undefined}
+        />
       </SettingList>,
     );
     expect(reading).toContain("occ-settings");
@@ -175,7 +223,12 @@ describe("composants", () => {
 
     const editing = html(
       <SettingRow label="Pseudo" value="anne" onEdit={() => undefined} editing>
-        <SettingEditor submitLabel="Enregistrer" onSubmit={() => undefined} onCancel={() => undefined} error="Ce pseudo est déjà pris.">
+        <SettingEditor
+          submitLabel="Enregistrer"
+          onSubmit={() => undefined}
+          onCancel={() => undefined}
+          error="Ce pseudo est déjà pris."
+        >
           <input name="handle" defaultValue="anne" />
         </SettingEditor>
       </SettingRow>,
@@ -191,24 +244,40 @@ describe("composants", () => {
 
 describe("préparation d'une partie", () => {
   it("dessine un compte à rebours proportionnel, urgent sous cinq secondes", () => {
-    const calm = html(<CountdownRing totalMs={10_000} remainingMs={6_000} label="Temps restant">6</CountdownRing>);
+    const calm = html(
+      <CountdownRing totalMs={10_000} remainingMs={6_000} label="Temps restant">
+        6
+      </CountdownRing>,
+    );
     expect(calm).toContain('role="timer"');
     expect(calm).not.toContain("occ-countdown--urgent");
-    expect(html(<CountdownRing totalMs={10_000} remainingMs={4_000} label="t" />)).toContain("occ-countdown--urgent");
+    expect(html(<CountdownRing totalMs={10_000} remainingMs={4_000} label="t" />)).toContain(
+      "occ-countdown--urgent",
+    );
   });
 
   it("annonce deux joueurs, chacun dans la couleur de son camp", () => {
     const reveal = html(
       <Reveal
         versus="vs"
-        self={<PlayerPlate name="anne" camp="A" tag="You" lines={["1200 Elo"]} badges={<Badge>First blood</Badge>} />}
+        self={
+          <PlayerPlate
+            name="anne"
+            camp="A"
+            tag="You"
+            lines={["1200 Elo"]}
+            badges={<Badge>First blood</Badge>}
+          />
+        }
         opponent={<PlayerPlate name="boris" camp="B" align="end" />}
       />,
     );
     expect(reveal).toContain("occ-plate--A");
     expect(reveal).toContain("occ-plate--B occ-plate--end");
     expect(reveal).toContain("First blood");
-    expect(html(<Reveal versus="vs" self={null} opponent={null} compact />)).toContain("occ-reveal--compact");
+    expect(html(<Reveal versus="vs" self={null} opponent={null} compact />)).toContain(
+      "occ-reveal--compact",
+    );
   });
 
   it("rend une ligne de choix comme un bouton marqué quand elle est choisie", () => {
@@ -228,7 +297,15 @@ describe("préparation d'une partie", () => {
 
   it("laisse une fenêtre sans croix quand elle attend une réponse explicite", () => {
     const dialog = html(
-      <Dialog open title="Match found" confirmLabel="Accept" cancelLabel="Decline" dismissible={false} onConfirm={() => true} onClose={() => undefined} />,
+      <Dialog
+        open
+        title="Match found"
+        confirmLabel="Accept"
+        cancelLabel="Decline"
+        dismissible={false}
+        onConfirm={() => true}
+        onClose={() => undefined}
+      />,
     );
     expect(dialog).toContain("Decline");
     expect(dialog).not.toContain("occ-icon-button");
@@ -247,7 +324,9 @@ describe("préparation d'une partie", () => {
     expect(thread.match(/occ-thread__message--mine/g)).toHaveLength(1);
     expect(thread).toContain("&lt;b&gt;salut");
     expect(html(<MessageThread messages={[]} empty="Rien encore." />)).toContain("Rien encore.");
-    expect(html(<MessageComposer onSend={async () => true} maxLength={500} />)).toContain('maxLength="500"');
+    expect(html(<MessageComposer onSend={async () => true} maxLength={500} />)).toContain(
+      'maxLength="500"',
+    );
   });
 
   it("annonce un chargement sans texte visible, encadré à la demande", () => {
@@ -256,5 +335,66 @@ describe("préparation d'une partie", () => {
     expect(lines.match(/occ-skeleton__line/g)).toHaveLength(4);
     expect(lines).not.toContain("occ-skeleton--card");
     expect(html(<Skeleton card />)).toContain("occ-skeleton--card");
+  });
+
+  it("montre la charte : code échappé, échantillon modifiable ou non, lien courant marqué", () => {
+    const code = html(<CodeBlock label="tsx">{"<UiRoot />"}</CodeBlock>);
+    expect(code).toContain("&lt;UiRoot /&gt;");
+    expect(code).toContain('class="occ-label">tsx');
+
+    expect(html(<Swatch name="camp.A" color="var(--occ-camp-a)" value="camp A" />)).not.toContain(
+      "<input",
+    );
+    const editable = html(
+      <Swatch
+        name="camp.A"
+        color="var(--occ-camp-a)"
+        value="camp A"
+        edited
+        onChange={() => undefined}
+      />,
+    );
+    expect(editable).toContain('type="color"');
+    expect(editable).toContain('aria-label="camp.A"');
+    expect(editable).toContain("occ-swatch--edited");
+
+    const nav = html(
+      <NavList
+        sections={[
+          {
+            label: "Actions",
+            items: [
+              { href: "#a", label: "Button", current: true },
+              { href: "#b", label: "Icon" },
+            ],
+          },
+        ]}
+      />,
+    );
+    expect(nav).toContain('href="#a" aria-current="page"');
+    expect(nav).not.toContain('href="#b" aria-current');
+
+    const page = html(
+      <AsideLayout aside={<span>nav</span>}>
+        <Stage title="Variants" actions={<span>code</span>}>
+          <Prose>
+            <SwatchGrid>
+              <Specimen name="--occ-space-1" value="4px">
+                <span />
+              </Specimen>
+            </SwatchGrid>
+          </Prose>
+        </Stage>
+      </AsideLayout>,
+    );
+    for (const name of [
+      "occ-aside-layout__aside",
+      "occ-stage__actions",
+      "occ-prose",
+      "occ-swatch-grid",
+      "occ-specimen__value",
+    ]) {
+      expect(page).toContain(name);
+    }
   });
 });

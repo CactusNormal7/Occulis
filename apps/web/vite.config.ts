@@ -118,6 +118,29 @@ function criticalPaint(): Plugin {
 }
 
 /**
+ * Rend `blocking="render"` au script d'entrée des pages qui le déclarent : Vite réécrit
+ * cette balise au build et n'en garde que `type`, `crossorigin` et `src`. Le profil et le
+ * back-office en ont besoin pour écouter `pagereveal` avant leur première image
+ * (`src/load/page.tsx`).
+ */
+function keepRenderBlocking(): Plugin {
+  return {
+    name: "occulis-keep-render-blocking",
+    transformIndexHtml: {
+      order: "post",
+      handler: async (html, { filename }) => {
+        const source = await readFile(filename, "utf8");
+        if (!/<script type="module" blocking="render"/.test(source)) return html;
+        return html.replace(
+          /<script type="module"(?![^>]*blocking=)/,
+          '<script type="module" blocking="render"',
+        );
+      },
+    },
+  };
+}
+
+/**
  * Trois pages : le jeu, le back-office sous `/admin/` et le profil sous `/profile/`.
  * Séparées pour que les deux dernières ne chargent ni Pixi ni le moteur, et que le jeu
  * n'embarque rien d'elles.
@@ -128,7 +151,60 @@ const PAGES = {
   profile: fileURLToPath(new URL("profile/index.html", import.meta.url)),
 };
 
+/**
+ * Le design system du back-office (`src/admin/design/`) monte les aperçus de la charte là
+ * où la synchronisation vers Claude Design les range, dans `.design-sync/previews/`, hors
+ * de tout paquet : aucun `node_modules` ni `tsconfig.json` ne les y attend. D'où trois
+ * réglages, sans effet sur le reste du client :
+ * - `@occulis/ui` et React se résolvent depuis cette application (`alias`, `dedupe`) —
+ *   un second React casserait les hooks ;
+ * - le JSX est compilé par le runtime automatique, celui que `"jsx": "react-jsx"` impose
+ *   déjà à `src/`.
+ */
+const UI_ENTRY = fileURLToPath(new URL("../../packages/ui/src/index.ts", import.meta.url));
+
+/**
+ * Le labo de la refonte graphique (`lab/`, qui monte `packages/ui/previews/`) : comme les
+ * maquettes, servi par le serveur de développement (Vite sert toute page HTML de sa racine)
+ * et ajouté au build sous le seul mode `mockups`. `pnpm build`, donc tout déploiement, ne
+ * l'embarque pas.
+ */
+const LAB_PAGE = fileURLToPath(new URL("lab/index.html", import.meta.url));
+const LAB_ROUTE = "/lab";
+
+/**
+ * `/lab` sans barre finale n'est pas une page pour Vite : son repli SPA y servirait le jeu,
+ * dont l'écran reste noir sans serveur derrière. On redirige vers `/lab/`, comme `/mockups`.
+ */
+function redirectLab(): Plugin {
+  return {
+    name: "occulis-lab-redirect",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if ((req.url ?? "").split("?")[0] !== LAB_ROUTE) {
+          next();
+          return;
+        }
+        res.writeHead(302, { Location: `${LAB_ROUTE}/` });
+        res.end();
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => ({
-  plugins: [criticalPaint(), serveMockups(), ...(mode === MOCKUPS_MODE ? [embedMockups()] : [])],
-  build: { rollupOptions: { input: PAGES } },
+  plugins: [
+    criticalPaint(),
+    keepRenderBlocking(),
+    serveMockups(),
+    redirectLab(),
+    ...(mode === MOCKUPS_MODE ? [embedMockups()] : []),
+  ],
+  resolve: {
+    alias: [{ find: /^@occulis\/ui$/, replacement: UI_ENTRY }],
+    dedupe: ["react", "react-dom"],
+  },
+  esbuild: { jsx: "automatic" },
+  build: { rollupOptions: { input: mode === MOCKUPS_MODE ? { ...PAGES, lab: LAB_PAGE } : PAGES } },
 }));

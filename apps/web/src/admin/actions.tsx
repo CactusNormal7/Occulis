@@ -1,7 +1,26 @@
 import { useState } from "react";
-import { ChipGroup, Dialog, IconButton, Note, QuickBar, SelectField, TextField, useMessages, useToast, type IconName } from "@occulis/ui";
+import {
+  ChipGroup,
+  Dialog,
+  IconButton,
+  Note,
+  QuickBar,
+  SelectField,
+  TextField,
+  useMessages,
+  useToast,
+  type IconName,
+} from "@occulis/ui";
 import * as api from "./api.js";
-import { banDuration, banPresets, isAdminRole, quickActions, routeHash, type QuickAction, type Route } from "./model.js";
+import {
+  banDuration,
+  banPresets,
+  isAdminRole,
+  quickActions,
+  routeHash,
+  type QuickAction,
+  type Route,
+} from "./model.js";
 
 /**
  * Les actions rapides d'un compte et leurs fenêtres de confirmation, les mêmes dans la
@@ -72,7 +91,10 @@ export function QuickActions({ user, self, reload, onDeleted, framed = false }: 
         location.hash = routeHash({ view: "user", id: user.id });
         return;
       case "verify":
-        void act(api.update(user.id, { emailVerified: !user.emailVerified }), m.verificationChanged);
+        void act(
+          api.update(user.id, { emailVerified: !user.emailVerified }),
+          m.verificationChanged,
+        );
         return;
       case "role":
         if (isAdminRole(user.role)) void act(api.setRole(user.id, "user"), m.demoted(user.name));
@@ -149,7 +171,11 @@ function BanDialog({ user, act, onClose }: { user: QuickUser; act: Act; onClose:
       onClose={onClose}
     >
       <Note>{m.banNote}</Note>
-      <TextField label={m.reason} value={reason} onChange={(event) => setReason(event.target.value)} />
+      <TextField
+        label={m.reason}
+        value={reason}
+        onChange={(event) => setReason(event.target.value)}
+      />
       <ChipGroup
         options={presets.map((preset) => ({ value: preset.days, label: preset.label }))}
         value={presets.some((preset) => preset.days === days) ? days : undefined}
@@ -170,7 +196,15 @@ function BanDialog({ user, act, onClose }: { user: QuickUser; act: Act; onClose:
  * La suppression demande de retaper le pseudo : un bouton « OK » se valide d'un réflexe,
  * et ce geste-ci ne se défait pas.
  */
-function DeleteDialog({ user, onDeleted, onClose }: { user: QuickUser; onDeleted: () => void; onClose: () => void }) {
+function DeleteDialog({
+  user,
+  onDeleted,
+  onClose,
+}: {
+  user: QuickUser;
+  onDeleted: () => void;
+  onClose: () => void;
+}) {
   const m = useMessages().admin.actions;
   const notify = useToast();
   const [check, setCheck] = useState("");
@@ -193,7 +227,11 @@ function DeleteDialog({ user, onDeleted, onClose }: { user: QuickUser; onDeleted
       onClose={onClose}
     >
       <Note>{m.deleteNote}</Note>
-      <TextField label={m.retype(user.name)} value={check} onChange={(event) => setCheck(event.target.value)} />
+      <TextField
+        label={m.retype(user.name)}
+        value={check}
+        onChange={(event) => setCheck(event.target.value)}
+      />
     </Dialog>
   );
 }
@@ -250,8 +288,18 @@ export function CreateUserDialog({ onClose }: { onClose: () => void }) {
       onClose={onClose}
     >
       <TextField label={m.handle} value={name} onChange={(event) => setName(event.target.value)} />
-      <TextField label={m.address} type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
-      <TextField label={m.password} type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+      <TextField
+        label={m.address}
+        type="email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+      />
+      <TextField
+        label={m.password}
+        type="password"
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+      />
       <SelectField
         label={m.role}
         value={role}

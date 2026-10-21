@@ -149,7 +149,10 @@ export async function breachedPassword(
 ): Promise<boolean | undefined> {
   try {
     const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(password));
-    const hex = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
+    const hex = [...new Uint8Array(digest)]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("")
+      .toUpperCase();
     const response = await fetcher(`https://api.pwnedpasswords.com/range/${hex.slice(0, 5)}`, {
       headers: { "Add-Padding": "true", "User-Agent": "Occulis" },
       signal: AbortSignal.timeout(BREACH_TIMEOUT_MS),

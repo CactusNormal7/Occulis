@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Occulis — redesign lab</title>
+    <!-- Le fond et le thème sombre sont injectés en tête de <head> (`criticalPaint`,
+         vite.config.ts) : aucune couleur écrite ici. -->
+    <style>
+      html,
+      body {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      Le labo de la refonte graphique (docs/design/refonte-graphique.md) : des propositions
+      montrées en vrai, qu'aucun écran du jeu n'importe. Servi par `pnpm dev` et par
+      `build:local` ; jamais par le build de production (vite.config.ts).
+    -->
+    <div id="lab"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

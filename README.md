@@ -21,26 +21,31 @@ pnpm dev          # client seul (Vite) ; les maquettes sont servies sur /mockups
 ```
 
 Le jeu se joue contre le serveur. Pour une partie complète en local (client + Worker +
-Durable Objects + D1 locale) :
+Durable Objects + D1 locale), sur `http://localhost:8787` — build du client, migrations
+locales, puis `wrangler dev` :
 
 ```bash
-pnpm --filter @occulis/web build:local
-cd apps/server && pnpm exec wrangler dev
+pnpm local
 ```
+
+Le serveur exige `AUTH_SECRET` dans `apps/server/.dev.vars` ([docs/setup.md](docs/setup.md),
+section 2).
 
 Ouvrir deux navigateurs (ou une fenêtre privée), créer deux comptes, puis lancer une
 partie rapide ou un salon privé par code.
 
 ## Commandes
 
-| Commande | Rôle |
-|---|---|
-| `pnpm dev` | Serveur de développement du client (`apps/web`) |
-| `pnpm test` | Tests Vitest de tous les paquets |
-| `pnpm typecheck` | Vérification TypeScript stricte |
-| `pnpm lint` | ESLint |
-| `pnpm build` | Build de tous les paquets |
-| `pnpm infra` | TUI Cloudflare : bases D1, migrations, environnements, déploiement |
+| Commande         | Rôle                                                                                                                                                                   |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`       | Serveur de développement du client (`apps/web`)                                                                                                                        |
+| `pnpm test`      | Tests Vitest de tous les paquets                                                                                                                                       |
+| `pnpm typecheck` | Vérification TypeScript stricte                                                                                                                                        |
+| `pnpm lint`      | ESLint, zéro avertissement toléré                                                                                                                                      |
+| `pnpm format`    | Prettier sur tout le dépôt (`pnpm format:check` pour vérifier seulement, comme la CI)                                                                                  |
+| `pnpm build`     | Build de tous les paquets                                                                                                                                              |
+| `pnpm local`     | Serveur complet en local (client, Worker, Durable Objects, D1) sur `http://localhost:8787` — l'action « Lancer le serveur en local » de `pnpm infra`, sans le menu     |
+| `pnpm infra`     | TUI Cloudflare : bases D1, migrations, environnements, déploiement ; `pnpm infra <action>` lance directement une action sans risque (`dev`, `status`, `list`, `login`) |
 
 ## Organisation
 
@@ -65,14 +70,15 @@ Deux invariants à ne pas casser :
 
 ## Documentation
 
-| Question | Document |
-|---|---|
-| Quelles sont les règles, et pourquoi ? | [docs/design.md](docs/design.md) |
-| Pourquoi cette infrastructure ? | [docs/architecture.md](docs/architecture.md) |
-| Comment le code fonctionne-t-il, fonction par fonction ? | [docs/technical/](docs/technical/README.md) |
-| Qu'a-t-il fallu interpréter faute de décision ? | [docs/implementation-notes.md](docs/implementation-notes.md) |
-| Comment installer et déployer ? | [docs/setup.md](docs/setup.md) |
-| Combien ça coûte ? | [docs/costs.md](docs/costs.md) |
+| Question                                                    | Document                                                     |
+| ----------------------------------------------------------- | ------------------------------------------------------------ |
+| Quelles sont les règles, et pourquoi ?                      | [docs/design.md](docs/design.md)                             |
+| Pourquoi cette infrastructure ?                             | [docs/architecture.md](docs/architecture.md)                 |
+| Comment le code fonctionne-t-il, fonction par fonction ?    | [docs/technical/](docs/technical/README.md)                  |
+| Qu'a-t-il fallu interpréter faute de décision ?             | [docs/implementation-notes.md](docs/implementation-notes.md) |
+| Comment installer et déployer ?                             | [docs/setup.md](docs/setup.md)                               |
+| Combien ça coûte ?                                          | [docs/costs.md](docs/costs.md)                               |
+| Comment installer et utiliser la carte du code (graphify) ? | [docs/graphify.md](docs/graphify.md)                         |
 
 ## Environnements
 

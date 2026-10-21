@@ -8,24 +8,24 @@ où elle se trouve, et comment les morceaux s'appellent entre eux.
 Ces fichiers décrivent **le code tel qu'il est**. Ils ne portent ni décision ni
 justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ici.
 
-| Question | Document |
-|---|---|
-| Comment ça marche, quelle fonction, où ? | **ici, `docs/technical/`** |
-| Pourquoi cette règle de jeu ? | [docs/design.md](../design.md) |
-| Pourquoi cette infrastructure ? | [docs/architecture.md](../architecture.md) |
+| Question                                        | Document                                                   |
+| ----------------------------------------------- | ---------------------------------------------------------- |
+| Comment ça marche, quelle fonction, où ?        | **ici, `docs/technical/`**                                 |
+| Pourquoi cette règle de jeu ?                   | [docs/design.md](../design.md)                             |
+| Pourquoi cette infrastructure ?                 | [docs/architecture.md](../architecture.md)                 |
 | Qu'a-t-il fallu interpréter faute de décision ? | [docs/implementation-notes.md](../implementation-notes.md) |
-| Comment installer et déployer ? | [docs/setup.md](../setup.md) |
-| Combien ça coûte ? | [docs/costs.md](../costs.md) |
+| Comment installer et déployer ?                 | [docs/setup.md](../setup.md)                               |
+| Combien ça coûte ?                              | [docs/costs.md](../costs.md)                               |
 
 ## Les cinq documents
 
-| Fichier | Couvre | Paquet |
-|---|---|---|
-| [core.md](core.md) | Les règles du jeu : plateau, hauteur, ligne de vue, déplacement, capture, fog of war, types de pièces | `packages/core` |
-| [engine.md](engine.md) | Le moteur de rendu et le client : écrans de compte et de menu, entrée en partie, projection isométrique, caméra, sélection et déplacement animé, couches, code couleur, saisie de coups | `apps/web` |
-| [ui.md](ui.md) | La charte graphique : tokens (seule source des couleurs), feuille de style, composants React, synchronisation vers Claude Design | `packages/ui` |
-| [server.md](server.md) | Le serveur : Worker, Durable Objects de partie et de file (appariement et salons privés), base D1, protocole réseau | `apps/server`, `packages/protocol` |
-| [infra.md](infra.md) | L'outillage et la CI/CD : environnements, migrations, déploiement | `tooling/infra`, `.github` |
+| Fichier                | Couvre                                                                                                                                                                                  | Paquet                             |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| [core.md](core.md)     | Les règles du jeu : plateau, hauteur, ligne de vue, déplacement, capture, fog of war, types de pièces                                                                                   | `packages/core`                    |
+| [engine.md](engine.md) | Le moteur de rendu et le client : écrans de compte et de menu, entrée en partie, projection isométrique, caméra, sélection et déplacement animé, couches, code couleur, saisie de coups | `apps/web`                         |
+| [ui.md](ui.md)         | La charte graphique : tokens (seule source des couleurs), feuille de style, composants React, synchronisation vers Claude Design                                                        | `packages/ui`                      |
+| [server.md](server.md) | Le serveur : Worker, Durable Objects de partie et de file (appariement et salons privés), base D1, protocole réseau                                                                     | `apps/server`, `packages/protocol` |
+| [infra.md](infra.md)   | L'outillage et la CI/CD : environnements, migrations, déploiement                                                                                                                       | `tooling/infra`, `.github`         |
 
 ## Carte du système
 
@@ -84,7 +84,7 @@ Concrètement, avant de considérer un changement comme terminé :
 2. Un comportement modifié (une constante de réglage, une règle, un ordre d'appel) →
    corriger la description, pas seulement le nom.
 3. Un invariant touché (voir la section « Invariants » de chaque document) → soit le
-   rétablir, soit mettre à jour l'invariant *et* dire pourquoi il a changé.
+   rétablir, soit mettre à jour l'invariant _et_ dire pourquoi il a changé.
 4. Une décision de game design ou d'infra derrière le changement → elle va dans
    `docs/design.md` ou `docs/architecture.md`, pas ici.
 

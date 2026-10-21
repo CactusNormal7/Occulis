@@ -30,7 +30,8 @@ export const account: Messages["account"] = {
     lead: "Un lien pour en choisir un nouveau vous sera envoyé.",
     submit: "Envoyer le lien",
     busy: "Envoi…",
-    sent: (email) => `Si un compte existe pour ${email}, un lien vient de partir. Il expire dans une heure.`,
+    sent: (email) =>
+      `Si un compte existe pour ${email}, un lien vient de partir. Il expire dans une heure.`,
   },
   reset: {
     title: "Nouveau mot de passe",
@@ -49,7 +50,8 @@ export const account: Messages["account"] = {
     verified: "Adresse confirmée. Le jeu en ligne vous est ouvert.",
   },
   passwordHint: {
-    empty: (min) => `${min} caractères au moins. Un gestionnaire de mots de passe peut en générer un.`,
+    empty: (min) =>
+      `${min} caractères au moins. Un gestionnaire de mots de passe peut en générer un.`,
     missing: (count) => `Encore ${count} caractère${count > 1 ? "s" : ""}.`,
     enough: "Longueur suffisante.",
   },

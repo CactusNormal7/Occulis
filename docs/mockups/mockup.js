@@ -6,7 +6,7 @@
  * le navigateur.
  *
  * Ce fichier reproduit la projection de `apps/web/src/iso.ts` et les tokens de
- * `apps/web/src/theme.ts` sans en dépendre. Il ne participe pas au build.
+ * `apps/web/src/theme/theme.ts` sans en dépendre. Il ne participe pas au build.
  */
 
 (function (global) {
@@ -150,7 +150,7 @@
           stroke: PALETTE.geometry,
           "stroke-width": 1,
           "stroke-opacity": alpha,
-        })
+        }),
       );
 
       if (h === 0) return;
@@ -172,7 +172,7 @@
             stroke: PALETTE.geometry,
             "stroke-width": 1,
             "stroke-opacity": alpha * e[4],
-          })
+          }),
         );
       });
     });
@@ -224,10 +224,17 @@
       parts.push({ kind: "circle", cx: bx, cy: ty - 32, r: 6.5, fillOpacity: 0.1, width: 1.6 });
     } else if (type === "commandant") {
       parts.push({ kind: "line", x1: bx, y1: ty, x2: bx, y2: ty - 20, width: 1.6 });
-      parts.push({ kind: "polygon", points: diamond(bx, ty - 13, 11, 3.5), fillOpacity: 0.1, width: 1.2 });
       parts.push({
         kind: "polygon",
-        points: [bx + "," + (ty - 29), bx + 5.5 + "," + (ty - 20), bx - 5.5 + "," + (ty - 20)].join(" "),
+        points: diamond(bx, ty - 13, 11, 3.5),
+        fillOpacity: 0.1,
+        width: 1.2,
+      });
+      parts.push({
+        kind: "polygon",
+        points: [bx + "," + (ty - 29), bx + 5.5 + "," + (ty - 20), bx - 5.5 + "," + (ty - 20)].join(
+          " ",
+        ),
         fillOpacity: 0.22,
         width: 1.5,
       });
@@ -235,7 +242,11 @@
       parts.push({ kind: "line", x1: bx, y1: ty, x2: bx + 4, y2: ty - 15, width: 1.5 });
       parts.push({
         kind: "polyline",
-        points: [bx - 3 + "," + (ty - 16), bx + 4 + "," + (ty - 22), bx + 11 + "," + (ty - 16)].join(" "),
+        points: [
+          bx - 3 + "," + (ty - 16),
+          bx + 4 + "," + (ty - 22),
+          bx + 11 + "," + (ty - 16),
+        ].join(" "),
         width: 1.6,
       });
     }
@@ -255,10 +266,16 @@
     };
 
     if (part.kind === "line") {
-      return el("line", Object.assign({ x1: part.x1, y1: part.y1, x2: part.x2, y2: part.y2 }, shared));
+      return el(
+        "line",
+        Object.assign({ x1: part.x1, y1: part.y1, x2: part.x2, y2: part.y2 }, shared),
+      );
     }
     if (part.kind === "polyline") {
-      return el("polyline", Object.assign({ points: part.points }, shared, { fill: "none", "fill-opacity": null }));
+      return el(
+        "polyline",
+        Object.assign({ points: part.points }, shared, { fill: "none", "fill-opacity": null }),
+      );
     }
     if (part.kind === "circle") {
       return el("circle", Object.assign({ cx: part.cx, cy: part.cy, r: part.r }, shared));
@@ -287,7 +304,7 @@
 
     parts.forEach(function (part) {
       group.appendChild(
-        glyphShape(part, color, part.width, alpha, color, (part.fillOpacity || 0) * fillScale)
+        glyphShape(part, color, part.width, alpha, color, (part.fillOpacity || 0) * fillScale),
       );
     });
 
@@ -342,7 +359,8 @@
         r: (opts.minRadius || 0.7) + rand() * (opts.radiusSpread || 1.1),
         fill: opts.color || PALETTE.geometry,
       });
-      node.style.animationDuration = (opts.minDuration || 9) + rand() * (opts.durationSpread || 8) + "s";
+      node.style.animationDuration =
+        (opts.minDuration || 9) + rand() * (opts.durationSpread || 8) + "s";
       // Délai négatif : les particules sont déjà en vol au premier rendu.
       node.style.animationDelay = -rand() * (opts.delaySpread || 16) + "s";
       if (opts.peakOpacity) node.style.setProperty("--occ-peak", opts.peakOpacity);
@@ -370,7 +388,8 @@
         r: (opts.minRadius || 0.8) + rand() * (opts.radiusSpread || 1),
         fill: opts.color || PALETTE.selection,
       });
-      node.style.animationDuration = (opts.minDuration || 2.6) + rand() * (opts.durationSpread || 1.8) + "s";
+      node.style.animationDuration =
+        (opts.minDuration || 2.6) + rand() * (opts.durationSpread || 1.8) + "s";
       node.style.animationDelay = -rand() * (opts.delaySpread || 4) + "s";
       group.appendChild(node);
     }
@@ -393,7 +412,7 @@
         "stroke-opacity": 0.3,
         "stroke-width": 1.5,
         "stroke-dasharray": "4 4",
-      })
+      }),
     );
     svg.appendChild(
       el("circle", {
@@ -404,7 +423,7 @@
         stroke: PALETTE.geometry,
         "stroke-opacity": 0.25,
         "stroke-width": 1,
-      })
+      }),
     );
   }
 

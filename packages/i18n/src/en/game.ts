@@ -77,10 +77,12 @@ export const game = {
     reasons: { resignation: "resignation" },
   },
   turn: {
-    line: (turn: number, whose: string, seat: string) => `Turn ${turn} · ${whose} · you play ${seat}`,
+    line: (turn: number, whose: string, seat: string) =>
+      `Turn ${turn} · ${whose} · you play ${seat}`,
     yours: "your move",
     theirs: "to move: the opponent",
-    watchers: (count: number) => (count === 1 ? " · 1 friend is watching you" : ` · ${count} friends are watching you`),
+    watchers: (count: number) =>
+      count === 1 ? " · 1 friend is watching you" : ` · ${count} friends are watching you`,
     watching: (turn: number, whose: string, friend: string, side: string) =>
       `Turn ${turn} · ${whose} · you are watching ${friend} (${side})`,
     friendToMove: (friend: string) => `to move: ${friend}`,

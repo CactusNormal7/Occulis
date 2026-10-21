@@ -29,7 +29,8 @@ export const account = {
     lead: "You will receive a link to choose a new one.",
     submit: "Send the link",
     busy: "Sending…",
-    sent: (email: string) => `If an account exists for ${email}, a link has just been sent. It expires in one hour.`,
+    sent: (email: string) =>
+      `If an account exists for ${email}, a link has just been sent. It expires in one hour.`,
   },
   reset: {
     title: "New password",

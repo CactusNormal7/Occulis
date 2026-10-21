@@ -14,8 +14,7 @@ import { type Action, type Coord, type Piece, type Result, err, ok } from "@occu
  */
 
 export type Command =
-  | { readonly kind: "move"; readonly from: Coord; readonly to: Coord }
-  | { readonly kind: "resign" };
+  { readonly kind: "move"; readonly from: Coord; readonly to: Coord } | { readonly kind: "resign" };
 
 export type CommandFault =
   | { readonly code: "empty" }

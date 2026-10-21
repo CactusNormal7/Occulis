@@ -34,7 +34,8 @@ export const prepare: Messages["prepare"] = {
     opponentLocked: "Votre adversaire est prêt.",
     opponentPending: "Votre adversaire se déploie encore.",
     remaining: (seconds) => `${seconds} s restantes`,
-    timeoutNote: "À l'échéance, votre placement est retenu s'il est complet, sinon celui par défaut.",
+    timeoutNote:
+      "À l'échéance, votre placement est retenu s'il est complet, sinon celui par défaut.",
     preset: "Équipe",
     noPreset: "Placement en cours",
     loadPreset: "Charger",

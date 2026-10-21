@@ -35,12 +35,7 @@ export function relationOf(facts: RelationFacts): Relation {
 }
 
 export type RequestError =
-  | "SELF"
-  | "UNKNOWN_PLAYER"
-  | "BLOCKED"
-  | "UNAVAILABLE"
-  | "ALREADY_FRIENDS"
-  | "TOO_MANY_REQUESTS";
+  "SELF" | "UNKNOWN_PLAYER" | "BLOCKED" | "UNAVAILABLE" | "ALREADY_FRIENDS" | "TOO_MANY_REQUESTS";
 
 export type RequestDecision =
   | { readonly ok: true; readonly action: "send" | "accept" | "already-sent" }

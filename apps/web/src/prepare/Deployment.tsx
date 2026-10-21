@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Locale } from "@occulis/i18n";
-import { type PlayerId, type TeamEntry, rulesetFor } from "@occulis/core";
+import { type Board, type PlayerId, type TeamEntry, rulesetFor } from "@occulis/core";
 import type { TeamPreset } from "@occulis/protocol";
 import {
   Badge,
@@ -14,9 +14,8 @@ import {
   useMessages,
 } from "@occulis/ui";
 import type { DeploymentState } from "../net/session.js";
-import { boardForScenario } from "../game/scenario.js";
-import { TeamBuilder } from "../team/TeamBuilder.js";
-import { type TeamDraft, fromEntries, toEntries, verdict } from "../team/model.js";
+import { TeamBuilder } from "../team-builder/TeamBuilder.js";
+import { type TeamDraft, fromEntries, toEntries, verdict } from "../team-builder/model.js";
 import { useRemaining } from "./clock.js";
 import { DEPLOYMENT_TOTAL_MS } from "./constants.js";
 import { CardPlate } from "./Plates.js";
@@ -33,7 +32,9 @@ import { initialTeam, presetTeam, secondsLeft, shouldAutoSend, usablePresets } f
 export interface DeploymentProps {
   readonly locale: Locale;
   readonly player: PlayerId;
+  /** Le nom de la carte, qui choisit les équipes préparées ; ses cases viennent de `board`. */
   readonly scenario: string;
+  readonly board: Board;
   readonly rulesetVersion: string;
   readonly deployment: DeploymentState;
   /** L'instant d'arrivée de l'annonce, sur `performance.now()`. */
@@ -57,14 +58,26 @@ export function Deployment(props: DeploymentProps) {
   );
 }
 
-function Content({ player, scenario, rulesetVersion, deployment, receivedAt, presets, rejection, onDeploy }: DeploymentProps) {
+function Content({
+  player,
+  scenario,
+  board,
+  rulesetVersion,
+  deployment,
+  receivedAt,
+  presets,
+  rejection,
+  onDeploy,
+}: DeploymentProps) {
   const all = useMessages();
   const m = all.prepare;
   const ruleset = useMemo(() => rulesetFor(rulesetVersion), [rulesetVersion]);
-  const board = useMemo(() => boardForScenario(scenario), [scenario]);
   const usable = usablePresets(presets, scenario, rulesetVersion);
   const [draft, setDraft] = useState<TeamDraft>(() =>
-    fromEntries(ruleset, initialTeam(presets, scenario, rulesetVersion, player, deployment.defaultTeam)),
+    fromEntries(
+      ruleset,
+      initialTeam(presets, scenario, rulesetVersion, player, deployment.defaultTeam),
+    ),
   );
   const [touched, setTouched] = useState(false);
   const [sent, setSent] = useState(false);
@@ -76,7 +89,15 @@ function Content({ player, scenario, rulesetVersion, deployment, receivedAt, pre
   // Les presets arrivent parfois après l'annonce : tant que le joueur n'a touché à rien,
   // celui par défaut remplace l'équipe de la carte.
   useEffect(() => {
-    if (!touched) setDraft(fromEntries(ruleset, initialTeam(presets, scenario, rulesetVersion, player, deployment.defaultTeam)));
+    if (!touched)
+      setDraft(
+        fromEntries(
+          ruleset,
+          initialTeam(presets, scenario, rulesetVersion, player, deployment.defaultTeam),
+        ),
+      );
+    // L'arrivée des presets seule : une mise à jour des verrous ne doit pas réécrire le brouillon.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presets]);
 
   const edit = (next: TeamDraft): void => {
@@ -125,13 +146,25 @@ function Content({ player, scenario, rulesetVersion, deployment, receivedAt, pre
                   const chosen = usable.find((preset) => preset.id === event.target.value);
                   if (chosen !== undefined) edit(fromEntries(ruleset, presetTeam(chosen, player)));
                 }}
-                options={[{ value: "", label: m.deploy.noPreset }, ...usable.map((preset) => ({ value: preset.id, label: preset.name }))]}
+                options={[
+                  { value: "", label: m.deploy.noPreset },
+                  ...usable.map((preset) => ({ value: preset.id, label: preset.name })),
+                ]}
               />
             )}
-            <CountdownRing totalMs={DEPLOYMENT_TOTAL_MS} remainingMs={remaining} label={m.remaining}>
+            <CountdownRing
+              totalMs={DEPLOYMENT_TOTAL_MS}
+              remainingMs={remaining}
+              label={m.remaining}
+            >
               {secondsLeft(remaining)}
             </CountdownRing>
-            <Button variant="primary" icon={locked ? undefined : "shield"} disabled={locked || sent || !valid} onClick={send}>
+            <Button
+              variant="primary"
+              icon={locked ? undefined : "shield"}
+              disabled={locked || sent || !valid}
+              onClick={send}
+            >
               {locked ? m.deploy.locked : m.deploy.lock}
             </Button>
           </>

@@ -1,4 +1,4 @@
-import type { Board, Coord } from "@occulis/core";
+import { type Board, type Coord, coordEquals } from "@occulis/core";
 import {
   type IsoProjection,
   type Quad,
@@ -52,4 +52,10 @@ export function tileAt(point: ScreenPoint, board: Board, proj: IsoProjection): C
   }
 
   return undefined;
+}
+
+/** Deux cases désignées sont-elles la même ? « Aucune » n'égale qu'« aucune ». */
+export function sameCoord(a: Coord | undefined, b: Coord | undefined): boolean {
+  if (a === undefined || b === undefined) return a === b;
+  return coordEquals(a, b);
 }

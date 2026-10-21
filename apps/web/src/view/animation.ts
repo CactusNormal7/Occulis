@@ -3,14 +3,15 @@ import { type Board, type Coord, type PieceId, chebyshevDistance } from "@occuli
 /**
  * Interpolation du déplacement d'une pièce. Module pur : ni PixiJS, ni DOM.
  *
- * L'action est appliquée à l'état **immédiatement** ; seule la position à l'écran
- * est interpolée. L'animation n'est donc jamais une source de vérité, et
- * l'interrompre ne peut pas désynchroniser la partie.
+ * La position vient toujours de la dernière vue du serveur ; seul le trajet à l'écran
+ * est interpolé, à partir de ce que cette vue a fait bouger (`main.ts`, `adopt()`).
+ * L'animation n'est donc jamais une source de vérité, et l'interrompre ne peut pas
+ * désynchroniser la partie.
  */
 
-const BASE_MS = 90;
-const PER_TILE_MS = 55;
-const MAX_MS = 420;
+const BASE_MS = 200;
+const PER_TILE_MS = 80;
+const MAX_MS = 620;
 
 export interface MoveAnimation {
   readonly pieceId: PieceId;
@@ -63,4 +64,18 @@ export function positionOf(animation: MoveAnimation): AnimatedPosition {
     },
     height: animation.fromHeight + (animation.toHeight - animation.fromHeight) * t,
   };
+}
+
+/**
+ * L'arc d'un déplacement : de combien de niveaux la pièce flotte au-dessus de sa
+ * trajectoire, nul au départ et à l'arrivée. Purement visuel — ni la profondeur ni la
+ * position ne le prennent en compte.
+ */
+export function liftOf(animation: MoveAnimation, hop: number): number {
+  return Math.sin(Math.PI * Math.min(1, animation.elapsed / animation.duration)) * hop;
+}
+
+/** La même animation, `lagMs` plus tôt : la position d'une image rémanente. */
+export function lagging(animation: MoveAnimation, lagMs: number): MoveAnimation {
+  return { ...animation, elapsed: Math.max(0, animation.elapsed - lagMs) };
 }

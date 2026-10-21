@@ -26,7 +26,9 @@ function request(method: string, path: string, cookie: string, body?: unknown): 
 }
 
 async function playerOf(handle: string): Promise<string> {
-  const row = await env.DB.prepare("SELECT player_id FROM users WHERE email = ?").bind(`${handle}@occulis.test`).first<{ player_id: string }>();
+  const row = await env.DB.prepare("SELECT player_id FROM users WHERE email = ?")
+    .bind(`${handle}@occulis.test`)
+    .first<{ player_id: string }>();
   return row?.player_id ?? "";
 }
 
@@ -34,10 +36,21 @@ async function playerOf(handle: string): Promise<string> {
 async function finished(playerId: string, won: boolean, at: number): Promise<void> {
   const other = `p-${crypto.randomUUID()}`;
   await env.DB.batch([
-    env.DB.prepare("INSERT OR IGNORE INTO players (id, handle, created_at) VALUES (?, ?, ?)").bind(other, other, 0),
+    env.DB.prepare("INSERT OR IGNORE INTO players (id, handle, created_at) VALUES (?, ?, ?)").bind(
+      other,
+      other,
+      0,
+    ),
     env.DB.prepare(
       "INSERT INTO matches (id, player_a, player_b, ruleset_version, scenario, started_at, finished_at, outcome) VALUES (?, ?, ?, 'provisional-1', 'ridge-1', ?, ?, ?)",
-    ).bind(crypto.randomUUID(), playerId, other, at, at, JSON.stringify({ kind: "victory", winner: won ? "A" : "B", reason: "resignation" })),
+    ).bind(
+      crypto.randomUUID(),
+      playerId,
+      other,
+      at,
+      at,
+      JSON.stringify({ kind: "victory", winner: won ? "A" : "B", reason: "resignation" }),
+    ),
   ]);
 }
 
@@ -60,10 +73,20 @@ describe("profil : Elo et faits d'armes", () => {
     expect(unlocked).toEqual(["first-match", "first-win", "streak-3"]);
     expect(feats.showcase).toEqual([]);
 
-    expect((await request("POST", "/api/me/showcase", cookie, { feats: ["matches-50"] })).status).toBe(400);
-    expect((await request("POST", "/api/me/showcase", cookie, { feats: ["first-win", "first-win"] })).status).toBe(400);
-    expect((await request("POST", "/api/me/showcase", cookie, { feats: ["streak-3", "first-win"] })).status).toBe(200);
-    expect(((await (await request("GET", "/api/me/feats", cookie)).json()) as MeFeats).showcase).toEqual(["streak-3", "first-win"]);
+    expect(
+      (await request("POST", "/api/me/showcase", cookie, { feats: ["matches-50"] })).status,
+    ).toBe(400);
+    expect(
+      (await request("POST", "/api/me/showcase", cookie, { feats: ["first-win", "first-win"] }))
+        .status,
+    ).toBe(400);
+    expect(
+      (await request("POST", "/api/me/showcase", cookie, { feats: ["streak-3", "first-win"] }))
+        .status,
+    ).toBe(200);
+    expect(
+      ((await (await request("GET", "/api/me/feats", cookie)).json()) as MeFeats).showcase,
+    ).toEqual(["streak-3", "first-win"]);
   });
 });
 
@@ -72,12 +95,22 @@ describe("profil : équipes préparées", () => {
     const cookie = await signUp(unique("preset"));
     const other = await signUp(unique("voisin"));
 
-    const created = await request("POST", "/api/me/presets", cookie, { name: "  Défense  ", team: defaultTeam() });
+    const created = await request("POST", "/api/me/presets", cookie, {
+      name: "  Défense  ",
+      team: defaultTeam(),
+    });
     expect(created.status).toBe(200);
     const first = (await created.json()) as TeamPreset;
-    expect(first).toMatchObject({ name: "Défense", scenario: DEFAULT_SCENARIO, isDefault: true, valid: true });
+    expect(first).toMatchObject({
+      name: "Défense",
+      scenario: DEFAULT_SCENARIO,
+      isDefault: true,
+      valid: true,
+    });
 
-    const second = (await (await request("POST", "/api/me/presets", cookie, { name: "Attaque", team: defaultTeam() })).json()) as TeamPreset;
+    const second = (await (
+      await request("POST", "/api/me/presets", cookie, { name: "Attaque", team: defaultTeam() })
+    ).json()) as TeamPreset;
     expect(second.isDefault).toBe(false);
 
     const list = (await (await request("GET", "/api/me/presets", cookie)).json()) as TeamPresetList;
@@ -85,14 +118,30 @@ describe("profil : équipes préparées", () => {
     expect(list.limit).toBe(10);
 
     // Un autre joueur ne voit ni ne touche rien.
-    expect(((await (await request("GET", "/api/me/presets", other)).json()) as TeamPresetList).presets).toEqual([]);
-    expect((await request("PUT", `/api/me/presets/${first.id}`, other, { name: "volé" })).status).toBe(404);
+    expect(
+      ((await (await request("GET", "/api/me/presets", other)).json()) as TeamPresetList).presets,
+    ).toEqual([]);
+    expect(
+      (await request("PUT", `/api/me/presets/${first.id}`, other, { name: "volé" })).status,
+    ).toBe(404);
     expect((await request("DELETE", `/api/me/presets/${first.id}`, other)).status).toBe(404);
 
-    expect(((await (await request("PUT", `/api/me/presets/${first.id}`, cookie, { name: "Mur" })).json()) as TeamPreset).name).toBe("Mur");
-    expect((await request("POST", `/api/me/presets/${second.id}/default`, cookie)).status).toBe(200);
-    const after = (await (await request("GET", "/api/me/presets", cookie)).json()) as TeamPresetList;
-    expect(after.presets.filter((preset) => preset.isDefault).map((preset) => preset.id)).toEqual([second.id]);
+    expect(
+      (
+        (await (
+          await request("PUT", `/api/me/presets/${first.id}`, cookie, { name: "Mur" })
+        ).json()) as TeamPreset
+      ).name,
+    ).toBe("Mur");
+    expect((await request("POST", `/api/me/presets/${second.id}/default`, cookie)).status).toBe(
+      200,
+    );
+    const after = (await (
+      await request("GET", "/api/me/presets", cookie)
+    ).json()) as TeamPresetList;
+    expect(after.presets.filter((preset) => preset.isDefault).map((preset) => preset.id)).toEqual([
+      second.id,
+    ]);
 
     // Supprimer celui par défaut en désigne un autre.
     expect((await request("DELETE", `/api/me/presets/${second.id}`, cookie)).status).toBe(200);
@@ -100,13 +149,40 @@ describe("profil : équipes préparées", () => {
     expect(left.presets.map((preset) => [preset.id, preset.isDefault])).toEqual([[first.id, true]]);
   });
 
+  it("n'en marque qu'une par défaut, même créées en même temps", async () => {
+    const cookie = await signUp(unique("course"));
+    const created = await Promise.all(
+      ["un", "deux", "trois"].map((name) =>
+        request("POST", "/api/me/presets", cookie, { name, team: defaultTeam() }),
+      ),
+    );
+    expect(created.map((response) => response.status)).toEqual([200, 200, 200]);
+    const list = (await (await request("GET", "/api/me/presets", cookie)).json()) as TeamPresetList;
+    expect(list.presets.filter((preset) => preset.isDefault)).toHaveLength(1);
+  });
+
   it("refuse une équipe invalide, un nom vide, et au-delà de la limite", async () => {
     const cookie = await signUp(unique("borne"));
-    expect((await request("POST", "/api/me/presets", cookie, { name: "x", team: defaultTeam().slice(1) })).status).toBe(400);
-    expect((await request("POST", "/api/me/presets", cookie, { name: " ", team: defaultTeam() })).status).toBe(400);
+    expect(
+      (
+        await request("POST", "/api/me/presets", cookie, {
+          name: "x",
+          team: defaultTeam().slice(1),
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (await request("POST", "/api/me/presets", cookie, { name: " ", team: defaultTeam() })).status,
+    ).toBe(400);
     for (let n = 0; n < 10; n += 1) {
-      expect((await request("POST", "/api/me/presets", cookie, { name: `n${n}`, team: defaultTeam() })).status).toBe(200);
+      expect(
+        (await request("POST", "/api/me/presets", cookie, { name: `n${n}`, team: defaultTeam() }))
+          .status,
+      ).toBe(200);
     }
-    expect((await request("POST", "/api/me/presets", cookie, { name: "de trop", team: defaultTeam() })).status).toBe(409);
+    expect(
+      (await request("POST", "/api/me/presets", cookie, { name: "de trop", team: defaultTeam() }))
+        .status,
+    ).toBe(409);
   });
 });

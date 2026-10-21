@@ -12,7 +12,8 @@
  * poste, et le cache meurt avec la page.
  */
 
-export type Outcome<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly message: string };
+export type Outcome<T> =
+  { readonly ok: true; readonly value: T } | { readonly ok: false; readonly message: string };
 
 /** Une lecture nommée : la clé dit ce qui est lu, `load` comment. */
 export interface Resource<T> {
@@ -119,7 +120,11 @@ export class LoadCache {
     const { key } = resource;
     const entry = this.peek<T>(key);
     if (entry?.pending !== undefined) return entry.pending;
-    if (options.force !== true && entry?.outcome !== undefined && this.now() - entry.at < FRESH_MS) {
+    if (
+      options.force !== true &&
+      entry?.outcome !== undefined &&
+      this.now() - entry.at < FRESH_MS
+    ) {
       return Promise.resolve(entry.outcome);
     }
 
@@ -135,7 +140,11 @@ export class LoadCache {
     // Une clé jamais lue n'est affichée nulle part : inutile de prévenir qui que ce soit,
     // et ce départ peut avoir lieu pendant un rendu. Une clé déjà affichée passe, elle,
     // en relecture, ce que ses vues montrent.
-    this.write(key, { outcome: entry?.outcome, at: entry?.at ?? 0, pending: promise }, entry?.outcome !== undefined);
+    this.write(
+      key,
+      { outcome: entry?.outcome, at: entry?.at ?? 0, pending: promise },
+      entry?.outcome !== undefined,
+    );
     return promise;
   }
 
@@ -147,7 +156,11 @@ export class LoadCache {
   /** Une valeur obtenue autrement (une réponse d'écriture, une poussée) devient la référence. */
   set<T>(key: string, value: T): void {
     const entry = this.peek<T>(key);
-    this.write(key, { outcome: { ok: true, value }, at: this.now(), pending: entry?.pending }, true);
+    this.write(
+      key,
+      { outcome: { ok: true, value }, at: this.now(), pending: entry?.pending },
+      true,
+    );
   }
 
   /** Oublie les clés qui commencent par `prefix`, ou toutes sans préfixe. */

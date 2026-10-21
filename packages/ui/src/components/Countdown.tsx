@@ -19,12 +19,22 @@ export interface CountdownRingProps {
  * l'anneau se viderait d'un coup, alors que le temps restant est une information.
  * Sous les cinq dernières secondes, il passe dans la teinte des refus.
  */
-export function CountdownRing({ totalMs, remainingMs, children, size = "sm", label }: CountdownRingProps) {
+export function CountdownRing({
+  totalMs,
+  remainingMs,
+  children,
+  size = "sm",
+  label,
+}: CountdownRingProps) {
   const fraction = totalMs <= 0 ? 0 : Math.min(1, Math.max(0, remainingMs / totalMs));
   const circumference = 2 * Math.PI * 16;
   return (
     <span
-      className={cx("occ-countdown", `occ-countdown--${size}`, remainingMs <= 5000 && "occ-countdown--urgent")}
+      className={cx(
+        "occ-countdown",
+        `occ-countdown--${size}`,
+        remainingMs <= 5000 && "occ-countdown--urgent",
+      )}
       role="timer"
       aria-label={label}
     >

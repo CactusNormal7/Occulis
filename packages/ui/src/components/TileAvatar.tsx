@@ -24,7 +24,11 @@ export function TileAvatar({ name, size = "sm", camp }: TileAvatarProps) {
     <svg
       viewBox="0 0 72 36"
       aria-hidden="true"
-      className={cx("occ-tile-avatar", `occ-tile-avatar--${size}`, camp !== undefined && `occ-tile-avatar--${camp}`)}
+      className={cx(
+        "occ-tile-avatar",
+        `occ-tile-avatar--${size}`,
+        camp !== undefined && `occ-tile-avatar--${camp}`,
+      )}
     >
       <polygon points="36,1 71,18 36,35 1,18" />
       <text x="36" y="19">

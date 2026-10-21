@@ -31,6 +31,7 @@ export function legacyRedirect(url: URL): string | undefined {
   if (path === undefined && !renamed) return undefined;
 
   const target = new URL(path ?? url.pathname, url.origin);
-  for (const [key, value] of url.searchParams) target.searchParams.append(PARAMETERS[key] ?? key, value);
+  for (const [key, value] of url.searchParams)
+    target.searchParams.append(PARAMETERS[key] ?? key, value);
   return target.toString();
 }

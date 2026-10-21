@@ -11,10 +11,12 @@ import { MatchFound, type MatchFoundProps } from "./MatchFound.js";
  */
 export function mountMatchFound(host: HTMLElement): (props: MatchFoundProps | undefined) => void {
   const root = createRoot(host);
-  return (props) => flushSync(() => root.render(props === undefined ? null : <MatchFound {...props} />));
+  return (props) =>
+    flushSync(() => root.render(props === undefined ? null : <MatchFound {...props} />));
 }
 
 export function mountDeployment(host: HTMLElement): (props: DeploymentProps | undefined) => void {
   const root = createRoot(host);
-  return (props) => flushSync(() => root.render(props === undefined ? null : <Deployment {...props} />));
+  return (props) =>
+    flushSync(() => root.render(props === undefined ? null : <Deployment {...props} />));
 }

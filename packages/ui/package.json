@@ -10,7 +10,10 @@
     ".": "./src/index.ts",
     "./tokens": "./src/tokens.ts",
     "./critical": "./src/critical.ts",
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles.css",
+    "./reveal": "./src/window-reveal.ts",
+    "./lab": "./src/lab/index.ts",
+    "./lab.css": "./src/lab/lab.css"
   },
   "sideEffects": [
     "*.css"
@@ -19,7 +22,7 @@
     "build": "tsup",
     "tokens": "node --experimental-strip-types scripts/build-tokens.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json"
   },
   "peerDependencies": {
     "react": "^18.3.1",

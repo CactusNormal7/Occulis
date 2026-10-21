@@ -64,10 +64,13 @@ export function checkHandle(raw: unknown): HandleCheck {
   if (typeof raw !== "string") return { ok: false, code: "HANDLE_LENGTH" };
   const handle = normalizeHandle(raw);
   const length = [...handle].length;
-  if (length < MIN_HANDLE_LENGTH || length > MAX_HANDLE_LENGTH) return { ok: false, code: "HANDLE_LENGTH" };
-  if (!ALLOWED.test(handle) || STACKED_MARKS.test(handle)) return { ok: false, code: "HANDLE_CHARSET" };
+  if (length < MIN_HANDLE_LENGTH || length > MAX_HANDLE_LENGTH)
+    return { ok: false, code: "HANDLE_LENGTH" };
+  if (!ALLOWED.test(handle) || STACKED_MARKS.test(handle))
+    return { ok: false, code: "HANDLE_CHARSET" };
   const folded = fold(handle);
-  if (RESERVED.has(folded) || DELETED_PREFIXES.some((prefix) => folded.startsWith(prefix))) return { ok: false, code: "HANDLE_RESERVED" };
+  if (RESERVED.has(folded) || DELETED_PREFIXES.some((prefix) => folded.startsWith(prefix)))
+    return { ok: false, code: "HANDLE_RESERVED" };
   return { ok: true, handle };
 }
 
@@ -102,7 +105,11 @@ export function handleCandidates(displayName: string, random: () => string): str
 }
 
 function handleBase(displayName: string): string {
-  const cleaned = [...normalizeHandle(displayName).replace(/[^\p{L}\p{M}\p{N}_.\- ]/gu, "").replace(/\p{M}{2,}/gu, "")]
+  const cleaned = [
+    ...normalizeHandle(displayName)
+      .replace(/[^\p{L}\p{M}\p{N}_.\- ]/gu, "")
+      .replace(/\p{M}{2,}/gu, ""),
+  ]
     .slice(0, MAX_HANDLE_LENGTH - SUFFIX_ROOM)
     .join("")
     .trim();

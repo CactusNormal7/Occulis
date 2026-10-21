@@ -1,4 +1,11 @@
-import { useId, useState, type FormEvent, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import {
+  useId,
+  useState,
+  type FormEvent,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+} from "react";
 import { cx } from "../cx.js";
 import { Icon } from "./Icon.js";
 import { useMessages } from "./Locale.js";
@@ -22,7 +29,12 @@ export function TextField({ label, hint, error, className, ...rest }: TextFieldP
   return (
     <label className={cx("occ-field", error !== undefined && "occ-field--error", className)}>
       <span className="occ-field__label">{label}</span>
-      <input className="occ-input" aria-invalid={error !== undefined || undefined} aria-describedby={described.ids} {...rest} />
+      <input
+        className="occ-input"
+        aria-invalid={error !== undefined || undefined}
+        aria-describedby={described.ids}
+        {...rest}
+      />
       {described.nodes}
     </label>
   );
@@ -70,7 +82,10 @@ export function PasswordField({ label, hint, error, className, ...rest }: Passwo
   );
 }
 
-function useDescription(hint: ReactNode | undefined, error: string | undefined): { ids: string | undefined; nodes: ReactNode } {
+function useDescription(
+  hint: ReactNode | undefined,
+  error: string | undefined,
+): { ids: string | undefined; nodes: ReactNode } {
   const id = useId();
   const hintId = hint === undefined ? undefined : `${id}-hint`;
   const errorId = error === undefined ? undefined : `${id}-error`;
@@ -125,7 +140,12 @@ export interface SearchFieldProps {
 }
 
 /** Un champ de recherche, loupe à gauche, validé par Entrée. */
-export function SearchField({ defaultValue = "", placeholder: given, onSearch, onInput }: SearchFieldProps) {
+export function SearchField({
+  defaultValue = "",
+  placeholder: given,
+  onSearch,
+  onInput,
+}: SearchFieldProps) {
   const m = useMessages();
   const placeholder = given ?? m.ui.search;
   const [value, setValue] = useState(defaultValue);
@@ -162,7 +182,13 @@ export interface InlineEditProps {
 }
 
 /** Un champ et son bouton sur une ligne : l'édition d'une seule valeur, sur place. */
-export function InlineEdit({ label, type = "text", defaultValue = "", action, onSubmit }: InlineEditProps) {
+export function InlineEdit({
+  label,
+  type = "text",
+  defaultValue = "",
+  action,
+  onSubmit,
+}: InlineEditProps) {
   const [value, setValue] = useState(defaultValue);
   const [busy, setBusy] = useState(false);
   const submit = (event: FormEvent) => {
@@ -181,7 +207,11 @@ export function InlineEdit({ label, type = "text", defaultValue = "", action, on
         value={value}
         onChange={(event) => setValue(event.target.value)}
       />
-      <button type="submit" className="occ-button occ-button--default occ-button--md" disabled={busy}>
+      <button
+        type="submit"
+        className="occ-button occ-button--default occ-button--md"
+        disabled={busy}
+      >
         {action}
       </button>
     </form>

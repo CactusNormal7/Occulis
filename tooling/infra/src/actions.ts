@@ -59,6 +59,11 @@ export interface ActionDef {
    * Ink est démonté avant l'appel : la sortie s'affiche brute, `log` passe par la console.
    */
   interactive?: boolean;
+  /**
+   * Lançable sans le menu (`pnpm infra <id>`). Réservé aux actions sans effet distant ni
+   * commit : une action qui crée, déploie ou pousse reste derrière le menu, où on la choisit.
+   */
+  direct?: boolean;
   run: (ctx: ActionContext) => Promise<void>;
 }
 
@@ -99,6 +104,7 @@ function checkConfig(log: ActionContext["log"]): void {
 export const ACTIONS: ActionDef[] = [
   {
     id: "status",
+    direct: true,
     label: "Statut",
     hint: "compte, bases D1, configuration",
     async run(ctx) {
@@ -112,6 +118,7 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "list",
+    direct: true,
     label: "Lister les bases D1",
     hint: "wrangler d1 list",
     async run(ctx) {
@@ -316,15 +323,25 @@ export const ACTIONS: ActionDef[] = [
     label: "Lancer le serveur en local",
     hint: "build client + migrations locales + wrangler dev",
     interactive: true,
+    direct: true,
     async run(ctx) {
       // `build:local` et non `build` : le Worker ne sert que ../web/dist, et seul
       // le build local y dépose les maquettes de docs/mockups/ (engine.md,
       // invariant 16). Le déploiement, lui, doit rester sur `build`.
-      ctx.log("Build du client (le Worker sert ../web/dist, maquettes comprises)", "step");
-      await runInherited("pnpm", ["--filter", "@occulis/web", "build:local"], ROOT);
+      // Chaque étape doit réussir : un Ctrl+C pendant le build tue l'enfant, et lancer quand
+      // même les migrations puis wrangler servirait un dist partiel.
+      ctx.log("Build du client (le Worker sert ../web/dist, maquettes et labo compris)", "step");
+      if ((await runInherited("pnpm", ["--filter", "@occulis/web", "build:local"], ROOT)) !== 0) {
+        return ctx.log("Build du client en échec ou interrompu — serveur non lancé.", "fail");
+      }
       ctx.log("Migrations locales", "step");
-      await runWranglerInherited(["d1", "migrations", "apply", dbName("local"), "--local"]);
-      ctx.log("Démarrage de wrangler dev — Ctrl+C pour revenir au menu.", "step");
+      if (
+        (await runWranglerInherited(["d1", "migrations", "apply", dbName("local"), "--local"])) !==
+        0
+      ) {
+        return ctx.log("Migrations locales en échec ou interrompues — serveur non lancé.", "fail");
+      }
+      ctx.log("Démarrage de wrangler dev — Ctrl+C pour l'arrêter.", "step");
       await runWranglerInherited(["dev"]);
     },
   },
@@ -343,9 +360,13 @@ export const ACTIONS: ActionDef[] = [
         if (code !== 0) return ctx.log(`Gate « ${script} » en échec — déploiement annulé.`, "fail");
       }
       ctx.log("Build du client", "step");
-      await runStreaming("pnpm", ["--filter", "@occulis/web", "build"], ROOT, (l) =>
+      const build = await runStreaming("pnpm", ["--filter", "@occulis/web", "build"], ROOT, (l) =>
         ctx.log(l, "raw"),
       );
+      // Un build raté laisse un apps/web/dist périmé ou partiel : le déployer servirait
+      // un client qui ne correspond plus au Worker.
+      if (build.code !== 0)
+        return ctx.log("Build du client en échec — déploiement annulé.", "fail");
       // Migrations avant déploiement : un Worker servi contre un schéma non migré
       // échoue à la première requête.
       ctx.log("Migrations", "step");
@@ -421,6 +442,7 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: "login",
+    direct: true,
     label: "Connexion Cloudflare",
     hint: "wrangler login (ouvre le navigateur)",
     interactive: true,

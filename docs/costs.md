@@ -13,12 +13,12 @@ Object, 400 K GB-s de durée DO, 1 Go de stockage DO, 25 Md de lignes D1 lues, 5
 Hypothèses : ~60 actions par partie, 2 connexions WebSocket, ~50 requêtes Worker par session.
 Arrondi à 100 requêtes DO par partie pour garder de la marge.
 
-| Volume | Requêtes DO | Requêtes Worker | Lignes D1 écrites | Coût/mois |
-|---|---|---|---|---|
-| Dev + beta fermée (500 parties) | 50 K | 25 K | 28 K | **5 $** |
-| 1 000 joueurs (20 K parties) | 2 M | 1 M | 1,1 M | **5,15 $** |
-| 5 000 joueurs (50 K parties) | 5 M | 2,5 M | 2,75 M | **5,60 $** |
-| 1 M de parties | 100 M | 50 M | 55 M | **~32 $** |
+| Volume                          | Requêtes DO | Requêtes Worker | Lignes D1 écrites | Coût/mois  |
+| ------------------------------- | ----------- | --------------- | ----------------- | ---------- |
+| Dev + beta fermée (500 parties) | 50 K        | 25 K            | 28 K              | **5 $**    |
+| 1 000 joueurs (20 K parties)    | 2 M         | 1 M             | 1,1 M             | **5,15 $** |
+| 5 000 joueurs (50 K parties)    | 5 M         | 2,5 M           | 2,75 M            | **5,60 $** |
+| 1 M de parties                  | 100 M       | 50 M            | 55 M              | **~32 $**  |
 
 Détail du dernier palier : 99 M de requêtes DO en dépassement × 0,15 $ = 14,85 $, plus 40 M de
 requêtes Worker × 0,30 $ = 12 $, plus 5 M de lignes D1 × 0,001 $ = un demi-centime.
@@ -45,15 +45,14 @@ Les tarifs de dépassement pour la **durée DO**, le **stockage DO** (>1 Go) et 
 
 L'hébergement est le poste le moins cher de la sortie du jeu.
 
-| Poste | Coût |
-|---|---|
-| Cloudflare | 60 $/an |
-| Domaine | ~12 €/an |
-| Compte développeur Apple (signature macOS) | 99 $/an |
-| Certificat de signature Windows | ~100–400 $/an |
-| Steam Direct | 100 $ une fois |
+| Poste                                      | Coût           |
+| ------------------------------------------ | -------------- |
+| Cloudflare                                 | 60 $/an        |
+| Domaine                                    | ~12 €/an       |
+| Compte développeur Apple (signature macOS) | 99 $/an        |
+| Certificat de signature Windows            | ~100–400 $/an  |
+| Steam Direct                               | 100 $ une fois |
 
 La signature de code coûte plus cher que les serveurs. Sur dépôt privé, surveiller les minutes
 GitHub Actions (2 000/mois gratuites) : les 6 000 minutes de build du plan Cloudflare ne
 couvrent que les builds lancés par Cloudflare.
-

@@ -1,5 +1,11 @@
-import type { Challenge, Friend, FriendsOverview, Relation, SocialServerMessage } from "@occulis/protocol";
-import { messages } from "../i18n/current.js";
+import type {
+  Challenge,
+  Friend,
+  FriendsOverview,
+  Relation,
+  SocialServerMessage,
+} from "@occulis/protocol";
+import { messages } from "../locale/current.js";
 
 /**
  * L'état social vu d'une page — le menu du jeu comme le profil. Module pur : il réduit
@@ -50,7 +56,10 @@ export function receive(state: SocialState, message: SocialServerMessage): Socia
 
     case "presence":
       return {
-        state: mapFriends(state, message.playerId, (friend) => ({ ...friend, online: message.online })),
+        state: mapFriends(state, message.playerId, (friend) => ({
+          ...friend,
+          online: message.online,
+        })),
         stale: false,
       };
 
@@ -58,7 +67,10 @@ export function receive(state: SocialState, message: SocialServerMessage): Socia
       // Un message que l'on a soi-même envoyé revient aussi (pour les autres pages
       // ouvertes) : son expéditeur n'est alors pas un ami, et rien ne bouge.
       return {
-        state: mapFriends(state, message.message.sender, (friend) => ({ ...friend, unread: friend.unread + 1 })),
+        state: mapFriends(state, message.message.sender, (friend) => ({
+          ...friend,
+          unread: friend.unread + 1,
+        })),
         stale: false,
       };
 
@@ -67,7 +79,10 @@ export function receive(state: SocialState, message: SocialServerMessage): Socia
       return {
         state: {
           ...state,
-          incoming: [...state.incoming.filter((challenge) => challenge.from.id !== from), message.challenge],
+          incoming: [
+            ...state.incoming.filter((challenge) => challenge.from.id !== from),
+            message.challenge,
+          ],
         },
         stale: false,
       };
@@ -105,7 +120,8 @@ export function friendOf(state: SocialState, friendId: string): Friend | undefin
 export function relationTo(state: SocialState, playerId: string): Relation | undefined {
   const overview = state.overview;
   if (overview === undefined) return undefined;
-  const has = (list: readonly { readonly id: string }[]) => list.some((player) => player.id === playerId);
+  const has = (list: readonly { readonly id: string }[]) =>
+    list.some((player) => player.id === playerId);
   if (has(overview.friends)) return "friend";
   if (has(overview.blocked)) return "blocked";
   if (has(overview.outgoing)) return "outgoing";
@@ -118,9 +134,14 @@ export function unreadTotal(state: SocialState): number {
   return (state.overview?.friends ?? []).reduce((total, friend) => total + friend.unread, 0);
 }
 
-function mapFriends(state: SocialState, friendId: string, change: (friend: Friend) => Friend): SocialState {
+function mapFriends(
+  state: SocialState,
+  friendId: string,
+  change: (friend: Friend) => Friend,
+): SocialState {
   const overview = state.overview;
-  if (overview === undefined || !overview.friends.some((friend) => friend.id === friendId)) return state;
+  if (overview === undefined || !overview.friends.some((friend) => friend.id === friendId))
+    return state;
   return {
     ...state,
     overview: {

@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { cx } from "../cx.js";
 import { EmptyState } from "./Banner.js";
 import { useMessages } from "./Locale.js";
@@ -38,7 +45,10 @@ export function MessageThread({ messages, empty, more }: MessageThreadProps) {
     <div className="occ-thread" role="log" aria-live="polite">
       {more}
       {messages.map((message) => (
-        <div key={message.id} className={cx("occ-thread__message", message.mine && "occ-thread__message--mine")}>
+        <div
+          key={message.id}
+          className={cx("occ-thread__message", message.mine && "occ-thread__message--mine")}
+        >
           <p>{message.body}</p>
           {message.meta !== undefined && <small>{message.meta}</small>}
         </div>
@@ -59,7 +69,13 @@ export interface MessageComposerProps {
 }
 
 /** Le champ d'écriture d'un fil : Entrée envoie, Maj+Entrée passe à la ligne. */
-export function MessageComposer({ onSend, disabled = false, placeholder: given, maxLength, sendLabel }: MessageComposerProps) {
+export function MessageComposer({
+  onSend,
+  disabled = false,
+  placeholder: given,
+  maxLength,
+  sendLabel,
+}: MessageComposerProps) {
   const m = useMessages();
   const placeholder = given ?? m.ui.messagePlaceholder;
   const [value, setValue] = useState("");
@@ -98,7 +114,11 @@ export function MessageComposer({ onSend, disabled = false, placeholder: given, 
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={key}
       />
-      <button type="submit" className="occ-button occ-button--primary occ-button--md" disabled={disabled || busy || value.trim().length === 0}>
+      <button
+        type="submit"
+        className="occ-button occ-button--primary occ-button--md"
+        disabled={disabled || busy || value.trim().length === 0}
+      >
         {sendLabel ?? m.ui.send}
       </button>
     </form>

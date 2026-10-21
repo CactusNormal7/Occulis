@@ -15,7 +15,11 @@ export interface Caller {
   readonly impersonating: boolean;
 }
 
-export async function guardCaller(auth: Auth, request: Request, url: URL): Promise<Caller | Response> {
+export async function guardCaller(
+  auth: Auth,
+  request: Request,
+  url: URL,
+): Promise<Caller | Response> {
   const writing = request.method !== "GET";
   if (writing && request.headers.get("Origin") !== url.origin) {
     return new Response("origin refused", { status: 403 });

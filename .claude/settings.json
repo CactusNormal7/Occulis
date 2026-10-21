@@ -2,15 +2,6 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Grep",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/home/cactus/dev/Occulis/.venv/bin/graphify hook-guard search"
-          }
-        ]
-      },
-      {
         "matcher": "Bash",
         "hooks": [
           {

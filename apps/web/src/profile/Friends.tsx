@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   BackLink,
   Badge,
@@ -24,14 +32,29 @@ import {
   useMessages,
   useToast,
 } from "@occulis/ui";
-import type { ChatMessage, Friend, FriendsOverview, PlayerSearchResult, Relation, SocialServerMessage } from "@occulis/protocol";
+import type {
+  ChatMessage,
+  Friend,
+  FriendsOverview,
+  PlayerSearchResult,
+  Relation,
+  SocialServerMessage,
+} from "@occulis/protocol";
 import { useLoad, whenReady } from "../load/hooks.js";
 import { loadCache } from "../load/cache.js";
 import * as R from "./resources.js";
 import { formatDate } from "../admin/model.js";
 import { openSocial } from "../net/social-channel.js";
 import * as friends from "../social/api.js";
-import { EMPTY_SOCIAL, type SocialState, friendOf, presenceLabel, readAll, receive, withOverview } from "../social/model.js";
+import {
+  EMPTY_SOCIAL,
+  type SocialState,
+  friendOf,
+  presenceLabel,
+  readAll,
+  receive,
+  withOverview,
+} from "../social/model.js";
 import { messageTime, profileHash } from "./model.js";
 import { MatchReplayView, MatchTable, RecordCard } from "./parts.js";
 
@@ -114,6 +137,9 @@ export function SocialProvider({ enabled, children }: { enabled: boolean; childr
       },
     );
     return () => channel.close();
+    // Un canal par activation : le rouvrir à chaque nouvelle identité de `notify` ou de
+    // `reload` couperait le WebSocket à chaque rendu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
   const context: SocialContext = {
@@ -219,7 +245,11 @@ function SearchCard({ readOnly }: { readOnly: boolean }) {
                     disabledReason={readOnly ? all.readOnly : undefined}
                     onClick={() => {
                       act(friends.requestFriend(player.id), all.toasts.requested(player.handle));
-                      setResults((current) => current.map((p) => (p.id === player.id ? { ...p, relation: "outgoing" } : p)));
+                      setResults((current) =>
+                        current.map((p) =>
+                          p.id === player.id ? { ...p, relation: "outgoing" } : p,
+                        ),
+                      );
                     }}
                   />
                 ) : player.relation === "incoming" ? (
@@ -228,14 +258,18 @@ function SearchCard({ readOnly }: { readOnly: boolean }) {
                     disabled={readOnly}
                     onClick={() => {
                       act(friends.acceptRequest(player.id), all.toasts.friends(player.handle));
-                      setResults((current) => current.map((p) => (p.id === player.id ? { ...p, relation: "friend" } : p)));
+                      setResults((current) =>
+                        current.map((p) => (p.id === player.id ? { ...p, relation: "friend" } : p)),
+                      );
                     }}
                   >
                     {m.accept}
                   </Button>
                 ) : (
                   // « none » et « incoming » ont leur geste ci-dessus : ne restent que les relations établies.
-                  <Badge tone="dim">{all.relations[player.relation as Exclude<Relation, "none">]}</Badge>
+                  <Badge tone="dim">
+                    {all.relations[player.relation as Exclude<Relation, "none">]}
+                  </Badge>
                 )
               }
             >
@@ -248,7 +282,13 @@ function SearchCard({ readOnly }: { readOnly: boolean }) {
   );
 }
 
-function FriendList({ friends: list, readOnly }: { friends: readonly Friend[]; readOnly: boolean }) {
+function FriendList({
+  friends: list,
+  readOnly,
+}: {
+  friends: readonly Friend[];
+  readOnly: boolean;
+}) {
   const all = useMessages().social;
   const m = all.list;
   const act = useAct();
@@ -301,7 +341,8 @@ function FriendList({ friends: list, readOnly }: { friends: readonly Friend[]; r
         danger
         onClose={() => setRemoving(undefined)}
         onConfirm={() => {
-          if (removing !== undefined) act(friends.removeFriend(removing.id), all.toasts.removed(removing.handle));
+          if (removing !== undefined)
+            act(friends.removeFriend(removing.id), all.toasts.removed(removing.handle));
           return true;
         }}
       >
@@ -332,7 +373,9 @@ function Requests({ readOnly }: { readOnly: boolean }) {
                   icon="check"
                   label={m.accept}
                   disabledReason={off}
-                  onClick={() => act(friends.acceptRequest(request.id), all.toasts.friends(request.handle))}
+                  onClick={() =>
+                    act(friends.acceptRequest(request.id), all.toasts.friends(request.handle))
+                  }
                 />
                 <IconButton
                   icon="close"
@@ -407,7 +450,15 @@ function Blocked({ readOnly }: { readOnly: boolean }) {
 
 // --- La fiche d'un ami ----------------------------------------------------------------
 
-export function FriendView({ id, offset, readOnly }: { id: string; offset: number; readOnly: boolean }) {
+export function FriendView({
+  id,
+  offset,
+  readOnly,
+}: {
+  id: string;
+  offset: number;
+  readOnly: boolean;
+}) {
   const all = useMessages().social;
   const m = all.friend;
   const off = readOnly ? all.readOnly : undefined;
@@ -439,7 +490,11 @@ export function FriendView({ id, offset, readOnly }: { id: string; offset: numbe
         badges={
           <BadgeRow>
             <Badge tone={online ? "strong" : "dim"}>
-              {live === undefined ? (online ? all.presence.online : all.presence.offline) : presenceLabel(live)}
+              {live === undefined
+                ? online
+                  ? all.presence.online
+                  : all.presence.offline
+                : presenceLabel(live)}
             </Badge>
             {!profile.allowSpectators && <Badge tone="dim">{m.noSpectators}</Badge>}
           </BadgeRow>
@@ -447,7 +502,11 @@ export function FriendView({ id, offset, readOnly }: { id: string; offset: numbe
         meta={[m.since(formatDate(profile.since))]}
         actions={
           <QuickBar framed>
-            <IconButton icon="message" label={all.list.messages} onClick={() => (location.hash = profileHash({ view: "chat", id }))} />
+            <IconButton
+              icon="message"
+              label={all.list.messages}
+              onClick={() => (location.hash = profileHash({ view: "chat", id }))}
+            />
             <IconButton
               icon="close"
               label={all.list.remove}
@@ -479,7 +538,10 @@ export function FriendView({ id, offset, readOnly }: { id: string; offset: numbe
         {page.state === "failed" && <EmptyState error>{page.message}</EmptyState>}
         {page.state === "ready" && (
           <>
-            <MatchTable matches={page.value.matches} replayHref={(m) => profileHash({ view: "friendMatch", id, matchId: m.id })} />
+            <MatchTable
+              matches={page.value.matches}
+              replayHref={(m) => profileHash({ view: "friendMatch", id, matchId: m.id })}
+            />
             <Pager
               offset={offset}
               shown={page.value.matches.length}
@@ -510,9 +572,14 @@ export function FriendView({ id, offset, readOnly }: { id: string; offset: numbe
 
 export function FriendMatchReplay({ id, matchId }: { id: string; matchId: string }) {
   const { loaded } = useLoad(R.friendMatch(id, matchId));
-  const name = friendOf(useSocial().state, id)?.handle ?? useMessages().social.friend.someone;
+  const m = useMessages().social;
+  const name = friendOf(useSocial().state, id)?.handle ?? m.friend.someone;
   return whenReady(loaded, (match) => (
-    <MatchReplayView match={match} back={{ href: profileHash({ view: "friend", id, offset: 0 }), label: name }} friend={name} />
+    <MatchReplayView
+      match={match}
+      back={{ href: profileHash({ view: "friend", id, offset: 0 }), label: name }}
+      friend={name}
+    />
   ));
 }
 
@@ -545,6 +612,8 @@ export function ChatView({ id, readOnly }: { id: string; readOnly: boolean }) {
     setMessages((current) => merged(page.messages, current));
     setHasMore(page.hasMore);
     markRead();
+    // Chaque page relue, et elle seule : `markRead` est recréée à chaque rendu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   useEffect(() => {
@@ -556,6 +625,8 @@ export function ChatView({ id, readOnly }: { id: string; readOnly: boolean }) {
       if (incoming.sender === id) markRead();
     });
     return unlisten;
+    // Un abonnement par fil ; `listen` et `markRead` changent d'identité à chaque rendu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const older = () => {
@@ -620,12 +691,18 @@ export function ChatView({ id, readOnly }: { id: string; readOnly: boolean }) {
 }
 
 /** Ajoute un message au fil, une seule fois : il peut arriver par l'envoi et par le canal. */
-function withMessage(current: readonly ChatMessage[], message: ChatMessage): readonly ChatMessage[] {
+function withMessage(
+  current: readonly ChatMessage[],
+  message: ChatMessage,
+): readonly ChatMessage[] {
   return current.some((m) => m.id === message.id) ? current : [...current, message];
 }
 
 /** Deux morceaux du même fil, sans doublon, dans l'ordre d'envoi. */
-function merged(incoming: readonly ChatMessage[], current: readonly ChatMessage[]): readonly ChatMessage[] {
+function merged(
+  incoming: readonly ChatMessage[],
+  current: readonly ChatMessage[],
+): readonly ChatMessage[] {
   const byId = new Map(current.map((message) => [message.id, message]));
   for (const message of incoming) byId.set(message.id, message);
   return [...byId.values()].sort((a, b) => a.createdAt - b.createdAt);

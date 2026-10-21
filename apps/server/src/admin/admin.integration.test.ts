@@ -1,8 +1,14 @@
 import { SELF, env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type { AdminMatchDetail, AdminMatchPage, AdminPlayer, AdminStats } from "@occulis/protocol";
-import { PASSWORD, cookieFrom, post, signUp, unique } from "../test-helpers.js";
-import { CURRENT_RULESET_VERSION, DEFAULT_SCENARIO, deployTeams, rulesetFor, scenarioFor } from "@occulis/core";
+import { PASSWORD, cookieFrom, post, signUp, startTestMatch, unique } from "../test-helpers.js";
+import {
+  CURRENT_RULESET_VERSION,
+  DEFAULT_SCENARIO,
+  deployTeams,
+  rulesetFor,
+  scenarioFor,
+} from "@occulis/core";
 
 /**
  * Le back-office dans workerd. Le contrôle de rôle est la seule chose qui sépare ces
@@ -16,7 +22,9 @@ async function get(path: string, cookie?: string): Promise<Response> {
   // Une adresse par appel, pour la même raison que `post` : sans elle, la limitation
   // de débit retomberait sur un seau partagé et la suite se limiterait elle-même.
   addresses += 1;
-  const headers: Record<string, string> = { "CF-Connecting-IP": `10.250.${addresses >> 8}.${addresses & 255}` };
+  const headers: Record<string, string> = {
+    "CF-Connecting-IP": `10.250.${addresses >> 8}.${addresses & 255}`,
+  };
   if (cookie !== undefined) headers["Cookie"] = cookie;
   return SELF.fetch(`https://occulis.test${path}`, { headers });
 }
@@ -43,11 +51,7 @@ async function userIdOf(handle: string): Promise<{ id: string; player_id: string
 }
 
 async function startMatch(playerA: string, playerB: string): Promise<string> {
-  const response = await SELF.fetch("https://occulis.test/api/matches", {
-    method: "POST",
-    body: JSON.stringify({ playerA, playerB }),
-  });
-  return ((await response.json()) as { matchId: string }).matchId;
+  return (await startTestMatch(playerA, playerB)).matchId;
 }
 
 describe("back-office : contrôle d'accès", () => {
@@ -78,12 +82,21 @@ describe("back-office : contrôle d'accès", () => {
 
   it("refuse une écriture venue d'une autre origine", async () => {
     const cookie = await signUpAdmin(unique("chef"));
-    const { player_id } = await userIdOf((await (await get("/api/auth/me", cookie)).json() as { handle: string }).handle);
-    const response = await SELF.fetch(`https://occulis.test/api/admin/players/${player_id}/handle`, {
-      method: "POST",
-      headers: { Cookie: cookie, Origin: "https://ailleurs.test", "Content-Type": "application/json" },
-      body: JSON.stringify({ handle: "pirate" }),
-    });
+    const { player_id } = await userIdOf(
+      ((await (await get("/api/auth/me", cookie)).json()) as { handle: string }).handle,
+    );
+    const response = await SELF.fetch(
+      `https://occulis.test/api/admin/players/${player_id}/handle`,
+      {
+        method: "POST",
+        headers: {
+          Cookie: cookie,
+          Origin: "https://ailleurs.test",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ handle: "pirate" }),
+      },
+    );
     expect(response.status).toBe(403);
   });
 });
@@ -113,11 +126,18 @@ describe("back-office : comptes, par le greffon Better Auth", () => {
     const targetCookie = await signUp(target);
     const { id } = await userIdOf(target);
 
-    const banned = await post("/api/auth/admin/ban-user", { userId: id, banReason: "triche" }, cookie);
+    const banned = await post(
+      "/api/auth/admin/ban-user",
+      { userId: id, banReason: "triche" },
+      cookie,
+    );
     expect(banned.status).toBe(200);
 
     // Le bannissement révoque les sessions ouvertes…
-    expect(await (await get("/api/auth/me", targetCookie)).json()).toEqual({ signedIn: false, providers: [] });
+    expect(await (await get("/api/auth/me", targetCookie)).json()).toEqual({
+      signedIn: false,
+      providers: [],
+    });
     // … et refuse d'en ouvrir une neuve.
     const signIn = await post("/api/auth/sign-in/email", {
       email: `${target}@occulis.test`,
@@ -139,7 +159,11 @@ describe("back-office : comptes, par le greffon Better Auth", () => {
     const targetCookie = await signUp(target);
     const { id } = await userIdOf(target);
 
-    const byAdmin = await post("/api/auth/admin/update-user", { userId: id, data: { name: "x-nouveau" } }, cookie);
+    const byAdmin = await post(
+      "/api/auth/admin/update-user",
+      { userId: id, data: { name: "x-nouveau" } },
+      cookie,
+    );
     expect(byAdmin.status).toBe(400);
     const bySelf = await post("/api/auth/update-user", { name: "y-nouveau" }, targetCookie);
     expect(bySelf.status).toBe(400);
@@ -165,7 +189,10 @@ function jar(previous: string, response: Response): string {
     previous
       .split("; ")
       .filter((entry) => entry.includes("="))
-      .map((entry) => [entry.slice(0, entry.indexOf("=")), entry.slice(entry.indexOf("=") + 1)] as const),
+      .map(
+        (entry) =>
+          [entry.slice(0, entry.indexOf("=")), entry.slice(entry.indexOf("=") + 1)] as const,
+      ),
   );
   for (const header of response.headers.getSetCookie()) {
     const [pair = ""] = header.split(";");
@@ -215,7 +242,9 @@ describe("back-office : usurpation", () => {
     const other = unique("chef");
     await signUpAdmin(other);
     const { id } = await userIdOf(other);
-    expect((await post("/api/auth/admin/impersonate-user", { userId: id }, cookie)).status).toBe(403);
+    expect((await post("/api/auth/admin/impersonate-user", { userId: id }, cookie)).status).toBe(
+      403,
+    );
   });
 });
 
@@ -229,13 +258,23 @@ describe("back-office : parties et profils", () => {
     await startMatch(c, b);
     // Le déploiement fait, comme le DO l'aurait écrit : c'est de là que le rejeu repart.
     const deployment = scenarioFor(DEFAULT_SCENARIO).deployment;
-    const setup = deployment && deployTeams(rulesetFor(CURRENT_RULESET_VERSION), deployment, deployment.defaultTeams);
+    const setup =
+      deployment &&
+      deployTeams(rulesetFor(CURRENT_RULESET_VERSION), deployment, deployment.defaultTeams);
     await env.DB.batch([
-      env.DB.prepare("UPDATE matches SET setup = ? WHERE id = ?").bind(JSON.stringify(setup?.ok ? setup.value : []), first),
-      env.DB.prepare("INSERT INTO match_actions (match_id, seq, action) VALUES (?, 0, ?)").bind(first, JSON.stringify({ kind: "resign" })),
+      env.DB.prepare("UPDATE matches SET setup = ? WHERE id = ?").bind(
+        JSON.stringify(setup?.ok ? setup.value : []),
+        first,
+      ),
+      env.DB.prepare("INSERT INTO match_actions (match_id, seq, action) VALUES (?, 0, ?)").bind(
+        first,
+        JSON.stringify({ kind: "resign" }),
+      ),
     ]);
 
-    const page = (await (await get(`/api/admin/matches?player=${a}`, cookie)).json()) as AdminMatchPage;
+    const page = (await (
+      await get(`/api/admin/matches?player=${a}`, cookie)
+    ).json()) as AdminMatchPage;
     expect(page.total).toBe(1);
     expect(page.matches[0]).toMatchObject({
       id: first,
@@ -245,11 +284,15 @@ describe("back-office : parties et profils", () => {
       actions: 1,
     });
 
-    const both = (await (await get(`/api/admin/matches?player=${b}&limit=1`, cookie)).json()) as AdminMatchPage;
+    const both = (await (
+      await get(`/api/admin/matches?player=${b}&limit=1`, cookie)
+    ).json()) as AdminMatchPage;
     expect(both.total).toBe(2);
     expect(both.matches).toHaveLength(1);
 
-    const detail = (await (await get(`/api/admin/matches/${first}`, cookie)).json()) as AdminMatchDetail;
+    const detail = (await (
+      await get(`/api/admin/matches/${first}`, cookie)
+    ).json()) as AdminMatchDetail;
     // Le camp vient du rejeu : l'action sérialisée ne le porte pas.
     expect(detail.log).toEqual([{ seq: 0, player: "A", action: { kind: "resign" } }]);
     expect(detail.replayError).toBeNull();
@@ -299,7 +342,11 @@ describe("back-office : parties et profils", () => {
     const rename = (handle: string) =>
       SELF.fetch(`https://occulis.test/api/admin/players/${player_id}/handle`, {
         method: "POST",
-        headers: { Cookie: cookie, Origin: "https://occulis.test", "Content-Type": "application/json" },
+        headers: {
+          Cookie: cookie,
+          Origin: "https://occulis.test",
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ handle }),
       });
 

@@ -25,4 +25,14 @@ export const ui: Messages["ui"] = {
   },
   language: "Langue",
   languages: { en: "English", fr: "Français" },
+  settings: { label: "Réglages", title: "Réglages" },
+  theme: {
+    label: "Design",
+    names: { obsidian: "Obsidienne", reliquary: "Reliquaire", astral: "Astral" },
+    hints: {
+      obsidian: "Noir et os, lueurs froides — le plus sévère",
+      reliquary: "Noir chaud, or ancien, lucioles et sceau qui tourne",
+      astral: "Un ciel dense : constellations, étoiles filantes, nébuleuses",
+    },
+  },
 };

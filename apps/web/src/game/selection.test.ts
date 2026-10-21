@@ -73,8 +73,12 @@ describe("resolveClick", () => {
   });
 
   it("ignore une pièce adverse et une case vide", () => {
-    expect(resolveClick(legalActions(game()), game(), undefined, { x: 1, y: 0 }).kind).toBe("clear");
-    expect(resolveClick(legalActions(game()), game(), undefined, { x: 3, y: 2 }).kind).toBe("clear");
+    expect(resolveClick(legalActions(game()), game(), undefined, { x: 1, y: 0 }).kind).toBe(
+      "clear",
+    );
+    expect(resolveClick(legalActions(game()), game(), undefined, { x: 3, y: 2 }).kind).toBe(
+      "clear",
+    );
   });
 
   it("ignore un clic hors plateau", () => {
@@ -129,6 +133,8 @@ describe("resolveClick", () => {
     // (0,0) porte une pièce du joueur encore au trait : sans le garde-fou sur
     // l'issue, le clic la sélectionnerait.
     expect(resigned.value.activePlayer).toBe("A");
-    expect(resolveClick(legalActions(resigned.value), resigned.value, undefined, { x: 0, y: 0 }).kind).toBe("clear");
+    expect(
+      resolveClick(legalActions(resigned.value), resigned.value, undefined, { x: 0, y: 0 }).kind,
+    ).toBe("clear");
   });
 });

@@ -5,7 +5,11 @@ import { FRESH_MS, LoadCache, PendingCount, type Outcome, loadedOf, resource } f
 function controlled<T>(key = "k") {
   const answers: ((outcome: Outcome<T>) => void)[] = [];
   const res = resource<T>(key, () => new Promise((resolve) => answers.push(resolve)));
-  return { res, answer: (outcome: Outcome<T>, index = answers.length - 1) => answers[index]?.(outcome), calls: () => answers.length };
+  return {
+    res,
+    answer: (outcome: Outcome<T>, index = answers.length - 1) => answers[index]?.(outcome),
+    calls: () => answers.length,
+  };
 }
 
 const tick = () => new Promise<void>((resolve) => queueMicrotask(resolve));
@@ -56,7 +60,11 @@ describe("LoadCache.request", () => {
     void cache.request(res, { force: true });
     const entry = cache.peek<string>("k");
     expect(entry?.outcome).toEqual({ ok: true, value: "a" });
-    expect(loadedOf({ ...entry!, outcome: entry!.outcome! })).toEqual({ state: "ready", value: "a", refreshing: true });
+    expect(loadedOf({ ...entry!, outcome: entry!.outcome! })).toEqual({
+      state: "ready",
+      value: "a",
+      refreshing: true,
+    });
   });
 
   it("tient un échec pour une réponse, que la vue affiche", async () => {
@@ -66,7 +74,10 @@ describe("LoadCache.request", () => {
     answer({ ok: false, message: "down" });
     expect(await pending).toEqual({ ok: false, message: "down" });
     const entry = cache.peek<string>("k");
-    expect(loadedOf({ ...entry!, outcome: entry!.outcome! })).toEqual({ state: "failed", message: "down" });
+    expect(loadedOf({ ...entry!, outcome: entry!.outcome! })).toEqual({
+      state: "failed",
+      message: "down",
+    });
   });
 
   it("ne rejette jamais, même si la lecture lève", async () => {
@@ -107,7 +118,11 @@ describe("LoadCache.set et invalidate", () => {
     const cache = new LoadCache();
     for (const key of ["friend:1", "friend:1:matches:0", "profile"]) cache.set(key, key);
     cache.invalidate("friend:1");
-    expect(["friend:1", "friend:1:matches:0", "profile"].map((key) => cache.value(key))).toEqual([undefined, undefined, "profile"]);
+    expect(["friend:1", "friend:1:matches:0", "profile"].map((key) => cache.value(key))).toEqual([
+      undefined,
+      undefined,
+      "profile",
+    ]);
     cache.invalidate();
     expect(cache.value("profile")).toBeUndefined();
   });

@@ -6,7 +6,12 @@ export const social = {
   loading: "Loading friends… (a verified address is required)",
   presence: { online: "online", playing: "in a match", offline: "offline" },
   unread: (count: number) => (count === 1 ? "1 unread" : `${count} unread`),
-  relations: { friend: "friend", outgoing: "request sent", incoming: "asked you", blocked: "blocked" },
+  relations: {
+    friend: "friend",
+    outgoing: "request sent",
+    incoming: "asked you",
+    blocked: "blocked",
+  },
   search: {
     title: "Add a friend",
     placeholder: "Handle…",
@@ -18,7 +23,8 @@ export const social = {
     title: (count: number) => `Friends (${count})`,
     empty: "No friends yet: search for a handle above, or add an opponent from your matches.",
     messages: "Messages",
-    unreadMessages: (count: number) => (count === 1 ? "1 unread message" : `${count} unread messages`),
+    unreadMessages: (count: number) =>
+      count === 1 ? "1 unread message" : `${count} unread messages`,
     remove: "Remove from my friends",
     removeTitle: "Remove this friend",
     removeConfirm: "Remove",
@@ -55,7 +61,8 @@ export const social = {
     matchesTitle: (handle: string) => `${handle}'s matches`,
     blockTitle: (handle: string) => `Block ${handle}`,
     blockConfirm: "Block",
-    blockText: "They will no longer be your friend, and can no longer find you, write to you or challenge you. They will not be told.",
+    blockText:
+      "They will no longer be your friend, and can no longer find you, write to you or challenge you. They will not be told.",
     replayTitle: (handle: string) => `Replay — ${handle}'s point of view`,
     against: (handle: string, opponent: string) => `${handle} vs ${opponent}`,
     someone: "your friend",
@@ -73,7 +80,8 @@ export const social = {
     label: "Spectators",
     allowed: "Allowed",
     refused: "Refused",
-    description: "A friend who watches sees only what you see, live — never the opponent's position.",
+    description:
+      "A friend who watches sees only what you see, live — never the opponent's position.",
     refuse: "Refuse",
     allow: "Allow",
     nowAllowed: "Your friends can watch your matches.",

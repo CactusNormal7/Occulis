@@ -96,15 +96,26 @@ describe("mots de passe ayant fuité", () => {
     }) as typeof fetch;
 
   it("n'envoie que le préfixe et reconnaît le suffixe", async () => {
-    expect(await breachedPassword("password", range("0018A45C4D1DEF81644B54AB7F969B88D65:1\r\n1E4C9B93F3F0682250B6CF8331B7EE68FD8:9545824"))).toBe(true);
+    expect(
+      await breachedPassword(
+        "password",
+        range(
+          "0018A45C4D1DEF81644B54AB7F969B88D65:1\r\n1E4C9B93F3F0682250B6CF8331B7EE68FD8:9545824",
+        ),
+      ),
+    ).toBe(true);
   });
 
   it("ignore les leurres à compte nul", async () => {
-    expect(await breachedPassword("password", range("1E4C9B93F3F0682250B6CF8331B7EE68FD8:0"))).toBe(false);
+    expect(await breachedPassword("password", range("1E4C9B93F3F0682250B6CF8331B7EE68FD8:0"))).toBe(
+      false,
+    );
   });
 
   it("rend faux quand le suffixe est absent", async () => {
-    expect(await breachedPassword("password", range("0018A45C4D1DEF81644B54AB7F969B88D65:3"))).toBe(false);
+    expect(await breachedPassword("password", range("0018A45C4D1DEF81644B54AB7F969B88D65:3"))).toBe(
+      false,
+    );
   });
 
   it("ne tranche pas quand le service est indisponible", async () => {
