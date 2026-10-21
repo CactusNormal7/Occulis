@@ -7,6 +7,25 @@ prises et, comme le design doc, les points encore ouverts.
 Ces décisions sont en œuvre — Worker, Durable Objects, D1, environnements, CI/CD —, sauf la
 distribution Electron, pas encore construite, et les points ouverts de la section 7.
 
+## Invariants
+
+Source unique : les autres documents renvoient ici sans les reformuler. Chacun a son
+raisonnement dans la section indiquée.
+
+1. **Déterminisme de `packages/core`** — aucun `Math.random`, `Date.now`, ni horloge ou entropie ;
+   un aléa entre par un seed passé en paramètre. Tout replay et toute reconstruction serveur
+   reposent dessus (section 3).
+2. **Le log d'actions en D1 est la source de vérité** ; l'état du Durable Object est un cache
+   reconstructible (section 3).
+3. **Les règles sont versionnées par partie, pas par connexion** — la carte est figée dans la
+   partie à sa création (section 1).
+4. **Le DO hiberne** : `ctx.acceptWebSocket()`, jamais `accept()`, sous peine d'un coût ~20 000
+   fois supérieur sans aucune différence visible ; pas de minuteur, des alarmes (sections 2 et 6,
+   point ouvert 7 de la section 7 pour la couverture de test).
+5. **Le fog est structurel** : le serveur est autoritaire et n'envoie à chaque joueur que son
+   `viewFor()`, jamais de donnée hors de sa ligne de vue ; le client ne reconstruit qu'une
+   hypothèse optimiste (section 2). Un DO mono-threadé sérialise les tours : pas de verrou.
+
 ## 1. Cible de distribution
 
 L'objectif final est une **application téléchargeable** (Steam, desktop). C'était déjà la
