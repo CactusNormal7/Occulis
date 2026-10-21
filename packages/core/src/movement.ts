@@ -17,7 +17,7 @@ export interface MoveOption {
  *  - monter d'un niveau coûte un déplacement complet et exige d'être déjà collé au
  *    relief au début du tour — c'est donc l'unique action du tour, jamais enchaînable
  *    après des pas horizontaux (cf. l'exemple du mur de hauteur 3 gravi en 3 tours) ;
- *  - un dénivelé de 2 niveaux ou plus en un pas est infranchissable.
+ *  - monter de 2 niveaux ou plus en un pas est impossible (descendre, lui, reste libre).
  *
  * `occupied` porte les cases tenues par une pièce : elles bloquent le passage.
  */

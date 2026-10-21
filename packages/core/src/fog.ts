@@ -76,6 +76,8 @@ export function observe(previous: PlayerKnowledge, state: GameState): PlayerKnow
       kind: piece.kind,
       owner: piece.owner,
       coord: piece.coord,
+      // Le tour de la position observée. L'abandon, qui clôt sans jouer, n'avance pas
+      // `turn` : une pièce vue à ce moment garde le tour du dernier vrai coup.
       lastSeenTurn: state.turn,
     });
   }

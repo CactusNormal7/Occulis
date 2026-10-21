@@ -3,7 +3,9 @@ import type { PieceKind } from "../piece.js";
 import type { MovementProfile, VisionProfile } from "../profiles.js";
 
 /**
- * Pièce maîtresse : sa capture met fin à la partie (docs/design.md section 7).
+ * Pièce maîtresse : celle qu'il faut protéger (docs/design.md section 7). La prise et la
+ * fin de partie sont retirées du moteur pour l'instant (point ouvert 13) : rien ne
+ * l'atteint encore.
  *
  * Plus lente et plus myope que l'éclaireur — la différenciation passe par la
  * capacité et le mouvement, jamais par la robustesse.

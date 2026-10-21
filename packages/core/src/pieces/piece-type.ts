@@ -1,6 +1,6 @@
 import type { Board } from "../board.js";
-import { type Coord, type CoordKey, areAdjacent, chebyshevDistance } from "../coord.js";
-import { collectVisible, hasLineOfSight } from "../los.js";
+import { type Coord, type CoordKey, areAdjacent, chebyshevDistance, coordKey } from "../coord.js";
+import { blockingPiece, collectVisible, hasLineOfSight } from "../los.js";
 import { type MoveOption, canMeleeReach, reachableTiles } from "../movement.js";
 import type { MovementProfile, VisionProfile } from "./profiles.js";
 import type { PieceKind } from "./piece.js";
@@ -77,13 +77,23 @@ export abstract class PieceType {
     return this.visionRangeCovers(from, to) && hasLineOfSight(board, from, to, occupied);
   }
 
-  /** Champ de vision complet depuis `from`, dérivé de `canSee`. */
+  /**
+   * Champ de vision complet depuis `from`, dérivé de `canSee` : les cases vues, plus
+   * celle de chaque pièce qui coupe un regard dans la portée (`blockingPiece`) — une
+   * pièce qui bloque une ligne de vue est visible (docs/design.md section 5.2).
+   */
   fieldOfView(
     board: Board,
     from: Coord,
     occupied: ReadonlySet<CoordKey> = new Set(),
   ): Set<CoordKey> {
-    return collectVisible(board, from, (to) => this.canSee(board, from, to, occupied));
+    const seen = collectVisible(board, from, (to) => this.canSee(board, from, to, occupied));
+    for (const tile of board.allTiles()) {
+      if (!this.visionRangeCovers(from, tile.coord) || seen.has(coordKey(tile.coord))) continue;
+      const blocker = blockingPiece(board, from, tile.coord, occupied);
+      if (blocker !== undefined) seen.add(coordKey(blocker));
+    }
+    return seen;
   }
 
   /**

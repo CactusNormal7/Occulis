@@ -209,16 +209,16 @@ tranché (`docs/design.md` point ouvert 7).
 les expose comme autant de points de redéfinition. **Une instance par type de pièce et par
 ruleset**, jamais une par pièce en jeu.
 
-| Membre                       | Rôle                                                                                                                                        |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `kind`, `movement`, `vision` | Abstraits : chaque type les déclare                                                                                                         |
-| `role`                       | Accesseur : `commander`, `special` (par défaut) ou `pawn` — la place du type dans une équipe, sur laquelle portent les quotas (`TeamRules`) |
-| `isCommander`                | Accesseur, dérivé de `role`. La capture d'une pièce maîtresse met fin à la partie                                                           |
-| `destinationsFrom()`         | Cases atteignables en un tour ; délègue à `reachableTiles()`                                                                                |
-| `canSee()`                   | Voit-elle `to` depuis `from` ? Portée d'abord, occultation ensuite                                                                          |
-| `fieldOfView()`              | Champ de vision complet, **dérivé de `canSee()`** via `collectVisible()`                                                                    |
-| `canStrike()`                | Peut-elle frapper `to` ? Adjacence du type, puis règle de dénivelé                                                                          |
-| `visionRangeCovers()`        | Protégée. Isolée pour qu'une redéfinition de `canSee()` puisse réutiliser la seule portée                                                   |
+| Membre                       | Rôle                                                                                                                                                          |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `kind`, `movement`, `vision` | Abstraits : chaque type les déclare                                                                                                                           |
+| `role`                       | Accesseur : `commander`, `special` (par défaut) ou `pawn` — la place du type dans une équipe, sur laquelle portent les quotas (`TeamRules`)                   |
+| `isCommander`                | Accesseur, dérivé de `role`. La prise d'une pièce maîtresse finira la partie quand la prise reviendra (point ouvert 13)                                       |
+| `destinationsFrom()`         | Cases atteignables en un tour ; délègue à `reachableTiles()`                                                                                                  |
+| `canSee()`                   | Voit-elle `to` depuis `from` ? Portée d'abord, occultation ensuite                                                                                            |
+| `fieldOfView()`              | Champ de vision complet, **dérivé de `canSee()`** via `collectVisible()`, plus la case de chaque pièce qui coupe un regard dans la portée (`blockingPiece()`) |
+| `canStrike()`                | Peut-elle frapper `to` ? Adjacence du type, puis règle de dénivelé                                                                                            |
+| `visionRangeCovers()`        | Protégée. Isolée pour qu'une redéfinition de `canSee()` puisse réutiliser la seule portée                                                                     |
 
 **C'est la pièce qui définit ce qu'elle voit**, et non un appelant qui recalculerait un
 champ de vision à partir d'une portée brute. Une pièce future à la vision particulière —
@@ -312,13 +312,14 @@ de moteur 3D** (`docs/design.md` section 5.1).
 Ce module **ne connaît que la géométrie**. Ce qu'une pièce voit réellement est défini par
 son type.
 
-| Fonction                      | Rôle                                                                           |
-| ----------------------------- | ------------------------------------------------------------------------------ |
-| `rasterizeLine()`             | Cases traversées par le segment, extrémités incluses                           |
-| `inCanonicalOrder()` (privée) | Fixe le sens de parcours du tracé                                              |
-| `hasLineOfSight()`            | Y a-t-il vue entre deux cases, relief **et pièces** pris en compte             |
-| `collectVisible()`            | Cases visibles depuis un point, **filtrées par un test fourni par l'appelant** |
-| `visibleFrom()`               | Champ de vision purement géométrique : portée de Chebyshev et occultation      |
+| Fonction                      | Rôle                                                                                                                               |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `rasterizeLine()`             | Cases traversées par le segment, extrémités incluses                                                                               |
+| `inCanonicalOrder()` (privée) | Fixe le sens de parcours du tracé                                                                                                  |
+| `hasLineOfSight()`            | Y a-t-il vue entre deux cases, relief **et pièces** pris en compte                                                                 |
+| `blockingPiece()`             | La pièce qui coupe la vue `from → to` : premier obstacle depuis `from`, si c'est une pièce que le relief seul n'aurait pas arrêtée |
+| `collectVisible()`            | Cases visibles depuis un point, **filtrées par un test fourni par l'appelant**                                                     |
+| `visibleFrom()`               | Champ de vision purement géométrique : portée de Chebyshev et occultation                                                          |
 
 `collectVisible(board, origin, canSee)` est le point d'extension : `PieceType.fieldOfView()`
 lui passe son propre critère, si bien qu'une pièce à la vision particulière n'a **rien à
@@ -349,7 +350,15 @@ voulues (`docs/design.md` section 5.2) :
 - deux pièces au même niveau se masquent mutuellement ce qui est derrière elles ;
 - une pièce perchée voit **par-dessus** une pièce restée en contrebas ;
 - la pièce qui bloque reste visible : elle est une extrémité de la ligne qui la vise, et
-  les extrémités n'occultent jamais.
+  les extrémités n'occultent jamais. **Cela ne suffit pas** : Bresenham n'étant pas
+  transitif, le regard vers une case peut traverser une pièce que le regard vers cette
+  pièce, lui, n'atteint pas — une pièce cachée éteignait alors des cases, et qui
+  recalculait sa vue la localisait. `blockingPiece()` désigne donc le premier obstacle de
+  chaque regard dans la portée, s'il s'agit d'une pièce, et `PieceType.fieldOfView()` l'ajoute
+  aux cases vues. `memory.test.ts` vérifie la propriété sur une partie entière : la vue
+  transmise se recalcule exactement depuis le relief, ses pièces et les ennemis vus.
+  Coût mesuré : un coup passe d'environ 0,7 à 1,3 ms (deux balayages de rayon pour une case
+  qui n'est pas vue) ; fusionner les deux le réduirait au prix d'un `los.ts` moins lisible.
 
 Le paramètre est optionnel et vaut l'ensemble vide : appelé sans lui, le module rend la
 géométrie du seul relief, ce dont les tests se servent.
@@ -666,6 +675,7 @@ serait contournable via les devtools.
 | `packages/core/src/movement.test.ts`             | Parcours, verticalité, grimpe, blocage par occupation                                                                                                                                                                                 |
 | `packages/core/src/actions.test.ts`              | Coups légaux, validation, blocage par les pièces, abandon (y compris hors tour)                                                                                                                                                       |
 | `packages/core/src/fog.test.ts`                  | Visibilité, mémoire fantôme, contenu de `PlayerView`                                                                                                                                                                                  |
+| `packages/core/src/memory.test.ts`               | `advanceMemory()` coup par coup et `replayMemory()` d'un bloc rendent les mêmes vues aux deux camps, mémoire fantôme comprise (120 coups sur la carte par défaut)                                                                     |
 | `packages/core/src/pieces/piece-type.test.ts`    | Vision, mêlée et déplacement définis par le type ; dérivation de `fieldOfView` depuis `canSee` y compris redéfini ; extension par héritage. **Indépendant du roster**                                                                 |
 | `packages/core/src/pieces/roster/roster.test.ts` | Propriétés du roster provisoire : différenciation par capacité, rôles, pion le plus lent et le plus myope, héritage du comportement commun, portée couvrant la carte de démonstration, indexation par `kind` et par rôle, composition |
 | `packages/core/src/team.test.ts`                 | Quotas exacts par rôle, type inconnu, case hors zone, deux pièces sur une case, ruleset sans composition, **identifiants déterministes**, lecture d'une équipe venue de l'extérieur, transposition d'une zone à l'autre               |

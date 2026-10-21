@@ -62,6 +62,39 @@ function inCanonicalOrder(a: Coord, b: Coord): readonly [Coord, Coord] {
 }
 
 /**
+ * Le segment [from, to] tel que la ligne de vue le parcourt : ses cases dans l'ordre
+ * canonique, et la hauteur du regard au-dessus de chacune. `undefined` si une extrémité
+ * est hors-carte.
+ */
+interface Sightline {
+  readonly path: readonly Coord[];
+  /** Vrai si `path` part de `from`, faux s'il part de `to`. */
+  readonly fromFirst: boolean;
+  /** Hauteur de la ligne de visée au-dessus de la case `path[i]`. */
+  readonly eyeAt: (i: number) => number;
+}
+
+function sightline(board: Board, from: Coord, to: Coord): Sightline | undefined {
+  const [start, end] = inCanonicalOrder(from, to);
+  const fromTile = board.getTile(start);
+  const toTile = board.getTile(end);
+  if (!fromTile || !toTile) return undefined;
+  const path = rasterizeLine(start, end);
+  const lastStep = path.length - 1;
+  const eyeFrom = fromTile.height + EYE_HEIGHT;
+  const eyeTo = toTile.height + EYE_HEIGHT;
+  return {
+    path,
+    fromFirst: start === from,
+    // Multiplier avant de diviser : la hauteur du regard tombe alors exactement sur les
+    // entiers quand elle doit y tomber, et `>=` tranche sans erreur d'arrondi le cas d'un
+    // obstacle à hauteur d'œil, qui bloque (implementation-notes #11). `(d / lastStep) * i`
+    // arrondirait d'abord, et ferait passer ou non ce regard selon la longueur du tracé.
+    eyeAt: (i) => eyeFrom + ((eyeTo - eyeFrom) * i) / lastStep,
+  };
+}
+
+/**
  * Ligne de vue entre deux cases : raycast 2D avec comparaison de la hauteur de
  * chaque obstacle traversé à la hauteur interpolée de la ligne de visée.
  * Cf. docs/design.md section 5.1 — pas de moteur 3D.
@@ -81,35 +114,53 @@ export function hasLineOfSight(
   to: Coord,
   occupied: ReadonlySet<CoordKey> = NO_PIECES,
 ): boolean {
-  const [start, end] = inCanonicalOrder(from, to);
-  const fromTile = board.getTile(start);
-  const toTile = board.getTile(end);
-  if (!fromTile || !toTile) return false;
-
-  const path = rasterizeLine(start, end);
-  const lastStep = path.length - 1;
+  const line = sightline(board, from, to);
+  if (line === undefined) return false;
   // Deux cases voisines se voient toujours : aucune case ne s'intercale entre elles,
   // quel que soit le dénivelé.
-  if (lastStep <= 1) return true;
-
-  const eyeFrom = fromTile.height + EYE_HEIGHT;
-  const eyeTo = toTile.height + EYE_HEIGHT;
-
+  const lastStep = line.path.length - 1;
   for (let i = 1; i < lastStep; i++) {
-    const coord = path[i];
+    const coord = line.path[i];
     if (coord === undefined) continue;
     const tileHeight = board.heightAt(coord);
     if (tileHeight === undefined) continue;
-
     const obstacleHeight = tileHeight + (occupied.has(coordKey(coord)) ? PIECE_HEIGHT : 0);
-    // Multiplier avant de diviser : la hauteur du regard tombe alors exactement sur les
-    // entiers quand elle doit y tomber, et `>=` tranche sans erreur d'arrondi le cas d'un
-    // obstacle à hauteur d'œil, qui bloque (implementation-notes #11). `(d / lastStep) * i`
-    // arrondirait d'abord, et ferait passer ou non ce regard selon la longueur du tracé.
-    const sightlineHeight = eyeFrom + ((eyeTo - eyeFrom) * i) / lastStep;
-    if (obstacleHeight >= sightlineHeight) return false;
+    if (obstacleHeight >= line.eyeAt(i)) return false;
   }
   return true;
+}
+
+/**
+ * La pièce qui coupe la ligne de vue `from → to`, s'il y en a une : le premier obstacle
+ * rencontré **depuis `from`** est une case occupée que le relief seul n'aurait pas
+ * arrêtée. Un obstacle de relief rencontré avant elle la cache : elle ne coupe alors
+ * plus rien de ce que `from` aurait vu.
+ *
+ * C'est elle que `from` voit à la place de ce qu'elle masque (docs/design.md section 5.2,
+ * « la pièce qui bloque reste parfaitement visible ») : sans cette règle, l'ombre qu'une
+ * pièce cachée projette trahirait sa place — Bresenham n'étant pas transitif, le rayon
+ * vers une case peut traverser une pièce que le rayon vers cette pièce, lui, n'atteint pas.
+ */
+export function blockingPiece(
+  board: Board,
+  from: Coord,
+  to: Coord,
+  occupied: ReadonlySet<CoordKey>,
+): Coord | undefined {
+  const line = sightline(board, from, to);
+  if (line === undefined) return undefined;
+  const lastStep = line.path.length - 1;
+  for (let step = 1; step < lastStep; step++) {
+    const i = line.fromFirst ? step : lastStep - step;
+    const coord = line.path[i];
+    if (coord === undefined) continue;
+    const tileHeight = board.heightAt(coord);
+    if (tileHeight === undefined) continue;
+    const eye = line.eyeAt(i);
+    if (tileHeight >= eye) return undefined;
+    if (occupied.has(coordKey(coord)) && tileHeight + PIECE_HEIGHT >= eye) return coord;
+  }
+  return undefined;
 }
 
 /**
