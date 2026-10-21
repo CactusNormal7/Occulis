@@ -1,7 +1,9 @@
-import { SELF, env } from "cloudflare:test";
+import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
+import { env, exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import {
   PROTOCOL_VERSION,
+  type Challenge,
   type ChatMessage,
   type ChatPage,
   type FriendProfile,
@@ -33,7 +35,7 @@ async function call(
     Origin: ORIGIN,
     "Content-Type": "application/json",
   };
-  return SELF.fetch(`${ORIGIN}${path}`, {
+  return exports.default.fetch(`${ORIGIN}${path}`, {
     method,
     headers,
     body: body === undefined ? null : JSON.stringify(body),
@@ -71,7 +73,7 @@ async function befriend(a: Someone, b: Someone): Promise<void> {
 
 /** Un socket et sa boîte de réception, avec une attente par genre de message. */
 async function listen<M extends { kind: string }>(path: string, cookie: string, hello: unknown) {
-  const response = await SELF.fetch(`${ORIGIN}${path}`, {
+  const response = await exports.default.fetch(`${ORIGIN}${path}`, {
     headers: { Upgrade: "websocket", Cookie: cookie },
   });
   expect(response.status).toBe(101);
@@ -162,9 +164,9 @@ describe("amis : demandes et liste", () => {
   });
 
   it("exige une session, et refuse une écriture d'une autre origine", async () => {
-    expect((await SELF.fetch(`${ORIGIN}/api/friends`)).status).toBe(401);
+    expect((await exports.default.fetch(`${ORIGIN}/api/friends`)).status).toBe(401);
     const anne = await someone("anne");
-    const response = await SELF.fetch(`${ORIGIN}/api/friends/requests`, {
+    const response = await exports.default.fetch(`${ORIGIN}/api/friends/requests`, {
       method: "POST",
       headers: { Cookie: anne.cookie, Origin: "https://ailleurs.test" },
       body: "{}",
@@ -359,6 +361,53 @@ describe("amis : présence et défi", () => {
     const b = await borisGame.awaiting("matched");
     expect(a.matchId).toBe(b.matchId);
     expect([a.player, b.player]).toEqual(["A", "B"]);
+    // Une seconde acceptation ne crée rien : les deux sont désormais en partie.
+    expect(
+      (await call("POST", `/api/friends/${anne.id}/challenge/accept`, boris.cookie)).status,
+    ).toBe(409);
+
+    anneGame.socket.close();
+    borisGame.socket.close();
+  });
+
+  it("refuse un défi quand l'un des deux joueurs est déjà en partie", async () => {
+    const anne = await someone("anne");
+    const boris = await someone("boris");
+    const carla = await someone("carla");
+    await befriend(anne, boris);
+    const anneGame = await social(anne.cookie);
+    await startTestMatch(boris.id, carla.id);
+
+    const refused = await call("POST", `/api/friends/${boris.id}/challenge`, anne.cookie);
+    expect(refused.status).toBe(409);
+    expect(await json<{ code: string }>(refused)).toEqual({ code: "IN_MATCH" });
+
+    anneGame.socket.close();
+  });
+
+  it("fait tomber un défi resté sans réponse à son échéance", async () => {
+    const anne = await someone("anne");
+    const boris = await someone("boris");
+    await befriend(anne, boris);
+    const anneGame = await social(anne.cookie);
+    const borisGame = await social(boris.cookie);
+    expect((await call("POST", `/api/friends/${boris.id}/challenge`, anne.cookie)).status).toBe(
+      200,
+    );
+    await borisGame.awaiting("challenge");
+
+    // Le temps ne s'avance pas dans workerd : on vieillit le défi lui-même.
+    const stub = env.SOCIAL.get(env.SOCIAL.idFromName(anne.id));
+    await runInDurableObject(stub, async (_instance, state) => {
+      const outgoing = await state.storage.get<Map<string, Challenge>>("outgoing");
+      const challenge = outgoing?.get(boris.id);
+      if (outgoing === undefined || challenge === undefined) throw new Error("défi absent");
+      outgoing.set(boris.id, { ...challenge, createdAt: 0 });
+      await state.storage.put("outgoing", outgoing);
+    });
+    expect(await runDurableObjectAlarm(stub)).toBe(true);
+
+    expect((await borisGame.awaiting("challenge-cancelled")).from).toBe(anne.id);
     expect(
       (await call("POST", `/api/friends/${anne.id}/challenge/accept`, boris.cookie)).status,
     ).toBe(404);
@@ -383,7 +432,7 @@ describe("amis : spectateur", () => {
   }
 
   const watch = (matchId: string, side: string, cookie: string) =>
-    SELF.fetch(`${ORIGIN}/match/${matchId}/watch?side=${side}`, {
+    exports.default.fetch(`${ORIGIN}/match/${matchId}/watch?side=${side}`, {
       headers: { Upgrade: "websocket", Cookie: cookie },
     });
 
@@ -474,7 +523,7 @@ describe("amis : suppression de compte", () => {
       .bind(userId)
       .first<{ identifier: string }>();
     const token = (stored?.identifier ?? "").replace("delete-account-", "");
-    const confirmed = await SELF.fetch(
+    const confirmed = await exports.default.fetch(
       `${ORIGIN}/api/auth/delete-user/callback?token=${token}&callbackURL=/`,
       {
         headers: { Cookie: anne.cookie },

@@ -1,4 +1,4 @@
-import { SELF, env } from "cloudflare:test";
+import { env, exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import type { AdminMatchDetail, AdminMatchPage, AdminPlayer, AdminStats } from "@occulis/protocol";
 import { PASSWORD, cookieFrom, post, signUp, startTestMatch, unique } from "../test-helpers.js";
@@ -26,7 +26,7 @@ async function get(path: string, cookie?: string): Promise<Response> {
     "CF-Connecting-IP": `10.250.${addresses >> 8}.${addresses & 255}`,
   };
   if (cookie !== undefined) headers["Cookie"] = cookie;
-  return SELF.fetch(`https://occulis.test${path}`, { headers });
+  return exports.default.fetch(`https://occulis.test${path}`, { headers });
 }
 
 /** Le rôle se pose à la main, comme pour le premier administrateur d'un environnement. */
@@ -85,7 +85,7 @@ describe("back-office : contrôle d'accès", () => {
     const { player_id } = await userIdOf(
       ((await (await get("/api/auth/me", cookie)).json()) as { handle: string }).handle,
     );
-    const response = await SELF.fetch(
+    const response = await exports.default.fetch(
       `https://occulis.test/api/admin/players/${player_id}/handle`,
       {
         method: "POST",
@@ -340,7 +340,7 @@ describe("back-office : parties et profils", () => {
     const renamed = unique("renomme");
 
     const rename = (handle: string) =>
-      SELF.fetch(`https://occulis.test/api/admin/players/${player_id}/handle`, {
+      exports.default.fetch(`https://occulis.test/api/admin/players/${player_id}/handle`, {
         method: "POST",
         headers: {
           Cookie: cookie,
@@ -362,5 +362,24 @@ describe("back-office : parties et profils", () => {
     expect((await rename(taken)).status).toBe(422);
     expect((await userIdOf(renamed)).player_id).toBe(player_id);
     expect((await rename("x")).status).toBe(400);
+
+    // Le profil d'un compte supprimé ne se renomme pas : il resterait sinon rattaché à un nom.
+    const orphan = `sans-compte-${crypto.randomUUID()}`;
+    await env.DB.prepare("INSERT INTO players (id, handle, created_at) VALUES (?, ?, ?)")
+      .bind(orphan, orphan, Date.now())
+      .run();
+    const refused = await exports.default.fetch(
+      `https://occulis.test/api/admin/players/${orphan}/handle`,
+      {
+        method: "POST",
+        headers: {
+          Cookie: cookie,
+          Origin: "https://occulis.test",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ handle: unique("revenant") }),
+      },
+    );
+    expect(refused.status).toBe(404);
   });
 });

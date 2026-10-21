@@ -44,7 +44,10 @@ describe("tokens", () => {
   });
 
   it("convertit une couleur entière en CSS, avec ou sans alpha", () => {
+    // Le format produit est ce que l'on teste : la chaîne attendue est donc une couleur.
+    // eslint-disable-next-line no-restricted-syntax -- sortie attendue de cssColor()
     expect(cssColor(BACKGROUND)).toBe("rgb(5 5 5)");
+    // eslint-disable-next-line no-restricted-syntax -- sortie attendue de cssColor()
     expect(cssColor(INK, 0.5)).toBe("rgb(233 230 223 / 0.5)");
   });
 

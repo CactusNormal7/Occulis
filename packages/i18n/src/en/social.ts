@@ -126,6 +126,8 @@ export const social = {
     NOT_FOUND: "This request no longer exists.",
     NO_CHALLENGE: "This challenge no longer exists.",
     GAME_CLOSED: "The game must be open to challenge, and your friend may have left it.",
+    IN_MATCH: "You or your friend is already in a match.",
+    PRIVATE: "Private messages stay private, even during impersonation.",
     MESSAGE_EMPTY: "The message is empty.",
     MESSAGE_TOO_LONG: "The message exceeds 500 characters.",
     RATE_LIMITED: "Too many messages at once: wait a minute.",

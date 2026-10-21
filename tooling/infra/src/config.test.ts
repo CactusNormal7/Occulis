@@ -40,6 +40,20 @@ describe("slugifyBranch", () => {
   it("laisse intact un nom sans barre oblique", () => {
     expect(slugifyBranch("staging")).toBe("staging");
   });
+
+  // Le slug devient un nom de Worker, de base et un label DNS, et s'écrit tel quel dans
+  // wrangler.toml : minuscules, chiffres et tirets seulement.
+  it("ne garde que des minuscules, des chiffres et des tirets", () => {
+    expect(slugifyBranch("feature/technicalReview")).toBe("feature-technicalreview");
+    expect(slugifyBranch("fix/a_b.c")).toBe("fix-a-b-c");
+    expect(slugifyBranch('x/"]\n[evil')).toBe("x-evil");
+  });
+
+  it("tient dans un label DNS une fois préfixé par occulis-", () => {
+    const slug = slugifyBranch(`feature/${"a".repeat(80)}`);
+    expect(`occulis-${slug}`.length).toBeLessThanOrEqual(63);
+    expect(slug.endsWith("-")).toBe(false);
+  });
 });
 
 describe("envFlag", () => {

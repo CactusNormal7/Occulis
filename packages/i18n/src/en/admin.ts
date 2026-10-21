@@ -205,7 +205,10 @@ export const admin = {
       moves: "moves",
       id: "identifier",
     },
-    replayError: (error: string) => `Replay interrupted — ${error}`,
+    replayError: (seq: number | null, code: string) =>
+      seq === null
+        ? "Replay interrupted — unreadable match"
+        : `Replay interrupted at move ${seq} — ${code}`,
     start: "start",
     moves: (count: number) => `Moves (${count})`,
     hint: "hover to see · click to pin",

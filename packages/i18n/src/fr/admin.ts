@@ -211,7 +211,10 @@ export const admin: Messages["admin"] = {
       moves: "coups",
       id: "identifiant",
     },
-    replayError: (error) => `Rejeu interrompu — ${error}`,
+    replayError: (seq, code) =>
+      seq === null
+        ? "Rejeu interrompu — partie illisible"
+        : `Rejeu interrompu au coup ${seq} — ${code}`,
     start: "départ",
     moves: (count) => `Coups (${count})`,
     hint: "survoler pour voir · cliquer pour épingler",

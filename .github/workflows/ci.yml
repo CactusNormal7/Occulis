@@ -11,6 +11,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Le jeton GitHub ne sert qu'à lire le dépôt : le déploiement passe par le jeton Cloudflare.
+permissions:
+  contents: read
+
 jobs:
   checks:
     name: Vérifications
@@ -80,6 +84,11 @@ jobs:
     if: needs.target.outputs.wrangler_env != ''
     runs-on: ubuntu-latest
     environment: ${{ needs.target.outputs.wrangler_env }}
+    # Même groupe que les actions `deploy` et `migrate` d'infra.yml : un push et un
+    # déploiement manuel ne migrent ni ne déploient jamais le même environnement ensemble.
+    concurrency:
+      group: deploy-${{ needs.target.outputs.wrangler_env }}
+      cancel-in-progress: false
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

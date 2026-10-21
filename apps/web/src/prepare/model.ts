@@ -1,4 +1,4 @@
-import { type PlayerId, type TeamEntry, scenarioFor, teamForSide } from "@occulis/core";
+import { type Coord, type PlayerId, type TeamEntry, translateTeam } from "@occulis/core";
 import type { TeamPreset } from "@occulis/protocol";
 
 /**
@@ -47,13 +47,21 @@ export function usablePresets(
   );
 }
 
+/** Les deux zones de la partie, telles que le message `deployment` les donne au camp tenu. */
+export interface MatchZones {
+  readonly zone: readonly Coord[];
+  readonly opponentZone: readonly Coord[];
+}
+
 /**
  * Une équipe préparée, posée dans la zone du camp tenu : un preset s'écrit dans celle du
- * camp A (`TeamPreset`), la carte dit comment la transposer.
+ * camp A (`TeamPreset`). La transposition suit les zones **de la partie**, figées à sa
+ * création, et non celles du registre, qui ont pu changer depuis (docs/architecture.md).
  */
-export function presetTeam(preset: TeamPreset, side: PlayerId): TeamEntry[] {
-  const deployment = scenarioFor(preset.scenario).deployment;
-  return deployment === undefined ? [...preset.team] : teamForSide(deployment, preset.team, side);
+export function presetTeam(preset: TeamPreset, side: PlayerId, zones: MatchZones): TeamEntry[] {
+  return side === "A"
+    ? [...preset.team]
+    : translateTeam(preset.team, zones.opponentZone, zones.zone);
 }
 
 /** L'équipe qui se précharge : le preset par défaut s'il est jouable ici, sinon celle de la carte. */
@@ -62,10 +70,11 @@ export function initialTeam(
   scenario: string,
   rulesetVersion: string,
   side: PlayerId,
+  zones: MatchZones,
   fallback: readonly TeamEntry[],
 ): readonly TeamEntry[] {
   const preferred = usablePresets(presets, scenario, rulesetVersion).find(
     (preset) => preset.isDefault,
   );
-  return preferred === undefined ? fallback : presetTeam(preferred, side);
+  return preferred === undefined ? fallback : presetTeam(preferred, side, zones);
 }

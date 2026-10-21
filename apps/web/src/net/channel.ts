@@ -1,3 +1,4 @@
+import { HEARTBEAT } from "@occulis/protocol";
 import { retryDelay } from "./backoff.js";
 
 /**
@@ -10,7 +11,14 @@ export interface Channel<TOut> {
   close(): void;
 }
 
-export type ChannelStatus = "open" | "reconnecting" | "closed";
+/**
+ * `unreachable` : la connexion vient d'échouer `FAILURES_BEFORE_UNREACHABLE` fois de suite.
+ * Le canal continue d'essayer ; c'est à l'appelant de juger si cela vaut la peine
+ * (un refus du serveur et un réseau coupé ont la même apparence vus d'ici).
+ */
+export type ChannelStatus = "open" | "reconnecting" | "unreachable" | "closed";
+
+const FAILURES_BEFORE_UNREACHABLE = 3;
 
 export interface ChannelOptions<TIn, TOut> {
   /**
@@ -19,24 +27,31 @@ export interface ChannelOptions<TIn, TOut> {
    * une URL absolue.
    */
   readonly path: string;
-  /** Renvoyé à chaque (re)connexion : c'est lui qui fait rediffuser l'état. */
+  /** Renvoyé à chaque (re)connexion : c'est lui qui fait renvoyer l'état. */
   readonly hello: TOut;
   readonly onMessage: (message: TIn) => void;
   readonly onStatus?: (status: ChannelStatus) => void;
+  /**
+   * Envoyer le battement de cœur (`HEARTBEAT`) : seule une page de partie le fait, le
+   * Durable Object de la partie y répondant sans se réveiller. Ailleurs, chaque `ping`
+   * réveillerait son destinataire pour rien.
+   */
+  readonly heartbeat?: boolean;
 }
 
 /**
  * Une coupure n'est pas une fin de partie : le temps de réflexion est illimité
  * (docs/design.md section 2), donc un socket peut tomber en cours de route. Le
- * Durable Object reconstruit l'état depuis le log et rediffuse les vues à chaque
+ * Durable Object reconstruit l'état depuis le log et renvoie sa vue à chaque
  * `hello` — se reconnecter suffit donc à retrouver la partie, sans protocole de
  * reprise dédié.
  */
 export function openChannel<TIn, TOut>(options: ChannelOptions<TIn, TOut>): Channel<TOut> {
-  const { path, hello, onMessage, onStatus } = options;
+  const { path, hello, onMessage, onStatus, heartbeat = false } = options;
   let socket: WebSocket | undefined;
   let attempts = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let beat: ReturnType<typeof setInterval> | undefined;
   let abandoned = false;
 
   const connect = (): void => {
@@ -48,14 +63,24 @@ export function openChannel<TIn, TOut>(options: ChannelOptions<TIn, TOut>): Chan
       attempts = 0;
       onStatus?.("open");
       next.send(JSON.stringify(hello));
+      if (heartbeat) beat = setInterval(() => next.send(HEARTBEAT.ping), HEARTBEAT.intervalMs);
     });
 
     next.addEventListener("message", (event) => {
-      if (typeof event.data !== "string") return;
-      onMessage(JSON.parse(event.data) as TIn);
+      if (typeof event.data !== "string" || event.data === HEARTBEAT.pong) return;
+      // Une trame illisible est ignorée : la vue suivante remet le client d'aplomb, alors
+      // qu'une exception ici ferait taire le gestionnaire sans rien dire.
+      let message: TIn;
+      try {
+        message = JSON.parse(event.data) as TIn;
+      } catch {
+        return;
+      }
+      onMessage(message);
     });
 
     next.addEventListener("close", (event) => {
+      clearInterval(beat);
       if (abandoned) return;
       // 4001 = protocole incompatible : réessayer ne ferait que répéter le refus.
       if (event.code === 4001) {
@@ -63,7 +88,7 @@ export function openChannel<TIn, TOut>(options: ChannelOptions<TIn, TOut>): Chan
         return;
       }
       attempts += 1;
-      onStatus?.("reconnecting");
+      onStatus?.(attempts === FAILURES_BEFORE_UNREACHABLE ? "unreachable" : "reconnecting");
       timer = setTimeout(connect, retryDelay(attempts));
     });
   };

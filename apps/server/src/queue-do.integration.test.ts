@@ -1,4 +1,5 @@
-import { SELF, env, runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
+import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
+import { env, exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import type { QueueIntent, QueueServerMessage } from "@occulis/protocol";
 import { PROTOCOL_VERSION } from "@occulis/protocol";
@@ -11,7 +12,7 @@ import { ACCEPT_MS } from "./proposals.js";
  * dans le vrai runtime, un test unitaire ne pouvant qu'éprouver la file en mémoire.
  */
 async function connect(cookie: string) {
-  const response = await SELF.fetch("https://occulis.test/api/queue", {
+  const response = await exports.default.fetch("https://occulis.test/api/queue", {
     headers: { Upgrade: "websocket", Cookie: cookie },
   });
   expect(response.status).toBe(101);
@@ -61,6 +62,22 @@ async function connect(cookie: string) {
 }
 
 describe("QueueDO dans workerd", () => {
+  it("refuse une montée venue d'une autre origine, cookie compris", async () => {
+    // Une page d'un autre sous-domaine du même site emporte le cookie `SameSite=Lax`.
+    const cookie = await signUp(unique("origine"));
+    const response = await exports.default.fetch("https://occulis.test/api/queue", {
+      headers: { Upgrade: "websocket", Cookie: cookie, Origin: "https://evil.0kl.fr" },
+    });
+    expect(response.status).toBe(403);
+
+    const own = await exports.default.fetch("https://occulis.test/api/queue", {
+      headers: { Upgrade: "websocket", Cookie: cookie, Origin: "https://occulis.test" },
+    });
+    expect(own.status).toBe(101);
+    own.webSocket?.accept();
+    own.webSocket?.close();
+  });
+
   it("apparie deux joueurs sur une même partie, chacun sur son siège", async () => {
     const anne = await connect(await signUp(unique("anne")));
     const boris = await connect(await signUp(unique("boris")));
@@ -91,7 +108,7 @@ describe("QueueDO dans workerd", () => {
     expect(forAnne.seat).not.toBe(forBoris.seat);
 
     // La partie appariée est réellement joignable avec le jeton reçu.
-    const joined = await SELF.fetch(
+    const joined = await exports.default.fetch(
       `https://occulis.test/match/${forAnne.matchId}?seat=${forAnne.seat}`,
       { headers: { Upgrade: "websocket" } },
     );
@@ -181,14 +198,17 @@ describe("QueueDO dans workerd", () => {
   it("refuse une mise en file sans session", async () => {
     // L'identité passée au Durable Object vient du cookie, jamais de la requête :
     // sans session, il n'y a personne à inscrire.
-    const anonymous = await SELF.fetch("https://occulis.test/api/queue", {
+    const anonymous = await exports.default.fetch("https://occulis.test/api/queue", {
       headers: { Upgrade: "websocket" },
     });
     expect(anonymous.status).toBe(401);
 
-    const forged = await SELF.fetch("https://occulis.test/api/queue?player=quelquun-dautre", {
-      headers: { Upgrade: "websocket" },
-    });
+    const forged = await exports.default.fetch(
+      "https://occulis.test/api/queue?player=quelquun-dautre",
+      {
+        headers: { Upgrade: "websocket" },
+      },
+    );
     expect(forged.status).toBe(401);
   });
 
@@ -225,6 +245,24 @@ describe("QueueDO dans workerd", () => {
     hote.socket.close();
     invite.socket.close();
     tard.socket.close();
+  });
+
+  it("n'attend qu'à un seul endroit : un second onglet remplace le premier", async () => {
+    const cookie = await signUp(unique("deux-onglets"));
+    const premier = await connect(cookie);
+    premier.hello({ kind: "quick" });
+    await premier.awaiting("waiting");
+
+    const second = await connect(cookie);
+    second.hello({ kind: "host" });
+    await second.awaiting("hosting");
+
+    const remplace = await premier.awaiting("room-fault");
+    if (remplace.kind !== "room-fault") throw new Error("pas d'éviction");
+    expect(remplace.fault.code).toBe("replaced");
+
+    premier.socket.close();
+    second.socket.close();
   });
 
   it("refuse un code inconnu et son propre code", async () => {

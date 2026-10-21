@@ -22,6 +22,15 @@ export interface Identity {
   readonly providers?: readonly string[];
 }
 
+/**
+ * Ce compte peut-il jouer — file, salons, défis, canal social ? Il faut une adresse
+ * vérifiée (le serveur refuse sinon), et une session à soi : sous usurpation, le serveur
+ * refuse tout canal temps réel, l'administrateur ne joue pas au nom d'un autre.
+ */
+export function canPlay(identity: Identity): boolean {
+  return identity.signedIn && identity.emailVerified !== false && identity.impersonating !== true;
+}
+
 export type AuthOutcome =
   | { readonly ok: true }
   | { readonly ok: false; readonly message: string; readonly code?: string | undefined };
@@ -34,6 +43,27 @@ export async function whoAmI(): Promise<Identity> {
   } catch {
     return { signedIn: false };
   }
+}
+
+/**
+ * Après des reconnexions qui échouent : ce client tient-il encore un siège à cette partie ?
+ * Une montée refusée (session expirée, partie close) et un réseau coupé se ressemblent vus
+ * du WebSocket ; la route de reprise les distingue. `unknown` quand le serveur ne répond
+ * pas : un réseau coupé n'est pas une partie perdue.
+ */
+export async function stillSeated(matchId: string): Promise<"seated" | "gone" | "unknown"> {
+  let response: Response;
+  try {
+    response = await fetch("/api/me/current-match");
+  } catch {
+    return "unknown";
+  }
+  if (response.status === 401) return "gone";
+  if (!response.ok) return "unknown";
+  const current = (await response.json().catch(() => undefined)) as
+    { readonly matchId: string } | null | undefined;
+  if (current === undefined) return "unknown";
+  return current !== null && current.matchId === matchId ? "seated" : "gone";
 }
 
 export async function register(
@@ -79,18 +109,35 @@ export async function linkGoogle(): Promise<AuthOutcome> {
   });
 }
 
-export async function signOut(): Promise<void> {
-  await fetch("/api/auth/sign-out", { method: "POST", headers: JSON_HEADERS, body: "{}" });
+/**
+ * Ne rejette jamais : une coupure réseau rend `false`, et l'appelant relit l'identité,
+ * qui dit ce qu'il en est vraiment — plutôt qu'une promesse rejetée que personne n'attend.
+ */
+export async function signOut(): Promise<boolean> {
+  try {
+    const response = await fetch("/api/auth/sign-out", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: "{}",
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
-/** Rend à l'administrateur sa propre session, après une usurpation. */
+/** Rend à l'administrateur sa propre session, après une usurpation. Ne rejette jamais. */
 export async function stopImpersonating(): Promise<boolean> {
-  const response = await fetch("/api/auth/admin/stop-impersonating", {
-    method: "POST",
-    headers: JSON_HEADERS,
-    body: "{}",
-  });
-  return response.ok;
+  try {
+    const response = await fetch("/api/auth/admin/stop-impersonating", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: "{}",
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 /**

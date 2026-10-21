@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Board } from "./board.js";
 import { coordKey } from "./coord.js";
-import { hasLineOfSight, rasterizeLine, visibleFrom } from "./los.js";
+import { blockingPiece, hasLineOfSight, rasterizeLine, visibleFrom } from "./los.js";
 
 describe("rasterizeLine", () => {
   it("inclut les deux extrémités", () => {
@@ -142,5 +142,37 @@ describe("visibleFrom — avec des pièces", () => {
 
     expect(visible.has(coordKey({ x: 2, y: 0 }))).toBe(true);
     expect(visible.has(coordKey({ x: 3, y: 0 }))).toBe(false);
+  });
+});
+
+describe("blockingPiece", () => {
+  const occupied = (...coords: { x: number; y: number }[]) => new Set(coords.map(coordKey));
+
+  it("désigne la pièce qui coupe la vue, comme on la verrait depuis l'observateur", () => {
+    const board = Board.flat(5, 1);
+    const piece = { x: 2, y: 0 };
+    expect(blockingPiece(board, { x: 0, y: 0 }, { x: 4, y: 0 }, occupied(piece))).toEqual(piece);
+    expect(blockingPiece(board, { x: 4, y: 0 }, { x: 0, y: 0 }, occupied(piece))).toEqual(piece);
+  });
+
+  it("ne désigne que la plus proche de l'observateur", () => {
+    const board = Board.flat(6, 1);
+    const near = { x: 1, y: 0 };
+    const far = { x: 3, y: 0 };
+    expect(blockingPiece(board, { x: 0, y: 0 }, { x: 5, y: 0 }, occupied(near, far))).toEqual(near);
+    expect(blockingPiece(board, { x: 5, y: 0 }, { x: 0, y: 0 }, occupied(near, far))).toEqual(far);
+  });
+
+  it("ne désigne rien quand le relief arrête le regard avant la pièce", () => {
+    // Le mur en (1,0) cache déjà tout ce qui suit : la pièce derrière ne coupe rien.
+    const board = Board.fromAscii(["01000"]);
+    expect(blockingPiece(board, { x: 0, y: 0 }, { x: 4, y: 0 }, occupied({ x: 3, y: 0 }))).toBe(
+      undefined,
+    );
+  });
+
+  it("ne désigne rien sur une ligne dégagée", () => {
+    const board = Board.flat(5, 1);
+    expect(blockingPiece(board, { x: 0, y: 0 }, { x: 4, y: 0 }, occupied())).toBeUndefined();
   });
 });

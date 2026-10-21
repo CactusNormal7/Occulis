@@ -2,7 +2,7 @@ import type { Challenge, SocialServerMessage } from "@occulis/protocol";
 import type { Auth } from "../auth/better-auth.js";
 import { guardCaller } from "../auth/guard.js";
 import { parsePage } from "../admin/paging.js";
-import { listMyMatches, readMyMatch } from "../me/queries.js";
+import { listMyMatches, readCurrentMatch, readMyMatch } from "../me/queries.js";
 import { callSocial, pushTo } from "../social-do.js";
 import { checkMessage } from "./chat.js";
 import {
@@ -163,6 +163,9 @@ export async function handleSocial(
       return Response.json(match);
     }
     if (rest === "/messages") {
+      // La lecture seule de l'emprunt ne va pas jusqu'aux messages privés : ils restent
+      // entre les deux amis, administrateur compris (décision du 2026-10-21).
+      if (caller.impersonating) return failure("PRIVATE");
       const raw = Number.parseInt(url.searchParams.get("before") ?? "", 10);
       return Response.json(
         await listMessages(db, self, friend, Number.isFinite(raw) ? raw : Number.MAX_SAFE_INTEGER),
@@ -188,11 +191,15 @@ export async function handleSocial(
     if (rest === "/challenge") {
       const target = await handleOf(db, friend);
       if (target === undefined) return failure("NOT_FRIENDS");
+      if (await eitherInMatch(db, self, friend)) return failure("IN_MATCH");
       const challenge: Challenge = { from: me, to: target, createdAt: now };
       return callSocial(env, self, "/challenge", challenge);
     }
-    if (rest === "/challenge/accept")
+    if (rest === "/challenge/accept") {
+      // Revérifié à l'acceptation : l'un des deux a pu entrer en partie entre-temps.
+      if (await eitherInMatch(db, self, friend)) return failure("IN_MATCH");
       return callSocial(env, friend, "/challenge/accept", { to: self });
+    }
     if (rest === "/challenge/decline") {
       const { cancelled } = (await (
         await callSocial(env, friend, "/challenge/cancel", { to: self })
@@ -215,6 +222,12 @@ export async function handleSocial(
   return new Response("not found", { status: 404 });
 }
 
+/** Un défi n'a de sens qu'entre deux joueurs libres : une partie en cours ne s'interrompt pas. */
+async function eitherInMatch(db: D1Database, a: string, b: string): Promise<boolean> {
+  const [ofA, ofB] = await Promise.all([readCurrentMatch(db, a), readCurrentMatch(db, b)]);
+  return ofA !== undefined || ofB !== undefined;
+}
+
 function failure(code: string): Response {
   return Response.json({ code }, { status: statusFor(code) });
 }
@@ -228,8 +241,10 @@ function statusFor(code: string): number {
     case "NOT_FRIENDS":
     case "BLOCKED":
     case "UNAVAILABLE":
+    case "PRIVATE":
       return 403;
     case "ALREADY_FRIENDS":
+    case "IN_MATCH":
       return 409;
     case "TOO_MANY_REQUESTS":
     case "RATE_LIMITED":

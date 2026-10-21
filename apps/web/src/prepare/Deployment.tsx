@@ -76,7 +76,7 @@ function Content({
   const [draft, setDraft] = useState<TeamDraft>(() =>
     fromEntries(
       ruleset,
-      initialTeam(presets, scenario, rulesetVersion, player, deployment.defaultTeam),
+      initialTeam(presets, scenario, rulesetVersion, player, deployment, deployment.defaultTeam),
     ),
   );
   const [touched, setTouched] = useState(false);
@@ -93,7 +93,14 @@ function Content({
       setDraft(
         fromEntries(
           ruleset,
-          initialTeam(presets, scenario, rulesetVersion, player, deployment.defaultTeam),
+          initialTeam(
+            presets,
+            scenario,
+            rulesetVersion,
+            player,
+            deployment,
+            deployment.defaultTeam,
+          ),
         ),
       );
     // L'arrivée des presets seule : une mise à jour des verrous ne doit pas réécrire le brouillon.
@@ -144,7 +151,8 @@ function Content({
                 value=""
                 onChange={(event) => {
                   const chosen = usable.find((preset) => preset.id === event.target.value);
-                  if (chosen !== undefined) edit(fromEntries(ruleset, presetTeam(chosen, player)));
+                  if (chosen !== undefined)
+                    edit(fromEntries(ruleset, presetTeam(chosen, player, deployment)));
                 }}
                 options={[
                   { value: "", label: m.deploy.noPreset },

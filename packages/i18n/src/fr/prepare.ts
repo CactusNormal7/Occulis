@@ -38,7 +38,6 @@ export const prepare: Messages["prepare"] = {
       "À l'échéance, votre placement est retenu s'il est complet, sinon celui par défaut.",
     preset: "Équipe",
     noPreset: "Placement en cours",
-    loadPreset: "Charger",
   },
   remaining: "Temps restant",
 };

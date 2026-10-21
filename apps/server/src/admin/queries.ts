@@ -20,7 +20,9 @@ import type {
   AdminMatchSummary,
   AdminPlayer,
   AdminStats,
+  ReplayFailure,
 } from "@occulis/protocol";
+import { handleKey } from "../auth/handle.js";
 import type { MatchFilter } from "./paging.js";
 
 /**
@@ -162,7 +164,7 @@ function annotate(
   log: AdminLogEntry[];
   frames: AdminFrame[];
   board: Tile[] | null;
-  replayError: string | null;
+  replayError: ReplayFailure | null;
 } {
   const { frames, players, board, replayError } = replayLog(row, actions, frameOf);
   return {
@@ -188,9 +190,14 @@ export function replayLog<F>(
   row: Pick<MatchRow, "scenario" | "ruleset_version" | "setup" | "map">,
   actions: readonly Action[],
   frame: (memory: MatchMemory) => F,
-): { frames: F[]; players: PlayerId[]; board: Tile[] | null; replayError: string | null } {
+): {
+  frames: F[];
+  players: PlayerId[];
+  board: Tile[] | null;
+  replayError: ReplayFailure | null;
+} {
   const frames: F[] = [];
-  let replayError: string | null = null;
+  let replayError: ReplayFailure | null = null;
   let memory: MatchMemory | undefined;
   let board: Tile[] | null = null;
   try {
@@ -210,14 +217,16 @@ export function replayLog<F>(
     for (const [seq, action] of actions.entries()) {
       const advanced = advanceMemory(memory, action);
       if (!advanced.ok) {
-        replayError = `coup ${seq} : ${advanced.error.code}`;
+        replayError = { seq, code: advanced.error.code };
         break;
       }
       memory = advanced.value;
       frames.push(frame(memory));
     }
   } catch (cause) {
-    replayError = String(cause);
+    // La cause brute reste ici : elle part dans les journaux, pas chez le client.
+    console.error(JSON.stringify({ event: "replay-unreadable", cause: String(cause) }));
+    replayError = { seq: null, code: "unreadable" };
   }
   return {
     frames,
@@ -303,8 +312,16 @@ export async function renamePlayer(
   now: number,
 ): Promise<RenameResult> {
   try {
+    // Un profil sans compte est celui d'un compte supprimé, anonymisé exprès : le
+    // renommer rattacherait de nouveau un nom à quelqu'un qui est parti. Il passe pour
+    // introuvable.
     const [player] = await db.batch([
-      db.prepare("UPDATE players SET handle = ? WHERE id = ?").bind(handle, id),
+      db
+        .prepare(
+          `UPDATE players SET handle = ?1, handle_key = ?3 WHERE id = ?2
+             AND EXISTS (SELECT 1 FROM users WHERE users.player_id = ?2)`,
+        )
+        .bind(handle, id, handleKey(handle)),
       db
         .prepare("UPDATE users SET name = ?, updated_at = ? WHERE player_id = ?")
         .bind(handle, new Date(now).toISOString(), id),

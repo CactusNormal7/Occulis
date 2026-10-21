@@ -133,7 +133,10 @@ export const profile: Messages["profile"] = {
     against: (opponent) => `contre ${opponent}`,
     side: (seat) => `camp ${seat}`,
     facts: { start: "début", end: "fin", rules: "règles", map: "carte", moves: "coups" },
-    replayError: (error) => `Rejeu interrompu — ${error}`,
+    replayError: (seq, code) =>
+      seq === null
+        ? "Rejeu interrompu — partie illisible"
+        : `Rejeu interrompu au coup ${seq} — ${code}`,
   },
   results: {
     won: "victoire",

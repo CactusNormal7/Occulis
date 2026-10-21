@@ -79,9 +79,18 @@ function guardPlaceholder(env: EnvName, log: ActionContext["log"]): boolean {
   return true;
 }
 
+// Un échec de wrangler est toujours signalé en `fail` : c'est ce qui fait sortir `ci.ts`
+// en erreur, donc virer au rouge le workflow `infra.yml`.
 async function stream(ctx: ActionContext, args: string[]): Promise<number> {
   const { code } = await runWrangler(args, (line) => ctx.log(line, "raw"));
+  if (code !== 0) ctx.log(`wrangler ${args.join(" ")} a échoué (code ${code}).`, "fail");
   return code;
+}
+
+// Ce que wrangler répond quand la ressource visée n'existe pas — ce n'est pas un échec
+// pour une suppression.
+function saysMissing(lines: readonly string[]): boolean {
+  return lines.some((line) => /does not exist|not found|could not find/i.test(line));
 }
 
 function checkConfig(log: ActionContext["log"]): void {
@@ -158,14 +167,21 @@ export const ACTIONS: ActionDef[] = [
       const branch = await currentBranch();
       if (!branch)
         return ctx.log("Impossible de déterminer la branche courante (HEAD détaché ?).", "fail");
-      if (branch === "main" || branch === "staging") {
+      const env = slugifyBranch(branch);
+      // `main` et `staging` ont un environnement fixe ; une branche nommée `production`
+      // ou `local` viserait, elle, celui de la production ou du poste local.
+      if (branch === "main" || branch === "staging" || !isBranchEnv(env)) {
         return ctx.log(
-          `« ${branch} » a déjà un environnement fixe géré par .github/deploy-environments.json — rien à faire.`,
+          `« ${branch} » désigne un environnement fixe géré par .github/deploy-environments.json — rien à faire.`,
           "fail",
         );
       }
-
-      const env = slugifyBranch(branch);
+      if (env === "") return ctx.log(`« ${branch} » ne donne aucun nom d'environnement.`, "fail");
+      // Le slug n'est pas bijectif (`Feature/X` et `feature-x` donnent le même) : deux
+      // branches ne doivent jamais partager un environnement.
+      const owner = findDeployEnvironment(env);
+      if (owner !== null && owner.branch !== branch)
+        return ctx.log(`« ${env} » appartient déjà à la branche « ${owner.branch} ».`, "fail");
       const name = dbName(env);
 
       if (envBlockExists(env)) {
@@ -251,13 +267,38 @@ export const ACTIONS: ActionDef[] = [
 
       // L'ordre compte : le Worker se supprime via --env, qui lit encore son bloc
       // dans wrangler.toml — donc avant de retirer ce bloc.
+      // Si Cloudflare refuse une suppression, on s'arrête avant de toucher aux fichiers :
+      // un environnement retiré de wrangler.toml et du manifeste n'est plus listé nulle
+      // part, et ses ressources resteraient orphelines.
       ctx.log("Suppression du Worker", "step");
-      await runWrangler(["delete", ...envFlag(env)], (l) => ctx.log(l, "raw"), "y\n");
+      const workerLines: string[] = [];
+      const worker = await runWrangler(
+        ["delete", ...envFlag(env)],
+        (l) => {
+          workerLines.push(l);
+          ctx.log(l, "raw");
+        },
+        "y\n",
+      );
+      if (worker.code !== 0 && !saysMissing(workerLines))
+        return ctx.log(
+          "Suppression du Worker en échec — wrangler.toml et le manifeste sont intacts.",
+          "fail",
+        );
 
       ctx.log("Suppression de la base D1", "step");
-      if (await remoteDatabaseId(name))
-        await runWrangler(["d1", "delete", name, "-y"], (l) => ctx.log(l, "raw"), "y\n");
-      else ctx.log(`${name} n'existe pas côté Cloudflare.`, "warn");
+      if (await remoteDatabaseId(name)) {
+        const database = await runWrangler(
+          ["d1", "delete", name, "-y"],
+          (l) => ctx.log(l, "raw"),
+          "y\n",
+        );
+        if (database.code !== 0)
+          return ctx.log(
+            "Suppression de la base en échec — wrangler.toml et le manifeste sont intacts.",
+            "fail",
+          );
+      } else ctx.log(`${name} n'existe pas côté Cloudflare.`, "warn");
 
       if (removeEnvBlock(env)) ctx.log(`wrangler.toml : bloc [env.${env}] retiré.`, "ok");
       if (entry && removeDeployEnvironment(entry.branch))
@@ -327,7 +368,7 @@ export const ACTIONS: ActionDef[] = [
     async run(ctx) {
       // `build:local` et non `build` : le Worker ne sert que ../web/dist, et seul
       // le build local y dépose les maquettes de docs/mockups/ (engine.md,
-      // invariant 16). Le déploiement, lui, doit rester sur `build`.
+      // invariant 16). Le déploiement en production, lui, reste sur `build`.
       // Chaque étape doit réussir : un Ctrl+C pendant le build tue l'enfant, et lancer quand
       // même les migrations puis wrangler servirait un dist partiel.
       ctx.log("Build du client (le Worker sert ../web/dist, maquettes et labo compris)", "step");
@@ -348,20 +389,26 @@ export const ACTIONS: ActionDef[] = [
   {
     id: "deploy",
     label: "Déployer",
-    hint: "gates (typecheck/lint/test) + build + migrations + deploy",
+    hint: "gates (typecheck/lint/format/test) + build + migrations + deploy",
     needsEnv: true,
     remoteOnly: true,
     async run(ctx) {
       const env = ctx.env!;
       if (!guardPlaceholder(env, ctx.log)) return;
       ctx.log("Gates", "step");
-      for (const script of ["typecheck", "lint", "test"]) {
+      // Les mêmes que la CI (`.github/workflows/ci.yml`).
+      for (const script of ["typecheck", "lint", "format:check", "test"]) {
         const { code } = await runStreaming("pnpm", [script], ROOT, (l) => ctx.log(l, "raw"));
         if (code !== 0) return ctx.log(`Gate « ${script} » en échec — déploiement annulé.`, "fail");
       }
-      ctx.log("Build du client", "step");
-      const build = await runStreaming("pnpm", ["--filter", "@occulis/web", "build"], ROOT, (l) =>
-        ctx.log(l, "raw"),
+      // Comme la CI : hors production, `build:local` ajoute le labo et les maquettes.
+      const buildScript = env === "production" ? "build" : "build:local";
+      ctx.log(`Build du client (${buildScript})`, "step");
+      const build = await runStreaming(
+        "pnpm",
+        ["--filter", "@occulis/web", buildScript],
+        ROOT,
+        (l) => ctx.log(l, "raw"),
       );
       // Un build raté laisse un apps/web/dist périmé ou partiel : le déployer servirait
       // un client qui ne correspond plus au Worker.

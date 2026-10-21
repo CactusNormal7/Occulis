@@ -75,8 +75,9 @@ pnpm exec wrangler d1 migrations apply occulis-local --local
 pnpm exec wrangler dev
 ```
 
-**Sans `RESEND_API_KEY`, aucun message n'est envoyé : ils sont journalisés dans la console
-de `wrangler dev`, lien compris.** Les parcours de vérification d'adresse et de
+**Sans `RESEND_API_KEY`, aucun message n'est envoyé : en local, ils sont journalisés dans
+la console de `wrangler dev`, lien compris** (`MAIL_TO_CONSOLE`, posé dans `[vars]` de
+`wrangler.toml` et que les environnements hébergés n'héritent pas : là, rien que le sujet). Les parcours de vérification d'adresse et de
 réinitialisation se traversent donc en local en copiant le lien depuis le terminal, sans
 compte Resend.
 

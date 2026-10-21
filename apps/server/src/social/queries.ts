@@ -234,7 +234,7 @@ export async function searchPlayers(
               EXISTS (SELECT 1 FROM friend_requests WHERE sender = p.id AND recipient = ?1) AS incoming,
               EXISTS (SELECT 1 FROM blocks WHERE blocker = ?1 AND blocked = p.id) AS i_block
        FROM players p
-       WHERE p.handle >= ?2 COLLATE NOCASE AND p.handle < ?3 COLLATE NOCASE
+       WHERE p.handle_key >= ?2 AND p.handle_key < ?3
          AND p.id != ?1
          AND EXISTS (SELECT 1 FROM users u WHERE u.player_id = p.id)
          AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker = p.id AND blocked = ?1)

@@ -21,6 +21,7 @@ import {
   viewFor,
 } from "@occulis/core";
 import {
+  HEARTBEAT,
   PROTOCOL_VERSION,
   type ParsedClientMessage,
   type Locks,
@@ -86,11 +87,24 @@ const DEPLOYMENT_GRACE_MS = 2_000;
  */
 export const ABSENCE_MS = 30_000;
 
+/**
+ * Tant qu'une partie dure, l'alarme passe à ce rythme fermer les sockets muets
+ * (`HEARTBEAT`) : un réveil par minute et par partie, le prix pour qu'une connexion
+ * morte sans fermeture finisse par compter comme une absence.
+ */
+const HEARTBEAT_CHECK_MS = 60_000;
+
 /** Délai avant de retenter l'écriture d'une clôture que D1 a refusée (`closeMatch()`). */
 const OUTCOME_RETRY_MS = 5_000;
 
 /** Une fin acquise au log mais pas encore inscrite dans `matches` (`closeMatch()`). */
 const UNRECORDED = "unrecorded-outcome";
+
+/**
+ * La partie est finie. Retenu dans le stockage, qui survit à l'hibernation, et non lu dans
+ * le cache : sinon l'alarme du battement de cœur la croirait en cours à chaque réveil.
+ */
+const FINISHED = "finished";
 
 function absenceKey(player: PlayerId): string {
   return `absent:${player}`;
@@ -113,11 +127,28 @@ export class MatchDO extends DurableObject<Env> {
   private live: MatchMemory | null = null;
 
   /**
-   * Les coups passent un par un. Le DO est mono-threadé, mais ses *input gates* ne
-   * couvrent que son propre stockage : pendant un `await` sur D1, un autre message peut
-   * entrer, et deux coups se valideraient contre la même position.
+   * La relecture du log en cours, partagée : au réveil, un `hello` et un coup arrivent
+   * souvent ensemble, et deux relectures concurrentes laisseraient la plus lente écraser
+   * un coup joué entre-temps. `generation` change à chaque oubli du cache (`forgetCache()`),
+   * pour qu'une relecture commencée avant ne s'installe pas.
+   */
+  private loading: Promise<MatchMemory> | null = null;
+  private generation = 0;
+
+  /**
+   * Les coups et la pose des équipes passent un par un. Le DO est mono-threadé, mais ses
+   * *input gates* ne couvrent que son propre stockage : pendant un `await` sur D1, un autre
+   * message peut entrer — deux coups se valideraient contre la même position, ou une
+   * équipe se poserait pendant que l'alarme ouvre la partie avec celle par défaut.
    */
   private turns: Promise<unknown> = Promise.resolve();
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    // Répondu par le runtime lui-même, sans réveiller le DO : le battement de cœur ne
+    // coûte donc rien tant que le joueur réfléchit.
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(HEARTBEAT.ping, HEARTBEAT.pong));
+  }
 
   private exclusive<T>(task: () => Promise<T>): Promise<T> {
     const run = this.turns.then(task, task);
@@ -141,7 +172,9 @@ export class MatchDO extends DurableObject<Env> {
       return new Response(null, { status: 204 });
     }
 
-    const config = await this.config();
+    // Un identifiant qui ne désigne aucune partie adresse quand même un DO, vierge.
+    const config = await this.ctx.storage.get<MatchConfig>("config");
+    if (config === undefined) return new Response("unknown match", { status: 404 });
 
     // Chemin atteint seulement par le Worker, qui a vérifié que la session est bien celle
     // du joueur de ce camp : c'est ainsi qu'il retrouve sa partie après un rechargement.
@@ -220,12 +253,12 @@ export class MatchDO extends DurableObject<Env> {
       });
       this.send(ws, { kind: "spectators", count: this.ctx.getWebSockets(watchTag(player)).length });
       if (await this.deploying()) await this.sendDeployment(ws, player);
-      else await this.broadcastViews();
+      else await this.sendView(ws, player);
       return;
     }
 
     if (message.kind === "deploy") {
-      await this.deploy(message.team, player, ws);
+      await this.exclusive(() => this.deploy(message.team, player, ws));
       return;
     }
 
@@ -309,13 +342,39 @@ export class MatchDO extends DurableObject<Env> {
   }
 
   /**
-   * Le camp a au moins un socket ouvert, `leaving` excepté. Un socket qui se ferme reste
-   * listé par `getWebSockets` le temps de sa fermeture : seul l'état `OPEN` compte.
+   * Le camp a au moins un socket ouvert et vivant, `leaving` excepté. Un socket qui se
+   * ferme reste listé par `getWebSockets` le temps de sa fermeture : seul l'état `OPEN`
+   * compte, et un socket muet (`silent()`) n'en est plus un.
    */
   private connected(player: PlayerId, leaving?: WebSocket): boolean {
+    const now = Date.now();
     return this.ctx
       .getWebSockets(player)
-      .some((socket) => socket !== leaving && socket.readyState === WebSocket.OPEN);
+      .some(
+        (socket) =>
+          socket !== leaving && socket.readyState === WebSocket.OPEN && !this.silent(socket, now),
+      );
+  }
+
+  /**
+   * Un socket qui ne répond plus au battement de cœur : sa connexion est morte sans s'être
+   * fermée. Un socket qui n'a jamais battu — tout juste ouvert, ou client sans battement —
+   * n'est pas tenu pour mort.
+   */
+  private silent(socket: WebSocket, now: number): boolean {
+    const lastPong = this.ctx.getWebSocketAutoResponseTimestamp(socket);
+    return lastPong !== null && now - lastPong.getTime() > HEARTBEAT.silentMs;
+  }
+
+  /** Ferme les sockets muets des joueurs : leur départ est noté comme une déconnexion franche. */
+  private async closeSilentSockets(now: number): Promise<void> {
+    for (const seat of ["A", "B"] as const) {
+      for (const socket of this.ctx.getWebSockets(seat)) {
+        if (socket.readyState !== WebSocket.OPEN || !this.silent(socket, now)) continue;
+        socket.close(4002, "silent");
+        await this.left(socket);
+      }
+    }
   }
 
   private watchedBy(ws: WebSocket): PlayerId | undefined {
@@ -334,22 +393,33 @@ export class MatchDO extends DurableObject<Env> {
   async alarm(): Promise<void> {
     const now = Date.now();
     if (await this.ctx.storage.get<boolean>(UNRECORDED)) {
-      await this.recordOutcome((await this.load()).state);
-      await this.ctx.storage.delete(UNRECORDED);
-    }
-    if (await this.deploying()) {
-      const deadline = (await this.ctx.storage.get<number>("deadline")) ?? 0;
-      const deployment = (await this.scenario()).deployment;
-      if (deployment !== undefined && now >= deadline + DEPLOYMENT_GRACE_MS) {
-        const teams = await this.teams();
-        await this.start({
-          A: teams.A ?? deployment.defaultTeams.A,
-          B: teams.B ?? deployment.defaultTeams.B,
-        });
+      try {
+        await this.recordOutcome((await this.load()).state);
+        await this.ctx.storage.delete(UNRECORDED);
+      } catch (cause) {
+        // `UNRECORDED` reste posé : `scheduleAlarm()`, plus bas, réarme une nouvelle tentative.
+        await this.report("outcome-failed", cause);
       }
     }
-    if (!(await this.deploying())) await this.forfeitAbsent(now);
+    await this.exclusive(() => this.closeDeploymentIfDue(now));
+    if (!(await this.deploying())) {
+      await this.closeSilentSockets(now);
+      await this.forfeitAbsent(now);
+    }
     await this.scheduleAlarm();
+  }
+
+  /** À l'échéance, qui n'a rien verrouillé reçoit l'équipe par défaut de la carte. */
+  private async closeDeploymentIfDue(now: number): Promise<void> {
+    if (!(await this.deploying())) return;
+    const deadline = (await this.ctx.storage.get<number>("deadline")) ?? 0;
+    const deployment = (await this.scenario()).deployment;
+    if (deployment === undefined || now < deadline + DEPLOYMENT_GRACE_MS) return;
+    const teams = await this.teams();
+    await this.start({
+      A: teams.A ?? deployment.defaultTeams.A,
+      B: teams.B ?? deployment.defaultTeams.B,
+    });
   }
 
   /**
@@ -361,16 +431,17 @@ export class MatchDO extends DurableObject<Env> {
   }
 
   private async forfeitIfDue(now: number): Promise<void> {
-    const live = await this.load();
     const since = await this.absences();
-    if (live.state.outcome === null) {
-      const due = (["A", "B"] as const)
-        .filter((seat) => since[seat] !== undefined && now >= (since[seat] ?? 0) + ABSENCE_MS)
-        .filter((seat) => !this.connected(seat))
-        .sort((x, y) => (since[x] ?? 0) - (since[y] ?? 0))[0];
-      if (due === undefined) return;
-      await this.commit(live, { kind: "resign", player: due });
-    }
+    const due = (["A", "B"] as const)
+      .filter((seat) => since[seat] !== undefined && now >= (since[seat] ?? 0) + ABSENCE_MS)
+      .filter((seat) => !this.connected(seat))
+      .sort((x, y) => (since[x] ?? 0) - (since[y] ?? 0))[0];
+    // Rien d'échu : inutile de relire la partie. L'alarme passe chaque minute pour le
+    // battement de cœur, et le DO a le plus souvent hiberné entre-temps : relire le log à
+    // chaque passage coûterait une lecture D1 et un rejeu complet, par minute et par partie.
+    if (due === undefined) return;
+    const live = await this.load();
+    if (live.state.outcome === null) await this.commit(live, { kind: "resign", player: due });
     await this.ctx.storage.delete([absenceKey("A"), absenceKey("B")]);
   }
 
@@ -395,6 +466,10 @@ export class MatchDO extends DurableObject<Env> {
       for (const at of [since.A, since.B]) {
         if (at !== undefined) next = Math.min(next ?? Infinity, at + ABSENCE_MS);
       }
+      // Une partie qui dure, avec un joueur en ligne : surveiller son battement de cœur.
+      const running = !(await this.ctx.storage.get<boolean>(FINISHED));
+      const watched = this.ctx.getWebSockets("A").length + this.ctx.getWebSockets("B").length > 0;
+      if (running && watched) next = Math.min(next ?? Infinity, Date.now() + HEARTBEAT_CHECK_MS);
     }
     if (await this.ctx.storage.get<boolean>(UNRECORDED))
       next = Math.min(next ?? Infinity, Date.now() + OUTCOME_RETRY_MS);
@@ -458,6 +533,9 @@ export class MatchDO extends DurableObject<Env> {
    * échoue, la partie reste en déploiement et l'alarme retentera ; dans l'ordre inverse,
    * le DO jouerait des pièces que les replays ne connaîtraient jamais. Retenter est sans
    * risque, `deployTeams()` rendant les mêmes pièces pour les mêmes équipes.
+   *
+   * Toujours appelée sous `exclusive()`, après avoir vérifié `deploying()` : sinon un
+   * second départ pourrait remplacer `setup` sous un coup déjà inscrit au log.
    */
   private async start(teams: Readonly<Record<PlayerId, readonly TeamEntry[]>>): Promise<void> {
     const config = await this.config();
@@ -473,7 +551,7 @@ export class MatchDO extends DurableObject<Env> {
       .bind(JSON.stringify(pieces.value), config.matchId)
       .run();
     await this.ctx.storage.put("setup", pieces.value);
-    this.live = null;
+    this.forgetCache();
     // Un siège qui ne s'est jamais connecté — ou plus depuis le déploiement — n'a laissé
     // aucune fermeture à compter : son absence part de l'ouverture de la partie.
     const now = Date.now();
@@ -517,15 +595,21 @@ export class MatchDO extends DurableObject<Env> {
    * Applique une action déjà autorisée : log, clôture éventuelle, diffusion. Toujours
    * appelée sous `exclusive()`.
    *
-   * Le cache n'avance qu'une fois le coup écrit en D1 : si l'écriture échoue, l'erreur
-   * remonte et l'état reste celui que le log décrit — sans quoi le DO jouerait sur une
+   * Le cache n'avance qu'une fois le coup écrit en D1 — sans quoi le DO jouerait sur une
    * position que le rejeu, après hibernation, ne retrouverait pas (« Corrupted log »).
    */
   private async commit(live: MatchMemory, action: Action): Promise<ActionError | undefined> {
     const advanced = advanceMemory(live, action);
     if (!advanced.ok) return advanced.error;
 
-    await this.appendToLog(action, live.state.history.length);
+    const seq = live.state.history.length;
+    try {
+      await this.appendToLog(action, seq);
+    } catch (cause) {
+      await this.report("append-failed", cause, { seq });
+      await this.resyncFromLog();
+      return undefined;
+    }
     this.live = advanced.value;
 
     if (advanced.value.state.outcome !== null) await this.closeMatch(advanced.value.state);
@@ -534,16 +618,30 @@ export class MatchDO extends DurableObject<Env> {
   }
 
   /**
+   * Une écriture refusée peut pourtant avoir abouti, seule sa réponse s'étant perdue :
+   * D1 seul sait alors si le coup est joué. Le cache est oublié, la position relue du log
+   * et renvoyée à tous — le joueur y voit son coup joué ou non, et peut rejouer. Garder
+   * le cache figé ferait buter chaque nouvel essai sur la clé `(match_id, seq)`.
+   */
+  private async resyncFromLog(): Promise<void> {
+    this.forgetCache();
+    const reloaded = await this.load();
+    if (reloaded.state.outcome !== null) await this.closeMatch(reloaded.state);
+    await this.broadcastViews();
+  }
+
+  /**
    * La fin est déjà au log, donc acquise ; reste à l'inscrire dans `matches`. Si D1 la
    * refuse, l'alarme la retente : une partie finie qui resterait « en cours » en base ne
    * serait jamais rattrapée, `forfeitAbsent()` ignorant les parties déjà closes.
    */
   private async closeMatch(state: GameState): Promise<void> {
-    await this.ctx.storage.put(UNRECORDED, true);
+    await this.ctx.storage.put({ [FINISHED]: true, [UNRECORDED]: true });
     try {
       await this.recordOutcome(state);
       await this.ctx.storage.delete(UNRECORDED);
-    } catch {
+    } catch (cause) {
+      await this.report("outcome-failed", cause);
       await this.scheduleAlarm();
     }
   }
@@ -630,6 +728,12 @@ export class MatchDO extends DurableObject<Env> {
     });
   }
 
+  /** La vue d'un seul socket : celui qui vient de (re)dire `hello`. */
+  private async sendView(ws: WebSocket, player: PlayerId): Promise<void> {
+    const live = await this.load();
+    this.send(ws, { kind: "view", view: encodeView(viewFor(live.state, live.knowledge[player])) });
+  }
+
   private async broadcastViews(): Promise<void> {
     const live = await this.load();
     for (const player of ["A", "B"] as const) {
@@ -643,6 +747,21 @@ export class MatchDO extends DurableObject<Env> {
         this.send(socket, { kind: "view", view: watched });
       }
     }
+  }
+
+  /**
+   * Une écriture D1 refusée, journalisée pour Workers Logs. Identifiants et codes
+   * seulement : jamais de position, qu'un journal n'a pas à connaître (fog à la source).
+   */
+  private async report(
+    event: string,
+    cause: unknown,
+    fields: Readonly<Record<string, number | string>> = {},
+  ): Promise<void> {
+    const config = await this.ctx.storage.get<MatchConfig>("config");
+    console.error(
+      JSON.stringify({ event, match: config?.matchId, ...fields, cause: String(cause) }),
+    );
   }
 
   private send(ws: WebSocket, message: ServerMessage): void {
@@ -679,9 +798,37 @@ export class MatchDO extends DurableObject<Env> {
    * strictement déterministe : aucun `Math.random`, aucun `Date.now` (voir CLAUDE.md).
    * Le point de départ est la position déployée, ou celle de la carte si elle n'en a pas.
    */
-  private async load(): Promise<MatchMemory> {
-    if (this.live !== null) return this.live;
+  private load(): Promise<MatchMemory> {
+    if (this.live !== null) return Promise.resolve(this.live);
+    this.loading ??= this.rebuild();
+    return this.loading;
+  }
 
+  /** Le cache n'est plus sûr : la prochaine lecture repartira du log. */
+  private forgetCache(): void {
+    this.live = null;
+    this.loading = null;
+    this.generation += 1;
+  }
+
+  private async rebuild(): Promise<MatchMemory> {
+    const generation = this.generation;
+    let memory: MatchMemory;
+    try {
+      memory = await this.replayStoredLog();
+    } catch (cause) {
+      if (generation === this.generation) this.loading = null;
+      throw cause;
+    }
+    // Le cache a été oublié pendant la relecture : elle est peut-être d'avant un départ
+    // de partie ou une resynchronisation, on relit.
+    if (generation !== this.generation) return this.load();
+    this.live = memory;
+    this.loading = null;
+    return memory;
+  }
+
+  private async replayStoredLog(): Promise<MatchMemory> {
     const config = await this.config();
     const scenario = await this.scenario();
     const setup = await this.ctx.storage.get<Piece[]>("setup");
@@ -704,9 +851,7 @@ export class MatchDO extends DurableObject<Env> {
         `Corrupted log for ${config.matchId} at move ${rebuilt.error.seq}: ${rebuilt.error.code}`,
       );
     }
-
-    this.live = rebuilt.value;
-    return this.live;
+    return rebuilt.value;
   }
 }
 

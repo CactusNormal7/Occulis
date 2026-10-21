@@ -99,8 +99,10 @@ export function App() {
 function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
   const { loaded, reload } = useLoad(R.profile);
   const verified = loaded.state === "ready" && loaded.value.emailVerified;
+  // Sous emprunt, le serveur refuse le canal social : ne pas l'ouvrir pour rien.
+  const social = verified && !(loaded.state === "ready" && loaded.value.impersonating);
   const frame = (
-    <SocialProvider enabled={verified}>
+    <SocialProvider enabled={social}>
       <Frame localeSwitch={localeSwitch} loaded={loaded} reload={reload} />
     </SocialProvider>
   );

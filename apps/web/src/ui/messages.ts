@@ -110,6 +110,10 @@ export function describeRoomFault(fault: RoomFault): string {
       return m.unknown;
     case "own":
       return m.own;
+    case "unavailable":
+      return m.unavailable;
+    case "replaced":
+      return m.replaced;
   }
 }
 

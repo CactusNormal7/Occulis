@@ -7,7 +7,8 @@
  * l'usurpation visuelle, pas l'esthétique. D'où la normalisation NFKC (« ｊｕｌｅｓ »
  * pleine chasse devient « jules », donc entre en collision avec lui), le refus des
  * caractères invisibles et de direction (un U+202E retourne l'affichage du texte qui le
- * suit), et l'unicité insensible à la casse tenue par la base (migration 0006).
+ * suit), et l'unicité sans casse ni accents tenue par la base (`handleKey()`, migrations
+ * 0006 et 0011).
  */
 
 export const MIN_HANDLE_LENGTH = 2;
@@ -58,6 +59,20 @@ const DELETED_PREFIXES = ["deleted", "supprime"] as const;
 
 export function normalizeHandle(raw: string): string {
   return raw.normalize("NFKC").trim().replace(/\s+/gu, " ");
+}
+
+// Les diacritiques combinants des écritures latine, grecque et cyrillique. Pas toutes les
+// marques : en devanagari, par exemple, un signe vocalique fait partie du mot.
+const ACCENTS = /[\u0300-\u036f]/gu;
+
+/**
+ * La clé d'unicité d'un pseudo (`players.handle_key`) : sans casse ni accents, pour
+ * qu'« Élodie » et « elodie » soient un même nom pour qui les lit. Les séparateurs
+ * restent : « jean-luc » et « jean luc » se distinguent à la lecture. Pour un pseudo
+ * tout en ASCII, elle vaut `lower(handle)` — ce dont la migration 0011 se sert.
+ */
+export function handleKey(handle: string): string {
+  return normalizeHandle(handle).normalize("NFD").replace(ACCENTS, "").toLowerCase();
 }
 
 export function checkHandle(raw: unknown): HandleCheck {

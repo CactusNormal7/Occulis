@@ -1,4 +1,4 @@
-import type { Identity } from "../net/auth.js";
+import { type Identity, canPlay } from "../net/auth.js";
 import type { QueueSeeking, Stage } from "./flow.js";
 import { describeIdentity, describeWaiting } from "./messages.js";
 import { messages } from "../locale/current.js";
@@ -176,9 +176,8 @@ export function attachShell(options: ShellOptions): Shell {
   };
 
   const setIdentity = (identity: Identity): void => {
-    // La file exige une adresse vérifiée : proposer les entrées avant ferait
-    // cliquer sur un refus.
-    playable = identity.signedIn && identity.emailVerified !== false;
+    // Proposer les entrées à un compte que la file refuserait ferait cliquer sur un refus.
+    playable = canPlay(identity);
     e.identity.textContent = describeIdentity(identity);
     for (const button of [e.quick, e.host, e.join]) button.disabled = !playable;
     e.teamsEntry.disabled = !identity.signedIn;
