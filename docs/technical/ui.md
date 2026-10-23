@@ -253,6 +253,8 @@ Des propositions de refonte graphique, **non intégrées** (le pourquoi et les o
 voient. Leur feuille, `lab/lab.css`, importe `generated/proposed-tokens.css` ; elle obéit aux
 mêmes règles que `styles.css`, gardées par les mêmes tests.
 
+Son en-tête porte un lien vers le design system du back-office (`/admin/#/design`), qui renvoie à lui en retour.
+
 **Tokens proposés** (`tokens.ts`) : `PROPOSED` (espacements 10 / 12 / 16, interlignes,
 durées par rôle, courbes, distances, rémanences, niveaux d'intensité, glyphes, papier),
 `MOTION_LEVEL_NAMES` / `MotionLevel` / `isMotionLevel()`, `motionLevelVariables(level)`,

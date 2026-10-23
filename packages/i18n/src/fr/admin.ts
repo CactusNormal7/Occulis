@@ -341,6 +341,10 @@ export const admin: Messages["admin"] = {
         animation: "animation",
       },
     },
+    lab: {
+      text: "Ce qui est décidé est ici ; ce qui est encore proposé se voit dans le labo de la refonte.",
+      open: "Ouvrir le labo",
+    },
     conventions: {
       agent: "Conventions données à l'agent de design",
       direction: "Direction artistique",

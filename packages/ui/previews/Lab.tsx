@@ -129,6 +129,9 @@ export function Lab() {
     <UiRoot fullPage>
       <div className="occ-lab-knobs">
         <Wordmark section="redesign lab" />
+        <a className="occ-label" href="/admin/#/design">
+          Design system →
+        </a>
         <Knob label="Theme">
           <Segmented<ThemeName>
             options={THEME_NAMES.map((name) => ({ value: name, label: name }))}

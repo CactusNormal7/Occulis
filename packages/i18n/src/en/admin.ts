@@ -331,6 +331,10 @@ export const admin = {
         animation: "animation",
       },
     },
+    lab: {
+      text: "Decided here; still being proposed in the redesign lab.",
+      open: "Open the lab",
+    },
     conventions: {
       agent: "Conventions given to the design agent",
       direction: "Art direction",
