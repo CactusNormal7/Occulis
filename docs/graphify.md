@@ -1,8 +1,8 @@
 # graphify
 
 graphify construit une **carte des relations du dépôt** : fichiers, fonctions, classes et
-sections de documentation, reliés par leurs imports, appels et renvois. Il sert surtout à
-l'assistant de code (Claude Code) : au lieu d'ouvrir vingt fichiers pour savoir qui appelle
+sections de documentation, reliés par leurs imports, appels et renvois. Il sert surtout aux
+assistants de code (Claude Code et Codex/ChatGPT) : au lieu d'ouvrir vingt fichiers pour savoir qui appelle
 quoi, il interroge la carte et n'en reçoit que l'extrait utile. Pour un humain, son seul
 produit directement utile est `graphify-out/graph.html`, la carte à explorer dans un
 navigateur.
@@ -14,7 +14,8 @@ construit chez soi, et rien de ce qu'elle contient ne se commite.
 
 | Fichier                           | Rôle                                                                                                                                                                                                                      |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CLAUDE.md`, section « graphify » | Demande à l'assistant d'interroger la carte avant de parcourir le code, et de la mettre à jour après une modification                                                                                                     |
+| `AGENTS.md`                       | Point d'entrée pour Codex/ChatGPT : demande d'interroger la carte avant de parcourir le code, et de la mettre à jour après une modification                                                                               |
+| `CLAUDE.md`, section « graphify » | Même consigne pour Claude Code                                                                                                                                                                                            |
 | `.claude/CLAUDE.md`               | Déclare la commande `/graphify` à Claude Code                                                                                                                                                                             |
 | `.claude/skills/graphify/`        | Le manuel de la commande `/graphify`, recopié depuis le paquet (version dans `.graphify_version`)                                                                                                                         |
 | `.claude/settings.json`           | Deux rappels (_hooks_) : avant une recherche ou une lecture de fichier, ils signalent à l'assistant que la carte existe. Ils restent muets tant que `graphify-out/graph.json` n'existe pas, et ne demandent que `python3` |
