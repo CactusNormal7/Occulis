@@ -1,0 +1,6 @@
+# Le porteur relit les zones dont les invariants ne peuvent pas être délégués.
+/packages/core/ @CactusNormal7
+/docs/design.md @CactusNormal7
+/apps/server/migrations/ @CactusNormal7
+/apps/server/src/auth/ @CactusNormal7
+/.github/ @CactusNormal7

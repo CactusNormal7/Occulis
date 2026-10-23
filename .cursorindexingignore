@@ -1,0 +1,19 @@
+# Garder l'index Cursor sur les sources et la documentation de référence.
+node_modules/
+dist/
+coverage/
+.vite/
+.wrangler/
+.env
+.env.local
+.dev.vars
+.venv/
+graphify-out/
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules/
+packages/ui/src/generated/
+.claude/
+* 2.*

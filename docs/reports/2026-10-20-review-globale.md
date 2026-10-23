@@ -2,7 +2,7 @@
 
 > État au **2026-10-20**, commit `f60aca2` (branche `staging`). **Rapport seul : aucun autre
 > fichier n'a été modifié** (`git status` propre après toutes les commandes). Cette revue
-> reprend [refactor-audit.md](refactor-audit.md) (commit `50fa50d`) : elle vérifie ce qui en
+> reprend [l'audit de refonte du 2026-10-18](2026-10-18-refactor-audit.md) (commit `50fa50d`) : elle vérifie ce qui en
 > reste vrai (annexe A) et se concentre sur ce qu'il ne couvrait pas.
 
 Notation des tableaux :

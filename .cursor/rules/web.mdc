@@ -1,0 +1,14 @@
+---
+description: Règles du client web, du rendu et des écrans.
+globs:
+  - apps/web/**
+alwaysApply: false
+---
+
+Lire `AGENTS.md` et `docs/technical/engine.md` avant de modifier le client.
+
+- Les modules purs ne dépendent ni de Pixi ni du DOM ; le rendu et les entrées restent dans leurs
+  couches dédiées.
+- Une page se charge d'un seul tenant : ressources de route, `useLoad` et une frontière
+  `Suspense`, jamais `useEffect` + `fetch` dans une vue.
+- Ne jamais modifier le voile tramé sans demande explicite du porteur du projet.

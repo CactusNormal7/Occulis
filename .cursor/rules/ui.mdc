@@ -1,0 +1,14 @@
+---
+description: Règles de la charte et des composants partagés.
+globs:
+  - packages/ui/**
+alwaysApply: false
+---
+
+Lire `AGENTS.md` et `docs/technical/ui.md` avant de modifier `@occulis/ui`.
+
+- `src/tokens.ts` est l'unique source des couleurs ; les fichiers de `src/generated/` sont
+  générés et ne se modifient pas à la main.
+- Tout texte affiché passe par `@occulis/i18n`, avec les versions anglaise et française.
+- Préserver les conventions de premier rendu et documenter tout changement de comportement dans
+  la documentation technique concernée.

@@ -1,8 +1,9 @@
 # Occulis — instructions pour les agents Codex / ChatGPT
 
-Ce fichier est le point d'entrée des agents Codex. Les décisions métier et les
-explications complètes restent dans les documents canoniques liés ci-dessous ;
-ne pas les remplacer par des suppositions.
+Ce fichier est la source normative unique des instructions d'agent, lue par
+Claude Code, Codex et Cursor. Les décisions métier et les explications
+complètes restent dans les documents canoniques liés ci-dessous ; ne pas les
+remplacer par des suppositions.
 
 ## Avant de modifier
 

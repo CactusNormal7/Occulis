@@ -77,6 +77,8 @@ Deux invariants à ne pas casser :
 | Comment le code fonctionne-t-il, fonction par fonction ?    | [docs/technical/](docs/technical/README.md)                  |
 | Qu'a-t-il fallu interpréter faute de décision ?             | [docs/implementation-notes.md](docs/implementation-notes.md) |
 | Comment installer et déployer ?                             | [docs/setup.md](docs/setup.md)                               |
+| Comment démarrer comme contributeur ?                       | [docs/onboarding.md](docs/onboarding.md)                     |
+| Comment contribuer et ouvrir une PR ?                       | [CONTRIBUTING.md](CONTRIBUTING.md)                           |
 | Combien ça coûte ?                                          | [docs/costs.md](docs/costs.md)                               |
 | Comment installer et utiliser la carte du code (graphify) ? | [docs/graphify.md](docs/graphify.md)                         |
 
