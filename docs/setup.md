@@ -55,8 +55,8 @@ pnpm exec wrangler whoami    # confirme le compte et affiche l'Account ID
 
 Noter l'**Account ID** : il servira en secret GitHub à l'étape 5.
 
-Pour travailler avec Claude Code, construire aussi la carte du code, qui n'est pas
-versionnée : `pipx install graphifyy` puis `graphify update .` — détail dans
+Pour travailler avec un assistant de code (Claude Code ou Codex/ChatGPT), construire aussi
+la carte du code, qui n'est pas versionnée : `pipx install graphifyy` puis `graphify update .` — détail dans
 [graphify.md](graphify.md).
 
 ## 2. Développement local
