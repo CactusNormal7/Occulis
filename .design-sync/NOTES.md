@@ -1,6 +1,12 @@
 # Notes de synchronisation — Occulis UI
 
 Projet Claude Design : « Occulis UI » (`projectId` dans `config.json`), forme `package`, sans Storybook.
+
+**Depuis le 2026-10-21, la charte vit dans un artifact « Design System » :
+https://claude.ai/artifact/PrwsGTxMaSez6XXHUmGEVq.** Le `projectId` de `config.json` ne répond plus (404 sur
+`DesignSync`, absent de `list_projects` au 2026-10-23) : l'outil `DesignSync` ne peut plus écrire nulle part.
+Un re-sync se fait donc **par l'outil Artifact**, fichier par fichier sous `project/` (voir « Re-sync vers
+l'artifact » plus bas).
 Le projet d'origine a été supprimé et recréé le 2026-10-19 (nouvel identifiant) : son ancre `_ds_sync.json`
 date de ce jour-là.
 
@@ -56,7 +62,7 @@ date de ce jour-là.
   à `sources.ts`.
 - Huit composants ajoutés à la charte pour cette page (`Showcase.tsx` : `CodeBlock`, `Swatch`,
   `SwatchGrid`, `Specimen`, `Stage`, `Prose`, `NavList`, `AsideLayout`), avec aperçus et fiches.
-  **Pas encore envoyés** à Claude Design : ils partiront au prochain re-sync.
+  Envoyés avec la première synchronisation de l'artifact (2026-10-21).
 
 ## Avertissements connus
 
@@ -70,14 +76,28 @@ date de ce jour-là.
   `user`, `link`, rattrapées le 2026-10-15) : la regénérer depuis les clés de `ICONS` à chaque re-sync.
 - Même chose pour les props de `TextField`/`PasswordField`/`ProviderButton` dans `dtsPropsFor` : une prop ajoutée
   au composant (comme `error`) n'atteint le contrat qu'en la reportant à la main.
-- `conventions.md` annonce `--occ-space-1…8` alors que `--occ-space-7` n'existe pas, et ne cite aucun composant
-  des parcours de compte (`FormPanel`, `PasswordField`, `SettingRow`…) : correction proposée, pas encore faite.
-- **`conventions.md` décrit encore la DA d'avant la refonte** (relevé le 2026-10-16, en l'affichant dans le
-  back-office) : « thin white wireframe », « the monospace font » (c'est Tiny5, une police pixel), aucun mot des
-  trois thèmes (`data-theme`), des coins crantés (`--pixel-notch`), de l'ouverture des fenêtres (`revealWindow`,
-  réservée aux fenêtres qu'un clic ouvre) ni du voile tramé verrouillé. À réécrire avec le porteur du projet au
-  re-sync qui suivra le choix du thème (tâche Notion « Resynchroniser la charte vers Claude Design »).
+- `conventions.md` a été réécrit le 2026-10-23 d'après le README de l'artifact, plus à jour : DA pixel, Tiny5,
+  coins crantés, trois matières, trois thèmes, composants des parcours de compte, pas d'espacement 7. Les
+  deux doivent rester identiques, la section « Not synced » comprise.
 - Les tokens sont générés depuis `packages/ui/src/tokens.ts` ; `tokens.test.ts` garde `generated/tokens.css`
   synchrone, mais seul le build met `dist/styles.css` à jour — reconstruire avant tout re-sync.
 - Le rendu n'a été vérifié qu'en Chromium 1234 puis 1228 (headless shell) ; aucune police n'est servie, la monospace est
   celle du système — elle diffère d'une machine à l'autre, volontairement.
+
+## Re-sync vers l'artifact
+
+Fait ainsi le 2026-10-23 (version 7 de l'artifact) :
+
+- Comparer le dépôt au dernier commit synchronisé (`lastChange.via` de `project/design-system.json`) :
+  `git diff --stat <commit> -- packages/ui/src .design-sync/previews .design-sync/docs`.
+- **`project/components/bundle.js`** : un IIFE minifié qui pose `window.OcculisUI` et lit React sur
+  `window.React`, sa première ligne étant l'en-tête `/* @ds-bundle: … */` de l'ancien bundle. Le reconstruire
+  avec l'esbuild de `.ds-sync/node_modules` depuis `packages/ui/src/index.ts` : `react` et `react-dom` remplacés
+  par `window.React` / `window.ReactDOM`, `react/jsx-runtime` par un `createElement` qui pose la clé, CSS ignorée,
+  `var OcculisUI=` réécrit en `window.OcculisUI=`. Vérifier que les exports sont les mêmes que l'ancien et
+  qu'aucun `</script` n'y figure.
+- `project/components/bundle.css` : ne change que si `styles.css` ou les tokens changent.
+- `project/components/index.d.ts` part en `text/plain` (l'extension `.ts` n'est pas servie) ; les
+  `components/<Nom>/README.md` recopient les commentaires du composant, à corriger avec lui.
+- Un seul envoi avec l'index en dernier, `lastChange` mis à jour ; relire juste avant chaque fichier remplacé,
+  la page de l'artifact pouvant enregistrer elle-même une version.

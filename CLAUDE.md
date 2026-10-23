@@ -12,6 +12,12 @@ lire avant toute modification ; ce fichier ne les remplace pas et ne les dupliqu
   `graphify explain` ou `graphify path`. La carte est locale, ignorée par Git et se régénère
   avec `graphify update .` après une modification de code lorsque l'outil est disponible.
 
+## Branches
+
+- Une branche se nomme d'après la fonctionnalité qu'elle porte (`feature/onboarding`,
+  `fix/dialog-confirm`), jamais d'un nom aléatoire ou généré.
+- Le nom d'une branche ne cite jamais « claude », sauf demande explicite.
+
 ## Références et historique
 
 - Les décisions de gameplay sont dans [docs/design.md](docs/design.md) ; les interprétations
