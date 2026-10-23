@@ -53,12 +53,20 @@ function preferredTags(
     .map((entry) => entry.tag);
 }
 
-/** Lit la langue dans un en-tête `Cookie`. */
+/**
+ * Lit la langue dans un en-tête `Cookie`. Un cookie mal encodé (`%E0`) vaut absent :
+ * `decodeURIComponent` lèverait, et chaque requête de ce navigateur avec elle.
+ */
 export function localeFromCookie(header: string | null | undefined): string | undefined {
   if (header === null || header === undefined) return undefined;
   for (const part of header.split(";")) {
     const [name, ...value] = part.trim().split("=");
-    if (name === LOCALE_COOKIE) return decodeURIComponent(value.join("="));
+    if (name !== LOCALE_COOKIE) continue;
+    try {
+      return decodeURIComponent(value.join("="));
+    } catch {
+      return undefined;
+    }
   }
   return undefined;
 }

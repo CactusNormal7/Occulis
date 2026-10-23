@@ -309,6 +309,10 @@ describe("préparation d'une partie", () => {
     );
     expect(dialog).toContain("Decline");
     expect(dialog).not.toContain("occ-icon-button");
+    // Le titre nomme la fenêtre : un lecteur d'écran l'annonce, `getByRole("dialog", { name })` la trouve.
+    const titleId = /<h2 id="([^"]+)"/.exec(dialog)?.[1];
+    expect(titleId).toBeDefined();
+    expect(dialog).toContain(`aria-labelledby="${titleId}"`);
   });
 
   it("aligne ses propres messages à part dans un fil, et échappe leur texte", () => {

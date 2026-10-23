@@ -10,6 +10,16 @@ import { startMatch } from "./match-setup.js";
 import { friendIds, isFriend } from "./social/queries.js";
 
 /**
+ * Un défi sans réponse tombe au bout de ce délai : l'auteur attend devant son écran, et
+ * un défi oublié ne doit pas l'y retenir (décision du 2026-10-21).
+ */
+export const CHALLENGE_TTL_MS = 2 * 60_000;
+
+function expired(challenge: Challenge, now: number): boolean {
+  return now >= challenge.createdAt + CHALLENGE_TTL_MS;
+}
+
+/**
  * Le canal social d'un joueur : **une instance par joueur** (`idFromName(playerId)`).
  *
  * Il tient les sockets de toutes ses pages ouvertes — le jeu comme le profil — et leur
@@ -22,7 +32,8 @@ import { friendIds, isFriend } from "./social/queries.js";
  *   pour que la liste d'amis se lise en une requête plutôt qu'en un appel par ami.
  * - **Un défi** vit dans l'instance de son auteur : elle est mono-threadée, donc une
  *   invitation ne peut être acceptée qu'une fois, comme un salon dans la file. Il meurt
- *   avec le dernier socket de jeu de son auteur — personne ne serait là pour s'asseoir.
+ *   avec le dernier socket de jeu de son auteur — personne ne serait là pour s'asseoir —,
+ *   ou à l'échéance `CHALLENGE_TTL_MS`, que porte l'alarme de l'instance.
  *
  * L'hibernation est acquise par `acceptWebSocket` ; tout ce qui doit lui survivre est
  * dans les tags du socket ou dans le stockage.
@@ -55,7 +66,7 @@ export class SocialDO extends DurableObject<Env> {
       return new Response("expected websocket", { status: 426 });
     }
     const surface: SocialSurface = url.searchParams.get("surface") === "game" ? "game" : "profile";
-    const arriving = this.ctx.getWebSockets().length === 0;
+    const arriving = this.openSockets().length === 0;
     const pair = new WebSocketPair();
     // Le tag dit où la page est ouverte : seul le jeu sait s'asseoir à une partie.
     this.ctx.acceptWebSocket(pair[1], [surface]);
@@ -73,8 +84,26 @@ export class SocialDO extends DurableObject<Env> {
       return;
     }
     // Une page qui arrive apprend les défis qu'on lui a lancés pendant son absence.
+    const now = Date.now();
     for (const challenge of (await this.incoming()).values())
-      this.send(ws, { kind: "challenge", challenge });
+      if (!expired(challenge, now)) this.send(ws, { kind: "challenge", challenge });
+  }
+
+  /** L'échéance des défis lancés : ceux qui ont expiré tombent, annoncés aux deux joueurs. */
+  async alarm(): Promise<void> {
+    const now = Date.now();
+    for (const [to, challenge] of await this.outgoing()) {
+      if (expired(challenge, now)) await this.cancel(to);
+    }
+    await this.scheduleExpiry();
+  }
+
+  private async scheduleExpiry(): Promise<void> {
+    const deadlines = [...(await this.outgoing()).values()].map(
+      (challenge) => challenge.createdAt + CHALLENGE_TTL_MS,
+    );
+    if (deadlines.length === 0) await this.ctx.storage.deleteAlarm();
+    else await this.ctx.storage.setAlarm(Math.min(...deadlines));
   }
 
   async webSocketClose(ws: WebSocket): Promise<void> {
@@ -88,11 +117,22 @@ export class SocialDO extends DurableObject<Env> {
   private async leave(ws: WebSocket): Promise<void> {
     const self = await this.ctx.storage.get<string>("player");
     if (self === undefined) return;
-    const remaining = this.ctx.getWebSockets().filter((socket) => socket !== ws);
+    const remaining = this.openSockets(ws);
     if (!remaining.some((socket) => this.ctx.getTags(socket).includes("game"))) {
       for (const to of (await this.outgoing()).keys()) await this.cancel(to);
     }
     if (remaining.length === 0) await this.announce(self, false);
+  }
+
+  /**
+   * Les sockets ouverts, `leaving` excepté. Un socket qui se ferme reste listé par
+   * `getWebSockets` le temps de sa fermeture : le compter tiendrait pour présent un joueur
+   * qui ferme deux onglets à la fois, et pour déjà là celui qui recharge sa page.
+   */
+  private openSockets(leaving?: WebSocket): WebSocket[] {
+    return this.ctx
+      .getWebSockets()
+      .filter((socket) => socket !== leaving && socket.readyState === WebSocket.OPEN);
   }
 
   /** Écrit le cache de présence, puis le dit à chaque ami. */
@@ -131,6 +171,7 @@ export class SocialDO extends DurableObject<Env> {
     const outgoing = await this.outgoing();
     outgoing.set(challenge.to.id, challenge);
     await this.ctx.storage.put("outgoing", outgoing);
+    await this.scheduleExpiry();
     await pushTo(this.env, challenge.to.id, { kind: "challenge", challenge });
     return Response.json(challenge);
   }
@@ -141,6 +182,7 @@ export class SocialDO extends DurableObject<Env> {
     if (challenge === undefined) return false;
     outgoing.delete(to);
     await this.ctx.storage.put("outgoing", outgoing);
+    await this.scheduleExpiry();
     const cancelled: SocialServerMessage = {
       kind: "challenge-cancelled",
       from: challenge.from.id,
@@ -159,9 +201,11 @@ export class SocialDO extends DurableObject<Env> {
   private async accept(self: string, to: string): Promise<Response> {
     const outgoing = await this.outgoing();
     const challenge = outgoing.get(to);
-    if (challenge === undefined) return Response.json({ code: "NO_CHALLENGE" }, { status: 404 });
+    if (challenge === undefined || expired(challenge, Date.now()))
+      return Response.json({ code: "NO_CHALLENGE" }, { status: 404 });
     outgoing.delete(to);
     await this.ctx.storage.put("outgoing", outgoing);
+    await this.scheduleExpiry();
     await pushTo(this.env, to, { kind: "challenge-cancelled", from: self, to });
 
     if (this.ctx.getWebSockets("game").length === 0) {

@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { admin, oAuthProxy } from "better-auth/plugins";
 import { DEFAULT_LOCALE, type Locale } from "@occulis/i18n";
-import { anonymousHandle, checkHandle, handleCandidates } from "./handle.js";
+import { anonymousHandle, checkHandle, handleCandidates, handleKey } from "./handle.js";
 import { forgetPlayer } from "../social/queries.js";
 import { MIN_PASSWORD_LENGTH, breachedPassword, hashPassword, verifyPassword } from "./password.js";
 import {
@@ -283,12 +283,19 @@ export function buildAuth(env: Env, origin: string, locale: Locale = DEFAULT_LOC
               .first<{ player_id: string | null }>();
             if (row?.player_id) {
               // Ses relations partent avec lui : amis, demandes, blocages et messages
-              // ne rattachent plus personne à un profil anonymisé.
+              // ne rattachent plus personne à un profil anonymisé. Ses équipes préparées
+              // aussi — elles retiendraient sinon le profil orphelin à la purge.
               await env.DB.batch([
                 env.DB.prepare(
-                  "UPDATE players SET handle = ?, handle_changed_at = ? WHERE id = ?",
-                ).bind(anonymousHandle(row.player_id), Date.now(), row.player_id),
+                  "UPDATE players SET handle = ?1, handle_key = ?2, handle_changed_at = ?3 WHERE id = ?4",
+                ).bind(
+                  anonymousHandle(row.player_id),
+                  handleKey(anonymousHandle(row.player_id)),
+                  Date.now(),
+                  row.player_id,
+                ),
                 ...forgetPlayer(env.DB, row.player_id),
+                env.DB.prepare("DELETE FROM team_presets WHERE player_id = ?").bind(row.player_id),
               ]);
             }
           },
@@ -418,12 +425,12 @@ async function claimDerivedHandle(
   });
 }
 
-/** Faux si le pseudo est déjà pris, à la casse près (index `players_handle_nocase`). */
+/** Faux si le pseudo est déjà pris, à la casse et aux accents près (`handleKey()`). */
 async function insertPlayer(db: D1Database, playerId: string, handle: string): Promise<boolean> {
   try {
     await db
-      .prepare("INSERT INTO players (id, handle, created_at) VALUES (?, ?, ?)")
-      .bind(playerId, handle, Date.now())
+      .prepare("INSERT INTO players (id, handle, handle_key, created_at) VALUES (?, ?, ?, ?)")
+      .bind(playerId, handle, handleKey(handle), Date.now())
       .run();
     return true;
   } catch (cause) {

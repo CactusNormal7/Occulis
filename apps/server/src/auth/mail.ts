@@ -9,9 +9,10 @@ import { BACKGROUND, CAMP, FONT, INK, INK_ALPHA, hexColor } from "@occulis/ui/to
  * MailChannels, qui rendait ce service gratuitement aux Workers, a fermé son offre en
  * 2024 — d'où un fournisseur explicite et une clé à provisionner.
  *
- * Sans clé configurée, l'envoi est **journalisé au lieu d'être émis**. C'est ce qui
- * permet aux tests et à `wrangler dev` de traverser les parcours de vérification et de
- * réinitialisation sans compte Resend ni message réellement expédié.
+ * Sans clé configurée, l'envoi est **journalisé au lieu d'être émis**, en local et en
+ * test seulement (`MAIL_TO_CONSOLE`) : c'est ce qui permet de traverser les parcours de
+ * vérification et de réinitialisation sans compte Resend. Un environnement hébergé sans
+ * clé n'écrit qu'une erreur, sans le corps — il porte les liens à jeton.
  */
 export interface Letter {
   readonly to: string;
@@ -23,7 +24,11 @@ export interface Letter {
 
 export async function sendLetter(env: Env, letter: Letter): Promise<void> {
   if (env.RESEND_API_KEY === undefined || env.RESEND_API_KEY.length === 0) {
-    console.log(`[mail] ${letter.to} — ${letter.subject}\n${letter.text}`);
+    if (env.MAIL_TO_CONSOLE === "on") {
+      console.log(`[mail] ${letter.to} — ${letter.subject}\n${letter.text}`);
+    } else {
+      console.error(`[mail] not sent, RESEND_API_KEY missing: ${letter.subject}`);
+    }
     return;
   }
 

@@ -1,0 +1,16 @@
+---
+description: Règles du Worker Cloudflare et de ses Durable Objects.
+globs:
+  - apps/server/**
+alwaysApply: false
+---
+
+Lire `AGENTS.md`, `docs/architecture.md` et `docs/technical/server.md` avant de modifier le
+serveur.
+
+- Le Worker est autoritaire : le fog est appliqué à la source et aucune donnée hors LOS ne doit
+  atteindre le client.
+- Les Durable Objects doivent hiberner et se reconstruire depuis le log d'actions D1.
+- Ne pas modifier à la main les tables Better Auth : utiliser
+  `pnpm --filter @occulis/server auth:schema`.
+- Conserver les précautions documentées sur PBKDF2 et les dates ISO 8601.

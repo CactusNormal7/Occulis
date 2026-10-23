@@ -1,4 +1,4 @@
-import { env } from "cloudflare:test";
+import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import worker from "./index.js";
 
@@ -145,5 +145,65 @@ describe("ménage périodique", () => {
       "orphelin-recent",
       "player-menage-profil",
     ]);
+  });
+
+  it("calcule la clé d'unicité des pseudos que la migration n'a pas su remplir", async () => {
+    // Un pseudo hors ASCII d'avant la migration 0011 : SQLite ne sait pas en retirer l'accent.
+    const id = `cle-${crypto.randomUUID()}`;
+    await env.DB.prepare("INSERT INTO players (id, handle, created_at) VALUES (?, ?, ?)")
+      .bind(id, `Éloïse-${id.slice(4, 10)}`, Date.now())
+      .run();
+
+    await sweep();
+
+    const row = await env.DB.prepare("SELECT handle_key FROM players WHERE id = ?")
+      .bind(id)
+      .first<{ handle_key: string }>();
+    expect(row?.handle_key).toBe(`eloise-${id.slice(4, 10)}`);
+  });
+
+  it("supprime un orphelin qui a laissé un preset, sans bloquer les autres purges", async () => {
+    // Un compte supprimé sans avoir joué : son profil reste, avec l'équipe qu'il avait
+    // préparée — dont la clé étrangère retenait le profil, et avec lui tout le ménage.
+    const old = Date.now() - 2 * 24 * HOUR_MS;
+    await env.DB.prepare("INSERT INTO players (id, handle, created_at) VALUES (?, ?, ?)")
+      .bind("orphelin-preset", "orphelin-preset", old)
+      .run();
+    await env.DB.prepare(
+      `INSERT INTO team_presets (id, player_id, name, scenario, ruleset_version, team, created_at, updated_at)
+       VALUES (?, ?, 'p', 's', 'v', '[]', ?, ?)`,
+    )
+      .bind("preset-orphelin", "orphelin-preset", old, old)
+      .run();
+    await seedUser("menage-messages");
+    await seedUser("menage-messages-ami");
+    const message = env.DB.prepare(
+      "INSERT INTO messages (id, sender, recipient, body, created_at) VALUES (?, ?, ?, 'm', ?)",
+    );
+    await env.DB.batch([
+      message.bind(
+        "message-ancien",
+        "player-menage-messages",
+        "player-menage-messages-ami",
+        Date.now() - 91 * 24 * HOUR_MS,
+      ),
+      message.bind(
+        "message-recent",
+        "player-menage-messages",
+        "player-menage-messages-ami",
+        Date.now(),
+      ),
+    ]);
+
+    await sweep();
+
+    const orphan = await env.DB.prepare("SELECT id FROM players WHERE id = ?")
+      .bind("orphelin-preset")
+      .first();
+    expect(orphan).toBeNull();
+    const messages = await env.DB.prepare("SELECT id FROM messages WHERE sender = ? ORDER BY id")
+      .bind("player-menage-messages")
+      .all<{ id: string }>();
+    expect(messages.results.map((row) => row.id)).toEqual(["message-recent"]);
   });
 });

@@ -29,11 +29,27 @@ export type SeatDenial =
 
 /**
  * Version du protocole, négociée à la connexion. Un client téléchargé embarque un
- * vieux `core` et calcule donc les coups légaux avec de vieilles règles : le serveur
- * doit pouvoir le refuser explicitement plutôt que le laisser diverger en silence
- * (docs/architecture.md section 1).
+ * vieux `core` et un vieux format de messages : le serveur doit pouvoir le refuser
+ * explicitement plutôt que le laisser diverger en silence (docs/architecture.md
+ * section 1).
  */
 export const PROTOCOL_VERSION = 7;
+
+/**
+ * Le battement de cœur d'une page de partie. Un mobile qui perd le réseau sans fermer sa
+ * connexion laisse un socket « ouvert » que rien ne distingue d'un joueur qui réfléchit :
+ * le forfait d'absence ne partirait jamais. Le client envoie `ping` à intervalle régulier ;
+ * le Durable Object répond `pong` sans se réveiller (`setWebSocketAutoResponse`), et tient
+ * pour mort un socket qui n'a plus répondu depuis `silentMs`.
+ *
+ * Ni JSON ni message du protocole : une chaîne nue, que seule la réponse automatique lit.
+ */
+export const HEARTBEAT = {
+  ping: "ping",
+  pong: "pong",
+  intervalMs: 20_000,
+  silentMs: 60_000,
+} as const;
 
 /** `PlayerView` contient des `Set`/`Map`, que `JSON.stringify` sérialise en `{}`. */
 export interface WireView {
@@ -106,9 +122,10 @@ export interface Locks {
  *   `view` après chaque coup ;
  * - un spectateur : `hello` → `watching`, puis des `view` — aucune pendant le déploiement.
  *
- * Chaque `hello`, reconnexion comprise, rediffuse les vues **aux deux joueurs** : c'est ce
- * qui tient lieu de protocole de reprise, et c'est pourquoi un client peut recevoir une
- * `view` avant son propre `welcome`. Un refus (`rejected`) ne part qu'à l'émetteur.
+ * Chaque `hello`, reconnexion comprise, renvoie sa vue au socket qui l'a dit : c'est ce
+ * qui tient lieu de protocole de reprise. Une `view` peut toutefois arriver avant le
+ * `welcome`, diffusée par un coup ou un départ de partie survenu entre-temps. Un refus
+ * (`rejected`) ne part qu'à l'émetteur.
  */
 export type ServerMessage =
   /**
@@ -193,7 +210,14 @@ export type RoomFault =
   /** Aucun salon ouvert sous ce code — faute de frappe, ou hôte reparti. */
   | { readonly code: "unknown" }
   /** Le code est celui de son propre salon : personne ne joue contre soi-même. */
-  | { readonly code: "own" };
+  | { readonly code: "own" }
+  /**
+   * La partie n'a pas pu être créée (base ou Durable Object indisponible), salon privé
+   * comme file rapide : les deux joueurs reviennent au menu et peuvent relancer.
+   */
+  | { readonly code: "unavailable" }
+  /** Le joueur attend désormais depuis un autre onglet : celui-ci n'attend plus rien. */
+  | { readonly code: "replaced" };
 
 export type QueueServerMessage =
   | { readonly kind: "waiting" }

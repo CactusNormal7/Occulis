@@ -162,7 +162,10 @@ describe("mouvement", () => {
   });
 
   it("lit une couleur CSS calculée", () => {
+    // Une couleur CSS calculée est l'entrée même de parseRgb().
+    // eslint-disable-next-line no-restricted-syntax -- entrée de parseRgb()
     expect(parseRgb("rgb(233 230 223)")).toEqual([233 / 255, 230 / 255, 223 / 255]);
+    // eslint-disable-next-line no-restricted-syntax -- entrée de parseRgb()
     expect(parseRgb("rgba(0, 0, 0, 0.5)")).toEqual([0, 0, 0]);
     expect(parseRgb("transparent")).toBeUndefined();
   });

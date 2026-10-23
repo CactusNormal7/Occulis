@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["@cloudflare/workers-types", "@cloudflare/vitest-pool-workers"],
+    "types": ["@cloudflare/workers-types", "@cloudflare/vitest-plugin/types"],
     "noEmit": true,
     // Hérité de la base, sans objet ici puisque rien n'est émis — et nuisible : le type
     // inféré de `buildAuth` cite les types internes de zod, qu'aucune déclaration ne

@@ -1,4 +1,4 @@
-import { SELF, env } from "cloudflare:test";
+import { env, exports } from "cloudflare:workers";
 import { expect } from "vitest";
 import { type StartedMatch, startMatch } from "./match-setup.js";
 
@@ -56,7 +56,7 @@ export async function post(
     Origin: "https://occulis.test",
   };
   if (cookie !== undefined) headers["Cookie"] = cookie;
-  return SELF.fetch(`https://occulis.test${path}`, {
+  return exports.default.fetch(`https://occulis.test${path}`, {
     method: "POST",
     body: JSON.stringify(body),
     headers,

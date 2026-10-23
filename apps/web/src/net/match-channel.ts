@@ -156,7 +156,7 @@ function connect(start: Session, path: string, handlers: MatchHandlers): MatchCh
     });
   };
 
-  // Une reconnexion renvoie `hello`, ce qui fait rediffuser `welcome` puis la vue
+  // Une reconnexion renvoie `hello`, ce qui fait renvoyer `welcome` puis la vue
   // courante : `seated` reste vrai, et la vue reçue rétablit simplement la position.
   // Aucun protocole de reprise n'est nécessaire — le serveur reconstruit depuis le log.
   const channel = openChannel<ServerMessage, ClientMessage>({
@@ -164,6 +164,7 @@ function connect(start: Session, path: string, handlers: MatchHandlers): MatchCh
     hello: { kind: "hello", protocol: PROTOCOL_VERSION },
     onMessage: receive,
     onStatus: handlers.onStatus,
+    heartbeat: true,
   });
 
   return {

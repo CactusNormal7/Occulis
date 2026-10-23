@@ -18,10 +18,10 @@
     "@occulis/i18n": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.5.41",
-    "@cloudflare/workers-types": "^5.20260827.1",
+    "@cloudflare/vitest-plugin": "^1.4.6",
+    "@cloudflare/workers-types": "^5.20261021.1",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
-    "wrangler": "^4.127.0"
+    "vitest": "^4.1.12",
+    "wrangler": "^4.152.0"
   }
 }

@@ -128,6 +128,8 @@ export const social: Messages["social"] = {
     NOT_FOUND: "Cette demande n'existe plus.",
     NO_CHALLENGE: "Ce défi n'existe plus.",
     GAME_CLOSED: "Le jeu doit être ouvert pour défier, et votre ami l'a peut-être quitté.",
+    IN_MATCH: "Vous ou votre ami êtes déjà en partie.",
+    PRIVATE: "Les messages privés restent privés, même sous emprunt.",
     MESSAGE_EMPTY: "Le message est vide.",
     MESSAGE_TOO_LONG: "Le message dépasse 500 caractères.",
     RATE_LIMITED: "Trop de messages d'un coup : patientez une minute.",

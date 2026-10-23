@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "./Button.js";
 import { IconButton } from "./IconButton.js";
 import { useMessages } from "./Locale.js";
@@ -48,6 +48,7 @@ export function Dialog({
 }: DialogProps) {
   const m = useMessages();
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   const [closing, setClosing] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -74,15 +75,20 @@ export function Dialog({
     event.preventDefault();
     if (!ready || busy) return;
     setBusy(true);
-    void Promise.resolve(onConfirm()).then((done) => {
-      setBusy(false);
-      if (done) close();
-    });
+    void Promise.resolve()
+      .then(onConfirm)
+      // Une confirmation qui échoue laisse la fenêtre ouverte et le bouton de nouveau actif.
+      .catch(() => false)
+      .then((done) => {
+        setBusy(false);
+        if (done) close();
+      });
   };
 
   return (
     <dialog
       ref={ref}
+      aria-labelledby={titleId}
       className={closing ? "occ-dialog occ-dialog--closing" : "occ-dialog"}
       onCancel={(event) => {
         event.preventDefault();
@@ -94,7 +100,7 @@ export function Dialog({
     >
       <form onSubmit={submit}>
         <header className="occ-dialog__head">
-          <h2>{title}</h2>
+          <h2 id={titleId}>{title}</h2>
           {dismissible && <IconButton icon="close" label={m.ui.close} onClick={close} />}
         </header>
         <div className="occ-dialog__body">{children}</div>

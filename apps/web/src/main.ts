@@ -46,7 +46,9 @@ import { attachSettings } from "./ui/settings.js";
 import { sweepVeil } from "./ui/veil.js";
 import {
   resendVerification,
+  canPlay,
   signOut,
+  stillSeated,
   stopImpersonating,
   whoAmI,
   type Identity,
@@ -55,6 +57,7 @@ import { chooseLocale, initLocale, translateDom } from "./locale/browser.js";
 import { currentLocale, messages, onLocaleChange } from "./locale/current.js";
 import type { TeamPreset, TeamPresetList } from "@occulis/protocol";
 import { mountDeployment, mountMatchFound } from "./prepare/mount.js";
+import { mountLeaveMatch } from "./leave/mount.js";
 import type { DeploymentProps } from "./prepare/Deployment.js";
 import type { MatchFoundProps } from "./prepare/MatchFound.js";
 import { mountTeams } from "./presets/mount.js";
@@ -86,6 +89,8 @@ function main(): void {
    */
   let match: OnlineMatch | undefined;
   let channel: MatchChannel | undefined;
+  /** Change à chaque partie refermée : une réponse tardive reconnaît qu'elle arrive trop tard. */
+  let matchGeneration = 0;
   let queue: QueueChannel | undefined;
   let stage: Stage = START;
   let social: SocialChannel | undefined;
@@ -173,14 +178,15 @@ function main(): void {
     gameConsole.refresh();
   };
 
-  /** Referme tout ce qui relie le client au serveur, et vide la table. */
-  const leave = (): void => {
-    queue?.close();
-    queue = undefined;
+  /**
+   * Referme le canal de partie et oublie tout ce qui en dépend. Au plus un canal est
+   * ouvert à la fois : un second écrirait dans le même état que le premier.
+   */
+  const closeMatch = (): void => {
+    matchGeneration += 1;
+    leaving = false;
     channel?.close();
     channel = undefined;
-    if (challengedFriend !== undefined) void friends.withdrawChallenge(challengedFriend);
-    challengedFriend = undefined;
     watching = undefined;
     spectators = 0;
     clearTimeout(watchDeadline);
@@ -189,10 +195,19 @@ function main(): void {
     selection = undefined;
     animation = undefined;
     hovered = undefined;
-    found = undefined;
     deploying = undefined;
-    showIslands();
     board?.clear();
+  };
+
+  /** Referme tout ce qui relie le client au serveur, et vide la table. */
+  const leave = (): void => {
+    queue?.close();
+    queue = undefined;
+    if (challengedFriend !== undefined) void friends.withdrawChallenge(challengedFriend);
+    challengedFriend = undefined;
+    closeMatch();
+    found = undefined;
+    showIslands();
     go({ kind: "menu" });
   };
 
@@ -200,15 +215,16 @@ function main(): void {
    * Les gestionnaires d'une partie, assis ou spectateur. Un spectateur ne reçoit ni
    * annonce de déploiement ni coups légaux : seule la vue du camp qu'il suit.
    */
-  const handlersFor = (spectating: boolean): MatchHandlers => {
+  const handlersFor = (spectating: boolean, matchId: string): MatchHandlers => {
     // Les équipes préparées déjà lues (l'écran des équipes les a peut-être chargées) servent
     // aussitôt ; elles se relisent pendant l'annonce, et l'écran reprend la réponse.
     let presets: readonly TeamPreset[] =
       loadCache.value<TeamPresetList>(presetsResource.key)?.presets ?? [];
     let lastRemaining: number | undefined;
     if (!spectating) {
+      const generation = matchGeneration;
       void loadCache.request(presetsResource, { force: true }).then((outcome) => {
-        if (!outcome.ok) return;
+        if (!outcome.ok || generation !== matchGeneration) return;
         presets = outcome.value.presets;
         if (deploying !== undefined) {
           deploying = { ...deploying, presets };
@@ -280,6 +296,7 @@ function main(): void {
         if (state === "reconnecting" && match !== undefined) {
           gameConsole.report(messages().game.reconnecting, false);
         }
+        if (state === "unreachable" && !spectating) void leaveIfUnseated(matchId);
       },
       onSpectators: (count) => {
         spectators = count;
@@ -290,12 +307,26 @@ function main(): void {
     };
   };
 
+  /**
+   * Les reconnexions échouent : si la partie n'est plus celle de ce client (session
+   * expirée, partie close), on la quitte, et l'identité relue dit où revenir. Un réseau
+   * coupé, lui, laisse le canal réessayer.
+   */
+  const leaveIfUnseated = async (matchId: string): Promise<void> => {
+    const generation = matchGeneration;
+    if ((await stillSeated(matchId)) !== "gone" || generation !== matchGeneration) return;
+    leave();
+    await refresh();
+    shell.notify(messages().game.connectionLost);
+  };
+
   const sit = (matchId: string, seat: string): void => {
     queue?.close();
     queue = undefined;
     challengedFriend = undefined;
+    closeMatch();
     void ensureBoard();
-    channel = connectToMatch(matchId, seat, handlersFor(false));
+    channel = connectToMatch(matchId, seat, handlersFor(false, matchId));
   };
 
   /**
@@ -307,7 +338,7 @@ function main(): void {
     watching = friend;
     go({ kind: "seek", seeking: "watch", friend });
     void ensureBoard();
-    channel = watchMatch(matchId, side, handlersFor(true));
+    channel = watchMatch(matchId, side, handlersFor(true, matchId));
     watchDeadline = setTimeout(() => {
       if (match !== undefined) return;
       leave();
@@ -316,7 +347,7 @@ function main(): void {
   };
 
   const renderFriends = (): void => {
-    friendsPanel.render(socialState, identity.signedIn && identity.emailVerified !== false);
+    friendsPanel.render(socialState, canPlay(identity));
   };
 
   const reloadFriends = async (options: { force?: boolean } = { force: true }): Promise<void> => {
@@ -339,9 +370,12 @@ function main(): void {
 
   const onSocial = (message: SocialServerMessage): void => {
     if (message.kind === "matched") {
-      // Un défi accepté : on s'assied, d'où que l'on vienne — sauf d'une partie déjà en
-      // cours, que rien ne doit interrompre.
-      if (stage.kind === "game") return;
+      // Un défi accepté : on s'assied, d'où que l'on vienne — sauf de sa propre partie,
+      // en déploiement ou en cours, que rien ne doit interrompre. La partie d'un ami
+      // qu'on regarde, ou une partie finie, cède la place.
+      const ownMatchRunning =
+        channel !== undefined && watching === undefined && match?.isOver !== true;
+      if (ownMatchRunning) return;
       sit(message.matchId, message.seat);
       return;
     }
@@ -367,7 +401,7 @@ function main(): void {
 
   /** Le canal social suit l'identité : ouvert à un compte vérifié, refermé sinon. */
   const syncSocial = (): void => {
-    const wanted = identity.signedIn && identity.emailVerified !== false;
+    const wanted = canPlay(identity);
     if (wanted && social === undefined) {
       social = openSocial("game", onSocial, (status) => {
         if (status === "open") void reloadFriends();
@@ -460,10 +494,12 @@ function main(): void {
     onCancel: leave,
     onLeaveMatch: () => {
       // Aucun chemin ne ramène à un siège quitté : partir d'une partie vivante sans
-      // abandonner la laisserait « en cours » à jamais dans les deux historiques.
+      // abandonner la laisserait « en cours » à jamais dans les deux historiques. La
+      // fenêtre `leave/` le demande ; partir d'une partie regardée ou finie, non.
       if (watching === undefined && match !== undefined && !match.isOver) {
-        if (!confirm(messages().game.console.leaveConfirm)) return;
-        channel?.submit({ kind: "resign" });
+        leaving = true;
+        showIslands();
+        return;
       }
       leave();
     },
@@ -539,11 +575,29 @@ function main(): void {
   const renderMatchFound = mountMatchFound(element<HTMLElement>("match-found-root"));
   const renderDeployment = mountDeployment(element<HTMLElement>("deploy-root"));
   const renderTeams = mountTeams(element<HTMLElement>("teams-root"));
+  const renderLeave = mountLeaveMatch(element<HTMLElement>("leave-root"));
   let found: Omit<MatchFoundProps, "locale"> | undefined;
   let deploying: Omit<DeploymentProps, "locale"> | undefined;
   let teamsOpen = false;
+  let leaving = false;
   function showIslands(): void {
     const locale = currentLocale();
+    renderLeave(
+      leaving
+        ? {
+            locale,
+            onConfirm: () => {
+              leaving = false;
+              channel?.submit({ kind: "resign" });
+              leave();
+            },
+            onCancel: () => {
+              leaving = false;
+              showIslands();
+            },
+          }
+        : undefined,
+    );
     renderMatchFound(found === undefined ? undefined : { ...found, locale });
     renderDeployment(deploying === undefined ? undefined : { ...deploying, locale });
     renderTeams(

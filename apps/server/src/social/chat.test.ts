@@ -27,6 +27,10 @@ describe("prefixRange", () => {
     expect(prefixRange("  ju ")).toEqual({ from: "ju", to: "ju\u{10FFFF}" });
   });
 
+  it("cherche sans casse ni accents : « Él » trouve « élodie » comme « Elodie »", () => {
+    expect(prefixRange("Él")).toEqual({ from: "el", to: "el\u{10FFFF}" });
+  });
+
   it("refuse un préfixe trop court", () => {
     expect(prefixRange("j")).toBeUndefined();
     expect(prefixRange(null)).toBeUndefined();

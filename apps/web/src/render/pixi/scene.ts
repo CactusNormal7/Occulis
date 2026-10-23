@@ -20,7 +20,14 @@ import {
 } from "../../view/iso.js";
 import { type MoveAnimation, lagging, liftOf, positionOf } from "../../view/animation.js";
 import type { Selection } from "../../game/selection.js";
-import { type LightMap, crestAt, lightAt, relight } from "../../view/reveal.js";
+import {
+  type LightMap,
+  awaitsMove,
+  crestAt,
+  lightAt,
+  litTiles,
+  relight,
+} from "../../view/reveal.js";
 import { type Landing, introLength, introOf, materializeAt } from "../../view/effects.js";
 import { easeOutCubic, phase } from "../../view/easing.js";
 import { breath, snap } from "../../view/pixel.js";
@@ -35,7 +42,8 @@ import { MOTION_FX, look } from "../../theme/theme.js";
 /**
  * Cinq couches, du fond vers l'avant, **toutes redessinées à chaque image** : presque
  * tout y est animé (vague de lumière, entrée du plateau, retombées, respiration), et un
- * plateau de quelques dizaines de cases se redessine en une fraction de milliseconde.
+ * plateau de quelques centaines de cases au plus se redessine en une fraction de
+ * milliseconde.
  *
  * - `sky` : la voûte d'étoiles, en coordonnées d'écran (`render/pixi/sky.ts`) ;
  * - `ground` : le sceau gravé sous le plateau, pour les thèmes qui l'allument ;
@@ -276,10 +284,7 @@ export class Scene {
       const sources = input.view.ownPieces.map((piece) => piece.coord);
       // La première vue attend que le plateau soit à moitié monté pour se déployer.
       const delay = first ? introLength(timing) * 0.55 : 0;
-      // Une partie finie s'éteint : la vue se retire de tout le plateau, qui reste lisible
-      // dans l'ombre — la position finale n'est pas effacée, elle est close.
-      const lit = input.view.outcome === undefined ? input.view.visible : new Set<CoordKey>();
-      this.light = relight(this.light, keys, lit, sources, now, timing, delay);
+      this.light = relight(this.light, keys, litTiles(input.view), sources, now, timing, delay);
 
       const occupants = occupantsOf(input.view);
       const visible = new Map(
@@ -294,10 +299,8 @@ export class Scene {
       }
       this.seenEnemies = visible;
 
-      const yours =
-        input.view.outcome === undefined && input.view.activePlayer === input.view.player;
-      const wasYours =
-        this.lastView !== undefined && this.lastView.activePlayer === this.lastView.player;
+      const yours = awaitsMove(input.view);
+      const wasYours = this.lastView !== undefined && awaitsMove(this.lastView);
       if (yours && !wasYours && !first && !still) this.turnAt = now;
       this.lastView = input.view;
     }

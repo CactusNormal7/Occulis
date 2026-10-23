@@ -13,7 +13,7 @@ export function envBlockExists(env: EnvName): boolean {
 
 // Ajoute un bloc d'environnement de branche complet, sur le modèle exact des
 // blocs [env.staging]/[env.production] déjà présents (routes, assets, DO,
-// D1) — pas de lib TOML dans cet outil, on reste sur de la génération de
+// D1, cron du ménage nocturne — `triggers` n'est pas hérité) — pas de lib TOML dans cet outil, on reste sur de la génération de
 // texte cohérente avec patchDatabaseId/blockHeader ci-dessus.
 export function appendEnvBlock(env: EnvName, databaseName: string): void {
   if (envBlockExists(env)) return;
@@ -43,6 +43,13 @@ class_name = "SocialDO"
 binding = "DB"
 database_name = "${databaseName}"
 database_id = "${PLACEHOLDER}"
+
+[env.${env}.triggers]
+crons = ["0 4 * * *"]
+
+# Un environnement hébergé n'écrit jamais un courrier dans ses journaux (auth/mail.ts).
+[env.${env}.vars]
+MAIL_TO_CONSOLE = "off"
 `;
   const current = readFileSync(TOML, "utf8");
   writeFileSync(TOML, current.replace(/\n*$/, "\n") + block);

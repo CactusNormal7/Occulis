@@ -4,7 +4,7 @@ import {
   type QueueServerMessage,
   parseQueueClientMessage,
 } from "@occulis/protocol";
-import { startMatch } from "./match-setup.js";
+import { type StartedMatch, startMatch } from "./match-setup.js";
 import { type Waiting, dequeue, enqueue, requeueFront, takePairing } from "./pairing.js";
 import {
   type Lapse,
@@ -83,17 +83,32 @@ export class QueueDO extends DurableObject<Env> {
     const entry = this.waitingOf(ws);
     if (entry === undefined) return;
 
-    // Une intention remplace la précédente : un même socket ne peut pas attendre à
-    // la fois dans la file et dans un salon, sous peine d'être apparié deux fois.
+    // Une intention remplace la précédente : un joueur ne peut pas attendre à la fois dans
+    // la file et dans un salon, sous peine d'être apparié deux fois — ni depuis ce socket,
+    // ni depuis un autre onglet.
+    const { intent } = message;
     await this.forget(entry.connectionId);
 
-    const { intent } = message;
-    if (intent.kind === "host") return this.host(ws, entry);
+    if (intent.kind === "host") {
+      await this.displaceOtherTabs(entry, true);
+      return this.host(ws, entry);
+    }
+    // Pour rejoindre, l'éviction attend que le code soit valable : saisir son propre code
+    // depuis un second onglet est refusé sans fermer le salon (`join()`).
     if (intent.kind === "join") return this.join(ws, entry, normalizeCode(intent.code));
+    await this.displaceOtherTabs(entry, false);
     return this.queueUp(ws, entry);
   }
 
   async webSocketClose(ws: WebSocket): Promise<void> {
+    await this.left(ws);
+  }
+
+  async webSocketError(ws: WebSocket): Promise<void> {
+    await this.left(ws);
+  }
+
+  private async left(ws: WebSocket): Promise<void> {
     const entry = this.waitingOf(ws);
     if (entry === undefined) return;
     await this.forget(entry.connectionId);
@@ -107,16 +122,33 @@ export class QueueDO extends DurableObject<Env> {
     await this.tryPair();
   }
 
+  /**
+   * Retire de partout les autres connexions du joueur — file, proposition, salon — et le
+   * leur dit. Un salon qu'il héberge est gardé quand il en héberge de nouveau : c'est un
+   * hôte qui se reconnecte, et `openRoom()` lui rend le même code.
+   */
+  private async displaceOtherTabs(entry: Waiting, hosting: boolean): Promise<void> {
+    const mine = (waiting: Waiting): boolean =>
+      waiting.playerId === entry.playerId && waiting.connectionId !== entry.connectionId;
+    const others = new Set<string>();
+    for (const waiting of await this.queue()) if (mine(waiting)) others.add(waiting.connectionId);
+    const pending = proposalOfPlayer(await this.proposals(), entry.playerId);
+    if (pending !== undefined)
+      for (const member of membersOf(pending)) if (mine(member)) others.add(member.connectionId);
+    if (!hosting)
+      for (const room of await this.rooms())
+        if (mine(room.host)) others.add(room.host.connectionId);
+
+    for (const connectionId of others) {
+      await this.forget(connectionId);
+      const socket = this.socketOf(connectionId);
+      if (socket !== undefined)
+        this.send(socket, { kind: "room-fault", fault: { code: "replaced" } });
+    }
+  }
+
   /** Appariement automatique : premier arrivé, premier servi. */
   private async queueUp(ws: WebSocket, entry: Waiting): Promise<void> {
-    // Un joueur déjà sous proposition, depuis un autre onglet, la quitte : il ne doit
-    // attendre qu'à un seul endroit à la fois.
-    const pending = proposalOfPlayer(await this.proposals(), entry.playerId);
-    const other =
-      pending === undefined
-        ? undefined
-        : membersOf(pending).find((member) => member.playerId === entry.playerId);
-    if (other !== undefined) await this.withdraw(other.connectionId);
     await this.ctx.storage.put("queue", enqueue(await this.queue(), entry));
     this.send(ws, { kind: "waiting" });
     await this.tryPair();
@@ -167,6 +199,7 @@ export class QueueDO extends DurableObject<Env> {
 
     const taken = takeRoom(rooms, code);
     await this.ctx.storage.put("rooms", taken.rooms);
+    await this.displaceOtherTabs(entry, false);
     await this.seat(found.host, entry, false);
   }
 
@@ -268,10 +301,23 @@ export class QueueDO extends DurableObject<Env> {
   /**
    * Crée la partie et annonce son siège à chacun des deux joueurs. `rated` : la file
    * rapide est classée, un salon privé ne l'est pas (`rating.ts`).
+   *
+   * La proposition ou le salon est déjà consommé : si la création échoue, les deux
+   * joueurs doivent l'apprendre, sans quoi ils attendraient un siège qui ne viendra pas.
    */
   private async seat(a: Waiting, b: Waiting, rated: boolean): Promise<void> {
-    const match = await startMatch(this.env, a.playerId, b.playerId, { rated });
     const sockets = { A: this.socketOf(a.connectionId), B: this.socketOf(b.connectionId) };
+    let match: StartedMatch;
+    try {
+      match = await startMatch(this.env, a.playerId, b.playerId, { rated });
+    } catch (cause) {
+      console.error(JSON.stringify({ event: "start-match-failed", cause: String(cause) }));
+      for (const socket of [sockets.A, sockets.B]) {
+        if (socket !== undefined)
+          this.send(socket, { kind: "room-fault", fault: { code: "unavailable" } });
+      }
+      return;
+    }
 
     for (const player of ["A", "B"] as const) {
       const socket = sockets[player];

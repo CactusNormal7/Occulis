@@ -135,7 +135,7 @@ export default [
     // Les aperçus de la charte et la page du labo dessinent du SVG : ils y sont soumis aussi.
     files: [
       "apps/web/src/**/*.{ts,tsx}",
-      "apps/web/lab/**/*.ts",
+      "apps/web/lab/**/*.{ts,tsx}",
       "apps/server/src/**/*.ts",
       "packages/ui/src/**/*.{ts,tsx}",
       "packages/ui/previews/**/*.{ts,tsx}",
@@ -149,6 +149,18 @@ export default [
         },
         {
           selector: "Literal[value=/^#[0-9a-fA-F]{3,8}$/]",
+          message: "Couleur en dur : elle doit venir d'un token de packages/ui/src/tokens.ts.",
+        },
+        // Une couleur glissée dans une valeur plus longue (`"1px solid #fff"`,
+        // `` `rgb(${r} …)` ``). Le `#` doit suivre une espace ou un deux-points, comme dans
+        // une déclaration CSS : un fragment d'URL (`#add-friend`) n'est pas une couleur.
+        {
+          selector: "Literal[value=/(?:[\\s:]#[0-9a-fA-F]{3,8}\\b)|\\b(?:rgba?|hsla?)\\(/]",
+          message: "Couleur en dur : elle doit venir d'un token de packages/ui/src/tokens.ts.",
+        },
+        {
+          selector:
+            "TemplateElement[value.raw=/(?:[\\s:]#[0-9a-fA-F]{3,8}\\b)|\\b(?:rgba?|hsla?)\\(/]",
           message: "Couleur en dur : elle doit venir d'un token de packages/ui/src/tokens.ts.",
         },
       ],

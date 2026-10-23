@@ -1,4 +1,4 @@
-import { SELF, env } from "cloudflare:test";
+import { env, exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import type {
   MeCurrentMatch,
@@ -25,7 +25,7 @@ function nextAddress(): string {
 async function get(path: string, cookie?: string): Promise<Response> {
   const headers: Record<string, string> = { "CF-Connecting-IP": nextAddress() };
   if (cookie !== undefined) headers["Cookie"] = cookie;
-  return SELF.fetch(`https://occulis.test${path}`, { headers, redirect: "manual" });
+  return exports.default.fetch(`https://occulis.test${path}`, { headers, redirect: "manual" });
 }
 
 async function profile(cookie: string): Promise<MeProfile> {
@@ -108,6 +108,13 @@ describe("profil : identité", () => {
     expect(clash.status).toBe(422);
     expect(await clash.json()).toEqual({ code: "HANDLE_TAKEN" });
 
+    // Ni la casse ni l'accent ne font un autre nom : « Élodie » est « elodie ».
+    const accented = unique("élo");
+    const owner = await signUp(unique("rose"));
+    expect((await post("/api/me/handle", { handle: accented }, owner)).status).toBe(200);
+    const lookalike = await post("/api/me/handle", { handle: accented.replace("é", "E") }, cookie);
+    expect(await lookalike.json()).toEqual({ code: "HANDLE_TAKEN" });
+
     const reserved = await post("/api/me/handle", { handle: "Admin" }, cookie);
     expect(await reserved.json()).toEqual({ code: "HANDLE_RESERVED" });
     const invisible = await post("/api/me/handle", { handle: "ab‮cd" }, cookie);
@@ -116,7 +123,7 @@ describe("profil : identité", () => {
 
   it("refuse une écriture venue d'une autre origine", async () => {
     const cookie = await signUp(unique("samir"));
-    const response = await SELF.fetch("https://occulis.test/api/me/handle", {
+    const response = await exports.default.fetch("https://occulis.test/api/me/handle", {
       method: "POST",
       headers: { Cookie: cookie, Origin: "https://evil.test", "Content-Type": "application/json" },
       body: JSON.stringify({ handle: unique("vole") }),
@@ -358,6 +365,37 @@ describe("profil : usurpation", () => {
       .bind(`${target}@occulis.test`)
       .first<{ name: string }>();
     expect(name?.name).toBe(target);
+  });
+
+  it("n'ouvre ni la file ni les messages privés du joueur emprunté", async () => {
+    const { cookie, target } = await impersonate();
+    const queue = await exports.default.fetch("https://occulis.test/api/queue", {
+      headers: { Upgrade: "websocket", Cookie: cookie },
+    });
+    expect(queue.status).toBe(403);
+    const social = await exports.default.fetch("https://occulis.test/api/social", {
+      headers: { Upgrade: "websocket", Cookie: cookie },
+    });
+    expect(social.status).toBe(403);
+
+    // Un vrai ami, pour que la route aille jusqu'aux messages.
+    const friend = unique("ami");
+    await signUp(friend);
+    const [a, b] = [(await idsOf(target)).player_id, (await idsOf(friend)).player_id].sort();
+    await env.DB.prepare(
+      "INSERT INTO friendships (player_low, player_high, created_at) VALUES (?, ?, ?)",
+    )
+      .bind(a, b, Date.now())
+      .run();
+    const other = (await idsOf(friend)).player_id;
+    const messages = await exports.default.fetch(
+      `https://occulis.test/api/friends/${other}/messages`,
+      {
+        headers: { Cookie: cookie },
+      },
+    );
+    expect(messages.status).toBe(403);
+    expect(await messages.json()).toEqual({ code: "PRIVATE" });
   });
 });
 

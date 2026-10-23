@@ -211,7 +211,10 @@ export const admin: Messages["admin"] = {
       moves: "coups",
       id: "identifiant",
     },
-    replayError: (error) => `Rejeu interrompu — ${error}`,
+    replayError: (seq, code) =>
+      seq === null
+        ? "Rejeu interrompu — partie illisible"
+        : `Rejeu interrompu au coup ${seq} — ${code}`,
     start: "départ",
     moves: (count) => `Coups (${count})`,
     hint: "survoler pour voir · cliquer pour épingler",
@@ -337,6 +340,10 @@ export const admin: Messages["admin"] = {
         selector: "sélecteur",
         animation: "animation",
       },
+    },
+    lab: {
+      text: "Ce qui est décidé est ici ; ce qui est encore proposé se voit dans le labo de la refonte.",
+      open: "Ouvrir le labo",
     },
     conventions: {
       agent: "Conventions données à l'agent de design",

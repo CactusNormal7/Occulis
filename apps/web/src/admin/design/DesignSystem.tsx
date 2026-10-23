@@ -32,6 +32,9 @@ export type DesignRoute = Extract<Route, { view: "design" }>;
 /** Les vitesses proposées : temps réel, puis de plus en plus lent. */
 const SPEEDS = [1, 0.5, 0.25, 0.1] as const;
 
+/** Le labo n'est servi que hors production (vite.config.ts) : le lien n'existe que là où la page existe. */
+const LAB_ONLINE = import.meta.env.DEV || import.meta.env.MODE === "mockups";
+
 const PAGES: readonly DesignPage[] = ["foundations", "components", "motion", "conventions"];
 
 export function DesignSystem({ route }: { route: DesignRoute }) {
@@ -65,6 +68,11 @@ export function DesignSystem({ route }: { route: DesignRoute }) {
     <>
       <PageHead title={m.title} />
       <Note>{m.intro}</Note>
+      {LAB_ONLINE && (
+        <Note>
+          {m.lab.text} <a href="/lab/">{m.lab.open}</a>
+        </Note>
+      )}
       <Segmented
         label={m.title}
         value={route.page}

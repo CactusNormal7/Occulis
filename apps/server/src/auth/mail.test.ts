@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   changeEmailLetter,
   deleteAccountLetter,
@@ -6,6 +6,7 @@ import {
   passwordChangedLetter,
   providerLinkedLetter,
   resetLetter,
+  sendLetter,
   verificationLetter,
 } from "./mail.js";
 
@@ -59,5 +60,24 @@ describe("escapeHtml", () => {
     expect(escapeHtml(`<a href="x" title='y'>&</a>`)).toBe(
       "&lt;a href=&quot;x&quot; title=&#39;y&#39;&gt;&amp;&lt;/a&gt;",
     );
+  });
+});
+
+describe("sendLetter sans clé Resend", () => {
+  afterEach(() => vi.restoreAllMocks());
+  const letter = resetLetter("en", "a@occulis.test", URL);
+
+  it("écrit le courrier dans la console en local, lien compris", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    await sendLetter({ MAIL_TO_CONSOLE: "on" } as Env, letter);
+    expect(log.mock.calls.join("\n")).toContain(URL);
+  });
+
+  it("n'en journalise jamais le corps hors local : il porte un jeton", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await sendLetter({} as Env, letter);
+    expect(log).not.toHaveBeenCalled();
+    expect(error.mock.calls.join("\n")).not.toContain("token=");
   });
 });

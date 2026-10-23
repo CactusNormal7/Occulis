@@ -1,8 +1,8 @@
 # Le serveur — `apps/server`
 
-Worker Cloudflare + Durable Objects + base D1. **Squelette fonctionnel mais non
-branché** : le code ci-dessous est complet et cohérent, mais aucun client ne l'appelle
-encore (voir « L'état réel du câblage » dans [README.md](README.md)).
+Worker Cloudflare + Durable Objects + base D1. Le serveur est branché au client : il
+autorise les comptes, le matchmaking, les salons privés, le déploiement et les parties en
+ligne. Voir [README.md](../../README.md) pour l'état fonctionnel du prototype.
 
 ## Répartition des responsabilités
 
@@ -111,36 +111,38 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 | `/api/admin/*`                                                                                                                                              | `GET`/`POST`          | `handleAdmin()` — **401 sans session, 403 sans le rôle `admin`**, 403 sur un `POST` d'une autre origine                                                                                                                                                                                                                           |
 | `/api/me`, `/api/me/*`                                                                                                                                      | `GET`/`POST`          | `handleMe()` — **401 sans session**, 403 sur un `POST` d'une autre origine **ou sous usurpation**                                                                                                                                                                                                                                 |
 | `/api/friends*`, `/api/players/search`, `/api/blocks*`                                                                                                      | `GET`/`POST`/`DELETE` | `handleSocial()` — mêmes gardes que `/api/me` (`guardCaller()`), plus **403 `EMAIL_UNVERIFIED`** sans adresse vérifiée ; voir « `social/` »                                                                                                                                                                                       |
-| `/api/queue`                                                                                                                                                | WebSocket             | `joinQueue()` — **401 sans session, 403 sans adresse vérifiée**                                                                                                                                                                                                                                                                   |
-| `/api/social?surface=game\|profile`                                                                                                                         | WebSocket             | `joinSocial()` — **401 sans session, 403 sans adresse vérifiée** ; ouvre le `SocialDO` du joueur de la session                                                                                                                                                                                                                    |
+| `/api/queue`                                                                                                                                                | WebSocket             | `joinQueue()` — **403 venue d'une autre origine, 401 sans session, 403 sans adresse vérifiée** (`realtimeAccount()`)                                                                                                                                                                                                              |
+| `/api/social?surface=game\|profile`                                                                                                                         | WebSocket             | `joinSocial()` — **403 venue d'une autre origine, 401 sans session, 403 sans adresse vérifiée** ; ouvre le `SocialDO` du joueur de la session                                                                                                                                                                                     |
 | `/api/auth/*`, `/api/admin/*`, `/api/me*`, `/api/queue`, `/api/social`, routes d'amis, `/match/:id/watch` sans `AUTH_SECRET`                                | toute                 | **503** — garde-fou `hasAuthSecret()`, avant toute construction de Better Auth                                                                                                                                                                                                                                                    |
-| `/match/:id/watch?side=A\|B`                                                                                                                                | WebSocket             | `watchMatch()` — **401 sans session**, 403 sans adresse vérifiée, 404 partie inconnue, **403 `OWN_MATCH` / `NOT_FRIENDS` / `SPECTATORS_REFUSED`**, 409 `MATCH_FINISHED` ; puis requête construite `https://do/watch?side=` vers le `MatchDO`                                                                                      |
+| `/match/:id/watch?side=A\|B`                                                                                                                                | WebSocket             | `watchMatch()` — 403 venue d'une autre origine, **401 sans session**, 403 sans adresse vérifiée, 404 partie inconnue, **403 `OWN_MATCH` / `NOT_FRIENDS` / `SPECTATORS_REFUSED`**, 409 `MATCH_FINISHED` ; puis requête construite `https://do/watch?side=` vers le `MatchDO`                                                       |
 | `/match/:id?seat=<jeton>`                                                                                                                                   | WebSocket             | `env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(request)`                                                                                                                                                                                                                                                                     |
 | tout le reste                                                                                                                                               | toute                 | `env.ASSETS.fetch(request)` — le client statique                                                                                                                                                                                                                                                                                  |
 
-| Fonction                              | Emplacement                           | Rôle                                                                                                                                                                                                                  |
-| ------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fetch()` (handler par défaut)        | `apps/server/src/index.ts`            | Routage                                                                                                                                                                                                               |
-| `hasAuthSecret()`                     | `apps/server/src/index.ts`            | Vrai si `AUTH_SECRET` fait au moins 32 caractères ; sinon l'authentification et la file répondent 503                                                                                                                 |
-| `scheduled()` (handler cron)          | `apps/server/src/index.ts`            | Ménage nocturne : sessions, vérifications, compteurs de débit, profils orphelins, **messages de plus de 90 jours** (`MESSAGE_RETENTION_MS`)                                                                           |
-| `pageFor()`                           | `apps/server/src/index.ts`            | Chemin de parcours de compte ou `/profile` → page à servir, sinon `undefined`                                                                                                                                         |
-| `legacyRedirect()`                    | `apps/server/src/legacy-routes.ts`    | Ancienne adresse → nouvelle (chemin et paramètres renommés), sinon `undefined`                                                                                                                                        |
-| `localeOf()`                          | `apps/server/src/index.ts`            | La langue d'une requête : cookie `occulis-locale`, sinon `Accept-Language`, sinon l'anglais (`resolveLocale()` de `@occulis/i18n`)                                                                                    |
-| `buildAuth()`                         | `apps/server/src/auth/better-auth.ts` | Construit l'instance Better Auth autour des bindings et de la langue de la requête                                                                                                                                    |
-| `currentAccount()`                    | `apps/server/src/auth/routes.ts`      | Session → `{ userId, playerId, handle, email, emailVerified, admin, impersonating }`                                                                                                                                  |
-| `isImpersonated()`                    | `apps/server/src/auth/better-auth.ts` | Vrai si la session porte un `impersonatedBy` non vide                                                                                                                                                                 |
-| `availableProviders()`, `hasGoogle()` | `apps/server/src/auth/better-auth.ts` | `["google"]` si les deux secrets Google sont posés, sinon `[]`                                                                                                                                                        |
-| `handleMe()`                          | `apps/server/src/me/routes.ts`        | `guardCaller()`, puis routage de `/api/me/*`                                                                                                                                                                          |
-| `guardCaller()`                       | `apps/server/src/auth/guard.ts`       | Origine vérifiée hors `GET`, session exigée (401), `playerId` tiré du cookie, écriture refusée sous usurpation (403 `IMPERSONATION_READONLY`) ; rend `{ session, playerId, impersonating }` ou la `Response` de refus |
-| `handleSocial()`                      | `apps/server/src/social/routes.ts`    | `guardCaller()`, adresse vérifiée, puis routage des routes d'amis                                                                                                                                                     |
-| `joinSocial()`                        | `apps/server/src/index.ts`            | Le WebSocket `/api/social` : compte et adresse vérifiée, puis `openSocial()`                                                                                                                                          |
-| `watchMatch()`                        | `apps/server/src/index.ts`            | La garde du spectateur (`readWatchRow()`, `isFriend()`, `decideWatch()`), puis `https://do/watch`                                                                                                                     |
-| `isAdmin()`                           | `apps/server/src/auth/better-auth.ts` | Vrai si la colonne `role` contient `admin` (Better Auth y range plusieurs rôles séparés par des virgules)                                                                                                             |
-| `handleAdmin()`                       | `apps/server/src/admin/routes.ts`     | Garde de rôle, puis routage de `/api/admin/*`                                                                                                                                                                         |
-| `handleAuth()`                        | `apps/server/src/auth/routes.ts`      | `/api/auth/me`, puis délégation                                                                                                                                                                                       |
-| `sendLetter()`                        | `apps/server/src/auth/mail.ts`        | Resend, ou journalisation sans clé                                                                                                                                                                                    |
-| `startMatch()`                        | `apps/server/src/match-setup.ts`      | Identifiant, jetons de siège, cartes des joueurs, ligne `matches` (avec `rated`), `POST /init` ; `{ rated }` vaut vrai pour la file rapide seule                                                                      |
-| `readPlayerCard()`                    | `apps/server/src/cards.ts`            | Profil de jeu → `PlayerCard`, lue une fois à la création de la partie                                                                                                                                                 |
+| Fonction                              | Emplacement                           | Rôle                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetch()` (handler par défaut)        | `apps/server/src/index.ts`            | Routage                                                                                                                                                                                                                                                                                                                   |
+| `hasAuthSecret()`                     | `apps/server/src/index.ts`            | Vrai si `AUTH_SECRET` fait au moins 32 caractères ; sinon l'authentification et la file répondent 503                                                                                                                                                                                                                     |
+| `scheduled()` (handler cron)          | `apps/server/src/index.ts`            | Appelle `sweep()`                                                                                                                                                                                                                                                                                                         |
+| `sweep()`                             | `apps/server/src/maintenance.ts`      | Ménage nocturne, **chaque purge indépendante** (un échec est journalisé, `purge-failed`, sans retenir les autres) : sessions, vérifications, compteurs de débit, profils orphelins (leurs presets d'abord), clés de pseudo manquantes (`backfillHandleKeys()`), **messages de plus de 90 jours** (`MESSAGE_RETENTION_MS`) |
+| `pageFor()`                           | `apps/server/src/index.ts`            | Chemin de parcours de compte ou `/profile` → page à servir, sinon `undefined`                                                                                                                                                                                                                                             |
+| `legacyRedirect()`                    | `apps/server/src/legacy-routes.ts`    | Ancienne adresse → nouvelle (chemin et paramètres renommés), sinon `undefined`                                                                                                                                                                                                                                            |
+| `localeOf()`                          | `apps/server/src/index.ts`            | La langue d'une requête : cookie `occulis-locale`, sinon `Accept-Language`, sinon l'anglais (`resolveLocale()` de `@occulis/i18n`)                                                                                                                                                                                        |
+| `buildAuth()`                         | `apps/server/src/auth/better-auth.ts` | Construit l'instance Better Auth autour des bindings et de la langue de la requête                                                                                                                                                                                                                                        |
+| `currentAccount()`                    | `apps/server/src/auth/routes.ts`      | Session → `{ userId, playerId, handle, email, emailVerified, admin, impersonating }`                                                                                                                                                                                                                                      |
+| `isImpersonated()`                    | `apps/server/src/auth/better-auth.ts` | Vrai si la session porte un `impersonatedBy` non vide                                                                                                                                                                                                                                                                     |
+| `availableProviders()`, `hasGoogle()` | `apps/server/src/auth/better-auth.ts` | `["google"]` si les deux secrets Google sont posés, sinon `[]`                                                                                                                                                                                                                                                            |
+| `handleMe()`                          | `apps/server/src/me/routes.ts`        | `guardCaller()`, puis routage de `/api/me/*`                                                                                                                                                                                                                                                                              |
+| `guardCaller()`                       | `apps/server/src/auth/guard.ts`       | Origine vérifiée hors `GET`, session exigée (401), `playerId` tiré du cookie, écriture refusée sous usurpation (403 `IMPERSONATION_READONLY`) ; rend `{ session, playerId, impersonating }` ou la `Response` de refus                                                                                                     |
+| `handleSocial()`                      | `apps/server/src/social/routes.ts`    | `guardCaller()`, adresse vérifiée, puis routage des routes d'amis                                                                                                                                                                                                                                                         |
+| `realtimeAccount()`                   | `apps/server/src/index.ts`            | La garde des trois canaux temps réel : `Origin`, si présente, égale à celle du site (`SameSite=Lax` laisse passer le cookie d'un autre sous-domaine du même site), session, adresse vérifiée                                                                                                                              |
+| `joinSocial()`                        | `apps/server/src/index.ts`            | Le WebSocket `/api/social` : `realtimeAccount()`, puis `openSocial()`                                                                                                                                                                                                                                                     |
+| `watchMatch()`                        | `apps/server/src/index.ts`            | La garde du spectateur (`readWatchRow()`, `isFriend()`, `decideWatch()`), puis `https://do/watch`                                                                                                                                                                                                                         |
+| `isAdmin()`                           | `apps/server/src/auth/better-auth.ts` | Vrai si la colonne `role` contient `admin` (Better Auth y range plusieurs rôles séparés par des virgules)                                                                                                                                                                                                                 |
+| `handleAdmin()`                       | `apps/server/src/admin/routes.ts`     | Garde de rôle, puis routage de `/api/admin/*`                                                                                                                                                                                                                                                                             |
+| `handleAuth()`                        | `apps/server/src/auth/routes.ts`      | `/api/auth/me`, puis délégation                                                                                                                                                                                                                                                                                           |
+| `sendLetter()`                        | `apps/server/src/auth/mail.ts`        | Resend ; sans clé, le courrier dans la console en local (`MAIL_TO_CONSOLE`), une erreur sans corps ailleurs                                                                                                                                                                                                               |
+| `startMatch()`                        | `apps/server/src/match-setup.ts`      | Identifiant, jetons de siège, cartes des joueurs, `POST /init` (refus → exception), puis ligne `matches` (avec `rated`) ; `{ rated }` vaut vrai pour la file rapide seule                                                                                                                                                 |
+| `readPlayerCard()`                    | `apps/server/src/cards.ts`            | Profil de jeu → `PlayerCard`, lue une fois à la création de la partie                                                                                                                                                                                                                                                     |
 
 **`idFromName(matchId)`** est le point clé : deux joueurs de la même partie atteignent
 forcément la même instance de DO, sans annuaire ni coordination.
@@ -148,9 +150,11 @@ forcément la même instance de DO, sans annuaire ni coordination.
 `startMatch()` enchaîne : `crypto.randomUUID()` pour l'identifiant **et pour chacun des
 deux jetons de siège**, les deux cartes de joueur, la carte figée
 (`snapshotScenario(scenarioFor(DEFAULT_SCENARIO))`, dans `MatchConfig.map` et `matches.map`),
-un `INSERT` dans `matches` (avec `CURRENT_RULESET_VERSION` et
-`DEFAULT_SCENARIO`), puis un `POST /init` vers le DO pour y déposer la configuration.
-Il répond `{ matchId, seats }`. Ses seuls appelants sont la file (`QueueDO.seat()`) et
+un `POST /init` vers le DO pour y déposer la configuration — une réponse en erreur lève —,
+**puis** un `INSERT` dans `matches` (avec `CURRENT_RULESET_VERSION` et `DEFAULT_SCENARIO`).
+Dans cet ordre : une ligne sans DO initialisé enverrait ses joueurs, par
+`GET /api/me/current-match`, vers une partie inexistante ; un DO sans ligne n'est connu de
+personne, ses jetons ne sortant pas de `startMatch()`. Il répond `{ matchId, seats }`. Ses seuls appelants sont la file (`QueueDO.seat()`) et
 l'acceptation d'un défi (`SocialDO`) : **aucune route ne crée de partie**, et les deux
 joueurs ont donc toujours un profil — la clé étrangère de `matches` le vérifie. Les
 suites d'intégration passent par `startTestMatch()` (`test-helpers.ts`), qui crée au
@@ -180,32 +184,40 @@ désigne les fichiers du déploiement courant. Vérifié sous `wrangler dev`.
 Étend `DurableObject<Env>`. Champ privé `live: Live | null`, avec
 `Live = { state: GameState; knowledge: Record<PlayerId, PlayerKnowledge> }`.
 
-| Méthode                                | Visibilité | Rôle                                                                                                                                                                                                                                                                                                                                  |
-| -------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fetch()`                              | publique   | `/init` (et, sur une carte à déploiement, l'échéance et son alarme) ; `/seat?side=` (le jeton d'un camp, pour `/api/me/current-match`) et `/watch?side=` (spectateur), atteints par le seul Worker ; sinon négociation WebSocket d'un siège — qui efface l'absence de ce camp et fait compter celle de l'adversaire s'il n'est pas là |
-| `webSocketMessage()`                   | publique   | Aiguille `hello`, `deploy` et `action` ; un socket de spectateur part vers `greetSpectator()`                                                                                                                                                                                                                                         |
-| `webSocketClose()`, `webSocketError()` | publique   | `left()` : le départ d'un spectateur est annoncé au camp suivi ; le dernier socket ouvert d'un siège qui se ferme note son absence (`absent:A\|B`) et réarme l'alarme                                                                                                                                                                 |
-| `connected()`                          | privée     | Le camp a un socket à l'état `OPEN` — un socket en fermeture reste listé par `getWebSockets`                                                                                                                                                                                                                                          |
-| `greetSpectator()`                     | privée     | `hello` → `watching`, puis la vue du camp suivi — **aucune pendant le déploiement** ; toute autre chose → `rejected` `unknown-seat`                                                                                                                                                                                                   |
-| `announceSpectators()`                 | privée     | Envoie `spectators { count }` aux sockets du camp suivi                                                                                                                                                                                                                                                                               |
-| `watchedBy()`                          | privée     | Tag `watch:A` / `watch:B` → camp suivi, sinon `undefined`                                                                                                                                                                                                                                                                             |
-| `alarm()`                              | publique   | D'abord la clôture en attente (`unrecorded-outcome`), s'il y en a une ; puis deux échéances sur une alarme : le déploiement échu pose l'équipe par défaut de qui n'a rien verrouillé et ouvre la partie ; puis `forfeitAbsent()` ; enfin `scheduleAlarm()`                                                                            |
-| `forfeitAbsent()`                      | privée     | Sous `exclusive()`. Le siège absent depuis `ABSENCE_MS` (30 s) et toujours sans socket abandonne (`{ kind: "resign", player }` par `commit()`) — le premier parti si les deux le sont ; efface les absences                                                                                                                           |
-| `scheduleAlarm()`                      | privée     | Recale l'alarme sur la prochaine échéance : celle du déploiement **seule** pendant la phase (une absence échue y sonnerait en boucle), sinon la plus proche absence ; une clôture en attente la ramène à `OUTCOME_RETRY_MS` (5 s)                                                                                                     |
-| `deploy()`                             | privée     | Lit, valide et verrouille une équipe ; ouvre la partie quand les deux le sont                                                                                                                                                                                                                                                         |
-| `start()`                              | privée     | `deployTeams()`, écrit les pièces de départ dans `matches.setup` **puis** dans le DO (c'est le `setup` du DO qui clôt la phase : un échec de D1 la laisse ouverte, et l'alarme retente), fait compter l'absence d'un siège sans socket, réarme l'alarme, diffuse les vues                                                             |
-| `sendDeployment()`                     | privée     | Le message `deployment` d'un camp : sa zone, celle d'en face, son équipe par défaut, le temps restant, les verrous, les deux cartes                                                                                                                                                                                                   |
-| `deploying()`                          | privée     | Vrai sur une carte à déploiement tant que les pièces ne sont pas posées                                                                                                                                                                                                                                                               |
-| `exclusive()`                          | privée     | File les coups un par un : pendant un `await` sur D1, les _input gates_ laissent entrer un autre message                                                                                                                                                                                                                              |
-| `play()`                               | privée     | Sous `exclusive()`. Refuse pendant le déploiement ; estampille l'abandon, refuse un déplacement hors tour, puis `commit()`                                                                                                                                                                                                            |
-| `commit()`                             | privée     | Applique une action autorisée (`advanceMemory()`), journalise, **puis seulement** avance le cache, clôt si besoin, rediffuse ; rend l'`ActionError` d'un refus                                                                                                                                                                        |
-| `closeMatch()`                         | privée     | Marque `unrecorded-outcome`, appelle `recordOutcome()`, efface la marque ; en cas d'échec, l'alarme retentera                                                                                                                                                                                                                         |
-| `recordOutcome()`                      | privée     | Clôt la partie ; **classée**, fait varier l'Elo des deux joueurs dans le même lot. **Rejouable** : chaque écriture exige une partie encore ouverte                                                                                                                                                                                    |
-| `appendToLog()`                        | privée     | `INSERT` dans `match_actions`                                                                                                                                                                                                                                                                                                         |
-| `broadcastViews()`                     | privée     | Envoie à chaque joueur son `viewFor()`, et à ses spectateurs la même vue par `spectatorView()`                                                                                                                                                                                                                                        |
-| `send()`                               | privée     | Sérialise un `ServerMessage`                                                                                                                                                                                                                                                                                                          |
-| `config()`                             | privée     | Relit `MatchConfig` depuis le stockage du DO ; **lève** si absente                                                                                                                                                                                                                                                                    |
-| `load()`                               | privée     | Reconstruit l'état en rejouant le log                                                                                                                                                                                                                                                                                                 |
+| Méthode                                | Visibilité | Rôle                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `constructor()`                        | publique   | Pose la réponse automatique du battement de cœur (`setWebSocketAutoResponse`, `ping` → `pong`), servie par le runtime sans réveiller le DO                                                                                                                                                                                                                                                                                |
+| `fetch()`                              | publique   | `/init` (et, sur une carte à déploiement, l'échéance et son alarme) ; 404 sur un DO jamais initialisé ; `/seat?side=` (le jeton d'un camp, pour `/api/me/current-match`) et `/watch?side=` (spectateur), atteints par le seul Worker ; sinon négociation WebSocket d'un siège — qui efface l'absence de ce camp et fait compter celle de l'adversaire s'il n'est pas là                                                   |
+| `webSocketMessage()`                   | publique   | Aiguille `hello` (`welcome`, puis `deployment` ou la vue de **ce seul socket**, `sendView()`), `deploy` (sous `exclusive()`) et `action` ; un socket de spectateur part vers `greetSpectator()`                                                                                                                                                                                                                           |
+| `webSocketClose()`, `webSocketError()` | publique   | `left()` : le départ d'un spectateur est annoncé au camp suivi ; le dernier socket ouvert d'un siège qui se ferme note son absence (`absent:A\|B`) et réarme l'alarme                                                                                                                                                                                                                                                     |
+| `connected()`                          | privée     | Le camp a un socket à l'état `OPEN` et vivant — un socket en fermeture reste listé par `getWebSockets`, un socket muet (`silent()`) ne compte plus                                                                                                                                                                                                                                                                        |
+| `silent()`                             | privée     | Le socket n'a plus répondu au battement de cœur depuis `HEARTBEAT.silentMs` (60 s) — `getWebSocketAutoResponseTimestamp()` ; un socket qui n'a jamais battu n'est pas tenu pour mort                                                                                                                                                                                                                                      |
+| `closeSilentSockets()`                 | privée     | Ferme (code 4002) les sockets muets des joueurs et note leur départ par `left()`, comme une déconnexion franche                                                                                                                                                                                                                                                                                                           |
+| `greetSpectator()`                     | privée     | `hello` → `watching`, puis la vue du camp suivi — **aucune pendant le déploiement** ; toute autre chose → `rejected` `unknown-seat`                                                                                                                                                                                                                                                                                       |
+| `announceSpectators()`                 | privée     | Envoie `spectators { count }` aux sockets du camp suivi                                                                                                                                                                                                                                                                                                                                                                   |
+| `watchedBy()`                          | privée     | Tag `watch:A` / `watch:B` → camp suivi, sinon `undefined`                                                                                                                                                                                                                                                                                                                                                                 |
+| `alarm()`                              | publique   | D'abord la clôture en attente (`unrecorded-outcome`), s'il y en a une — un échec est journalisé et laissé à l'alarme suivante ; puis deux échéances sur une alarme : `closeDeploymentIfDue()` sous `exclusive()` ; hors déploiement, `closeSilentSockets()` puis `forfeitAbsent()` ; enfin, toujours, `scheduleAlarm()`                                                                                                   |
+| `forfeitAbsent()`                      | privée     | Sous `exclusive()`. Ne relit la partie que si un forfait est échu — l'alarme passe chaque minute, le plus souvent après une hibernation. Le siège absent depuis `ABSENCE_MS` (30 s) et toujours sans socket abandonne (`{ kind: "resign", player }` par `commit()`) — le premier parti si les deux le sont ; efface les absences                                                                                          |
+| `scheduleAlarm()`                      | privée     | Recale l'alarme sur la prochaine échéance : celle du déploiement **seule** pendant la phase (une absence échue y sonnerait en boucle), sinon la plus proche absence, et `HEARTBEAT_CHECK_MS` (60 s) tant qu'une partie dure avec un joueur connecté — la fin est retenue dans le stockage (`finished`, posé par `closeMatch()`), qui survit à l'hibernation ; une clôture en attente la ramène à `OUTCOME_RETRY_MS` (5 s) |
+| `closeDeploymentIfDue()`               | privée     | Sous `exclusive()`. Si la partie est encore en déploiement et l'échéance passée, pose l'équipe par défaut de qui n'a rien verrouillé et ouvre la partie (`start()`)                                                                                                                                                                                                                                                       |
+| `deploy()`                             | privée     | Sous `exclusive()`. Lit, valide et verrouille une équipe ; ouvre la partie quand les deux le sont                                                                                                                                                                                                                                                                                                                         |
+| `start()`                              | privée     | Toujours sous `exclusive()`, après `deploying()` : un second départ remplacerait `setup` sous un coup déjà inscrit. `deployTeams()`, écrit les pièces de départ dans `matches.setup` **puis** dans le DO (c'est le `setup` du DO qui clôt la phase : un échec de D1 la laisse ouverte, et l'alarme retente), fait compter l'absence d'un siège sans socket, réarme l'alarme, diffuse les vues                             |
+| `sendDeployment()`                     | privée     | Le message `deployment` d'un camp : sa zone, celle d'en face, son équipe par défaut, le temps restant, les verrous, les deux cartes                                                                                                                                                                                                                                                                                       |
+| `deploying()`                          | privée     | Vrai sur une carte à déploiement tant que les pièces ne sont pas posées                                                                                                                                                                                                                                                                                                                                                   |
+| `exclusive()`                          | privée     | File un par un les coups, la pose des équipes et l'ouverture de la partie : pendant un `await` sur D1, les _input gates_ laissent entrer un autre message                                                                                                                                                                                                                                                                 |
+| `play()`                               | privée     | Sous `exclusive()`. Refuse pendant le déploiement ; estampille l'abandon, refuse un déplacement hors tour, puis `commit()`                                                                                                                                                                                                                                                                                                |
+| `commit()`                             | privée     | Applique une action autorisée (`advanceMemory()`), journalise, **puis seulement** avance le cache, clôt si besoin, rediffuse ; rend l'`ActionError` d'un refus. Si l'`INSERT` échoue : `report()` puis `resyncFromLog()`                                                                                                                                                                                                  |
+| `resyncFromLog()`                      | privée     | Oublie le cache (`forgetCache()`), relit la position du log, clôt la partie si le coup perdu la finissait, et rediffuse les vues : le joueur voit son coup joué ou non                                                                                                                                                                                                                                                    |
+| `closeMatch()`                         | privée     | Marque `unrecorded-outcome`, appelle `recordOutcome()`, efface la marque ; en cas d'échec, l'alarme retentera                                                                                                                                                                                                                                                                                                             |
+| `recordOutcome()`                      | privée     | Clôt la partie ; **classée**, fait varier l'Elo des deux joueurs dans le même lot. **Rejouable** : chaque écriture exige une partie encore ouverte                                                                                                                                                                                                                                                                        |
+| `appendToLog()`                        | privée     | `INSERT` dans `match_actions`                                                                                                                                                                                                                                                                                                                                                                                             |
+| `sendView()`                           | privée     | La vue d'un seul socket, celui qui vient de dire `hello`                                                                                                                                                                                                                                                                                                                                                                  |
+| `broadcastViews()`                     | privée     | Envoie à chaque joueur son `viewFor()`, et à ses spectateurs la même vue par `spectatorView()`                                                                                                                                                                                                                                                                                                                            |
+| `report()`                             | privée     | Journalise une écriture D1 refusée (`console.error`, JSON : événement, partie, `seq`, cause) — identifiants seulement, jamais de position                                                                                                                                                                                                                                                                                 |
+| `send()`                               | privée     | Sérialise un `ServerMessage`                                                                                                                                                                                                                                                                                                                                                                                              |
+| `config()`                             | privée     | Relit `MatchConfig` depuis le stockage du DO ; **lève** si absente                                                                                                                                                                                                                                                                                                                                                        |
+| `load()`                               | privée     | Le cache, sinon la relecture en cours (`loading`), sinon une nouvelle (`rebuild()` → `replayStoredLog()`)                                                                                                                                                                                                                                                                                                                 |
+| `forgetCache()`                        | privée     | Oublie `live` et `loading`, et change `generation` : une relecture commencée avant ne s'installera pas                                                                                                                                                                                                                                                                                                                    |
 
 ### L'hibernation — le point de coût
 
@@ -334,9 +346,11 @@ webSocketMessage  ──►  play(action, player, ws)
                          └─ broadcastViews()            un viewFor() par joueur
 ```
 
-L'ordre compte : **le log est écrit avant que le cache avance, et avant la diffusion**. Si
-l'`INSERT` échoue, l'erreur remonte et l'état reste celui que le log décrit : un cache en
-avance sur D1 rejouerait, après hibernation, un log décalé d'un coup (« Corrupted log »).
+L'ordre compte : **le log est écrit avant que le cache avance, et avant la diffusion** — un
+cache en avance sur D1 rejouerait, après hibernation, un log décalé d'un coup (« Corrupted
+log »). Si l'`INSERT` échoue, rien ne dit que l'écriture n'a pas abouti, sa réponse seule
+ayant pu se perdre : `resyncFromLog()` oublie le cache et relit le log, qui fait foi. Garder
+le cache figé ferait buter chaque nouvel essai sur la clé `(match_id, seq)`.
 Tout `play()` passe par `exclusive()`, qui file les coups un par un : les _input gates_ d'un
 DO ne couvrent que son propre stockage, et un second message entré pendant l'`await` sur D1
 se validerait sinon contre la même position.
@@ -358,7 +372,10 @@ garantit.
 
 ### `load()` — la reconstruction par rejeu
 
-Si `this.live` est en cache, elle le renvoie. Sinon :
+Si `this.live` est en cache, elle le renvoie ; si une relecture est déjà en cours, elle
+en partage la promesse (`loading`) — au réveil, un `hello` et un coup arrivent souvent
+ensemble, et deux relectures concurrentes laisseraient la plus lente écraser un coup joué
+entre-temps. Sinon, `rebuild()` lance `replayStoredLog()` :
 
 1. `config()` relit la `MatchConfig` du stockage du DO.
 2. `frozenScenario()` et `rulesetFor()` reconstruisent le plateau et les règles **figés à
@@ -401,14 +418,23 @@ Elle porte **trois** façons d'entrer en partie, annoncées dans le `hello` :
 attendre qu'à un seul endroit : séparer les salons dans un second Durable Object
 rouvrirait la course entre « être apparié » et « voir son salon rejoint », que le
 mono-threading écarte tant que tout se décide au même endroit. Une intention reçue
-efface donc la précédente (`forget()`), file d'attente **et** salons.
+efface donc la précédente (`forget()`), file d'attente **et** salons — **et celles des
+autres onglets du même joueur** (`displaceOtherTabs()`, décision du 2026-10-21), qui
+reçoivent `room-fault { code: "replaced" }` et reviennent au menu. Deux exceptions : un
+salon que le joueur héberge survit quand il en héberge de nouveau (un hôte qui se
+reconnecte retrouve son code), et l'entrée par code n'évince qu'une fois le code reconnu
+valable — saisir son propre code depuis un second onglet est refusé (`own`) sans fermer
+le salon.
 
 L'appariement et l'entrée par code aboutissent au même `seat()` : une partie créée par
 `startMatch()`, un jeton par camp, et un `matched` envoyé à chacun — **même si l'un des
 deux sockets se ferme à ce moment** : `send()` avale l'erreur d'un socket mourant, comme
 dans le `MatchDO`, faute de quoi l'autre joueur ne recevrait jamais son siège. Dans un salon,
 **l'hôte tient le camp A et l'arrivant le camp B**. La file rapide crée une partie
-**classée**, un salon une partie qui ne l'est pas.
+**classée**, un salon une partie qui ne l'est pas. La proposition ou le salon étant déjà
+consommé, une création qui échoue est journalisée (`start-match-failed`) et annoncée aux
+deux joueurs par `room-fault { code: "unavailable" }` : ils reviennent au menu au lieu
+d'attendre un siège qui ne viendra pas.
 
 ### La fenêtre d'acceptation — `proposals.ts`
 
@@ -545,9 +571,11 @@ orphelin est ramassé par le ménage nocturne.
 
 `databaseHooks.user.delete.before` **anonymise le profil** d'un compte supprimé, par le
 joueur comme par un administrateur : `players.handle` devient `anonymousHandle()`
-(`supprimé-<12 caractères de l'identifiant>`). Le profil survit, parce que les logs de
+(`deleted-<12 caractères de l'identifiant>`). Le profil survit, parce que les logs de
 parties le référencent et doivent rester rejouables pour l'adversaire. Le préfixe est
-réservé, donc personne ne peut se faire passer pour un compte supprimé.
+réservé, donc personne ne peut se faire passer pour un compte supprimé. Ses relations
+(`forgetPlayer()`) et ses équipes préparées partent dans le même lot : un preset
+retiendrait sinon, par sa clé étrangère, le profil orphelin que la purge doit effacer.
 
 `databaseHooks.account.create.after` envoie un **avis par courrier** quand un fournisseur
 est ajouté à un compte existant depuis plus d'une minute (liaison automatique ou depuis le
@@ -639,8 +667,12 @@ d'`AUTH_SECRET`.
 | `handleCandidates()` | Les pseudos à essayer pour un compte Google, tous valides ; `player` si rien ne reste du nom                                                                                                                                                                                                                                                                                                                                         |
 | `anonymousHandle()`  | Le pseudo d'un profil dont le compte est supprimé : `deleted-<12 caractères de l'identifiant>`                                                                                                                                                                                                                                                                                                                                       |
 
-L'unicité est **insensible à la casse** : index `players_handle_nocase` (migration 0006),
-en plus de la contrainte `UNIQUE` d'origine. Les pseudos existants de plus de 24 caractères
+L'unicité est **insensible à la casse et aux accents** : la clé `players.handle_key`
+(`handleKey()` : NFKC, diacritiques latins, grecs et cyrilliques retirés, minuscules ;
+séparateurs gardés) porte l'index unique `players_handle_key` (migration 0011), écrit à
+chaque changement de pseudo — inscription, changement par le joueur, renommage admin,
+anonymisation. `players_handle_nocase` (0006) et la contrainte `UNIQUE` d'origine
+restent. Les pseudos existants de plus de 24 caractères
 ne sont pas revalidés ; la règle s'applique au prochain changement.
 
 ### La session
@@ -725,8 +757,11 @@ devient l'en-tête `reply_to`.
 
 Envoi par Resend : un Worker n'a pas de socket sortant, seulement `fetch`, et
 MailChannels a fermé son offre gratuite aux Workers en 2024. **Sans `RESEND_API_KEY`, les
-messages sont journalisés au lieu d'être émis**, lien compris — c'est ce qui rend les
-parcours traversables en local et en test sans compte Resend. Un échec d'envoi est
+messages ne partent pas.** En local et en test, `MAIL_TO_CONSOLE = "on"` (`[vars]` racine
+de `wrangler.toml`) les écrit dans la console, lien compris — c'est ce qui rend les
+parcours traversables sans compte Resend. Les environnements nommés n'héritant pas de
+`vars`, un environnement hébergé sans clé n'écrit qu'une erreur portant le sujet : le
+corps contient des liens à jeton, qui ne doivent pas finir dans des journaux hébergés. Un échec d'envoi est
 journalisé sans être propagé : le compte existe, un second message peut être demandé. Le
 corps de la réponse de Resend est journalisé avec le statut, parce que c'est lui qui dit
 pourquoi l'envoi est refusé (domaine non vérifié, expéditeur non autorisé, clé révoquée) —
@@ -783,13 +818,18 @@ Quelques points de fonctionnement :
   Passer par la mémoire de brouillard plutôt que par `replay` seul est ce qui donne ces
   lignes de vue. Si le rejeu échoue — log corrompu, ruleset retiré du registre — le log est
   rendu quand même, les images s'arrêtent au coup fautif, le camp passe à `null`, et
-  `replayError` dit pourquoi.
+  `replayError` dit pourquoi : `{ seq, code }` (`ReplayFailure`), le code d'erreur de
+  `core`, ou `{ seq: null, code: "unreadable" }` quand la partie ne se lit pas — la cause
+  brute part dans les journaux (`replay-unreadable`), jamais chez le client.
 - **Ces images sont exactement ce que le serveur refuse à un joueur** : la position
-  complète, pièces hors LOS comprises. Elles ne sortent que derrière la garde de rôle, et
+  complète, pièces hors LOS comprises, **partie en cours comprise** — un administrateur voit
+  tout (implementation-notes 32). Elles ne sortent que derrière la garde de rôle, et
   un administrateur qui joue une partie en cours pourrait s'en servir — c'est une
   confiance accordée au rôle, pas une garantie du protocole.
 - **`renamePlayer()` écrit `players.handle` et `users.name` dans un même `batch`**, que D1
-  exécute en transaction : un pseudo pris laisse les deux tables intactes.
+  exécute en transaction : un pseudo pris laisse les deux tables intactes. Un profil sans
+  compte — celui d'un compte supprimé, anonymisé exprès — passe pour introuvable (404) :
+  le renommer rattacherait de nouveau un nom à quelqu'un qui est parti.
 
 ### L'usurpation
 
@@ -806,9 +846,13 @@ la session d'emprunt et rend la sienne à l'administrateur. Trois garde-fous :
 - **toujours visible** : `currentAccount()` lit `session.impersonatedBy`, `/api/auth/me`
   le rend en `impersonating`, et le client affiche un bandeau sur tous ses écrans.
 
-Pendant l'usurpation, **tout ce qui lit l'identité lit celle du joueur** : la file d'attente,
-les salons, et le back-office lui-même, qui se ferme (403) faute de rôle. C'est voulu — c'est
-ce qui permet de reproduire ce qu'il voit — mais tout coup joué l'est en son nom.
+Pendant l'usurpation, **tout ce qui lit l'identité lit celle du joueur** : le profil, ses
+amis, son historique, et le back-office lui-même, qui se ferme (403) faute de rôle. C'est ce
+qui permet de reproduire ce qu'il voit. Deux limites (décision du 2026-10-21) : **aucun canal
+temps réel ne s'ouvre** — file, salons, canal social, spectateur (`realtimeAccount()`, 403
+`IMPERSONATION_READONLY`) —, car une partie classée jouée en son nom changerait son Elo ; et
+**ses messages privés restent privés** (`GET /api/friends/:id/messages`, 403 `PRIVATE`). Le
+client ne propose ni de jouer ni le canal social sous emprunt (`canPlay()`).
 
 ## `me/` — la page de profil
 
@@ -888,7 +932,7 @@ défis. Tout s'indexe sur **`players.id`**, le profil de jeu, et non sur le comp
 ### Les routes — `social/routes.ts`
 
 `handleSocial()` pose `guardCaller()` (identité tirée du cookie, origine vérifiée hors
-`GET`, **usurpation en lecture seule**), puis exige une **adresse vérifiée** (403
+`GET`, **usurpation en lecture seule**, messages privés fermés sous emprunt), puis exige une **adresse vérifiée** (403
 `EMAIL_UNVERIFIED`), comme la file d'attente. Un `:id` dans l'URL désigne toujours
 _l'autre_ joueur ; chaque requête de `social/queries.ts` reprend celui de la session.
 
@@ -908,8 +952,8 @@ _l'autre_ joueur ; chaque requête de `social/queries.ts` reprend celui de la se
 | `/api/friends/:id/messages?before=`             | `GET`             | `listMessages()`                                            | `ChatPage` — 50 messages, du plus ancien au plus récent, `hasMore`                                                                                       |
 | `/api/friends/:id/messages`                     | `POST`            | `checkMessage()` puis `insertMessage()`                     | `ChatMessage` ; 400 `MESSAGE_EMPTY` / `MESSAGE_TOO_LONG`, 429 `RATE_LIMITED`                                                                             |
 | `/api/friends/:id/messages/read`                | `POST`            | `markRead()`                                                | `{ read: n }`                                                                                                                                            |
-| `/api/friends/:id/challenge`                    | `POST` / `DELETE` | `SocialDO` de l'appelant                                    | Lancer (409 `GAME_CLOSED` sans le jeu ouvert) / retirer un défi                                                                                          |
-| `/api/friends/:id/challenge/accept`, `/decline` | `POST`            | `SocialDO` de l'ami                                         | Accepter (`{ matchId }`, 404 `NO_CHALLENGE`) / refuser                                                                                                   |
+| `/api/friends/:id/challenge`                    | `POST` / `DELETE` | `SocialDO` de l'appelant                                    | Lancer (409 `GAME_CLOSED` sans le jeu ouvert, 409 `IN_MATCH` si l'un des deux est en partie) / retirer un défi                                           |
+| `/api/friends/:id/challenge/accept`, `/decline` | `POST`            | `SocialDO` de l'ami                                         | Accepter (`{ matchId }`, 404 `NO_CHALLENGE`, 409 `IN_MATCH`) / refuser                                                                                   |
 
 Toutes les routes `/api/friends/:id/*` hors `DELETE` répondent **403 `NOT_FRIENDS`** si
 l'amitié n'existe pas (`isFriend()`), avant toute lecture.
@@ -924,9 +968,9 @@ Points de fonctionnement :
 - **Un blocage ne se dit jamais au bloqué.** `relationOf()` ignore `theyBlock` ; une
   demande vers qui vous bloque reçoit `UNAVAILABLE`, et la recherche ne le montre plus. Le
   bloqué reçoit seulement `friends-changed`.
-- **La recherche est un intervalle**, `[préfixe, préfixe + U+10FFFF)` comparé en `NOCASE`
+- **La recherche est un intervalle** sur la clé, `[clé du préfixe, … + U+10FFFF)`
   (`prefixRange()`), pas un `LIKE` : un pseudo peut contenir `_`, et l'intervalle se sert de
-  l'index `players_handle_nocase`.
+  l'index `players_handle_key`. « él » trouve donc « Élodie » comme « elodie ».
 - **Le débit des messages est compté dans l'insertion elle-même** (20 par minute,
   `insertMessage()`), comme le délai de pseudo : deux envois simultanés ne passent pas tous
   les deux. `checkMessage()` normalise en NFKC, retire les caractères de contrôle, resserre
@@ -942,18 +986,19 @@ Points de fonctionnement :
 **Une instance par joueur** (`idFromName(playerId)`), qui tient les sockets de toutes ses
 pages ouvertes. Le tag du socket dit la surface : `game` ou `profile`.
 
-| Méthode / fonction                     | Emplacement    | Rôle                                                                                                                   |
-| -------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `fetch()`                              | `social-do.ts` | `/push`, `/challenge`, `/challenge/cancel`, `/challenge/accept` (appels internes), sinon WebSocket ; mémorise `player` |
-| `webSocketMessage()`                   | `social-do.ts` | `hello` : version, puis les défis reçus en attente                                                                     |
-| `webSocketClose()`, `webSocketError()` | `social-do.ts` | `leave()`                                                                                                              |
-| `leave()`                              | `social-do.ts` | Plus de socket `game` → retire ses défis ; plus aucun socket → absent                                                  |
-| `announce()`                           | `social-do.ts` | Écrit `players.online`, puis `presence` à chaque ami                                                                   |
-| `receive()`                            | `social-do.ts` | Relaye une poussée à ses sockets (`matched` aux seuls sockets `game`) ; tient la table des défis **reçus**             |
-| `challenge()`, `cancel()`, `accept()`  | `social-do.ts` | La table des défis **lancés**                                                                                          |
-| `pushTo()`                             | `social-do.ts` | Poussée vers un joueur ; **une erreur est journalisée, jamais propagée**                                               |
-| `callSocial()`                         | `social-do.ts` | Requête interne `https://social<path>?player=`                                                                         |
-| `openSocial()`                         | `social-do.ts` | Transmet le WebSocket au DO du joueur                                                                                  |
+| Méthode / fonction                     | Emplacement    | Rôle                                                                                                                                                           |
+| -------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetch()`                              | `social-do.ts` | `/push`, `/challenge`, `/challenge/cancel`, `/challenge/accept` (appels internes), sinon WebSocket ; mémorise `player`                                         |
+| `webSocketMessage()`                   | `social-do.ts` | `hello` : version, puis les défis reçus en attente                                                                                                             |
+| `webSocketClose()`, `webSocketError()` | `social-do.ts` | `leave()`                                                                                                                                                      |
+| `leave()`                              | `social-do.ts` | Plus de socket `game` ouvert → retire ses défis ; plus aucun socket ouvert → absent (`openSockets()` : un socket en fermeture reste listé par `getWebSockets`) |
+| `announce()`                           | `social-do.ts` | Écrit `players.online`, puis `presence` à chaque ami                                                                                                           |
+| `receive()`                            | `social-do.ts` | Relaye une poussée à ses sockets (`matched` aux seuls sockets `game`) ; tient la table des défis **reçus**                                                     |
+| `challenge()`, `cancel()`, `accept()`  | `social-do.ts` | La table des défis **lancés** ; un défi expiré ne s'accepte plus                                                                                               |
+| `alarm()`, `scheduleExpiry()`          | `social-do.ts` | L'échéance des défis lancés (`CHALLENGE_TTL_MS`, 2 min) : l'alarme annule ceux qui ont expiré, comme un retrait, et se recale sur le suivant                   |
+| `pushTo()`                             | `social-do.ts` | Poussée vers un joueur ; **une erreur est journalisée, jamais propagée**                                                                                       |
+| `callSocial()`                         | `social-do.ts` | Requête interne `https://social<path>?player=`                                                                                                                 |
+| `openSocial()`                         | `social-do.ts` | Transmet le WebSocket au DO du joueur                                                                                                                          |
 
 - **La présence se lit au nombre de sockets.** Le premier socket ouvert rend le joueur
   présent, la fermeture du dernier l'en retire ; `players.online` n'en est qu'un **cache**,
@@ -1026,7 +1071,8 @@ type QueueClientMessage =
   | { kind: "accept"; proposalId: string }
   | { kind: "decline"; proposalId: string };
 
-type RoomFault = { code: "unknown" } | { code: "own" };
+type RoomFault =
+  { code: "unknown" } | { code: "own" } | { code: "unavailable" } | { code: "replaced" };
 
 type QueueServerMessage =
   | { kind: "waiting" }
@@ -1192,6 +1238,16 @@ avec elles que le log se rejoue) et `rating_change_a` / `rating_change_b`. `play
 les requêtes de détail la lisent (`MATCH_DETAIL_COLUMNS`) : quelques kilo-octets par
 partie, inutiles à une liste.
 
+### `migrations/0011_handle_key.sql`
+
+Écrite à la main. Ajoute `players.handle_key` et son index unique partiel (hors `NULL`).
+SQLite ne sait pas retirer un accent : la migration ne remplit que les pseudos tout en
+ASCII imprimable (`lower(handle)`, que 0006 tient déjà uniques) ; les autres sont complétés
+par le ménage nocturne (`backfillHandleKeys()`, `maintenance.ts`), qui journalise
+`handle-key-conflict` sur un doublon révélé (« Élodie » face à « élodie ») et le laisse
+sans clé : c'est à un administrateur de renommer l'un des deux. Tant qu'un pseudo n'a pas
+de clé, la recherche ne le trouve pas.
+
 ### `migrations/0010_integrity.sql`
 
 Écrite à la main. Deux invariants que seul le code tenait passent au schéma :
@@ -1212,20 +1268,21 @@ date pour la purge), et deux colonnes de `players` : `allow_spectators` (1 par d
 
 Bindings (type dans `apps/server/src/env.d.ts`) :
 
-| Binding                                    | Type                           | Rôle                                                                                        |
-| ------------------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------- |
-| `DB`                                       | `D1Database`                   | La base                                                                                     |
-| `AUTH_SECRET`                              | `string` (secret)              | Signe les cookies de session. **À provisionner par environnement**                          |
-| `RESEND_API_KEY`                           | `string` (secret)              | Sans elle, les messages sont journalisés — donc aucune adresse vérifiable en déployé        |
-| `MAIL_FROM`                                | `string` (optionnel)           | Expéditeur affiché                                                                          |
-| `MAIL_REPLY_TO`                            | `string` (optionnel)           | Adresse de réponse des courriers                                                            |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `string` (secrets, optionnels) | Le client OAuth Google ; sans les deux, Google n'est pas proposé                            |
-| `OAUTH_PROXY_URL`, `OAUTH_PROXY_SECRET`    | `string` (secrets, optionnels) | Le proxy OAuth : posés sur la recette **et** les branches, jamais en production ni en local |
-| `PASSWORD_BREACH_CHECK`                    | `string` (optionnel)           | `off` coupe le contrôle des fuites (tests, poste hors ligne)                                |
-| `MATCH`                                    | `DurableObjectNamespace`       | Les parties                                                                                 |
-| `QUEUE`                                    | `DurableObjectNamespace`       | La file d'attente globale et les salons privés                                              |
-| `SOCIAL`                                   | `DurableObjectNamespace`       | Un canal social par joueur ; migration DO `v3`                                              |
-| `ASSETS`                                   | `Fetcher`                      | Le client statique, servi depuis `../web/dist`                                              |
+| Binding                                    | Type                           | Rôle                                                                                                                                         |
+| ------------------------------------------ | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DB`                                       | `D1Database`                   | La base                                                                                                                                      |
+| `AUTH_SECRET`                              | `string` (secret)              | Signe les cookies de session. **À provisionner par environnement**                                                                           |
+| `RESEND_API_KEY`                           | `string` (secret)              | Sans elle, aucun message ne part — donc aucune adresse vérifiable en déployé                                                                 |
+| `MAIL_TO_CONSOLE`                          | `string` (`vars`)              | `on` en local et en test : sans clé, les courriers s'écrivent dans la console ; `off`, posé explicitement, dans chaque environnement hébergé |
+| `MAIL_FROM`                                | `string` (optionnel)           | Expéditeur affiché                                                                                                                           |
+| `MAIL_REPLY_TO`                            | `string` (optionnel)           | Adresse de réponse des courriers                                                                                                             |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `string` (secrets, optionnels) | Le client OAuth Google ; sans les deux, Google n'est pas proposé                                                                             |
+| `OAUTH_PROXY_URL`, `OAUTH_PROXY_SECRET`    | `string` (secrets, optionnels) | Le proxy OAuth : posés sur la recette **et** les branches, jamais en production ni en local                                                  |
+| `PASSWORD_BREACH_CHECK`                    | `string` (optionnel)           | `off` coupe le contrôle des fuites (tests, poste hors ligne)                                                                                 |
+| `MATCH`                                    | `DurableObjectNamespace`       | Les parties                                                                                                                                  |
+| `QUEUE`                                    | `DurableObjectNamespace`       | La file d'attente globale et les salons privés                                                                                               |
+| `SOCIAL`                                   | `DurableObjectNamespace`       | Un canal social par joueur ; migration DO `v3`                                                                                               |
+| `ASSETS`                                   | `Fetcher`                      | Le client statique, servi depuis `../web/dist`                                                                                               |
 
 Environnements déclarés : le bloc par défaut (`local`), puis `[env.staging]`,
 `[env.production]`, et un bloc par environnement de branche créé — aujourd'hui
@@ -1250,8 +1307,10 @@ par défaut et ne voit qu'`occulis-local`. C'est ce que produit `envFlag()`
 
 ## Les tests
 
-175 tests, dont 132 **dans workerd** via `@cloudflare/vitest-pool-workers` : `pnpm --filter
-@occulis/server test`.
+201 tests, la plupart **dans workerd** via `@cloudflare/vitest-plugin` (vitest 4) :
+`pnpm --filter @occulis/server test`. Les tests lisent `env` et appellent le Worker par
+`exports.default.fetch()`, tous deux de `cloudflare:workers` ; `test-setup.ts` en déclare
+les types (`Cloudflare.Env`, `GlobalProps.mainModule`).
 
 | Fichier                              | Où      | Ce qui est verrouillé                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | ------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1299,11 +1358,12 @@ y rattache ses `describe`, et la suite d'origine se retrouvait vide. `vitest.con
 pose `PASSWORD_BREACH_CHECK=off` : aucun appel sortant depuis la suite.
 
 `vitest.config.ts` lit les vraies migrations (`readD1Migrations`) et les applique à la base
-de test : le schéma testé ne peut pas dériver de celui qui est déployé. `isolatedStorage`
-est désactivé — cette version du pool ne sait pas isoler un DO adossé à SQLite — sans
-conséquence, chaque test créant sa propre partie sous un identifiant tiré au hasard.
+de test : le schéma testé ne peut pas dériver de celui qui est déployé. Le stockage — D1
+comme celui des Durable Objects — est isolé par fichier de test, les migrations étant
+rejouées pour chacun (`test-setup.ts`) ; à l'intérieur d'un fichier, chaque test crée ses
+propres comptes et parties sous des identifiants tirés au hasard.
 
-Il crée aussi `apps/web/dist` s'il manque : le pool fait lire `wrangler.toml` par wrangler,
+Il crée aussi `apps/web/dist` s'il manque : le plugin fait lire `wrangler.toml` par wrangler,
 qui refuse de démarrer quand le dossier d'`[assets]` est absent. Ce dossier vient du build
 du client, qui ne précède pas les tests — ni en CI (`typecheck → lint → test → build`), ni
 sur un dépôt fraîchement cloné. Aucun test ne sert d'asset : il n'a qu'à exister.
@@ -1378,11 +1438,11 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
   la même règle : un salon dont l'hôte est parti n'est retiré qu'à la prochaine entrée.
 - **Un salon privé n'expire pas de lui-même.** Tant que son hôte tient le socket ouvert,
   le code reste valable sans limite de durée.
-- **Les tests tournent sur une compatibility date plus ancienne que la production.** Le
-  workerd embarqué par le pool plafonne à `2024-12-30` alors que `wrangler.toml` demande
-  `2026-08-27` ; miniflare le signale et retombe sur la sienne. Sans conséquence pour ce
-  qui est testé — WebSockets, DO, D1 sont stables de longue date — mais un comportement
-  introduit par une date récente ne serait pas couvert.
+- **Les tests tournent sur le runtime déployé.** Depuis le 2026-10-21,
+  `@cloudflare/vitest-plugin` embarque un workerd plus récent que la `compatibility_date`
+  de `wrangler.toml` : la suite éprouve hibernation, alarmes et rejeu sur le comportement de
+  production, et non plus sur un workerd de 2024. Le plugin a remplacé
+  `@cloudflare/vitest-pool-workers`, déprécié.
 - **`VITE_SERVER_URL` n'existe nulle part dans le code**, contrairement à ce que
   `CLAUDE.md` laisse entendre. Sur le web, le client étant servi par le même Worker, une
   URL relative suffit. La contrainte « URL gravée dans le binaire » ne vaudra que pour la

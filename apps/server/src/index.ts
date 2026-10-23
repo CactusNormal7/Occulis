@@ -1,11 +1,11 @@
 import { QUEUE_SINGLETON } from "./queue-do.js";
 import { buildAuth } from "./auth/better-auth.js";
-import { currentAccount, handleAuth } from "./auth/routes.js";
+import { type Account, currentAccount, handleAuth } from "./auth/routes.js";
 import { handleAdmin } from "./admin/routes.js";
 import { handleMe } from "./me/routes.js";
 import { handleSocial } from "./social/routes.js";
 import { openSocial } from "./social-do.js";
-import { MESSAGE_RETENTION_MS } from "./social/chat.js";
+import { sweep } from "./maintenance.js";
 import { isFriend, readWatchRow } from "./social/queries.js";
 import { decideWatch } from "./social/relations.js";
 import { legacyRedirect } from "./legacy-routes.js";
@@ -24,8 +24,9 @@ export { SocialDO } from "./social-do.js";
  * - **qui vous êtes** vient du cookie de session, résolu ici et nulle part ailleurs ;
  * - **quel camp vous jouez** vient du jeton de siège, tiré à la création de la partie.
  *
- * La seconde ne dépend pas de la première : une partie reste jouable par qui détient
- * le jeton, ce qui permet d'ouvrir une partie privée sans compte.
+ * La seconde ne dépend pas de la première : c'est le jeton, et non la session, qui fait
+ * d'un socket un joueur de la partie. La session ne sert qu'à le retrouver
+ * (`GET /api/me/current-match`).
  */
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -100,39 +101,11 @@ export default {
     return env.ASSETS.fetch(request);
   },
 
-  /**
-   * Ménage périodique. Rien ici n'est visible du joueur : ce sont des lignes que plus
-   * personne ne lit et que rien n'effacerait autrement — une session périmée reste
-   * refusée à la connexion, mais elle reste aussi en base indéfiniment.
-   */
+  /** Le ménage nocturne (`maintenance.ts`), au cron de `wrangler.toml`. */
   async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
-    // Better Auth range ses échéances en **texte ISO**, pas en millisecondes : les
-    // comparer à un nombre ne supprimerait rien du tout, SQLite classant tout entier
-    // avant tout texte. `lastRequest` est la seule qui soit vraiment numérique.
-    const now = new Date().toISOString();
-    await env.DB.batch([
-      env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(now),
-      env.DB.prepare("DELETE FROM verifications WHERE expires_at < ?").bind(now),
-      // Le compteur de débit se reconstruit seul : une fenêtre écoulée ne vaut plus
-      // rien. On garde une journée de marge sur la plus longue fenêtre configurée.
-      env.DB.prepare("DELETE FROM rate_limits WHERE lastRequest < ?").bind(Date.now() - DAY_MS),
-      // Un profil sans compte ni partie : ce que laisse une inscription qui échoue
-      // entre la création du profil et celle du compte (`databaseHooks.user.create`).
-      // Ceux des comptes supprimés ont des parties s'ils ont joué : seuls les orphelins
-      // inutiles partent.
-      env.DB.prepare(
-        `DELETE FROM players WHERE created_at < ?
-           AND NOT EXISTS (SELECT 1 FROM users WHERE users.player_id = players.id)
-           AND NOT EXISTS (SELECT 1 FROM matches WHERE matches.player_a = players.id OR matches.player_b = players.id)`,
-      ).bind(Date.now() - DAY_MS),
-      env.DB.prepare("DELETE FROM messages WHERE created_at < ?").bind(
-        Date.now() - MESSAGE_RETENTION_MS,
-      ),
-    ]);
+    await sweep(env);
   },
 } satisfies ExportedHandler<Env>;
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Les parcours de compte ont chacun leur URL, pour que les gestionnaires de mots de passe
@@ -169,6 +142,38 @@ function hasAuthSecret(env: Env): boolean {
 }
 
 /**
+ * La garde commune des trois canaux temps réel (file, social, spectateur) : un compte, à
+ * l'adresse vérifiée, et une page de ce site.
+ *
+ * L'adresse vérifiée est exigée ici, et non à la connexion : un compte reste utilisable
+ * tant que le message n'est pas arrivé, mais le jeu apparié — celui qui porte le
+ * classement et qu'un compte jetable viendrait polluer — ne s'ouvre qu'une fois
+ * l'adresse prouvée.
+ *
+ * L'origine, parce que `SameSite=Lax` ne protège pas une montée en WebSocket venue d'un
+ * autre sous-domaine du même site (`*.0kl.fr`, environnements de branche compris) : le
+ * cookie l'accompagne. Un navigateur envoie toujours `Origin` à la montée ; son absence
+ * ne vient que d'un client hors navigateur, qui n'a pas le cookie d'un autre.
+ */
+async function realtimeAccount(
+  auth: ReturnType<typeof buildAuth>,
+  request: Request,
+  url: URL,
+): Promise<Account | Response> {
+  const origin = request.headers.get("Origin");
+  if (origin !== null && origin !== url.origin)
+    return new Response("origin refused", { status: 403 });
+  const account = await currentAccount(auth, request);
+  if (account === undefined) return new Response("authentication required", { status: 401 });
+  if (!account.emailVerified) return new Response("email not verified", { status: 403 });
+  // Un administrateur qui emprunte un compte regarde, il ne joue pas : une partie classée
+  // changerait l'Elo du joueur (décision du 2026-10-21).
+  if (account.impersonating)
+    return Response.json({ code: "IMPERSONATION_READONLY" }, { status: 403 });
+  return account;
+}
+
+/**
  * L'identité passée à la file vient du cookie, **jamais de la requête**. Le Durable
  * Object n'est pas routable de l'extérieur : ce que le Worker écrit dans l'URL est
  * donc hors de portée du client.
@@ -179,16 +184,8 @@ async function joinQueue(
   auth: ReturnType<typeof buildAuth>,
   url: URL,
 ): Promise<Response> {
-  const account = await currentAccount(auth, request);
-  if (account === undefined) return new Response("authentication required", { status: 401 });
-
-  // L'adresse vérifiée est exigée ici, et non à la connexion : un compte reste
-  // utilisable tant que le message n'est pas arrivé, mais le jeu apparié — celui qui
-  // porte le classement et qu'un compte jetable viendrait polluer — ne s'ouvre qu'une
-  // fois l'adresse prouvée.
-  if (!account.emailVerified) {
-    return new Response("email not verified", { status: 403 });
-  }
+  const account = await realtimeAccount(auth, request, url);
+  if (account instanceof Response) return account;
 
   const forwarded = new URL(url);
   forwarded.searchParams.set("player", account.playerId);
@@ -208,9 +205,8 @@ async function joinSocial(
   auth: ReturnType<typeof buildAuth>,
   url: URL,
 ): Promise<Response> {
-  const account = await currentAccount(auth, request);
-  if (account === undefined) return new Response("authentication required", { status: 401 });
-  if (!account.emailVerified) return new Response("email not verified", { status: 403 });
+  const account = await realtimeAccount(auth, request, url);
+  if (account instanceof Response) return account;
   if (request.headers.get("Upgrade") !== "websocket")
     return new Response("expected websocket", { status: 426 });
   return openSocial(
@@ -233,9 +229,8 @@ async function watchMatch(
   url: URL,
   matchId: string,
 ): Promise<Response> {
-  const account = await currentAccount(auth, request);
-  if (account === undefined) return new Response("authentication required", { status: 401 });
-  if (!account.emailVerified) return new Response("email not verified", { status: 403 });
+  const account = await realtimeAccount(auth, request, url);
+  if (account instanceof Response) return account;
   const side = url.searchParams.get("side");
   if (side !== "A" && side !== "B") return new Response("unknown side", { status: 400 });
 

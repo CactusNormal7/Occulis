@@ -94,6 +94,19 @@ describe("fromMatch", () => {
     expect(refused.phase.kind === "seated" && refused.phase.view).toBeDefined();
   });
 
+  it("ne relit pas un refus sur une mise à jour de déploiement arrivée en retard", () => {
+    const refused = fromMatch(seated(), {
+      kind: "rejected",
+      error: { code: "unreachable", to: { x: 0, y: 0 } },
+    });
+    const late = fromMatch(refused, {
+      kind: "deployment-update",
+      locks: { self: true, opponent: true },
+    });
+
+    expect(late.rejection).toBeUndefined();
+  });
+
   it("efface le refus dès la vue suivante", () => {
     const refused = fromMatch(seated(), {
       kind: "rejected",

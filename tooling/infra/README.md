@@ -31,6 +31,12 @@ variante sans TUI (`pnpm run ci <action> [env] [query]`, sans `--` : pnpm le tra
 aucune logique dupliquée. `dev`, `tail` et `login` en sont exclus (ils exigent un vrai
 terminal) — pour ceux-là, ou pour la navigation visuelle, `pnpm infra` en local reste l'outil.
 
+Le job prend l'**environnement GitHub** visé (`environment: <env>`) : les règles de
+protection de la production (approbation) valent aussi pour une action manuelle. `deploy`
+et `migrate` refusent de partir d'une autre branche que celle que
+`.github/deploy-environments.json` attribue à l'environnement, et partagent avec le job de
+déploiement de `ci.yml` le groupe de concurrence `deploy-<env>`.
+
 ## Navigation
 
 - `↑` `↓` / `j` `k`, chiffres `1`-`9` puis `0`, **clic** et **molette** ;

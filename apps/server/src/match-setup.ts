@@ -14,7 +14,11 @@ export interface StartedMatch {
 }
 
 /**
- * Crée une partie : une ligne en D1, puis l'initialisation du Durable Object.
+ * Crée une partie : l'initialisation du Durable Object, puis une ligne en D1.
+ *
+ * Dans cet ordre : une ligne sans DO initialisé enverrait ses joueurs, par
+ * `GET /api/me/current-match`, vers une partie qui n'existe pas. Un DO sans ligne, lui,
+ * n'est connu de personne — ses jetons ne sortent pas d'ici si l'écriture échoue.
  *
  * Les jetons de siège sont tirés ici et nulle part ailleurs. `crypto.randomUUID` est
  * hors de `@occulis/core`, qui doit rester strictement déterministe (CLAUDE.md) —
@@ -45,6 +49,11 @@ export async function startMatch(
     cards: { A: cardA, B: cardB },
   };
 
+  const init = await env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(
+    new Request("https://do/init", { method: "POST", body: JSON.stringify(config) }),
+  );
+  if (!init.ok) throw new Error(`startMatch: /init answered ${init.status} for ${matchId}`);
+
   await env.DB.prepare(
     `INSERT INTO matches (id, player_a, player_b, ruleset_version, scenario, map, started_at, rated)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -60,10 +69,6 @@ export async function startMatch(
       options.rated ? 1 : 0,
     )
     .run();
-
-  await env.MATCH.get(env.MATCH.idFromName(matchId)).fetch(
-    new Request("https://do/init", { method: "POST", body: JSON.stringify(config) }),
-  );
 
   return { matchId, seats };
 }

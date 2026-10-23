@@ -38,9 +38,12 @@ export const game = {
   roomFault: {
     unknown: "No match under this code: check what you typed, or ask for it again.",
     own: "This is your own code: give it to your opponent.",
+    unavailable: "The match could not be created: please try again.",
+    replaced: "You are now waiting from another tab.",
   },
   outdated: (expected: number) => `Client too old: the server expects protocol ${expected}.`,
   reconnecting: "Connection lost, reconnecting…",
+  connectionLost: "This match is no longer reachable: it may be over.",
   console: {
     label: "Match in progress",
     move: "Move",
@@ -49,7 +52,9 @@ export const game = {
       resign: "resign",
     },
     leave: "Leave the match",
-    leaveConfirm: "Leaving the match means resigning it: your opponent wins. Leave anyway?",
+    leaveTitle: "Leave the match?",
+    leaveConfirm: "Leaving the match means resigning it: your opponent wins.",
+    leaveAction: "Resign and leave",
     pending: "Move already sent: waiting for the server.",
     spectating: "You are watching this match: there is no move to play.",
     resigned: "Resignation.",

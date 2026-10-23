@@ -55,8 +55,8 @@ pnpm exec wrangler whoami    # confirme le compte et affiche l'Account ID
 
 Noter l'**Account ID** : il servira en secret GitHub à l'étape 5.
 
-Pour travailler avec Claude Code, construire aussi la carte du code, qui n'est pas
-versionnée : `pipx install graphifyy` puis `graphify update .` — détail dans
+Pour travailler avec un assistant de code (Claude Code ou Codex/ChatGPT), construire aussi
+la carte du code, qui n'est pas versionnée : `pipx install graphifyy` puis `graphify update .` — détail dans
 [graphify.md](graphify.md).
 
 ## 2. Développement local
@@ -75,8 +75,9 @@ pnpm exec wrangler d1 migrations apply occulis-local --local
 pnpm exec wrangler dev
 ```
 
-**Sans `RESEND_API_KEY`, aucun message n'est envoyé : ils sont journalisés dans la console
-de `wrangler dev`, lien compris.** Les parcours de vérification d'adresse et de
+**Sans `RESEND_API_KEY`, aucun message n'est envoyé : en local, ils sont journalisés dans
+la console de `wrangler dev`, lien compris** (`MAIL_TO_CONSOLE`, posé dans `[vars]` de
+`wrangler.toml` et que les environnements hébergés n'héritent pas : là, rien que le sujet). Les parcours de vérification d'adresse et de
 réinitialisation se traversent donc en local en copiant le lien depuis le terminal, sans
 compte Resend.
 
@@ -170,7 +171,9 @@ La branche `staging` doit exister côté dépôt pour que la recette se déploie
 git checkout -b staging main && git push -u origin staging
 ```
 
-Pour une branche de travail, `pnpm infra` → **Créer un environnement de branche** fait tout
+Un environnement distant de branche est une **exception**, jamais un prérequis de
+contribution : le parcours local de [onboarding.md](onboarding.md) suffit. Quand une tâche
+doit être vérifiée à distance, `pnpm infra` → **Créer un environnement de branche** fait tout
 d'un geste depuis la branche courante : bloc `[env.<slug>]` dans `wrangler.toml`, base D1
 distante et son `database_id`, migrations, entrée dans `.github/deploy-environments.json`,
 puis commit et push de ces deux seuls fichiers — la CI enchaîne migrations et déploiement.

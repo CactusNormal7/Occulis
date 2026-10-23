@@ -195,8 +195,10 @@ export function fromMatch(session: Session, message: ServerMessage): Session {
       return { phase: { ...phase, deployment }, rejection: undefined };
     }
     case "deployment-update":
+      // Hors déploiement, un message en retard : rien ne change, mais le refus d'avant ne
+      // doit pas se lire une seconde fois.
       return phase.deployment === undefined
-        ? session
+        ? { phase, rejection: undefined }
         : {
             phase: { ...phase, deployment: { ...phase.deployment, locks: message.locks } },
             rejection: undefined,

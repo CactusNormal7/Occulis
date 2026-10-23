@@ -37,19 +37,22 @@ describe("compte à rebours", () => {
 });
 
 describe("équipe préchargée", () => {
+  const forA = { zone: deployment.zones.A, opponentZone: deployment.zones.B };
+  const forB = { zone: deployment.zones.B, opponentZone: deployment.zones.A };
+
   it("prend le preset par défaut, transposé au camp tenu", () => {
-    expect(initialTeam([preset({})], "ridge-1", "provisional-1", "B", [])).toEqual(
+    expect(initialTeam([preset({})], "ridge-1", "provisional-1", "B", forB, [])).toEqual(
       deployment.defaultTeams.B,
     );
   });
 
   it("retombe sur l'équipe de la carte sans preset jouable", () => {
     const fallback = deployment.defaultTeams.A;
-    expect(initialTeam([preset({ valid: false })], "ridge-1", "provisional-1", "A", fallback)).toBe(
-      fallback,
-    );
     expect(
-      initialTeam([preset({ isDefault: false })], "ridge-1", "provisional-1", "A", fallback),
+      initialTeam([preset({ valid: false })], "ridge-1", "provisional-1", "A", forA, fallback),
+    ).toBe(fallback);
+    expect(
+      initialTeam([preset({ isDefault: false })], "ridge-1", "provisional-1", "A", forA, fallback),
     ).toBe(fallback);
     expect(
       usablePresets(
