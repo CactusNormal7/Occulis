@@ -1,8 +1,8 @@
 # Le serveur — `apps/server`
 
-Worker Cloudflare + Durable Objects + base D1. **Squelette fonctionnel mais non
-branché** : le code ci-dessous est complet et cohérent, mais aucun client ne l'appelle
-encore (voir « L'état réel du câblage » dans [README.md](README.md)).
+Worker Cloudflare + Durable Objects + base D1. Le serveur est branché au client : il
+autorise les comptes, le matchmaking, les salons privés, le déploiement et les parties en
+ligne. Voir [README.md](../../README.md) pour l'état fonctionnel du prototype.
 
 ## Répartition des responsabilités
 
@@ -571,7 +571,7 @@ orphelin est ramassé par le ménage nocturne.
 
 `databaseHooks.user.delete.before` **anonymise le profil** d'un compte supprimé, par le
 joueur comme par un administrateur : `players.handle` devient `anonymousHandle()`
-(`supprimé-<12 caractères de l'identifiant>`). Le profil survit, parce que les logs de
+(`deleted-<12 caractères de l'identifiant>`). Le profil survit, parce que les logs de
 parties le référencent et doivent rester rejouables pour l'adversaire. Le préfixe est
 réservé, donc personne ne peut se faire passer pour un compte supprimé. Ses relations
 (`forgetPlayer()`) et ses équipes préparées partent dans le même lot : un preset

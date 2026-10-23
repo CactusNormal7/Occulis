@@ -1,0 +1,25 @@
+# Dépendances, sorties de build et rapports de couverture.
+node_modules/
+dist/
+coverage/
+.vite/
+.wrangler/
+
+# État local, secrets et environnements de développement.
+.env
+.env.local
+.dev.vars
+.venv/
+
+# Caches, graphes et synchronisations générées.
+graphify-out/
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules/
+
+# Sources générées ou copies de synchronisation à ne jamais éditer à la main.
+packages/ui/src/generated/
+.claude/
+* 2.*

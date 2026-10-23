@@ -568,7 +568,7 @@ Propositions **optionnelles** :
 
 - une fiche `docs/technical/i18n.md`, aujourd'hui noyée dans `engine.md`, et le paquet ajouté à l'« Organisation » du README ;
 - découper `engine.md` (1 660 lignes) et `server.md` (1 346) par dossier, en suivant O1 et O2 ;
-- `docs/refactor-audit.md` (ce fichier) à archiver ou supprimer une fois la refonte faite ;
+- `docs/reports/2026-10-18-refactor-audit.md` (ce fichier, archive historique) ;
 - noms des maquettes en anglais (`partie.html`…), cosmétique.
 
 **O10. Schéma et migrations** — R moyen, G moyen

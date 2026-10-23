@@ -171,7 +171,9 @@ La branche `staging` doit exister côté dépôt pour que la recette se déploie
 git checkout -b staging main && git push -u origin staging
 ```
 
-Pour une branche de travail, `pnpm infra` → **Créer un environnement de branche** fait tout
+Un environnement distant de branche est une **exception**, jamais un prérequis de
+contribution : le parcours local de [onboarding.md](onboarding.md) suffit. Quand une tâche
+doit être vérifiée à distance, `pnpm infra` → **Créer un environnement de branche** fait tout
 d'un geste depuis la branche courante : bloc `[env.<slug>]` dans `wrangler.toml`, base D1
 distante et son `database_id`, migrations, entrée dans `.github/deploy-environments.json`,
 puis commit et push de ces deux seuls fichiers — la CI enchaîne migrations et déploiement.

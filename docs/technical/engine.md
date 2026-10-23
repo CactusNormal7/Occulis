@@ -1095,7 +1095,6 @@ de rendu.
 | Mouvement de souris         | Survol. **Ne notifie que si la case change**                                                                          |
 | Sortie du curseur           | Efface le survol                                                                                                      |
 | Flèches ← →                 | `turn()` : quart de tour                                                                                              |
-| Espace                      | Bascule le point de vue A / B                                                                                         |
 
 | Fonction                | Rôle                                                |
 | ----------------------- | --------------------------------------------------- |
