@@ -1,14 +1,14 @@
 # Notes de synchronisation — Occulis UI
 
 Projet Claude Design : « Occulis UI » (`projectId` dans `config.json`), forme `package`, sans Storybook.
+Le projet d'origine a été supprimé et recréé le 2026-10-19 (nouvel identifiant) : son ancre `_ds_sync.json`
+date de ce jour-là.
 
 **Depuis le 2026-10-21, la charte vit dans un artifact « Design System » :
 https://claude.ai/artifact/PrwsGTxMaSez6XXHUmGEVq.** Le `projectId` de `config.json` ne répond plus (404 sur
 `DesignSync`, absent de `list_projects` au 2026-10-23) : l'outil `DesignSync` ne peut plus écrire nulle part.
 Un re-sync se fait donc **par l'outil Artifact**, fichier par fichier sous `project/` (voir « Re-sync vers
 l'artifact » plus bas).
-Le projet d'origine a été supprimé et recréé le 2026-10-19 (nouvel identifiant) : son ancre `_ds_sync.json`
-date de ce jour-là.
 
 ## Préparer un re-sync
 
@@ -81,8 +81,9 @@ date de ce jour-là.
   deux doivent rester identiques, la section « Not synced » comprise.
 - Les tokens sont générés depuis `packages/ui/src/tokens.ts` ; `tokens.test.ts` garde `generated/tokens.css`
   synchrone, mais seul le build met `dist/styles.css` à jour — reconstruire avant tout re-sync.
-- Le rendu n'a été vérifié qu'en Chromium 1234 puis 1228 (headless shell) ; aucune police n'est servie, la monospace est
-  celle du système — elle diffère d'une machine à l'autre, volontairement.
+- Le rendu n'a été vérifié qu'en Chromium 1234 puis 1228 (headless shell). Tiny5 est servie avec la charte
+  (`fonts/tiny5-latin.woff2` dans l'artifact) ; seule la monospace des données et du code reste celle du
+  système, et diffère d'une machine à l'autre, volontairement.
 
 ## Re-sync vers l'artifact
 
