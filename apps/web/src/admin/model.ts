@@ -264,21 +264,21 @@ export function winRate(record: { readonly won: number; readonly lost: number })
 export function shortAgent(agent: string | null | undefined): string {
   const m = messages().admin.agent;
   if (agent == null || agent.length === 0) return m.unknown;
-  const browser =
-    [
-      ["Edg/", "Edge"],
-      ["Firefox/", "Firefox"],
-      ["Chrome/", "Chrome"],
-      ["Safari/", "Safari"],
-    ].find(([token]) => agent.includes(token as string))?.[1] ?? m.browser;
-  const system =
-    [
-      ["Android", "Android"],
-      ["iPhone", "iOS"],
-      ["iPad", "iOS"],
-      ["Windows", "Windows"],
-      ["Mac OS", "macOS"],
-      ["Linux", "Linux"],
-    ].find(([token]) => agent.includes(token as string))?.[1] ?? m.system;
+  const browsers = [
+    { token: "Edg/", label: "Edge" },
+    { token: "Firefox/", label: "Firefox" },
+    { token: "Chrome/", label: "Chrome" },
+    { token: "Safari/", label: "Safari" },
+  ];
+  const systems = [
+    { token: "Android", label: "Android" },
+    { token: "iPhone", label: "iOS" },
+    { token: "iPad", label: "iOS" },
+    { token: "Windows", label: "Windows" },
+    { token: "Mac OS", label: "macOS" },
+    { token: "Linux", label: "Linux" },
+  ];
+  const browser = browsers.find(({ token }) => agent.includes(token))?.label ?? m.browser;
+  const system = systems.find(({ token }) => agent.includes(token))?.label ?? m.system;
   return `${browser} · ${system}`;
 }

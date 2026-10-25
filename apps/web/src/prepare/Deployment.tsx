@@ -132,6 +132,14 @@ function Content({
   });
 
   const opponent: PlayerId = player === "A" ? "B" : "A";
+  const opponentStatus = deployment.locks.opponent
+    ? m.deploy.opponentLocked
+    : m.deploy.opponentPending;
+  let status = `${m.deploy.lead} ${opponentStatus}`;
+  if (locked) {
+    status = deployment.locks.opponent ? m.deploy.opponentLocked : m.deploy.waitingOpponent;
+  }
+
   return (
     <div className="occ-stack">
       <Reveal
@@ -178,13 +186,7 @@ function Content({
           </>
         }
       />
-      <FormMessage tone="info">
-        {locked
-          ? deployment.locks.opponent
-            ? m.deploy.opponentLocked
-            : m.deploy.waitingOpponent
-          : `${m.deploy.lead} ${deployment.locks.opponent ? m.deploy.opponentLocked : m.deploy.opponentPending}`}
-      </FormMessage>
+      <FormMessage tone="info">{status}</FormMessage>
       {rejection !== undefined && !locked && <FormMessage tone="error">{rejection}</FormMessage>}
       <TeamBuilder
         ruleset={ruleset}

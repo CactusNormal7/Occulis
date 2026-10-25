@@ -73,7 +73,11 @@ export const OFFLINE: Session = { phase: { kind: "offline" }, rejection: undefin
  * Une session déjà assise, sans être passée par la file : c'est ce que produit un
  * appariement une fois le canal de la file refermé et celui de la partie ouvert.
  */
-export function seatedAt(matchId: string, seat: string): Session {
+export interface SeatedSession extends Session {
+  readonly phase: Extract<Phase, { kind: "seated" }>;
+}
+
+export function seatedAt(matchId: string, seat: string): SeatedSession {
   return {
     phase: {
       kind: "seated",
@@ -93,9 +97,9 @@ export function seatedAt(matchId: string, seat: string): Session {
 }
 
 /** Une session de spectateur, avant le `watching` qui confirme le camp suivi. */
-export function watchingAt(matchId: string): Session {
+export function watchingAt(matchId: string): SeatedSession {
   const seated = seatedAt(matchId, "");
-  return { ...seated, phase: { ...seated.phase, spectating: true } as Phase };
+  return { ...seated, phase: { ...seated.phase, spectating: true } };
 }
 
 export function fromQueue(session: Session, message: QueueServerMessage): Session {

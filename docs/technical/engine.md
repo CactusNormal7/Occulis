@@ -78,7 +78,7 @@ sur le rendu.
         │  input/controls.ts   ── seul module qui écoute le canevas
         ├─► view/camera.ts     ── zoomAt / panBy / rotateBy / snapRotation / turn
         ├─► view/picking.ts    ── tileAt() : quelle case est sous le curseur ?
-        └─► onPick()           ── au clic, main.ts consulte :
+        └─► onPick()           ── au clic, render/game-board.ts consulte :
                  game/selection.ts ── resolveClick() → select | play | clear
 
   ── SAISIE ──────────────────────────────────────────────────────────
@@ -88,9 +88,10 @@ sur le rendu.
 
   ── APPLICATION (main.ts) ───────────────────────────────────────────
         play(action)
-        ├─► game/online-match.ts ── envoie l'action, applique l'anticipation locale
-        ├─► view/animation.ts    ── startMove() si la pièce change de case
-        └─► console.refresh()    ── état du tour, DIFFÉRÉ à la fin de l'animation
+        ├─► game/online-match.ts ── envoie l'action sans modifier la position
+        └─► attend la vue du serveur
+  adopt(movement)
+        └─► render/game-board.ts ── startMove() sur le déplacement reçu
 
   ── RENDU (chaque frame) ────────────────────────────────────────────
         ├─► settle()           ── avance l'aimantation de la rotation
@@ -192,9 +193,9 @@ analysé avant d'afficher le menu ; il se charge au repos une fois le menu affic
 | `load/hooks.tsx` — `whenReady()`                                                        | Le refus (`EmptyState`) ou le rendu d'une ressource arrivée                                                                                                   |
 | `load/hooks.tsx` — `useHashRoute()`                                                     | La route du fragment ; un changement précharge la route suivante et passe en transition                                                                       |
 
-Le fil d'un ami (`ChatView`) lit sa première page par `useLoad(chat(id))`, puis y fond ce que
+Le fil d'un ami (`ChatView`, `profile/Chat.tsx`) lit sa première page par `useLoad(chat(id))`, puis y fond ce que
 le canal pousse, ce qu'on envoie et les messages plus anciens (`merged()`, sans doublon, dans
-l'ordre d'envoi). La liste d'amis du profil (`SocialProvider`) part de la valeur du cache — la
+l'ordre d'envoi). La liste d'amis du profil (`SocialProvider`, `profile/SocialProvider.tsx`) part de la valeur du cache — la
 page l'a attendue avant de paraître (`WithFriends`, pour un compte vérifié) — et se relit à
 chaque ouverture du canal social.
 
@@ -203,6 +204,7 @@ chaque ouverture du canal social.
 | Fichier                                          | Rôle                                                                                                                                                                                           | Pur ?                                           |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | `apps/web/src/main.ts`                           | Racine de composition : câble tout, charge le plateau à part                                                                                                                                   | non                                             |
+| `apps/web/src/render/game-board.ts`              | Chargement différé de Pixi, caméra, survol, sélection et animation ; lit la partie sans la modifier                                                                                            | non                                             |
 | `apps/web/src/load/cache.ts`                     | Cache des lectures, état d'une lecture, compteur des lectures en cours                                                                                                                         | oui                                             |
 | `apps/web/src/load/hooks.tsx`                    | `useLoad()`, `usePending()`, `whenReady()`                                                                                                                                                     | non                                             |
 | `apps/web/public/_headers`                       | Cache d'un an des fichiers hachés de `/assets/`, d'une semaine de la police                                                                                                                    | —                                               |
@@ -258,8 +260,13 @@ chaque ouverture du canal social.
 | `apps/web/src/presets/mount.tsx`                 | Monte l'îlot dans `#teams-root`                                                                                                                                                                | non                                             |
 | `apps/web/profile/index.html`                    | Page de profil, troisième entrée Vite                                                                                                                                                          | —                                               |
 | `apps/web/src/profile/main.tsx`                  | Point d'entrée du profil : monte `App`                                                                                                                                                         | non                                             |
-| `apps/web/src/profile/App.tsx`                   | Compte, sécurité, spectateurs, sessions, suppression, parties et replay de son point de vue                                                                                                    | non                                             |
-| `apps/web/src/profile/Friends.tsx`               | Onglet Amis : état social partagé (`SocialProvider`), liste, recherche, demandes, bloqués, fiche, replay d'un ami, messages                                                                    | non                                             |
+| `apps/web/src/profile/App.tsx`                   | Cadre de la page, identité, navigation et frontière d'attente commune                                                                                                                          | non                                             |
+| `apps/web/src/profile/Friends.tsx`               | Liste, recherche, demandes, bloqués, fiche et replay d'un ami                                                                                                                                  | non                                             |
+| `apps/web/src/profile/Account.tsx`               | Compte, sécurité, faits d'armes, spectateurs, sessions et suppression                                                                                                                          | non                                             |
+| `apps/web/src/profile/account-editors.tsx`       | Éditeurs du pseudo, de l'adresse et du mot de passe, avec leur état d'envoi commun                                                                                                             | non                                             |
+| `apps/web/src/profile/Matches.tsx`               | Historique et replay de ses propres parties                                                                                                                                                    | non                                             |
+| `apps/web/src/profile/SocialProvider.tsx`        | État social partagé, canal et abonnement aux poussées                                                                                                                                          | non                                             |
+| `apps/web/src/profile/Chat.tsx`                  | Fil de messages : lecture, fusion des poussées, pagination et envoi                                                                                                                            | non                                             |
 | `apps/web/src/profile/parts.tsx`                 | Bilan, table d'historique et replay, communs à ses parties et à celles d'un ami                                                                                                                | non                                             |
 | `apps/web/src/profile/resources.ts`              | Ce que lit chaque écran du profil (liste d'amis et équipes préparées comprises, partagées avec la page du jeu), et `resourcesOf(route)` pour le précharger                                     | non                                             |
 | `apps/web/src/profile/api.ts`                    | Appels `/api/me/*` et routes de compte de Better Auth                                                                                                                                          | non                                             |
@@ -728,6 +735,12 @@ d'avance suffirait à capter le futur compte Google de son propriétaire.
 
 ## `profile/` — la page de profil
 
+`App.tsx` assemble le cadre et les routes. Chaque écran garde sa responsabilité :
+`Account.tsx` et `account-editors.tsx` pour le compte, `Matches.tsx` pour les parties,
+`Friends.tsx` pour les relations et `Chat.tsx` pour le fil. `SocialProvider.tsx`
+porte le canal partagé. Leur découpage conserve une seule frontière `Suspense` et les
+ressources de route ; déplacer un écran ne doit pas y introduire un chargement en cascade.
+
 Une **page à part**, `apps/web/profile/index.html`, servie sous `/profile/`, en React sur
 `@occulis/ui` comme le back-office, sans PixiJS ni classe propre. Elle charge `/api/me` ;
 un 401 affiche un lien vers `/sign-in`. Chaque route précharge ce qu'elle lit (`resources.ts`) et
@@ -761,7 +774,7 @@ paraît en une fois, barre du haut comprise (« Chargement et premier rendu »).
 - **Replay** : `asBoardFrames()` adapte les images du serveur au plateau rejoué du
   back-office (`replay/ReplayBoard.tsx`, réutilisé tel quel), avec la seule ligne de vue de
   son camp et le point de vue fixé sur lui.
-- **Amis** : `SocialProvider` (`Friends.tsx`) ouvre le canal social (`surface=profile`) et
+- **Amis** : `SocialProvider` (`SocialProvider.tsx`) ouvre le canal social (`surface=profile`) et
   tient l'état social, partagé par l'onglet et le compteur de non-lus de la barre du haut.
   Ouvrir un fil le marque lu (`/messages/read`), sauf sous usurpation. **Ajouter** un
   adversaire se fait aussi depuis « Mes parties » (`opponentId`). Le réglage
@@ -1362,45 +1375,48 @@ les tests de `@occulis/ui` gardent sa feuille, et `theme/colors.test.ts` garde `
 
 ## `main.ts` — la racine de composition
 
-| Fonction                             | Rôle                                                                                                                                                                                                                                                                                |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `main()`                             | Lance `whoAmI()` avant tout, pose la palette, câble tout ; synchrone, sans attendre PixiJS                                                                                                                                                                                          |
-| `element()`                          | Résout un `id` du DOM ou lève                                                                                                                                                                                                                                                       |
-| `intentOf()`                         | L'entrée de menu choisie → l'intention que la file attend                                                                                                                                                                                                                           |
-| `go()` (interne)                     | Fait avancer `flow.ts` et réaffiche les écrans                                                                                                                                                                                                                                      |
-| `handlersFor(spectating)` (interne)  | Les gestionnaires d'une partie, assis ou spectateur : `OnlineMatch` à la première vue, déploiement (préréglages repris de `loadCache` puis relus, pour un joueur seulement), refus, compteur de spectateurs, `onWatching`                                                           |
-| `sit()` (interne)                    | Referme la file **et tout canal de partie déjà ouvert** (`closeMatch()`), ouvre celui de la partie avec `handlersFor(false, matchId)`                                                                                                                                               |
-| `resume()` (interne)                 | À l'arrivée au menu connecté (`refresh()`), demande `/api/me/current-match` (`currentMatch()`, `profile/api.ts`) et rassoit le joueur à sa partie en cours : le jeton de siège ne vit que dans la page, et un rechargement le perd. Rien s'il attend déjà une partie ou en joue une |
-| `watch()` (interne)                  | Ouvre le canal de spectateur (`handlersFor(true)`) et arme l'échéance `WATCH_TIMEOUT_MS`                                                                                                                                                                                            |
-| `onSocial()` (interne)               | Une poussée du canal social : `matched` assied, refus d'un défi ramène au menu, le reste passe par `social/model.ts`                                                                                                                                                                |
-| `syncSocial()` (interne)             | Ouvre ou referme le canal social selon l'identité                                                                                                                                                                                                                                   |
-| `reloadFriends(options)` (interne)   | Relit la liste d'amis (`friendsOverview`, relecture forcée par défaut) et redessine le panneau                                                                                                                                                                                      |
-| `friendsBeforeMenu(force)` (interne) | Attend la liste d'amis avant de montrer le menu, au plus `MENU_DEADLINE_MS`                                                                                                                                                                                                         |
-| `closeMatch()` (interne)             | Referme le canal de partie et oublie ce qui en dépend (partie, sélection, animation, déploiement, spectateur) ; change `matchGeneration`, qu'une relecture tardive des presets compare avant d'écrire                                                                               |
-| `leave()` (interne)                  | Referme la file, retire un défi en attente, `closeMatch()`, puis rend la main au menu                                                                                                                                                                                               |
-| `ensureBoard()` (interne)            | Charge `render/pixi/board.ts` une seule fois et monte le plateau ; appelé par `sit()` et `watch()`. Un échec (pas de WebGL) laisse le menu utilisable                                                                                                                               |
-| `prewarmBoard()` (interne)           | Une fois connecté, charge le plateau au repos (`requestIdleCallback`)                                                                                                                                                                                                               |
-| `onLeaveMatch` (option du shell)     | `#leave-match` : assis à une partie pas finie, ouvre la fenêtre `leave/` (`leaving`), dont la confirmation envoie `resign` avant `leave()` — aucun chemin ne ramène à un siège quitté ; spectateur ou partie finie, `leave()` seul                                                  |
-| `adopt()` (interne)                  | Une vue reçue fait autorité : efface sélection et animation                                                                                                                                                                                                                         |
-| `play()` (interne)                   | **Le seul point d'application d'une action**, clic comme clavier                                                                                                                                                                                                                    |
+| Fonction                                    | Rôle                                                                                                                                                                                                                                                                                |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `main()`                                    | Lance `whoAmI()` avant tout, pose la palette, câble tout ; synchrone, sans attendre PixiJS                                                                                                                                                                                          |
+| `element()`                                 | Résout un `id` du DOM ou lève                                                                                                                                                                                                                                                       |
+| `intentOf()`                                | L'entrée de menu choisie → l'intention que la file attend                                                                                                                                                                                                                           |
+| `go()` (interne)                            | Fait avancer `flow.ts` et réaffiche les écrans                                                                                                                                                                                                                                      |
+| `handlersFor(spectating)` (interne)         | Les gestionnaires d'une partie, assis ou spectateur : `OnlineMatch` à la première vue, déploiement (préréglages repris de `loadCache` puis relus, pour un joueur seulement), refus, compteur de spectateurs, `onWatching`                                                           |
+| `sit()` (interne)                           | Referme la file **et tout canal de partie déjà ouvert** (`closeMatch()`), ouvre celui de la partie avec `handlersFor(false, matchId)`                                                                                                                                               |
+| `resume()` (interne)                        | À l'arrivée au menu connecté (`refresh()`), demande `/api/me/current-match` (`currentMatch()`, `profile/api.ts`) et rassoit le joueur à sa partie en cours : le jeton de siège ne vit que dans la page, et un rechargement le perd. Rien s'il attend déjà une partie ou en joue une |
+| `watch()` (interne)                         | Ouvre le canal de spectateur (`handlersFor(true)`) et arme l'échéance `WATCH_TIMEOUT_MS`                                                                                                                                                                                            |
+| `onSocial()` (interne)                      | Une poussée du canal social : `matched` assied, refus d'un défi ramène au menu, le reste passe par `social/model.ts`                                                                                                                                                                |
+| `syncSocial()` (interne)                    | Ouvre ou referme le canal social selon l'identité                                                                                                                                                                                                                                   |
+| `reloadFriends(options)` (interne)          | Relit la liste d'amis (`friendsOverview`, relecture forcée par défaut) et redessine le panneau                                                                                                                                                                                      |
+| `friendsBeforeMenu(force)` (interne)        | Attend la liste d'amis avant de montrer le menu, au plus `MENU_DEADLINE_MS`                                                                                                                                                                                                         |
+| `closeMatch()` (interne)                    | Referme le canal de partie et oublie ce qui en dépend (partie, sélection, animation, déploiement, spectateur) ; change `matchGeneration`, qu'une relecture tardive des presets compare avant d'écrire                                                                               |
+| `leave()` (interne)                         | Referme la file, retire un défi en attente, `closeMatch()`, puis rend la main au menu                                                                                                                                                                                               |
+| `gameBoard.load()` (`render/game-board.ts`) | Charge `render/pixi/board.ts` une seule fois ; appelé par `sit()` et `watch()`. Un échec WebGL laisse le menu utilisable                                                                                                                                                            |
+| `prewarmBoard()` (interne)                  | Une fois connecté, charge le plateau au repos (`requestIdleCallback`)                                                                                                                                                                                                               |
+| `onLeaveMatch` (option du shell)            | `#leave-match` : assis à une partie pas finie, ouvre la fenêtre `leave/` (`leaving`), dont la confirmation envoie `resign` avant `leave()` — aucun chemin ne ramène à un siège quitté ; spectateur ou partie finie, `leave()` seul                                                  |
+| `adopt()` (interne)                         | Une vue reçue referme le coup en attente et délègue la sélection et le déplacement à `gameBoard.animate()`                                                                                                                                                                          |
+| `play()` (interne)                          | Envoie une action, clic comme clavier, sans modifier la position locale ; efface la sélection après un envoi réussi                                                                                                                                                                 |
 
-### `play()` et le passage de main différé
+### `play()` et la vue reçue du serveur
 
-`play()` lit la pièce et la destination **avant** d'appliquer — ensuite la pièce n'est plus
-à sa place de départ — puis :
+`play()` envoie le coup sans changer la position ni le trait. Un envoi réussi marque
+le coup en attente et appelle `gameBoard.clearSelection()`. La vue reçue ensuite fait
+autorité : `adopt()` referme l'attente, délègue le déplacement reçu à
+`gameBoard.animate()`, puis rafraîchit la console. La fin de l'animation la rafraîchit
+à nouveau, depuis la boucle d'images.
 
-- si la pièce change de case, démarre l'animation et diffère le compte rendu ;
-- sinon (frappe sur place, abandon), rafraîchit la ligne d'état immédiatement.
-
-Le rafraîchissement est différé jusqu'à la fin de l'animation, dans la boucle d'images (`frame` de `mountBoard()`) : l'état du
-tour ne doit pas annoncer un coup encore en cours de dessin.
+`createGameBoard()` (`render/game-board.ts`) possède seulement l'état visuel : caméra,
+survol, sélection et animation. Il lit la partie par son rappel `match()`, sans la
+modifier ; les clics filtrent toujours les coups légaux du serveur. `center()` reprend
+la caméra à l'arrivée d'un siège, `clear()` oublie le visuel et vide le plateau à la
+sortie. Le chargement de Pixi reste différé et partagé par tous les appels à `load()`.
 
 **Il n'y a qu'un point de vue, celui du siège.** Le serveur n'envoie jamais la vue d'en
 face — c'est tout l'objet du fog of war — donc aucun basculement de vue n'existe côté
 client, et `input/controls.ts` n'a plus de raccourci pour cela.
 
-`play()` est aussi le seul endroit à interroger `match`, qui peut être absent : au menu, il
-n'y a rien à jouer.
+`play()` et le contrôleur visuel vérifient l'existence de `match` : au menu, il n'y a
+rien à jouer ni à dessiner.
 
 ---
 
@@ -1713,3 +1729,12 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 - **Aucune reprise de partie depuis le menu.** Quitter une partie referme le canal ; rien
   ne propose d'y revenir, alors que le Durable Object la tient toujours.
 - **Aucun partage du code autrement qu'à la main** : ni lien joignable, ni invitation.
+
+## Lisibilité des sources
+
+Les espaces de noms des ressources s'appellent `resources`, les identifiants de données
+gardent leur sens métier (`match`, `friendId`). Les branches d'affichage à plusieurs
+niveaux se calculent avant le JSX ou vivent dans un composant nommé ; ESLint interdit
+les ternaires imbriqués dans les sources des deux applications. Les fonctions courtes,
+les formules géométriques et les callbacks simples restent en place quand une extraction
+n'apporte pas de responsabilité distincte.

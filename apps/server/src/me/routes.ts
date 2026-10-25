@@ -100,7 +100,7 @@ export async function handleMe(
 
   if (request.method === "POST") {
     if (path === "/handle") {
-      const body = (await readBody(request)) as { handle?: unknown };
+      const body = await readBody(request);
       const result = await changeHandle(env.DB, playerId, body.handle, now);
       if (!result.ok)
         return Response.json({ code: result.code }, { status: statusFor(result.code) });
@@ -110,7 +110,7 @@ export async function handleMe(
       });
     }
     if (path === "/spectators") {
-      const body = (await readBody(request)) as { allow?: unknown };
+      const body = await readBody(request);
       if (typeof body.allow !== "boolean")
         return Response.json({ code: "INVALID" }, { status: 400 });
       await setAllowSpectators(env.DB, playerId, body.allow);

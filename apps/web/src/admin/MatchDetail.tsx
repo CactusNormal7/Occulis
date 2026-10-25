@@ -18,7 +18,7 @@ import {
 } from "@occulis/ui";
 import type { AdminMatchDetail } from "@occulis/protocol";
 import { useLoad, whenReady } from "../load/hooks.js";
-import * as R from "./resources.js";
+import * as resources from "./resources.js";
 import { formatDate, routeHash } from "./model.js";
 import { ReplayBoard } from "../replay/ReplayBoard.js";
 import { clampFrame, describeEntry, frameLabel, type Perspective } from "../replay/replay.js";
@@ -26,7 +26,7 @@ import { ResultBadge } from "./shared.js";
 
 export function MatchDetail({ id }: { id: string }) {
   const t = useMessages().admin.match;
-  const { loaded } = useLoad(R.match(id));
+  const { loaded } = useLoad(resources.match(id));
   return whenReady(loaded, (m) => (
     <>
       <BackLink href={routeHash({ view: "matches", status: null, offset: 0 })}>{t.back}</BackLink>

@@ -1,18 +1,11 @@
-import type { QueueIntent } from "@occulis/protocol";
-import { type Action, type ActionError, type Coord, type Result, rulesetFor } from "@occulis/core";
-import { type MoveAnimation, advance as step, startMove } from "./view/animation.js";
+import type {
+  QueueIntent,
+  SocialServerMessage,
+  TeamPreset,
+  TeamPresetList,
+} from "@occulis/protocol";
+import { type Action, type ActionError, type Result, rulesetFor } from "@occulis/core";
 import type { Movement } from "./game/movement-diff.js";
-import {
-  type Camera,
-  createCamera,
-  originOf,
-  pivotOf,
-  settle,
-  toProjection,
-  toProjectionSpace,
-  withViewport,
-} from "./view/camera.js";
-import { tileAt } from "./view/picking.js";
 import { OnlineMatch } from "./game/online-match.js";
 import {
   type MatchChannel,
@@ -30,15 +23,13 @@ import {
   withOverview,
 } from "./social/model.js";
 import { attachFriendsPanel } from "./ui/friends-panel.js";
-import type { SocialServerMessage } from "@occulis/protocol";
 import { type QueueChannel, joinQueue } from "./net/queue-channel.js";
 import { describeRejection, describeRoomFault } from "./ui/messages.js";
 import { attachShell } from "./ui/shell.js";
 import { mountAccount } from "./account/mount.js";
 import { arrivalNotice, cleanedSearch, routeOf } from "./account/model.js";
 import { START, type QueueSeeking, type Stage, advance } from "./ui/flow.js";
-import { type Selection, resolveClick } from "./game/selection.js";
-import type { Board } from "./render/pixi/board.js";
+import { createGameBoard } from "./render/game-board.js";
 import { type GameConsole, attachConsole } from "./ui/console.js";
 import { applyPalette } from "./theme/palette.js";
 import { applyTheme, storedTheme } from "./theme/theme-choice.js";
@@ -55,7 +46,6 @@ import {
 } from "./net/auth.js";
 import { chooseLocale, initLocale, translateDom } from "./locale/browser.js";
 import { currentLocale, messages, onLocaleChange } from "./locale/current.js";
-import type { TeamPreset, TeamPresetList } from "@occulis/protocol";
 import { mountDeployment, mountMatchFound } from "./prepare/mount.js";
 import { mountLeaveMatch } from "./leave/mount.js";
 import type { DeploymentProps } from "./prepare/Deployment.js";
@@ -79,10 +69,6 @@ function main(): void {
   translateDom(document);
 
   const host = element<HTMLDivElement>("app");
-  /** Le plateau Pixi, chargé à part (`render/pixi/board.ts`) ; absent tant qu'il n'est pas prêt. */
-  let board: Board | undefined;
-  let boardLoading: Promise<Board | undefined> | undefined;
-
   /**
    * Il n'existe **aucune partie locale** : tant que le serveur n'a pas assis le
    * joueur, il n'y a rien à jouer et rien à dessiner (docs/design.md section 2).
@@ -102,14 +88,13 @@ function main(): void {
   let spectators = 0;
   let watchDeadline: ReturnType<typeof setTimeout> | undefined;
 
-  // Le canevas suit la fenêtre (`resizeTo: window`) : ses dimensions sont les siennes,
-  // connues avant même que Pixi soit chargé.
-  const viewport = (): Coord => ({ x: window.innerWidth, y: window.innerHeight });
-  let camera: Camera = createCamera({ x: 0, y: 0 }, viewport());
-  let hovered: Coord | undefined;
-  let selection: Selection | undefined;
-  let animation: MoveAnimation | undefined;
   let gameConsole: GameConsole;
+  const gameBoard = createGameBoard(host, {
+    match: () => match,
+    showTile: (coord) => gameConsole.showTile(coord),
+    playAction: (action) => gameConsole.playAction(action),
+    onAnimationEnd: () => gameConsole.refresh(),
+  });
   /**
    * Un coup envoyé dont le serveur n'a pas encore répondu. Le client n'applique plus
    * rien lui-même : entre l'envoi et la vue, le plateau est celui d'avant, et il ne
@@ -157,7 +142,7 @@ function main(): void {
     if (!sent.ok) return sent;
 
     pending = true;
-    selection = undefined;
+    gameBoard.clearSelection();
     return sent;
   };
 
@@ -170,11 +155,7 @@ function main(): void {
    */
   const adopt = (movement?: Movement): void => {
     pending = false;
-    selection = undefined;
-    animation =
-      movement === undefined || match === undefined
-        ? undefined
-        : startMove(movement.pieceId, movement.from, movement.to, match.board);
+    gameBoard.animate(movement);
     gameConsole.refresh();
   };
 
@@ -192,11 +173,8 @@ function main(): void {
     clearTimeout(watchDeadline);
     match = undefined;
     pending = false;
-    selection = undefined;
-    animation = undefined;
-    hovered = undefined;
     deploying = undefined;
-    board?.clear();
+    gameBoard.clear();
   };
 
   /** Referme tout ce qui relie le client au serveur, et vide la table. */
@@ -243,7 +221,7 @@ function main(): void {
           (action) => (spectating ? undefined : channel?.submit(action)),
           view,
         );
-        camera = createCamera(pivotOf(match.board), viewport());
+        gameBoard.center();
         deploying = undefined;
         showIslands();
         go({ kind: "seated", spectating });
@@ -325,7 +303,7 @@ function main(): void {
     queue = undefined;
     challengedFriend = undefined;
     closeMatch();
-    void ensureBoard();
+    void gameBoard.load();
     channel = connectToMatch(matchId, seat, handlersFor(false, matchId));
   };
 
@@ -337,7 +315,7 @@ function main(): void {
     shell.notify("");
     watching = friend;
     go({ kind: "seek", seeking: "watch", friend });
-    void ensureBoard();
+    void gameBoard.load();
     channel = watchMatch(matchId, side, handlersFor(true, matchId));
     watchDeadline = setTimeout(() => {
       if (match !== undefined) return;
@@ -701,73 +679,11 @@ function main(): void {
 
   shell.render(stage);
 
-  /**
-   * Charge le plateau une seule fois. Un échec (pas de WebGL) laisse le menu utilisable :
-   * il ne coûte que la partie, qui ne s'affichera pas.
-   */
-  function ensureBoard(): Promise<Board | undefined> {
-    boardLoading ??= import("./render/pixi/board.js")
-      .then(({ mountBoard }) =>
-        mountBoard(host, {
-          onResize: () => {
-            camera = withViewport(camera, viewport());
-          },
-          controls: {
-            getCamera: () => camera,
-            setCamera: (next) => {
-              camera = next;
-            },
-            pickTile: (point) =>
-              match === undefined
-                ? undefined
-                : tileAt(toProjectionSpace(camera, point), match.board, toProjection(camera)),
-            setHovered: (coord) => {
-              hovered = coord;
-            },
-            onPick: (coord) => {
-              if (match === undefined) return;
-              gameConsole.showTile(coord);
-
-              const outcome = resolveClick(match.legalActions, match.state, selection, coord);
-              if (outcome.kind === "select") selection = outcome.selection;
-              else if (outcome.kind === "clear") selection = undefined;
-              else gameConsole.playAction(outcome.action);
-            },
-          },
-          frame: (deltaMS) => {
-            if (match === undefined) return undefined;
-            camera = settle(camera, deltaMS);
-
-            if (animation !== undefined) {
-              animation = step(animation, deltaMS);
-              if (animation === undefined) gameConsole.refresh();
-            }
-
-            return {
-              board: match.board,
-              view: match.viewFor(match.player),
-              projection: toProjection(camera),
-              origin: originOf(camera),
-              hovered,
-              selection,
-              animation,
-            };
-          },
-        }),
-      )
-      .then((mounted) => (board = mounted))
-      .catch((error: unknown) => {
-        console.error("board unavailable", error);
-        return undefined;
-      });
-    return boardLoading;
-  }
-
   /** Le plateau se charge au repos, une fois le menu affiché : rien ne l'attend avant. */
   function prewarmBoard(): void {
-    if (boardLoading !== undefined) return;
+    if (gameBoard.hasStartedLoading()) return;
     const prewarm = (): void => {
-      void ensureBoard();
+      void gameBoard.load();
       // L'écran des équipes s'ouvre alors complet, sans attente.
       loadCache.preload([presetsResource]);
     };

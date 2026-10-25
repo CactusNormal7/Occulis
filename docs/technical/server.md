@@ -931,6 +931,15 @@ défis. Tout s'indexe sur **`players.id`**, le profil de jeu, et non sur le comp
 
 ### Les routes — `social/routes.ts`
 
+`handleSocial()` conserve la garde de session et d'adresse vérifiée à l'entrée.
+Il traite la liste, la recherche, les demandes et les blocages, puis délègue les chemins
+d'un ami à `handleFriendRoutes()`. Ce dernier vérifie l'amitié avant toute fiche, replay,
+message ou défi ; le retrait d'une relation reste traité avant cette garde.
+`cancelChallengesBetween()` retire les défis dans les deux sens après un blocage ou un
+retrait, et `cancelChallenge()` partage la réponse d'annulation et de refus.
+Les champs de `readBody()` sont déjà de type `unknown` : les routes les valident sans
+ajouter d'assertion de type.
+
 `handleSocial()` pose `guardCaller()` (identité tirée du cookie, origine vérifiée hors
 `GET`, **usurpation en lecture seule**, messages privés fermés sous emprunt), puis exige une **adresse vérifiée** (403
 `EMAIL_UNVERIFIED`), comme la file d'attente. Un `:id` dans l'URL désigne toujours
@@ -1457,3 +1466,9 @@ garde `kind`, `pieceId` et des coordonnées entières, rien d'autre ; le `player
 n'est jamais repris du client. Un message illisible (JSON invalide, genre inconnu, champ de
 mauvais type, intention de file absente) est ignoré ; une équipe illisible reste refusée par
 `malformed-team`. C'est ce qui garantit que le log D1 ne contient que des actions canoniques.
+
+## Lisibilité des sources
+
+ESLint interdit les ternaires imbriqués dans `apps/server/src/` et `apps/web/src/`.
+Une décision à plusieurs niveaux utilise des branches explicites. Les extractions
+gardent les contrôles d'accès à l'entrée et l'ordre des écritures et des notifications.

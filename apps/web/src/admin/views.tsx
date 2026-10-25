@@ -31,7 +31,7 @@ import type { AdminPlayer } from "@occulis/protocol";
 import * as api from "./api.js";
 import { CreateUserDialog, QuickActions, useAct, useGo } from "./actions.js";
 import { useLoad, whenReady } from "../load/hooks.js";
-import * as R from "./resources.js";
+import * as resources from "./resources.js";
 import {
   describeBan,
   formatDate,
@@ -55,7 +55,7 @@ const GAMES = { view: "matches", status: null, offset: 0 } as const;
 
 export function Overview() {
   const t = useMessages().admin.overview;
-  const { loaded } = useLoad(R.overview);
+  const { loaded } = useLoad(resources.overview);
 
   return whenReady(loaded, ({ stats: s, recent, newcomers }) => (
     <>
@@ -132,7 +132,7 @@ export function UserList({
   const t = useMessages().admin.users;
   const notify = useToast();
   const [creating, setCreating] = useState(false);
-  const { loaded, reload } = useLoad(R.users(search, offset));
+  const { loaded, reload } = useLoad(resources.users(search, offset));
 
   return (
     <>
@@ -206,7 +206,7 @@ export function UserDetail({ id, self }: { id: string; self: string }) {
   const t = useMessages().admin.user;
   const notify = useToast();
   const go = useGo();
-  const { loaded, reload } = useLoad(R.user(id));
+  const { loaded, reload } = useLoad(resources.user(id));
   const act = useAct(reload);
 
   return whenReady(loaded, ({ user, playerId, sessions, player, history }) => {
@@ -318,11 +318,9 @@ export function UserDetail({ id, self }: { id: string; self: string }) {
                 )
               }
             >
-              {!sessions.ok ? (
-                <EmptyState error>{sessions.message}</EmptyState>
-              ) : sessionList.length === 0 ? (
-                <EmptyState>{t.noSessions}</EmptyState>
-              ) : (
+              {!sessions.ok && <EmptyState error>{sessions.message}</EmptyState>}
+              {sessions.ok && sessionList.length === 0 && <EmptyState>{t.noSessions}</EmptyState>}
+              {sessions.ok && sessionList.length > 0 && (
                 <List>
                   {sessionList.map((session) => (
                     <ListRow
@@ -382,7 +380,7 @@ function ProfileCard({ player }: { player: AdminPlayer }) {
 export function PlayerDetail({ id }: { id: string }) {
   const all = useMessages().admin;
   const t = all.player;
-  const { loaded } = useLoad(R.player(id));
+  const { loaded } = useLoad(resources.player(id));
 
   return whenReady(loaded, ({ player: p, history }) => (
     <>
@@ -422,7 +420,7 @@ export function PlayerDetail({ id }: { id: string }) {
 
 export function MatchList({ status, offset }: { status: MatchStatus | null; offset: number }) {
   const t = useMessages().admin.matchList;
-  const { loaded } = useLoad(R.matches(status, offset));
+  const { loaded } = useLoad(resources.matches(status, offset));
   const filters: { value: "all" | MatchStatus; label: string }[] = [
     { value: "all", label: t.all },
     { value: "ongoing", label: t.ongoing },

@@ -98,47 +98,46 @@ export function MatchTable({
       rowCount={matches.length}
       empty={t.empty}
     >
-      {matches.map((m) => {
-        const relation = relationOf?.(m);
+      {matches.map((match) => {
+        const relation = relationOf?.(match);
         const offerFriend =
           onAddFriend !== undefined && relation !== "friend" && relation !== "blocked";
+        let ratingLabel = match.rated ? "—" : t.unrated;
+        if (match.ratingChange !== null) ratingLabel = t.ratingChange(match.ratingChange);
+        let friendDisabledReason: string | undefined;
+        if (readOnly) friendDisabledReason = all.social.readOnly;
+        else if (relation === "outgoing") {
+          friendDisabledReason = all.social.requestPending(match.opponent);
+        }
         return (
-          <tr key={m.id}>
-            <td className="occ-muted">{formatDate(m.startedAt)}</td>
-            <td>{m.opponent}</td>
+          <tr key={match.id}>
+            <td className="occ-muted">{formatDate(match.startedAt)}</td>
+            <td>{match.opponent}</td>
             <td>
-              <Badge tone={m.seat}>{m.seat}</Badge>
+              <Badge tone={match.seat}>{match.seat}</Badge>
             </td>
             <td>
-              <MyResult match={m} />
+              <MyResult match={match} />
             </td>
-            <td className="occ-muted">
-              {m.ratingChange !== null ? t.ratingChange(m.ratingChange) : m.rated ? "—" : t.unrated}
-            </td>
-            <td className="occ-muted">{m.actions}</td>
+            <td className="occ-muted">{ratingLabel}</td>
+            <td className="occ-muted">{match.actions}</td>
             <td className="occ-actions-cell">
               <QuickBar>
                 {offerFriend && (
                   <IconButton
                     icon="userPlus"
-                    label={all.social.addOpponent(m.opponent)}
+                    label={all.social.addOpponent(match.opponent)}
                     tipAlign="end"
-                    disabledReason={
-                      readOnly
-                        ? all.social.readOnly
-                        : relation === "outgoing"
-                          ? all.social.requestPending(m.opponent)
-                          : undefined
-                    }
-                    onClick={() => onAddFriend(m)}
+                    disabledReason={friendDisabledReason}
+                    onClick={() => onAddFriend(match)}
                   />
                 )}
                 <IconButton
                   icon="eye"
-                  label={m.result === "ongoing" ? t.ongoingReplay : t.replay}
+                  label={match.result === "ongoing" ? t.ongoingReplay : t.replay}
                   tipAlign="end"
-                  disabled={m.result === "ongoing"}
-                  onClick={() => (location.hash = replayHref(m))}
+                  disabled={match.result === "ongoing"}
+                  onClick={() => (location.hash = replayHref(match))}
                 />
               </QuickBar>
             </td>
@@ -156,32 +155,34 @@ export interface MatchReplayViewProps {
   friend?: string | undefined;
 }
 
-export function MatchReplayView({ match: m, back, friend }: MatchReplayViewProps) {
+export function MatchReplayView({ match, back, friend }: MatchReplayViewProps) {
   const all = useMessages();
   const t = all.profile.matches;
   const title =
-    friend === undefined ? t.against(m.opponent) : all.social.friend.against(friend, m.opponent);
+    friend === undefined
+      ? t.against(match.opponent)
+      : all.social.friend.against(friend, match.opponent);
   return (
     <>
       <BackLink href={back.href}>{back.label}</BackLink>
       <Hero
         title={title}
-        badges={<MyResult match={m} />}
-        meta={[t.side(m.seat), formatDate(m.startedAt)]}
+        badges={<MyResult match={match} />}
+        meta={[t.side(match.seat), formatDate(match.startedAt)]}
       />
       <FactStrip
         facts={[
-          { label: t.facts.start, value: formatDate(m.startedAt) },
-          { label: t.facts.end, value: formatDate(m.finishedAt) },
-          { label: t.facts.rules, value: m.rulesetVersion },
-          { label: t.facts.map, value: m.scenario },
-          { label: t.facts.moves, value: String(m.log.length) },
+          { label: t.facts.start, value: formatDate(match.startedAt) },
+          { label: t.facts.end, value: formatDate(match.finishedAt) },
+          { label: t.facts.rules, value: match.rulesetVersion },
+          { label: t.facts.map, value: match.scenario },
+          { label: t.facts.moves, value: String(match.log.length) },
         ]}
       />
-      {m.replayError !== null && (
-        <Banner>{t.replayError(m.replayError.seq, m.replayError.code)}</Banner>
+      {match.replayError !== null && (
+        <Banner>{t.replayError(match.replayError.seq, match.replayError.code)}</Banner>
       )}
-      <Replay match={m} friend={friend} />
+      <Replay match={match} friend={friend} />
     </>
   );
 }
@@ -191,31 +192,34 @@ export function MatchReplayView({ match: m, back, friend }: MatchReplayViewProps
  * voyait, et rien d'autre. Les coups adverses ne sont pas détaillés, leur position
  * restant inconnue de ce camp.
  */
-function Replay({ match: m, friend }: { match: MeMatchDetail; friend: string | undefined }) {
+function Replay({ match, friend }: { match: MeMatchDetail; friend: string | undefined }) {
   const all = useMessages();
   const t = all.profile;
-  const count = m.frames.length;
+  const count = match.frames.length;
   const [index, setIndex] = useState(count - 1);
   const [turns, setTurns] = useState(0);
-  const frames = useMemo(() => asBoardFrames(m.frames, m.seat), [m.frames, m.seat]);
+  const frames = useMemo(() => asBoardFrames(match.frames, match.seat), [match.frames, match.seat]);
   // La carte que la partie a figée ; `null` quand le serveur n'a pas su la relire.
-  const board = useMemo(() => (m.board === null ? undefined : new Board(m.board)), [m.board]);
+  const board = useMemo(
+    () => (match.board === null ? undefined : new Board(match.board)),
+    [match.board],
+  );
 
   const go = (next: number) => setIndex(clampFrame(next, count));
-  const entry = index === 0 ? undefined : m.log[index - 1];
+  const entry = index === 0 ? undefined : match.log[index - 1];
   const self = friend ?? t.replay.you;
   const label =
     index === 0
       ? t.replay.start
       : t.replay.move(
           index,
-          m.log.length,
-          entry?.player === m.seat ? self : m.opponent,
+          match.log.length,
+          entry?.player === match.seat ? self : match.opponent,
           entry?.action?.kind === "resign",
         );
 
   if (board === undefined) {
-    return <EmptyState>{t.replay.unknownMap(m.scenario)}</EmptyState>;
+    return <EmptyState>{t.replay.unknownMap(match.scenario)}</EmptyState>;
   }
   const c = t.replayControls;
   return (
@@ -236,7 +240,13 @@ function Replay({ match: m, friend }: { match: MeMatchDetail; friend: string | u
           <IconButton icon="rotateRight" label={c.rotate} onClick={() => setTurns(turns + 1)} />
         </QuickBar>
       </Toolbar>
-      <ReplayBoard board={board} frames={frames} index={index} perspective={m.seat} turns={turns} />
+      <ReplayBoard
+        board={board}
+        frames={frames}
+        index={index}
+        perspective={match.seat}
+        turns={turns}
+      />
     </Card>
   );
 }

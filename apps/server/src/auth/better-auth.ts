@@ -23,7 +23,7 @@ import {
  * Trois choix méritent d'être explicités, parce qu'ils s'écartent des réglages par
  * défaut de la bibliothèque :
  *
- * - **Le hachage reste le nôtre.** `password.ts` (PBKDF2-HMAC-SHA256, 210 000 tours)
+ * - **Le hachage reste le nôtre.** `password.ts` (PBKDF2-HMAC-SHA256, six passes de 100 000 tours)
  *   est branché tel quel, donc aucune empreinte existante n'est invalidée et le format
  *   `pbkdf2-sha256$…` reste lisible. Better Auth utiliserait scrypt sinon, ce qui aurait
  *   imposé de réencoder chaque mot de passe à la prochaine connexion.
@@ -375,12 +375,9 @@ export function isImpersonated(impersonatedBy: unknown): boolean {
 /** Le nouveau mot de passe que porte une requête, pour le contrôle des fuites. */
 function newPasswordOf(path: string, body: unknown): string | undefined {
   const fields = (body ?? {}) as { password?: unknown; newPassword?: unknown };
-  const value =
-    path === "/sign-up/email"
-      ? fields.password
-      : PASSWORD_CHANGES.has(path)
-        ? fields.newPassword
-        : undefined;
+  let value: unknown;
+  if (path === "/sign-up/email") value = fields.password;
+  else if (PASSWORD_CHANGES.has(path)) value = fields.newPassword;
   return typeof value === "string" && value.length >= MIN_PASSWORD_LENGTH ? value : undefined;
 }
 

@@ -68,7 +68,7 @@ async function refuseNonAdmin(
 }
 
 async function rename(env: Env, request: Request, playerId: string): Promise<Response> {
-  const body = (await readBody(request)) as { handle?: unknown };
+  const body = await readBody(request);
   const checked = checkHandle(body.handle);
   if (!checked.ok) return Response.json({ code: checked.code }, { status: 400 });
   const handle = checked.handle;

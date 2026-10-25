@@ -7,7 +7,7 @@ import { Scene, type SceneInput } from "./scene.js";
 /**
  * Le plateau à l'écran : l'application Pixi, sa scène, ses gestes et sa boucle d'images.
  *
- * Chargé à part (`import()` depuis `main.ts`) : Pixi est de loin le plus gros morceau du
+ * Chargé à part (`import()` depuis `render/game-board.ts`) : Pixi est de loin le plus gros morceau du
  * client, et ni l'écran de compte ni le menu n'en ont besoin. Le menu s'affiche donc
  * sans l'avoir téléchargé ni analysé ; il arrive pendant que le joueur choisit sa partie.
  */

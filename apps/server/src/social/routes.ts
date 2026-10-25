@@ -1,6 +1,6 @@
 import type { Challenge, SocialServerMessage } from "@occulis/protocol";
 import type { Auth } from "../auth/better-auth.js";
-import { guardCaller } from "../auth/guard.js";
+import { type Caller, guardCaller } from "../auth/guard.js";
 import { parsePage } from "../admin/paging.js";
 import { listMyMatches, readCurrentMatch, readMyMatch } from "../me/queries.js";
 import { callSocial, pushTo } from "../social-do.js";
@@ -74,7 +74,7 @@ export async function handleSocial(
   }
 
   if (method === "POST" && path === "/api/friends/requests") {
-    const { playerId } = (await readBody(request)) as { playerId?: unknown };
+    const { playerId } = await readBody(request);
     if (typeof playerId !== "string") return failure("UNKNOWN_PLAYER");
     const decision = decideRequest(
       self,
@@ -96,13 +96,12 @@ export async function handleSocial(
   }
 
   if (method === "POST" && path === "/api/blocks") {
-    const { playerId } = (await readBody(request)) as { playerId?: unknown };
+    const { playerId } = await readBody(request);
     if (typeof playerId !== "string" || playerId === self) return failure("UNKNOWN_PLAYER");
     if ((await handleOf(db, playerId)) === undefined) return failure("UNKNOWN_PLAYER");
     await block(db, self, playerId, now);
     // Le bloqué voit seulement disparaître une relation, sans savoir pourquoi.
-    await callSocial(env, self, "/challenge/cancel", { to: playerId }).catch(() => undefined);
-    await callSocial(env, playerId, "/challenge/cancel", { to: self }).catch(() => undefined);
+    await cancelChallengesBetween(env, self, playerId);
     await pushTo(env, playerId, { kind: "friends-changed" });
     return Response.json({ relation: "blocked" });
   }
@@ -114,9 +113,11 @@ export async function handleSocial(
       : failure("NOT_FOUND");
   }
 
-  const request_ = path.match(/^\/api\/friends\/requests\/([\w-]+)\/(accept|decline|cancel)$/);
-  if (method === "POST" && request_ !== null) {
-    const [, other = "", verb] = request_;
+  const friendRequestPath = path.match(
+    /^\/api\/friends\/requests\/([\w-]+)\/(accept|decline|cancel)$/,
+  );
+  if (method === "POST" && friendRequestPath !== null) {
+    const [, other = "", verb] = friendRequestPath;
     if (verb === "accept") {
       if (!(await acceptRequest(db, self, other, now))) return failure("NOT_FOUND");
       await pushTo(env, other, { kind: "friend-accepted", friend: me });
@@ -131,101 +132,118 @@ export async function handleSocial(
     return Response.json({ relation: "none" });
   }
 
+  return handleFriendRoutes(env, request, url, caller, now);
+}
+
+/** Les données privées et les défis passent tous par la même vérification d'amitié. */
+async function handleFriendRoutes(
+  env: Env,
+  request: Request,
+  url: URL,
+  caller: Caller,
+  now: number,
+): Promise<Response> {
+  const db = env.DB;
+  const self = caller.playerId;
+  const me = { id: self, handle: caller.session.user.name };
+  const method = request.method;
+  const path = url.pathname;
   const friendPath = path.match(/^\/api\/friends\/([\w-]+)(\/.*)?$/);
   if (friendPath === null) return new Response("not found", { status: 404 });
-  const friend = friendPath[1] ?? "";
-  const rest = friendPath[2] ?? "";
+  const friendId = friendPath[1] ?? "";
+  const suffix = friendPath[2] ?? "";
 
-  if (method === "DELETE" && rest === "") {
-    if (!(await removeFriend(db, self, friend))) return failure("NOT_FOUND");
-    await callSocial(env, self, "/challenge/cancel", { to: friend }).catch(() => undefined);
-    await callSocial(env, friend, "/challenge/cancel", { to: self }).catch(() => undefined);
-    await pushTo(env, friend, { kind: "friends-changed" });
+  if (method === "DELETE" && suffix === "") {
+    if (!(await removeFriend(db, self, friendId))) return failure("NOT_FOUND");
+    await cancelChallengesBetween(env, self, friendId);
+    await pushTo(env, friendId, { kind: "friends-changed" });
     return Response.json({ relation: "none" });
   }
 
   // Tout ce qui suit ouvre les données d'un ami, ou s'adresse à lui : l'amitié d'abord.
-  if (!(await isFriend(db, self, friend))) return failure("NOT_FRIENDS");
+  if (!(await isFriend(db, self, friendId))) return failure("NOT_FRIENDS");
 
   if (method === "GET") {
-    if (rest === "") {
-      const profile = await readFriendProfile(db, self, friend);
+    if (suffix === "") {
+      const profile = await readFriendProfile(db, self, friendId);
       return profile === undefined ? failure("NOT_FRIENDS") : Response.json(profile);
     }
-    if (rest === "/matches")
-      return Response.json(await listMyMatches(db, friend, parsePage(url.searchParams)));
-    const matchId = rest.match(/^\/matches\/([\w-]+)$/)?.[1];
+    if (suffix === "/matches")
+      return Response.json(await listMyMatches(db, friendId, parsePage(url.searchParams)));
+    const matchId = suffix.match(/^\/matches\/([\w-]+)$/)?.[1];
     if (matchId !== undefined) {
       // Le replay **de son point de vue**, exactement celui qu'il voit lui-même.
-      const match = await readMyMatch(db, friend, matchId);
+      const match = await readMyMatch(db, friendId, matchId);
       if (match === "unknown") return new Response("not found", { status: 404 });
       if (match === "ongoing") return Response.json({ code: "MATCH_ONGOING" }, { status: 409 });
       return Response.json(match);
     }
-    if (rest === "/messages") {
+    if (suffix === "/messages") {
       // La lecture seule de l'emprunt ne va pas jusqu'aux messages privés : ils restent
       // entre les deux amis, administrateur compris (décision du 2026-10-21).
       if (caller.impersonating) return failure("PRIVATE");
       const raw = Number.parseInt(url.searchParams.get("before") ?? "", 10);
       return Response.json(
-        await listMessages(db, self, friend, Number.isFinite(raw) ? raw : Number.MAX_SAFE_INTEGER),
+        await listMessages(
+          db,
+          self,
+          friendId,
+          Number.isFinite(raw) ? raw : Number.MAX_SAFE_INTEGER,
+        ),
       );
     }
   }
 
   if (method === "POST") {
-    if (rest === "/messages") {
-      const { body } = (await readBody(request)) as { body?: unknown };
+    if (suffix === "/messages") {
+      const { body } = await readBody(request);
       const checked = checkMessage(body);
       if (!checked.ok) return failure(checked.code);
-      const message = await insertMessage(db, self, friend, checked.body, now);
+      const message = await insertMessage(db, self, friendId, checked.body, now);
       if (message === undefined) return failure("RATE_LIMITED");
       const pushed: SocialServerMessage = { kind: "message", message };
       // Vers soi aussi : ses autres pages ouvertes affichent le même fil.
-      await Promise.all([pushTo(env, friend, pushed), pushTo(env, self, pushed)]);
+      await Promise.all([pushTo(env, friendId, pushed), pushTo(env, self, pushed)]);
       return Response.json(message);
     }
-    if (rest === "/messages/read")
-      return Response.json({ read: await markRead(db, self, friend, now) });
+    if (suffix === "/messages/read")
+      return Response.json({ read: await markRead(db, self, friendId, now) });
 
-    if (rest === "/challenge") {
-      const target = await handleOf(db, friend);
+    if (suffix === "/challenge") {
+      const target = await handleOf(db, friendId);
       if (target === undefined) return failure("NOT_FRIENDS");
-      if (await eitherInMatch(db, self, friend)) return failure("IN_MATCH");
+      if (await eitherInMatch(db, self, friendId)) return failure("IN_MATCH");
       const challenge: Challenge = { from: me, to: target, createdAt: now };
       return callSocial(env, self, "/challenge", challenge);
     }
-    if (rest === "/challenge/accept") {
+    if (suffix === "/challenge/accept") {
       // Revérifié à l'acceptation : l'un des deux a pu entrer en partie entre-temps.
-      if (await eitherInMatch(db, self, friend)) return failure("IN_MATCH");
-      return callSocial(env, friend, "/challenge/accept", { to: self });
+      if (await eitherInMatch(db, self, friendId)) return failure("IN_MATCH");
+      return callSocial(env, friendId, "/challenge/accept", { to: self });
     }
-    if (rest === "/challenge/decline") {
-      const { cancelled } = (await (
-        await callSocial(env, friend, "/challenge/cancel", { to: self })
-      ).json()) as {
-        cancelled: boolean;
-      };
-      return cancelled ? Response.json({ cancelled }) : failure("NO_CHALLENGE");
+    if (suffix === "/challenge/decline") {
+      return cancelChallenge(env, friendId, self);
     }
   }
 
-  if (method === "DELETE" && rest === "/challenge") {
-    const { cancelled } = (await (
-      await callSocial(env, self, "/challenge/cancel", { to: friend })
-    ).json()) as {
-      cancelled: boolean;
-    };
-    return cancelled ? Response.json({ cancelled }) : failure("NO_CHALLENGE");
+  if (method === "DELETE" && suffix === "/challenge") {
+    return cancelChallenge(env, self, friendId);
   }
 
   return new Response("not found", { status: 404 });
 }
 
 /** Un défi n'a de sens qu'entre deux joueurs libres : une partie en cours ne s'interrompt pas. */
-async function eitherInMatch(db: D1Database, a: string, b: string): Promise<boolean> {
-  const [ofA, ofB] = await Promise.all([readCurrentMatch(db, a), readCurrentMatch(db, b)]);
-  return ofA !== undefined || ofB !== undefined;
+async function eitherInMatch(
+  db: D1Database,
+  firstPlayerId: string,
+  secondPlayerId: string,
+): Promise<boolean> {
+  const [firstMatch, secondMatch] = await Promise.all([
+    readCurrentMatch(db, firstPlayerId),
+    readCurrentMatch(db, secondPlayerId),
+  ]);
+  return firstMatch !== undefined || secondMatch !== undefined;
 }
 
 function failure(code: string): Response {
@@ -252,4 +270,16 @@ function statusFor(code: string): number {
     default:
       return 400;
   }
+}
+
+/** Une relation supprimée retire aussi les invitations dans les deux sens. */
+async function cancelChallengesBetween(env: Env, self: string, other: string): Promise<void> {
+  await callSocial(env, self, "/challenge/cancel", { to: other }).catch(() => undefined);
+  await callSocial(env, other, "/challenge/cancel", { to: self }).catch(() => undefined);
+}
+
+async function cancelChallenge(env: Env, from: string, to: string): Promise<Response> {
+  const response = await callSocial(env, from, "/challenge/cancel", { to });
+  const { cancelled } = (await response.json()) as { cancelled: boolean };
+  return cancelled ? Response.json({ cancelled }) : failure("NO_CHALLENGE");
 }

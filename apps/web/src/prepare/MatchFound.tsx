@@ -46,6 +46,10 @@ function Content({ remainingMs, receivedAt, accepted, onAccept, onDecline }: Mat
     };
   }, [m.found.tabTitle]);
 
+  let status = m.found.lead;
+  if (accepted.opponent) status = m.found.opponentAccepted;
+  else if (accepted.self) status = m.found.waitingOpponent;
+
   return (
     <Dialog
       open
@@ -69,15 +73,7 @@ function Content({ remainingMs, receivedAt, accepted, onAccept, onDecline }: Mat
       >
         {secondsLeft(remaining)}
       </CountdownRing>
-      <Note>
-        {accepted.self
-          ? accepted.opponent
-            ? m.found.opponentAccepted
-            : m.found.waitingOpponent
-          : accepted.opponent
-            ? m.found.opponentAccepted
-            : m.found.lead}
-      </Note>
+      <Note>{status}</Note>
     </Dialog>
   );
 }

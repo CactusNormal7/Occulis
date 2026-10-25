@@ -172,5 +172,12 @@ export default [
       "no-restricted-syntax": "off",
     },
   },
+  {
+    files: ["apps/server/src/**/*.{ts,tsx}", "apps/web/src/**/*.{ts,tsx}"],
+    rules: {
+      // Les conditions à plusieurs niveaux se lisent avec des branches nommées.
+      "no-nested-ternary": "error",
+    },
+  },
   prettier,
 ];

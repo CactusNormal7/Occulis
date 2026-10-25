@@ -76,11 +76,9 @@ export function arrivalNotice(pathname: string, search: string): Notice | undefi
   if (error !== null && error.length > 0) {
     const onReset = pathname.replace(/\/+$/, "") === ROUTE_PATHS.reset;
     const expired = error === "INVALID_TOKEN" || error === "TOKEN_EXPIRED";
-    return {
-      tone: "error",
-      text: redirectMessage(error),
-      retry: expired ? (onReset ? "reset" : "verification") : undefined,
-    };
+    let retry: Notice["retry"];
+    if (expired) retry = onReset ? "reset" : "verification";
+    return { tone: "error", text: redirectMessage(error), retry };
   }
   if (flag(parameters, "deleted")) {
     return { tone: "success", text: messages().account.arrival.deleted };

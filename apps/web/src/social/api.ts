@@ -36,49 +36,55 @@ const call = <T>(path: string, init?: RequestInit): Promise<Outcome<T>> =>
 const write = <T>(method: "POST" | "DELETE", path: string, body?: unknown): Promise<Outcome<T>> =>
   call<T>(path, jsonInit(method, body));
 
-const id = encodeURIComponent;
-
 export const overview = () => call<FriendsOverview>("/api/friends");
 export const search = (prefix: string) =>
-  call<PlayerSearchResult[]>(`/api/players/search?q=${id(prefix)}`);
+  call<PlayerSearchResult[]>(`/api/players/search?q=${encodeURIComponent(prefix)}`);
 
 export const requestFriend = (playerId: string) =>
   write<{ relation: Relation }>("POST", "/api/friends/requests", { playerId });
 export const acceptRequest = (playerId: string) =>
-  write("POST", `/api/friends/requests/${id(playerId)}/accept`);
+  write("POST", `/api/friends/requests/${encodeURIComponent(playerId)}/accept`);
 export const declineRequest = (playerId: string) =>
-  write("POST", `/api/friends/requests/${id(playerId)}/decline`);
+  write("POST", `/api/friends/requests/${encodeURIComponent(playerId)}/decline`);
 export const cancelRequest = (playerId: string) =>
-  write("POST", `/api/friends/requests/${id(playerId)}/cancel`);
-export const removeFriend = (playerId: string) => write("DELETE", `/api/friends/${id(playerId)}`);
+  write("POST", `/api/friends/requests/${encodeURIComponent(playerId)}/cancel`);
+export const removeFriend = (playerId: string) =>
+  write("DELETE", `/api/friends/${encodeURIComponent(playerId)}`);
 export const block = (playerId: string) => write("POST", "/api/blocks", { playerId });
-export const unblock = (playerId: string) => write("DELETE", `/api/blocks/${id(playerId)}`);
+export const unblock = (playerId: string) =>
+  write("DELETE", `/api/blocks/${encodeURIComponent(playerId)}`);
 
-export const friend = (playerId: string) => call<FriendProfile>(`/api/friends/${id(playerId)}`);
+export const friend = (playerId: string) =>
+  call<FriendProfile>(`/api/friends/${encodeURIComponent(playerId)}`);
 export const friendMatches = (playerId: string, offset: number) =>
   call<MeMatchPage>(
-    `/api/friends/${id(playerId)}/matches?limit=${FRIEND_PAGE_SIZE}&offset=${offset}`,
+    `/api/friends/${encodeURIComponent(playerId)}/matches?limit=${FRIEND_PAGE_SIZE}&offset=${offset}`,
   );
 export const friendMatch = (playerId: string, matchId: string) =>
-  call<MeMatchDetail>(`/api/friends/${id(playerId)}/matches/${id(matchId)}`);
+  call<MeMatchDetail>(
+    `/api/friends/${encodeURIComponent(playerId)}/matches/${encodeURIComponent(matchId)}`,
+  );
 
 export const messages = (playerId: string, before?: number) =>
   call<ChatPage>(
-    `/api/friends/${id(playerId)}/messages${before === undefined ? "" : `?before=${before}`}`,
+    `/api/friends/${encodeURIComponent(playerId)}/messages${before === undefined ? "" : `?before=${before}`}`,
   );
 export const sendMessage = (playerId: string, body: string) =>
-  write<ChatMessage>("POST", `/api/friends/${id(playerId)}/messages`, { body });
+  write<ChatMessage>("POST", `/api/friends/${encodeURIComponent(playerId)}/messages`, { body });
 export const markRead = (playerId: string) =>
-  write<{ read: number }>("POST", `/api/friends/${id(playerId)}/messages/read`);
+  write<{ read: number }>("POST", `/api/friends/${encodeURIComponent(playerId)}/messages/read`);
 
 export const challenge = (playerId: string) =>
-  write("POST", `/api/friends/${id(playerId)}/challenge`);
+  write("POST", `/api/friends/${encodeURIComponent(playerId)}/challenge`);
 export const withdrawChallenge = (playerId: string) =>
-  write("DELETE", `/api/friends/${id(playerId)}/challenge`);
+  write("DELETE", `/api/friends/${encodeURIComponent(playerId)}/challenge`);
 export const acceptChallenge = (playerId: string) =>
-  write<{ matchId: string }>("POST", `/api/friends/${id(playerId)}/challenge/accept`);
+  write<{ matchId: string }>(
+    "POST",
+    `/api/friends/${encodeURIComponent(playerId)}/challenge/accept`,
+  );
 export const declineChallenge = (playerId: string) =>
-  write("POST", `/api/friends/${id(playerId)}/challenge/decline`);
+  write("POST", `/api/friends/${encodeURIComponent(playerId)}/challenge/decline`);
 
 export const allowSpectators = (allow: boolean) =>
   write<{ allowSpectators: boolean }>("POST", "/api/me/spectators", { allow });
