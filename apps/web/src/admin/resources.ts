@@ -8,10 +8,12 @@ import type { MatchStatus, Route } from "./model.js";
  * ressources, et `resourcesOf()` les précharge toutes à l'arrivée sur une route, pour que
  * l'écran paraisse d'un seul tenant au lieu d'enchaîner ses lectures.
  */
-export const identity = resource("identity", async () => ({
-  ok: true as const,
-  value: await whoAmI(),
-}));
+export const identity = resource("identity", async () => {
+  const who = await whoAmI();
+  // Le chiffre est en place avant le premier rendu de l'écran : l'identité est lue en premier.
+  if (who.goy === true) (await import("./cipher/install.js")).installCipher();
+  return { ok: true as const, value: who };
+});
 
 export const overview = resource("overview", async () => {
   const [stats, recent, newcomers] = await Promise.all([

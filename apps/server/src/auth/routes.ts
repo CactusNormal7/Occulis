@@ -1,4 +1,4 @@
-import { availableProviders, isAdmin, isImpersonated, type Auth } from "./better-auth.js";
+import { availableProviders, isAdmin, isGoy, isImpersonated, type Auth } from "./better-auth.js";
 
 /**
  * Ce qui reste des routes d'authentification maintenant que Better Auth les porte :
@@ -18,6 +18,8 @@ export interface Account {
   readonly emailVerified: boolean;
   /** Ouvre le lien vers le back-office ; l'accès lui-même est revérifié à chaque appel. */
   readonly admin: boolean;
+  /** Rôle `goy` : le back-office chiffre ses textes côté client. */
+  readonly goy: boolean;
   /**
    * Vrai quand la session a été ouverte par un administrateur à la place du joueur
    * (greffon `admin`, `impersonate-user`). Le client l'affiche, pour que personne ne
@@ -44,6 +46,7 @@ export async function currentAccount(auth: Auth, request: Request): Promise<Acco
     email: user.email,
     emailVerified: user.emailVerified,
     admin: isAdmin(user.role),
+    goy: isGoy(user.role),
     impersonating: isImpersonated(session.session.impersonatedBy),
   };
 }
@@ -69,6 +72,7 @@ export async function handleAuth(
       email: account.email,
       emailVerified: account.emailVerified,
       admin: account.admin,
+      goy: account.goy,
       impersonating: account.impersonating,
       providers,
     });

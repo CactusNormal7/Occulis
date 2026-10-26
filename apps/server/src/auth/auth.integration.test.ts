@@ -26,6 +26,7 @@ describe("authentification", () => {
       email: `${handle}@occulis.test`,
       emailVerified: true,
       admin: false,
+      goy: false,
       impersonating: false,
       providers: [],
     });

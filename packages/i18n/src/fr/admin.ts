@@ -197,7 +197,7 @@ export const admin: Messages["admin"] = {
     address: "adresse",
     password: "mot de passe",
     role: "rôle",
-    roles: { user: "joueur", admin: "administrateur" },
+    roles: { user: "joueur", admin: "administrateur", goy: "goy" },
     createNote:
       "L'adresse n'est pas vérifiée à la création : marquez-la depuis la fiche si besoin.",
   },
