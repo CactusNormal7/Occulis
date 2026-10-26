@@ -140,9 +140,12 @@ dépendent donc pas de son acquisition.
 | Env     | URL                        | Déclencheur                           | Base                     | État |
 | ------- | -------------------------- | ------------------------------------- | ------------------------ | ---- |
 | Local   | `localhost`                | `pnpm dev` + `wrangler dev`           | SQLite local, hors quota | ✅   |
-| Preview | `occulis-<branche>.0kl.fr` | push sur une branche **sélectionnée** | créée par la CI          | ✗    |
+| Preview | `occulis-<branche>.0kl.fr` | push sur une branche **sélectionnée** | créée par la CI          | ⚠️   |
 | Recette | `occulis-staging.0kl.fr`   | push sur `staging`                    | fixe                     | ✅   |
 | Prod    | `occulis.0kl.fr`           | push sur `main`                       | fixe                     | ✅   |
+
+⚠️ Preview : créé et supprimé par `pnpm infra`, mais l'attache de l'URL n'est pas vérifiée
+bout en bout (points ouverts 2 et 3) et le seed des bases n'existe pas (point ouvert 4).
 
 **Schéma plat, un seul niveau sous la zone.** Le certificat universel de Cloudflare couvre
 `0kl.fr` et `*.0kl.fr`, mais **pas** `*.*.0kl.fr`. Vérifié en pratique : `staging.0kl.fr`
@@ -182,9 +185,9 @@ un tiret et jamais un point, pour la raison de certificat ci-dessus.
 choisi explicitement : on doit pouvoir en ajouter une et en retirer une autre à volonté, sans
 que la population d'environnements dérive avec le nombre de branches ouvertes.
 
-**Le mécanisme n'est pas arrêté** et reste à trancher (point ouvert 3). Plusieurs formes le
-permettraient — un label sur la PR, un manifeste versionné dans le dépôt, un déclenchement
-manuel du workflow, une convention de nommage — et le choix entre elles n'a aucune conséquence
+**Le mécanisme est arrêté** (point ouvert 3) : un manifeste versionné dans le dépôt,
+`.github/deploy-environments.json`, que la CI lit. D'autres formes auraient convenu — un label
+sur la PR, un déclenchement manuel du workflow, une convention de nommage — sans conséquence
 sur le reste de l'architecture. Seule la propriété compte : **la liste est décidée, pas subie.**
 
 Conséquence directe : la contrainte de quota ci-dessous cesse d'être un risque. La population
