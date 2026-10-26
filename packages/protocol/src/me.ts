@@ -2,9 +2,9 @@
  * Les réponses des routes `/api/me/*` : la page de profil, où un joueur consulte et gère
  * **son propre** compte.
  *
- * Le pendant des types `Admin*`, avec une différence de fond : rien ici ne dépasse ce que
- * le joueur savait déjà. Le replay d'une partie **finie** montre la position complète et ce
- * que chaque camp voyait ; une partie en cours reste refusée, le fog s'applique tant qu'elle dure.
+ * Le pendant des types `Admin*` : rien ici ne dépasse ce que le joueur a le droit de voir.
+ * Le replay d'une partie **finie** montre la position complète et ce que chaque camp
+ * voyait ; une partie en cours reste refusée, le fog s'appliquant tant qu'elle dure.
  * Les horodatages sont en millisecondes.
  */
 import type { AdminFrame, AdminLogEntry } from "./admin.js";
