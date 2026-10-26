@@ -1390,7 +1390,7 @@ les tests de `@occulis/ui` gardent sa feuille, et `theme/colors.test.ts` garde `
 à sa place de départ — puis :
 
 - si la pièce change de case, démarre l'animation et diffère le compte rendu ;
-- sinon (frappe sur place, abandon), rafraîchit la ligne d'état immédiatement.
+- sinon (abandon), rafraîchit la ligne d'état immédiatement.
 
 Le rafraîchissement est différé jusqu'à la fin de l'animation, dans la boucle d'images (`frame` de `mountBoard()`) : l'état du
 tour ne doit pas annoncer un coup encore en cours de dessin.
@@ -1698,7 +1698,6 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 
 - **Aucun signal de déconnexion de l'adversaire** : rien ne distingue à l'écran un
   adversaire qui réfléchit d'un adversaire parti.
-- **Aucune animation des coups adverses** : ils apparaissent à la vue suivante.
 - **Aucun marquage des montées.** `MoveOption.kind` distingue `walk` de `climb` — grimper
   consomme le tour entier — et `STATE.climb` est déjà un token, mais `selectionFor()`
   filtre `legalActions()`, qui ne porte pas cette distinction.
@@ -1708,7 +1707,8 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 - **Aucun affichage d'échec ni de fin de partie automatique** : la règle « échecs strict »
   et les nulles sont retirées (`docs/design.md` 7.1 et 7.2). L'état du tour n'annonce plus
   `ÉCHEC`, et `describeOutcome()` ne connaît que l'abandon.
-- **Aucune différenciation visuelle** entre types de pièces.
+- **Aucune silhouette propre à chaque type de pièce** : seule l'initiale du type, portée
+  par la pièce, les distingue (point ouvert de design sur la silhouette par rôle).
 - **Aucun historique de saisie** dans le champ de commande.
 - **Aucune reprise de partie depuis le menu.** Quitter une partie referme le canal ; rien
   ne propose d'y revenir, alors que le Durable Object la tient toujours.
