@@ -147,11 +147,15 @@ export const profile: Messages["profile"] = {
     lostByResignation: "défaite par abandon",
   },
   replay: {
-    title: "Replay — votre point de vue",
+    title: "Replay",
     start: "position de départ",
     move: (index, total, who, resigned) =>
       `coup ${index} / ${total} — ${who}${resigned ? " — abandon" : ""}`,
     you: "vous",
+    everything: "tout",
+    viewOf: (name) => `vue de ${name}`,
+    perspective: "point de vue",
+    hint: "survoler pour voir · cliquer pour épingler",
     unknownMap: (map) =>
       `Carte « ${map} » inconnue de ce client : le plateau ne peut pas être redessiné.`,
   },

@@ -409,6 +409,26 @@
   color: var(--occ-camp-b);
 }
 
+.occ-table th.occ-center,
+.occ-table td.occ-center {
+  text-align: center;
+}
+
+/* Le camp tenu : la lettre dans sa couleur, sans cadre. */
+.occ-seat {
+  font-size: var(--occ-text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.occ-seat--A {
+  color: var(--occ-camp-a);
+}
+
+.occ-seat--B {
+  color: var(--occ-camp-b);
+}
+
 .occ-badge-row {
   display: inline-flex;
   flex-wrap: wrap;

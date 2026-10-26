@@ -905,14 +905,12 @@ Quelques points de fonctionnement :
 - **Les sessions ne passent pas par `/api/auth/list-sessions`**, qui rend les jetons au
   JavaScript de la page. `listSessions()` lit `sessions` directement et n'en sort que
   l'identifiant, les dates, l'agent, l'IP et le marqueur d'usurpation.
-- **Le replay est vu de votre camp seulement.** `readMyMatch()` rejoue le log par
-  `replayLog()`, mais chaque image est `viewFor(state, knowledge[seat])` — exactement ce
-  que le `MatchDO` vous avait envoyé : vos pièces, les pièces adverses dans votre ligne de
-  vue, vos fantômes. Les coups adverses du log sont rendus avec `action: null` (sauf un
-  abandon) : ils nomment la pièce et sa destination, donc révéleraient des positions que
-  vous n'avez jamais vues. Une partie **en cours** est refusée : le replay resservirait la
-  vue courante hors du siège. Révéler toute la partie une fois finie serait une décision
-  de design, non tranchée.
+- **Le replay d'une partie finie est révélé en entier.** `readMyMatch()` rejoue le log par
+  `replayLog()` avec `frameOf()` du back-office : la position complète, la ligne de vue de
+  chaque camp et tous les coups, le client choisissant le point de vue (le sien, celui de
+  l'adversaire, ou les deux). Plus rien n'est à cacher une fois la partie finie — décision
+  de design. Une partie **en cours** reste refusée (409) : le replay resservirait sa
+  position courante, fog compris.
 
 ## `social/` et `social-do.ts` — le système d'amis
 
@@ -938,7 +936,7 @@ _l'autre_ joueur ; chaque requête de `social/queries.ts` reprend celui de la se
 | `/api/blocks/:id`                               | `DELETE`          | `unblock()`                                                 | `{ relation: "none" }` ou 404                                                                                                                            |
 | `/api/friends/:id`                              | `GET`             | `readFriendProfile()`                                       | `FriendProfile` — pseudo, présence, ami depuis, réglage spectateurs, bilan                                                                               |
 | `/api/friends/:id/matches`                      | `GET`             | `listMyMatches()` **sur l'ami**                             | `MeMatchPage`, de son point de vue                                                                                                                       |
-| `/api/friends/:id/matches/:matchId`             | `GET`             | `readMyMatch()` **sur l'ami**                               | `MeMatchDetail` **vu de son camp**, 409 en cours, 404 hors de ses parties                                                                                |
+| `/api/friends/:id/matches/:matchId`             | `GET`             | `readMyMatch()` **sur l'ami**                               | `MeMatchDetail` (partie révélée en entier), 409 en cours, 404 hors de ses parties                                                                        |
 | `/api/friends/:id/messages?before=`             | `GET`             | `listMessages()`                                            | `ChatPage` — 50 messages, du plus ancien au plus récent, `hasMore`                                                                                       |
 | `/api/friends/:id/messages`                     | `POST`            | `checkMessage()` puis `insertMessage()`                     | `ChatMessage` ; 400 `MESSAGE_EMPTY` / `MESSAGE_TOO_LONG`, 429 `RATE_LIMITED`                                                                             |
 | `/api/friends/:id/messages/read`                | `POST`            | `markRead()`                                                | `{ read: n }`                                                                                                                                            |
@@ -1383,8 +1381,8 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
 10. **Une session d'emprunt ne modifie pas le compte.** Une route de compte ajoutée à
     Better Auth (un greffon) doit rejoindre `ACCOUNT_MUTATIONS`, une route `/api/me/*` en
     `POST` hérite de la garde de `handleMe()`.
-11. **Le replay joueur ne contient que la vue de son siège.** Jamais `frameOf()` (la
-    position complète du back-office), jamais le coup adverse détaillé.
+11. **Le replay joueur n'existe que pour une partie finie.** Une partie en cours est
+    refusée (409) : `frameOf()` révèle la position complète.
 12. **Google n'est pas un `trustedProvider`.** L'y déclarer lèverait les deux garde-fous de
     la liaison automatique, dont celui qui empêche la capture d'un compte par une adresse
     inscrite d'avance.

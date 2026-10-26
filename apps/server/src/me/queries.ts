@@ -1,8 +1,5 @@
-import { viewFor, type MatchMemory, type Outcome, type PlayerId } from "@occulis/core";
+import type { Outcome, PlayerId } from "@occulis/core";
 import type {
-  MeFrame,
-  MeFramePiece,
-  MeLogEntry,
   MeMatchDetail,
   MeMatchPage,
   MeMatchSummary,
@@ -14,6 +11,7 @@ import { checkHandle, handleKey, type HandleError } from "../auth/handle.js";
 import {
   MATCH_COLUMNS,
   MATCH_DETAIL_COLUMNS,
+  frameOf,
   readLog,
   replayLog,
   type MatchRow,
@@ -291,13 +289,10 @@ export async function readCurrentMatch(
 export type MyMatch = MeMatchDetail | "unknown" | "ongoing";
 
 /**
- * Le replay d'une partie, **vu de son camp seulement**, et seulement une fois finie.
- *
- * Chaque image est `viewFor` au même instant — exactement ce que le Durable Object
- * avait envoyé au joueur pendant la partie : ses pièces, les pièces adverses dans sa
- * ligne de vue, ses fantômes. Une partie en cours est refusée : sinon le replay
- * resservirait la vue courante à qui n'est plus connecté au siège, et plus tard
- * peut-être davantage.
+ * Le replay d'une partie, seulement une fois finie : la position complète et la ligne de
+ * vue de chaque camp, comme au back-office. Le fog protège une partie qui dure ; une fois
+ * finie, plus rien n'est à cacher (décision de design). Une partie en cours est refusée :
+ * le replay resservirait sa position courante.
  */
 export async function readMyMatch(
   db: D1Database,
@@ -314,37 +309,10 @@ export async function readMyMatch(
   if (row.finished_at === null) return "ongoing";
 
   const summary = mySummary(row, playerId);
-  const seat = summary.seat;
   const actions = await readLog(db, matchId);
-  const { frames, players, board, replayError } = replayLog(row, actions, (memory) =>
-    seatFrame(memory, seat),
-  );
-  const log: MeLogEntry[] = actions.map((action, seq) => {
-    const player = players[seq] ?? null;
-    return { seq, player, action: player === seat || action.kind === "resign" ? action : null };
-  });
+  const { frames, players, board, replayError } = replayLog(row, actions, frameOf);
+  const log = actions.map((action, seq) => ({ seq, player: players[seq] ?? null, action }));
   return { ...summary, log, frames, board, replayError };
-}
-
-function seatFrame(memory: MatchMemory, seat: PlayerId): MeFrame {
-  const view = viewFor(memory.state, memory.knowledge[seat]);
-  const piece = (p: {
-    id: string;
-    kind: string;
-    owner: PlayerId;
-    coord: { x: number; y: number };
-  }): MeFramePiece => ({
-    id: p.id,
-    kind: p.kind,
-    owner: p.owner,
-    x: p.coord.x,
-    y: p.coord.y,
-  });
-  return {
-    pieces: [...view.ownPieces, ...view.visibleEnemies].map(piece),
-    ghosts: view.ghosts.map(piece),
-    visible: [...view.visible].sort((a, b) => a.localeCompare(b)),
-  };
 }
 
 function mySummary(row: MatchRow, playerId: string): MeMatchSummary {

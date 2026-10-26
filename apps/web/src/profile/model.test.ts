@@ -2,7 +2,6 @@ import { setLocale } from "../locale/current.js";
 import { describe, expect, it } from "vitest";
 import {
   arrivalMessage,
-  asBoardFrames,
   canUnlink,
   describeMyResult,
   handleCooldownLabel,
@@ -92,11 +91,6 @@ describe("parties", () => {
     expect(describeMyResult({ result: "won", outcome: resignation })).toBe("victoire par abandon");
     expect(describeMyResult({ result: "lost", outcome: resignation })).toBe("défaite par abandon");
     expect(describeMyResult({ result: "ongoing", outcome: null })).toBe("en cours");
-  });
-
-  it("ne prête au plateau que la ligne de vue de son camp", () => {
-    const frames = asBoardFrames([{ pieces: [], ghosts: [], visible: ["1,1"] }], "B");
-    expect(frames[0]?.visible).toEqual({ A: [], B: ["1,1"] });
   });
 
   it("dit depuis quand une session n'a pas servi", () => {

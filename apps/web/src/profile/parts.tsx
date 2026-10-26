@@ -9,24 +9,26 @@ import {
   FactStrip,
   Hero,
   IconButton,
+  MoveList,
   QuickBar,
+  Segmented,
   Stat,
   StatGrid,
   Table,
   Toolbar,
   ToolbarText,
   useMessages,
+  type MoveEntry,
 } from "@occulis/ui";
 import type { MeMatchDetail, MeMatchSummary, MeRecord, Relation } from "@occulis/protocol";
 import { ReplayBoard } from "../replay/ReplayBoard.js";
-import { clampFrame } from "../replay/replay.js";
+import { clampFrame, describeEntry, type Perspective } from "../replay/replay.js";
 import { formatDate, winRate } from "../admin/model.js";
-import { asBoardFrames, describeMyResult } from "./model.js";
+import { describeMyResult } from "./model.js";
 
 /**
  * Les briques communes à ses propres parties et à celles d'un ami : un bilan, une table
- * d'historique, un replay. Elles montrent toujours **un** camp — le sien, ou celui de
- * l'ami — car c'est tout ce que le serveur rend.
+ * d'historique, un replay. Le replay révèle les deux camps : la partie est finie.
  */
 
 export function RecordCard({
@@ -95,6 +97,7 @@ export function MatchTable({
   return (
     <Table
       columns={[c.start, c.opponent, c.side, c.result, c.elo, c.moves, ""]}
+      centered={[2]}
       rowCount={matches.length}
       empty={t.empty}
     >
@@ -106,8 +109,8 @@ export function MatchTable({
           <tr key={m.id}>
             <td className="occ-muted">{formatDate(m.startedAt)}</td>
             <td>{m.opponent}</td>
-            <td>
-              <Badge tone={m.seat}>{m.seat}</Badge>
+            <td className="occ-center">
+              <span className={`occ-seat occ-seat--${m.seat}`}>{m.seat}</span>
             </td>
             <td>
               <MyResult match={m} />
@@ -187,56 +190,97 @@ export function MatchReplayView({ match: m, back, friend }: MatchReplayViewProps
 }
 
 /**
- * Le plateau rejoué **du point de vue d'un camp** : ses pièces, les pièces adverses qu'il
- * voyait, et rien d'autre. Les coups adverses ne sont pas détaillés, leur position
- * restant inconnue de ce camp.
+ * Le plateau rejoué d'une partie **finie**, donc révélée en entier : le point de vue d'un
+ * camp, de l'autre, ou les deux ensemble, au départ celui qu'on tenait. Survoler un coup
+ * de la liste le montre, cliquer l'épingle.
  */
 function Replay({ match: m, friend }: { match: MeMatchDetail; friend: string | undefined }) {
   const all = useMessages();
   const t = all.profile;
   const count = m.frames.length;
-  const [index, setIndex] = useState(count - 1);
+  const [pinned, setPinned] = useState(count - 1);
+  const [shown, setShown] = useState(count - 1);
   const [turns, setTurns] = useState(0);
-  const frames = useMemo(() => asBoardFrames(m.frames, m.seat), [m.frames, m.seat]);
+  const [perspective, setPerspective] = useState<Perspective>(m.seat);
   // La carte que la partie a figée ; `null` quand le serveur n'a pas su la relire.
   const board = useMemo(() => (m.board === null ? undefined : new Board(m.board)), [m.board]);
 
-  const go = (next: number) => setIndex(clampFrame(next, count));
-  const entry = index === 0 ? undefined : m.log[index - 1];
+  const go = (next: number) => {
+    const index = clampFrame(next, count);
+    setPinned(index);
+    setShown(index);
+  };
   const self = friend ?? t.replay.you;
+  const nameOf = (seat: "A" | "B" | null) => (seat === m.seat ? self : m.opponent);
   const label =
-    index === 0
+    shown === 0
       ? t.replay.start
       : t.replay.move(
-          index,
+          shown,
           m.log.length,
-          entry?.player === m.seat ? self : m.opponent,
-          entry?.action?.kind === "resign",
+          nameOf(m.log[shown - 1]?.player ?? null),
+          m.log[shown - 1]?.action.kind === "resign",
         );
+
+  const entries: MoveEntry[] = [
+    { number: "—", text: t.replay.start },
+    ...m.log.map((logged) => ({
+      number: String(logged.seq + 1),
+      ...(logged.player !== null ? { seat: logged.player } : {}),
+      text: describeEntry(m, logged.seq),
+      disabled: logged.seq + 1 >= count,
+    })),
+  ];
 
   if (board === undefined) {
     return <EmptyState>{t.replay.unknownMap(m.scenario)}</EmptyState>;
   }
   const c = t.replayControls;
+  const other = m.seat === "A" ? "B" : "A";
   return (
     <Card
       title={friend === undefined ? t.replay.title : all.social.friend.replayTitle(friend)}
+      action={<span className="occ-muted">{t.replay.hint}</span>}
       flush
     >
+      <MoveList
+        entries={entries}
+        shown={shown}
+        pinned={pinned}
+        onPreview={setShown}
+        onPick={go}
+        onLeave={() => setShown(pinned)}
+      />
       <Toolbar>
         <QuickBar>
           <IconButton icon="first" label={c.first} onClick={() => go(0)} />
-          <IconButton icon="previous" label={c.previous} onClick={() => go(index - 1)} />
-          <IconButton icon="next" label={c.next} onClick={() => go(index + 1)} />
+          <IconButton icon="previous" label={c.previous} onClick={() => go(pinned - 1)} />
+          <IconButton icon="next" label={c.next} onClick={() => go(pinned + 1)} />
           <IconButton icon="last" label={c.last} onClick={() => go(count - 1)} />
         </QuickBar>
         <ToolbarText>{label}</ToolbarText>
+        <Segmented<Perspective>
+          label={t.replay.perspective}
+          value={perspective}
+          onChange={setPerspective}
+          options={[
+            { value: m.seat, label: t.replay.viewOf(self), camp: m.seat },
+            { value: other, label: t.replay.viewOf(m.opponent), camp: other },
+            { value: "all", label: t.replay.everything },
+          ]}
+        />
         <QuickBar>
           <IconButton icon="rotateLeft" label={c.rotate} onClick={() => setTurns(turns - 1)} />
           <IconButton icon="rotateRight" label={c.rotate} onClick={() => setTurns(turns + 1)} />
         </QuickBar>
       </Toolbar>
-      <ReplayBoard board={board} frames={frames} index={index} perspective={m.seat} turns={turns} />
+      <ReplayBoard
+        board={board}
+        frames={m.frames}
+        index={shown}
+        perspective={perspective}
+        turns={turns}
+      />
     </Card>
   );
 }

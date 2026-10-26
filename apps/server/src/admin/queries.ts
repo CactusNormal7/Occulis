@@ -245,7 +245,7 @@ export async function readLog(db: D1Database, matchId: string): Promise<Action[]
   return log.results.map((entry) => JSON.parse(entry.action) as Action);
 }
 
-function frameOf(memory: MatchMemory): AdminFrame {
+export function frameOf(memory: MatchMemory): AdminFrame {
   return {
     pieces: [...memory.state.pieces.values()].map((piece) => ({
       id: piece.id,

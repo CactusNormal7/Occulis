@@ -2,12 +2,13 @@
 
 > État au **2026-10-20**, commit `f60aca2` (branche `staging`). **Rapport seul : aucun autre
 > fichier n'a été modifié** (`git status` propre après toutes les commandes). Cette revue
-<<<<<<<< HEAD:docs/reports/2026-10-20-review-globale.md
+> <<<<<<<< HEAD:docs/reports/2026-10-20-review-globale.md
 > reprend [l'audit de refonte du 2026-10-18](2026-10-18-refactor-audit.md) (commit `50fa50d`) : elle vérifie ce qui en
-========
+> \========
 > reprend [refactor-audit.md](refactor-audit-2026-10-18.md) (commit `50fa50d`) : elle vérifie ce qui en
->>>>>>>> d4e890e (STATE.md plafonné ; audits datés archivés dans docs/history/):docs/history/review-globale-2026-10-20.md
-> reste vrai (annexe A) et se concentre sur ce qu'il ne couvrait pas.
+>
+> > > > > > > > d4e890e (STATE.md plafonné ; audits datés archivés dans docs/history/):docs/history/review-globale-2026-10-20.md
+> > > > > > > > reste vrai (annexe A) et se concentre sur ce qu'il ne couvrait pas.
 
 Notation des tableaux :
 

@@ -1,4 +1,4 @@
-import type { AdminFrame, MeFrame, MeMatchSummary, MeProfile, MeResult } from "@occulis/protocol";
+import type { MeMatchSummary, MeProfile, MeResult } from "@occulis/protocol";
 import { currentLocale, messages } from "../locale/current.js";
 import { redirectMessage } from "../net/auth.js";
 
@@ -142,19 +142,6 @@ export function describeMyResult(match: Pick<MeMatchSummary, "result" | "outcome
     return match.result === "won" ? results.wonByResignation : results.lostByResignation;
   const RESULTS: Record<MeResult, string> = results;
   return RESULTS[match.result];
-}
-
-/**
- * Les images du replay joueur au format du plateau rejoué du back-office
- * (`replay/ReplayBoard.tsx`), qui attend la ligne de vue des deux camps : celle de
- * l'adversaire est vide, puisqu'on ne la connaît pas. Les pièces sont déjà réduites par
- * le serveur à celles que votre camp voyait.
- */
-export function asBoardFrames(frames: readonly MeFrame[], seat: "A" | "B"): AdminFrame[] {
-  return frames.map((frame) => ({
-    pieces: frame.pieces,
-    visible: seat === "A" ? { A: frame.visible, B: [] } : { A: [], B: frame.visible },
-  }));
 }
 
 /** « 2 h », « 3 j » : depuis quand une session n'a pas servi. */
