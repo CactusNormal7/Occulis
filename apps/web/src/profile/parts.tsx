@@ -11,6 +11,7 @@ import {
   IconButton,
   MoveList,
   QuickBar,
+  Segmented,
   Stat,
   StatGrid,
   Table,
@@ -21,14 +22,13 @@ import {
 } from "@occulis/ui";
 import type { MeMatchDetail, MeMatchSummary, MeRecord, Relation } from "@occulis/protocol";
 import { ReplayBoard } from "../replay/ReplayBoard.js";
-import { clampFrame, movesBetween } from "../replay/replay.js";
-import { describeAction, formatDate, winRate } from "../admin/model.js";
-import { asBoardFrames, describeMyResult } from "./model.js";
+import { clampFrame, describeEntry, type Perspective } from "../replay/replay.js";
+import { formatDate, winRate } from "../admin/model.js";
+import { describeMyResult } from "./model.js";
 
 /**
  * Les briques communes à ses propres parties et à celles d'un ami : un bilan, une table
- * d'historique, un replay. Elles montrent toujours **un** camp — le sien, ou celui de
- * l'ami — car c'est tout ce que le serveur rend.
+ * d'historique, un replay. Le replay révèle les deux camps : la partie est finie.
  */
 
 export function RecordCard({
@@ -190,10 +190,9 @@ export function MatchReplayView({ match: m, back, friend }: MatchReplayViewProps
 }
 
 /**
- * Le plateau rejoué **du point de vue d'un camp** : ses pièces, les pièces adverses qu'il
- * voyait, et rien d'autre. La liste des coups suit l'historique de la partie : survoler un
- * coup le montre, cliquer l'épingle. Les coups adverses ne sont pas détaillés, leur
- * position restant inconnue de ce camp.
+ * Le plateau rejoué d'une partie **finie**, donc révélée en entier : le point de vue d'un
+ * camp, de l'autre, ou les deux ensemble, au départ celui qu'on tenait. Survoler un coup
+ * de la liste le montre, cliquer l'épingle.
  */
 function Replay({ match: m, friend }: { match: MeMatchDetail; friend: string | undefined }) {
   const all = useMessages();
@@ -202,7 +201,7 @@ function Replay({ match: m, friend }: { match: MeMatchDetail; friend: string | u
   const [pinned, setPinned] = useState(count - 1);
   const [shown, setShown] = useState(count - 1);
   const [turns, setTurns] = useState(0);
-  const frames = useMemo(() => asBoardFrames(m.frames, m.seat), [m.frames, m.seat]);
+  const [perspective, setPerspective] = useState<Perspective>(m.seat);
   // La carte que la partie a figée ; `null` quand le serveur n'a pas su la relire.
   const board = useMemo(() => (m.board === null ? undefined : new Board(m.board)), [m.board]);
 
@@ -212,44 +211,32 @@ function Replay({ match: m, friend }: { match: MeMatchDetail; friend: string | u
     setShown(index);
   };
   const self = friend ?? t.replay.you;
+  const nameOf = (seat: "A" | "B" | null) => (seat === m.seat ? self : m.opponent);
   const label =
     shown === 0
       ? t.replay.start
       : t.replay.move(
           shown,
           m.log.length,
-          m.log[shown - 1]?.player === m.seat ? self : m.opponent,
-          m.log[shown - 1]?.action?.kind === "resign",
+          nameOf(m.log[shown - 1]?.player ?? null),
+          m.log[shown - 1]?.action.kind === "resign",
         );
 
   const entries: MoveEntry[] = [
     { number: "—", text: t.replay.start },
-    ...m.log.map((logged) => {
-      const before = frames[logged.seq];
-      const after = frames[logged.seq + 1];
-      // Le coup adverse n'est pas transmis : sa pièce n'est connue que si elle était vue.
-      const move =
-        logged.action !== null && before !== undefined && after !== undefined
-          ? movesBetween(before, after).find((one) => one.owner === m.seat)
-          : undefined;
-      return {
-        number: String(logged.seq + 1),
-        ...(logged.player !== null ? { seat: logged.player } : {}),
-        text:
-          logged.action === null
-            ? t.replay.opponentMove
-            : move !== undefined
-              ? `${move.from.x},${move.from.y} → ${move.to.x},${move.to.y}`
-              : describeAction(logged.action),
-        disabled: logged.seq + 1 >= count,
-      };
-    }),
+    ...m.log.map((logged) => ({
+      number: String(logged.seq + 1),
+      ...(logged.player !== null ? { seat: logged.player } : {}),
+      text: describeEntry(m, logged.seq),
+      disabled: logged.seq + 1 >= count,
+    })),
   ];
 
   if (board === undefined) {
     return <EmptyState>{t.replay.unknownMap(m.scenario)}</EmptyState>;
   }
   const c = t.replayControls;
+  const other = m.seat === "A" ? "B" : "A";
   return (
     <Card
       title={friend === undefined ? t.replay.title : all.social.friend.replayTitle(friend)}
@@ -272,12 +259,28 @@ function Replay({ match: m, friend }: { match: MeMatchDetail; friend: string | u
           <IconButton icon="last" label={c.last} onClick={() => go(count - 1)} />
         </QuickBar>
         <ToolbarText>{label}</ToolbarText>
+        <Segmented<Perspective>
+          label={t.replay.perspective}
+          value={perspective}
+          onChange={setPerspective}
+          options={[
+            { value: m.seat, label: t.replay.viewOf(self), camp: m.seat },
+            { value: other, label: t.replay.viewOf(m.opponent), camp: other },
+            { value: "all", label: t.replay.everything },
+          ]}
+        />
         <QuickBar>
           <IconButton icon="rotateLeft" label={c.rotate} onClick={() => setTurns(turns - 1)} />
           <IconButton icon="rotateRight" label={c.rotate} onClick={() => setTurns(turns + 1)} />
         </QuickBar>
       </Toolbar>
-      <ReplayBoard board={board} frames={frames} index={shown} perspective={m.seat} turns={turns} />
+      <ReplayBoard
+        board={board}
+        frames={m.frames}
+        index={shown}
+        perspective={perspective}
+        turns={turns}
+      />
     </Card>
   );
 }

@@ -43,7 +43,10 @@ export function movesBetween(before: AdminFrame, after: AdminFrame): Move[] {
 }
 
 /** Le coup `seq` tel qu'on le lit dans l'historique : « 2,4 → 3,4 », ou « abandon ». */
-export function describeEntry(match: AdminMatchDetail, seq: number): string {
+export function describeEntry(
+  match: Pick<AdminMatchDetail, "log" | "frames">,
+  seq: number,
+): string {
   const entry = match.log[seq];
   if (entry === undefined) return "";
   const before = match.frames[seq];

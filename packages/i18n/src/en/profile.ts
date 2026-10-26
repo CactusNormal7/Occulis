@@ -147,12 +147,14 @@ export const profile = {
     lostByResignation: "defeat by resignation",
   },
   replay: {
-    title: "Replay — your point of view",
+    title: "Replay",
     start: "starting position",
     move: (index: number, total: number, who: string, resigned: boolean) =>
       `move ${index} / ${total} — ${who}${resigned ? " — resignation" : ""}`,
     you: "you",
-    opponentMove: "opponent move",
+    everything: "everything",
+    viewOf: (name: string) => `view of ${name}`,
+    perspective: "point of view",
     hint: "hover to see · click to pin",
     unknownMap: (map: string) =>
       `Map “${map}” unknown to this client: the board cannot be redrawn.`,
