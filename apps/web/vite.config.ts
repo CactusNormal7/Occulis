@@ -164,6 +164,12 @@ const PAGES = {
 const UI_ENTRY = fileURLToPath(new URL("../../packages/ui/src/index.ts", import.meta.url));
 
 /**
+ * Le runtime JSX du client (`src/cipher-jsx/`) : celui de React, qui sait chiffrer les textes
+ * du back-office pour le rôle `goy`. Sans chiffre posé, il rend exactement ce que rendrait React.
+ */
+const CIPHER_JSX = fileURLToPath(new URL("src/cipher-jsx", import.meta.url));
+
+/**
  * Le labo de la refonte graphique (`lab/`, qui monte `packages/ui/previews/`) : comme les
  * maquettes, servi par le serveur de développement (Vite sert toute page HTML de sa racine)
  * et ajouté au build sous le seul mode `mockups`. `pnpm build`, donc tout déploiement, ne
@@ -202,9 +208,12 @@ export default defineConfig(({ mode }) => ({
     ...(mode === MOCKUPS_MODE ? [embedMockups()] : []),
   ],
   resolve: {
-    alias: [{ find: /^@occulis\/ui$/, replacement: UI_ENTRY }],
+    alias: [
+      { find: /^@occulis\/ui$/, replacement: UI_ENTRY },
+      { find: /^@occulis\/cipher-jsx\//, replacement: `${CIPHER_JSX}/` },
+    ],
     dedupe: ["react", "react-dom"],
   },
-  esbuild: { jsx: "automatic" },
+  esbuild: { jsx: "automatic", jsxImportSource: "@occulis/cipher-jsx" },
   build: { rollupOptions: { input: mode === MOCKUPS_MODE ? { ...PAGES, lab: LAB_PAGE } : PAGES } },
 }));

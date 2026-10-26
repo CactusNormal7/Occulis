@@ -307,6 +307,7 @@ export function CreateUserDialog({ onClose }: { onClose: () => void }) {
         options={[
           { value: "user", label: m.roles.user },
           { value: "admin", label: m.roles.admin },
+          { value: "goy", label: m.roles.goy },
         ]}
       />
       <Note>{m.createNote}</Note>

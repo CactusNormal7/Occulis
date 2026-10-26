@@ -16,6 +16,8 @@ export interface Identity {
   readonly emailVerified?: boolean;
   /** Montre le lien du back-office. Le serveur revérifie le rôle à chaque appel. */
   readonly admin?: boolean;
+  /** Rôle `goy` : le back-office chiffre chaque texte en glyphes cryptiques. */
+  readonly goy?: boolean;
   /** Session ouverte par un administrateur au nom du joueur (back-office). */
   readonly impersonating?: boolean;
   /** Les fournisseurs d'identité que le serveur sait proposer (`google`). */

@@ -253,6 +253,8 @@ Des propositions de refonte graphique, **non intégrées** (le pourquoi et les o
 voient. Leur feuille, `lab/lab.css`, importe `generated/proposed-tokens.css` ; elle obéit aux
 mêmes règles que `styles.css`, gardées par les mêmes tests.
 
+**Seule intégration du labo** : le rôle `goy` du back-office. Pour ce compte (`goy` dans `/api/auth/me`), `apps/web/src/admin/cipher/` charge à part le labo et `lab.css`, et le runtime JSX du client (`apps/web/src/cipher-jsx/`, branché par `esbuild.jsxImportSource`) remplace chaque chaîne enfant d'un élément du DOM par un `CipherText` : glyphes au repos, déchiffrés sous le pointeur, rechiffrés au départ. Les attributs (`placeholder`, `aria-label`) et les `<option>` restent en clair. Sans ce rôle, le runtime ne fait rien de plus que React et le labo n'est pas téléchargé.
+
 Son en-tête porte un lien vers le design system du back-office (`/admin/#/design`), qui renvoie à lui en retour.
 
 **Tokens proposés** (`tokens.ts`) : `PROPOSED` (espacements 10 / 12 / 16, interlignes,
