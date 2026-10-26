@@ -5,6 +5,8 @@ import { useMessages } from "./Locale.js";
 export interface TableProps {
   /** Les en-têtes de colonne ; une chaîne vide pour la colonne d'actions. */
   columns: readonly string[];
+  /** Les rangs (à partir de 0) des colonnes centrées, en-tête comprise. */
+  centered?: readonly number[] | undefined;
   /** Les lignes, en `<tr>` dont la dernière cellule peut porter `className="occ-actions-cell"`. */
   children?: ReactNode | undefined;
   /** Le nombre de lignes ; à zéro, la table cède la place à `empty`. */
@@ -16,7 +18,7 @@ export interface TableProps {
  * Une table dense : en-têtes en petites capitales, lignes séparées d'un trait presque
  * invisible, survol estompé. Les actions de ligne ne s'affichent pleinement qu'au survol.
  */
-export function Table({ columns, children, rowCount, empty }: TableProps) {
+export function Table({ columns, centered = [], children, rowCount, empty }: TableProps) {
   const m = useMessages();
   if (rowCount === 0) return <EmptyState>{empty ?? m.ui.empty}</EmptyState>;
   return (
@@ -25,7 +27,9 @@ export function Table({ columns, children, rowCount, empty }: TableProps) {
         <thead>
           <tr>
             {columns.map((column, index) => (
-              <th key={index}>{column}</th>
+              <th key={index} className={centered.includes(index) ? "occ-center" : undefined}>
+                {column}
+              </th>
             ))}
           </tr>
         </thead>

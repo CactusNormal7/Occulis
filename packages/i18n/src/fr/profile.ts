@@ -152,6 +152,8 @@ export const profile: Messages["profile"] = {
     move: (index, total, who, resigned) =>
       `coup ${index} / ${total} — ${who}${resigned ? " — abandon" : ""}`,
     you: "vous",
+    opponentMove: "coup adverse",
+    hint: "survoler pour voir · cliquer pour épingler",
     unknownMap: (map) =>
       `Carte « ${map} » inconnue de ce client : le plateau ne peut pas être redessiné.`,
   },

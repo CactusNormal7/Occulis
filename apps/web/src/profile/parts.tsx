@@ -9,6 +9,7 @@ import {
   FactStrip,
   Hero,
   IconButton,
+  MoveList,
   QuickBar,
   Stat,
   StatGrid,
@@ -16,11 +17,12 @@ import {
   Toolbar,
   ToolbarText,
   useMessages,
+  type MoveEntry,
 } from "@occulis/ui";
 import type { MeMatchDetail, MeMatchSummary, MeRecord, Relation } from "@occulis/protocol";
 import { ReplayBoard } from "../replay/ReplayBoard.js";
-import { clampFrame } from "../replay/replay.js";
-import { formatDate, winRate } from "../admin/model.js";
+import { clampFrame, movesBetween } from "../replay/replay.js";
+import { describeAction, formatDate, winRate } from "../admin/model.js";
 import { asBoardFrames, describeMyResult } from "./model.js";
 
 /**
@@ -95,6 +97,7 @@ export function MatchTable({
   return (
     <Table
       columns={[c.start, c.opponent, c.side, c.result, c.elo, c.moves, ""]}
+      centered={[2]}
       rowCount={matches.length}
       empty={t.empty}
     >
@@ -106,8 +109,8 @@ export function MatchTable({
           <tr key={m.id}>
             <td className="occ-muted">{formatDate(m.startedAt)}</td>
             <td>{m.opponent}</td>
-            <td>
-              <Badge tone={m.seat}>{m.seat}</Badge>
+            <td className="occ-center">
+              <span className={`occ-seat occ-seat--${m.seat}`}>{m.seat}</span>
             </td>
             <td>
               <MyResult match={m} />
@@ -188,31 +191,60 @@ export function MatchReplayView({ match: m, back, friend }: MatchReplayViewProps
 
 /**
  * Le plateau rejoué **du point de vue d'un camp** : ses pièces, les pièces adverses qu'il
- * voyait, et rien d'autre. Les coups adverses ne sont pas détaillés, leur position
- * restant inconnue de ce camp.
+ * voyait, et rien d'autre. La liste des coups suit l'historique de la partie : survoler un
+ * coup le montre, cliquer l'épingle. Les coups adverses ne sont pas détaillés, leur
+ * position restant inconnue de ce camp.
  */
 function Replay({ match: m, friend }: { match: MeMatchDetail; friend: string | undefined }) {
   const all = useMessages();
   const t = all.profile;
   const count = m.frames.length;
-  const [index, setIndex] = useState(count - 1);
+  const [pinned, setPinned] = useState(count - 1);
+  const [shown, setShown] = useState(count - 1);
   const [turns, setTurns] = useState(0);
   const frames = useMemo(() => asBoardFrames(m.frames, m.seat), [m.frames, m.seat]);
   // La carte que la partie a figée ; `null` quand le serveur n'a pas su la relire.
   const board = useMemo(() => (m.board === null ? undefined : new Board(m.board)), [m.board]);
 
-  const go = (next: number) => setIndex(clampFrame(next, count));
-  const entry = index === 0 ? undefined : m.log[index - 1];
+  const go = (next: number) => {
+    const index = clampFrame(next, count);
+    setPinned(index);
+    setShown(index);
+  };
   const self = friend ?? t.replay.you;
   const label =
-    index === 0
+    shown === 0
       ? t.replay.start
       : t.replay.move(
-          index,
+          shown,
           m.log.length,
-          entry?.player === m.seat ? self : m.opponent,
-          entry?.action?.kind === "resign",
+          m.log[shown - 1]?.player === m.seat ? self : m.opponent,
+          m.log[shown - 1]?.action?.kind === "resign",
         );
+
+  const entries: MoveEntry[] = [
+    { number: "—", text: t.replay.start },
+    ...m.log.map((logged) => {
+      const before = frames[logged.seq];
+      const after = frames[logged.seq + 1];
+      // Le coup adverse n'est pas transmis : sa pièce n'est connue que si elle était vue.
+      const move =
+        logged.action !== null && before !== undefined && after !== undefined
+          ? movesBetween(before, after).find((one) => one.owner === m.seat)
+          : undefined;
+      return {
+        number: String(logged.seq + 1),
+        ...(logged.player !== null ? { seat: logged.player } : {}),
+        text:
+          logged.action === null
+            ? t.replay.opponentMove
+            : move !== undefined
+              ? `${move.from.x},${move.from.y} → ${move.to.x},${move.to.y}`
+              : describeAction(logged.action),
+        disabled: logged.seq + 1 >= count,
+      };
+    }),
+  ];
 
   if (board === undefined) {
     return <EmptyState>{t.replay.unknownMap(m.scenario)}</EmptyState>;
@@ -221,13 +253,22 @@ function Replay({ match: m, friend }: { match: MeMatchDetail; friend: string | u
   return (
     <Card
       title={friend === undefined ? t.replay.title : all.social.friend.replayTitle(friend)}
+      action={<span className="occ-muted">{t.replay.hint}</span>}
       flush
     >
+      <MoveList
+        entries={entries}
+        shown={shown}
+        pinned={pinned}
+        onPreview={setShown}
+        onPick={go}
+        onLeave={() => setShown(pinned)}
+      />
       <Toolbar>
         <QuickBar>
           <IconButton icon="first" label={c.first} onClick={() => go(0)} />
-          <IconButton icon="previous" label={c.previous} onClick={() => go(index - 1)} />
-          <IconButton icon="next" label={c.next} onClick={() => go(index + 1)} />
+          <IconButton icon="previous" label={c.previous} onClick={() => go(pinned - 1)} />
+          <IconButton icon="next" label={c.next} onClick={() => go(pinned + 1)} />
           <IconButton icon="last" label={c.last} onClick={() => go(count - 1)} />
         </QuickBar>
         <ToolbarText>{label}</ToolbarText>
@@ -236,7 +277,7 @@ function Replay({ match: m, friend }: { match: MeMatchDetail; friend: string | u
           <IconButton icon="rotateRight" label={c.rotate} onClick={() => setTurns(turns + 1)} />
         </QuickBar>
       </Toolbar>
-      <ReplayBoard board={board} frames={frames} index={index} perspective={m.seat} turns={turns} />
+      <ReplayBoard board={board} frames={frames} index={shown} perspective={m.seat} turns={turns} />
     </Card>
   );
 }
