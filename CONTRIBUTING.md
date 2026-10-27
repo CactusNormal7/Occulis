@@ -18,7 +18,7 @@ Ce guide organise le travail d'équipe. Les règles techniques normatives sont d
    l'infrastructure et le code.
 
 Une règle de gameplay ne s'invente pas : si elle n'est pas tranchée dans
-`docs/design.md`, ouvrir ou relier la décision au lieu de l'implémenter.
+`docs/design/rules.md`, ouvrir ou relier la décision au lieu de l'implémenter.
 
 ## Avant d'ouvrir une PR
 

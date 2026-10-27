@@ -18,5 +18,5 @@ Closes or relates to:
 - [ ] All displayed text is available in English and French through `@occulis/i18n`.
 - [ ] No color was added outside `packages/ui/src/tokens.ts`.
 - [ ] `packages/core` remains deterministic.
-- [ ] A gameplay rule is backed by a decision in `docs/design.md`.
+- [ ] A gameplay rule is backed by a decision in `docs/design/rules.md`.
 - [ ] A screenshot or recording is attached when the interface changed.
