@@ -47,7 +47,7 @@ remplacer par des suppositions.
   `useEffect` + `fetch` dans une vue React. Suivre les ressources de route,
   `useLoad` et la frontière `Suspense` documentés dans `docs/technical/engine.md`.
 - Ne pas modifier une règle de gameplay sans décision correspondante dans
-  `docs/design.md`. Les commentaires expliquent le pourquoi, pas le quoi.
+  `docs/design/rules.md`. Les commentaires expliquent le pourquoi, pas le quoi.
 
 ## Validation et documentation
 
@@ -62,7 +62,7 @@ pnpm format:check
 
 Mettre à jour dans le même changement le document concerné de `docs/technical/`
 quand une fonction, un emplacement, un comportement ou un invariant change. Le
-pourquoi d'une décision reste dans `docs/design.md` ou `docs/architecture.md`.
+pourquoi d'une décision reste dans `docs/design/rules.md` ou `docs/architecture.md`.
 
 `CLAUDE.md` est conservé pour Claude Code et comme historique détaillé de ces
 conventions. Les intégrations Claude Design sous `.design-sync/` concernent le
