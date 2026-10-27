@@ -10,7 +10,7 @@ import { sweepVeil } from "./veil.js";
  * Ce module montre ce que `flow.ts` a décidé — il ne décide rien lui-même, et
  * n'appelle jamais le réseau : il rend les gestes du joueur à la racine de
  * composition. C'est le pendant DOM de la machine à états, et le seul endroit qui
- * connaisse les identifiants de la page avec `main.ts`.
+ * connaisse les identifiants de la page avec `app/page.ts`.
  *
  * L'écran de compte n'est ici qu'un conteneur montré ou masqué : son contenu est
  * l'îlot React de `src/account/`, sur la charte.
