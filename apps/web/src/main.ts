@@ -1,798 +1,243 @@
-import type { QueueIntent } from "@occulis/protocol";
-import { type Action, type ActionError, type Coord, type Result, rulesetFor } from "@occulis/core";
-import { type MoveAnimation, advance as step, startMove } from "./view/animation.js";
-import type { Movement } from "./game/movement-diff.js";
+import type { TeamPresetList } from "@occulis/protocol";
+import { Account } from "./app/account.js";
+import { BoardView } from "./app/board-view.js";
+import { Friends } from "./app/friends.js";
+import { Islands, type LeaveDialog, type TeamsScreen } from "./app/islands.js";
+import { MatchController, type PresetSource } from "./app/match-controller.js";
+import { Matchmaking } from "./app/matchmaking.js";
+import { Navigation } from "./app/navigation.js";
 import {
-  type Camera,
-  createCamera,
-  originOf,
-  pivotOf,
-  settle,
-  toProjection,
-  toProjectionSpace,
-  withViewport,
-} from "./view/camera.js";
-import { tileAt } from "./view/picking.js";
-import { OnlineMatch } from "./game/online-match.js";
-import {
-  type MatchChannel,
-  type MatchHandlers,
-  connectToMatch,
-  watchMatch,
-} from "./net/match-channel.js";
-import { type SocialChannel, openSocial } from "./net/social-channel.js";
-import * as friends from "./social/api.js";
-import {
-  EMPTY_SOCIAL,
-  type SocialState,
-  challenged,
-  receive,
-  withOverview,
-} from "./social/model.js";
-import { attachFriendsPanel } from "./ui/friends-panel.js";
-import type { SocialServerMessage } from "@occulis/protocol";
-import { type QueueChannel, joinQueue } from "./net/queue-channel.js";
-import { describeRejection, describeRoomFault } from "./ui/messages.js";
-import { attachShell } from "./ui/shell.js";
-import { mountAccount } from "./account/mount.js";
-import { arrivalNotice, cleanedSearch, routeOf } from "./account/model.js";
-import { START, type QueueSeeking, type Stage, advance } from "./ui/flow.js";
-import { type Selection, resolveClick } from "./game/selection.js";
-import type { Board } from "./render/pixi/board.js";
-import { type GameConsole, attachConsole } from "./ui/console.js";
-import { applyPalette } from "./theme/palette.js";
-import { applyTheme, storedTheme } from "./theme/theme-choice.js";
-import { attachSettings } from "./ui/settings.js";
-import { sweepVeil } from "./ui/veil.js";
-import {
-  resendVerification,
-  canPlay,
-  signOut,
-  stillSeated,
-  stopImpersonating,
-  whoAmI,
-  type Identity,
-} from "./net/auth.js";
-import { chooseLocale, initLocale, translateDom } from "./locale/browser.js";
-import { currentLocale, messages, onLocaleChange } from "./locale/current.js";
-import type { TeamPreset, TeamPresetList } from "@occulis/protocol";
-import { mountDeployment, mountMatchFound } from "./prepare/mount.js";
-import { mountLeaveMatch } from "./leave/mount.js";
-import type { DeploymentProps } from "./prepare/Deployment.js";
-import type { MatchFoundProps } from "./prepare/MatchFound.js";
-import { mountTeams } from "./presets/mount.js";
-import { currentMatch } from "./profile/api.js";
+  boardElement,
+  consoleElements,
+  friendsPanelElements,
+  settingsElements,
+  shellElements,
+} from "./app/page.js";
+import { applyStoredPreferences, attachPreferences } from "./app/preferences.js";
 import { loadCache } from "./load/cache.js";
+import { translateDom } from "./locale/browser.js";
+import { messages, onLocaleChange } from "./locale/current.js";
+import { stillSeated, whoAmI } from "./net/auth.js";
+import { connectToMatch, watchMatch } from "./net/match-channel.js";
+import { currentMatch } from "./profile/api.js";
 import { friendsOverview, presets as presetsResource } from "./profile/resources.js";
+import { attachConsole } from "./ui/console.js";
+import { attachShell } from "./ui/shell.js";
+
+/** Les équipes préparées du joueur, lues dans le cache de chargement. */
+const TEAM_PRESETS: PresetSource = {
+  cached: () => loadCache.value<TeamPresetList>(presetsResource.key)?.presets ?? [],
+  reload: async () => {
+    const outcome = await loadCache.request(presetsResource, { force: true });
+    return outcome.ok ? outcome.value.presets : undefined;
+  },
+};
 
 /** Racine de composition : elle câble les modules, elle n'en implémente aucun. */
 function main(): void {
   // Tout ce que le premier écran montre part ensemble, avant le reste : l'identité, la
   // liste d'amis du menu et une éventuelle partie à reprendre. Le menu ne paraît qu'une
   // fois tout arrivé (« Chargement et premier rendu », docs/technical/engine.md).
-  let identityRequest: Promise<Identity> | undefined = whoAmI();
+  const identityRequest = whoAmI();
   loadCache.preload([friendsOverview]);
-  let matchRequest: ReturnType<typeof currentMatch> | undefined = currentMatch();
-  applyTheme(storedTheme());
-  applyPalette(document.documentElement);
-  initLocale();
-  translateDom(document);
+  let matchToResume: ReturnType<typeof currentMatch> | undefined = currentMatch();
+  applyStoredPreferences();
 
-  const host = element<HTMLDivElement>("app");
-  /** Le plateau Pixi, chargé à part (`render/pixi/board.ts`) ; absent tant qu'il n'est pas prêt. */
-  let board: Board | undefined;
-  let boardLoading: Promise<Board | undefined> | undefined;
-
-  /**
-   * Il n'existe **aucune partie locale** : tant que le serveur n'a pas assis le
-   * joueur, il n'y a rien à jouer et rien à dessiner (docs/design.md section 2).
-   */
-  let match: OnlineMatch | undefined;
-  let channel: MatchChannel | undefined;
-  /** Change à chaque partie refermée : une réponse tardive reconnaît qu'elle arrive trop tard. */
-  let matchGeneration = 0;
-  let queue: QueueChannel | undefined;
-  let stage: Stage = START;
-  let social: SocialChannel | undefined;
-  let socialState: SocialState = EMPTY_SOCIAL;
-  /** L'ami défié, tant que sa réponse est attendue. */
-  let challengedFriend: string | undefined;
-  /** Le pseudo de l'ami regardé : présent, on est spectateur. */
-  let watching: string | undefined;
-  let spectators = 0;
-  let watchDeadline: ReturnType<typeof setTimeout> | undefined;
-
-  // Le canevas suit la fenêtre (`resizeTo: window`) : ses dimensions sont les siennes,
-  // connues avant même que Pixi soit chargé.
-  const viewport = (): Coord => ({ x: window.innerWidth, y: window.innerHeight });
-  let camera: Camera = createCamera({ x: 0, y: 0 }, viewport());
-  let hovered: Coord | undefined;
-  let selection: Selection | undefined;
-  let animation: MoveAnimation | undefined;
-  let gameConsole: GameConsole;
-  /**
-   * Un coup envoyé dont le serveur n'a pas encore répondu. Le client n'applique plus
-   * rien lui-même : entre l'envoi et la vue, le plateau est celui d'avant, et il ne
-   * doit accepter aucun second coup pour le même tour.
-   */
-  let pending = false;
-
-  const settings = attachSettings({
-    elements: {
-      toggle: element<HTMLButtonElement>("settings-toggle"),
-      panel: element<HTMLElement>("settings"),
-    },
-    theme: storedTheme,
-    locale: currentLocale,
-    hint: (theme) => messages().ui.theme.hints[theme],
-    chooseTheme: (theme) => {
-      // Un voile tramé balaie l'écran pendant que tout se repeint (ui/veil.ts).
-      sweepVeil(() => {
-        applyTheme(theme);
-        applyPalette(document.documentElement);
-        settings.refresh();
-      });
-    },
-    chooseLocale,
-  });
-  const go = (event: Parameters<typeof advance>[1]): void => {
-    stage = advance(stage, event);
-    shell.render(stage);
-    // Hors des écrans pleine page seulement, partie comprise : c'est sur le plateau qu'un
-    // design se juge.
-    settings.setAvailable(
-      stage.kind !== "deploying" && stage.kind !== "teams" && stage.kind !== "boot",
-    );
-  };
-
-  /**
-   * Envoie le coup, et **ne déplace rien** : c'est la vue suivante qui fera bouger la
-   * pièce et lancera l'animation. Anticiper localement laissait le plateau désynchronisé
-   * dès qu'un coup était refusé — le serveur ne rediffuse pas de vue dans ce cas.
-   */
-  const play = (action: Action): Result<Action, ActionError> => {
-    if (match === undefined) return { ok: false, error: { code: "game-over" } };
-
-    const sent = match.play(action);
-    if (!sent.ok) return sent;
-
-    pending = true;
-    selection = undefined;
-    return sent;
-  };
-
-  /**
-   * Une vue reçue du serveur fait autorité. Elle referme le coup en attente et efface
-   * la sélection, qui décrivait une position que le serveur vient de remplacer.
-   *
-   * `movement` est ce que la vue a fait bouger — son propre coup comme celui de
-   * l'adversaire, qui s'anime donc désormais lui aussi.
-   */
-  const adopt = (movement?: Movement): void => {
-    pending = false;
-    selection = undefined;
-    animation =
-      movement === undefined || match === undefined
-        ? undefined
-        : startMove(movement.pieceId, movement.from, movement.to, match.board);
-    gameConsole.refresh();
-  };
-
-  /**
-   * Referme le canal de partie et oublie tout ce qui en dépend. Au plus un canal est
-   * ouvert à la fois : un second écrirait dans le même état que le premier.
-   */
-  const closeMatch = (): void => {
-    matchGeneration += 1;
-    leaving = false;
-    channel?.close();
-    channel = undefined;
-    watching = undefined;
-    spectators = 0;
-    clearTimeout(watchDeadline);
-    match = undefined;
-    pending = false;
-    selection = undefined;
-    animation = undefined;
-    hovered = undefined;
-    deploying = undefined;
-    board?.clear();
-  };
-
-  /** Referme tout ce qui relie le client au serveur, et vide la table. */
-  const leave = (): void => {
-    queue?.close();
-    queue = undefined;
-    if (challengedFriend !== undefined) void friends.withdrawChallenge(challengedFriend);
-    challengedFriend = undefined;
-    closeMatch();
-    found = undefined;
-    showIslands();
-    go({ kind: "menu" });
-  };
-
-  /**
-   * Les gestionnaires d'une partie, assis ou spectateur. Un spectateur ne reçoit ni
-   * annonce de déploiement ni coups légaux : seule la vue du camp qu'il suit.
-   */
-  const handlersFor = (spectating: boolean, matchId: string): MatchHandlers => {
-    // Les équipes préparées déjà lues (l'écran des équipes les a peut-être chargées) servent
-    // aussitôt ; elles se relisent pendant l'annonce, et l'écran reprend la réponse.
-    let presets: readonly TeamPreset[] =
-      loadCache.value<TeamPresetList>(presetsResource.key)?.presets ?? [];
-    let lastRemaining: number | undefined;
-    if (!spectating) {
-      const generation = matchGeneration;
-      void loadCache.request(presetsResource, { force: true }).then((outcome) => {
-        if (!outcome.ok || generation !== matchGeneration) return;
-        presets = outcome.value.presets;
-        if (deploying !== undefined) {
-          deploying = { ...deploying, presets };
-          showIslands();
-        }
-      });
-    }
-    return {
-      onSeated: ({ player, board, rulesetVersion, view }) => {
-        clearTimeout(watchDeadline);
-        match = new OnlineMatch(
-          board,
-          rulesetFor(rulesetVersion),
-          player,
-          // Un spectateur n'envoie rien : le serveur refuserait de toute façon.
-          (action) => (spectating ? undefined : channel?.submit(action)),
-          view,
-        );
-        camera = createCamera(pivotOf(match.board), viewport());
-        deploying = undefined;
-        showIslands();
-        go({ kind: "seated", spectating });
-        adopt();
-      },
-      onDeployment: ({ player, scenario, board, rulesetVersion, deployment }) => {
-        // Le compte à rebours repart de chaque annonce (une reconnexion en renvoie une),
-        // pas d'un simple changement de verrou, qui ne dit rien du temps.
-        const receivedAt =
-          deploying === undefined || deployment.remainingMs !== lastRemaining
-            ? performance.now()
-            : deploying.receivedAt;
-        lastRemaining = deployment.remainingMs;
-        deploying = {
-          player,
-          scenario,
-          board,
-          rulesetVersion,
-          deployment,
-          receivedAt,
-          presets,
-          rejection: deploying?.rejection,
-          onDeploy: (team) => {
-            if (deploying !== undefined) deploying = { ...deploying, rejection: undefined };
-            channel?.deploy(team);
-          },
-        };
-        showIslands();
-        go({ kind: "deploying" });
-      },
-      onView: (incoming) => {
-        adopt(match?.receive(incoming));
-        if (incoming.outcome !== null) gameConsole.announce(incoming.outcome);
-      },
-      onRejected: (rejection) => {
-        if (stage.kind === "deploying" && deploying !== undefined) {
-          deploying = { ...deploying, rejection: describeRejection(rejection) };
-          showIslands();
-          return;
-        }
-        // Rien à annuler : le coup n'avait pas été appliqué. Il reste au joueur d'en
-        // jouer un autre, et c'est toujours son tour.
-        pending = false;
-        gameConsole.report(describeRejection(rejection), false);
-      },
-      onOutdated: (expected) => {
-        gameConsole.report(messages().game.outdated(expected), false);
-      },
-      onStatus: (state) => {
-        if (state === "reconnecting" && match !== undefined) {
-          gameConsole.report(messages().game.reconnecting, false);
-        }
-        if (state === "unreachable" && !spectating) void leaveIfUnseated(matchId);
-      },
-      onSpectators: (count) => {
-        spectators = count;
-        gameConsole.refresh();
-      },
-      // Accepté par le serveur : la première vue peut attendre la fin du déploiement.
-      onWatching: () => clearTimeout(watchDeadline),
-    };
-  };
-
-  /**
-   * Les reconnexions échouent : si la partie n'est plus celle de ce client (session
-   * expirée, partie close), on la quitte, et l'identité relue dit où revenir. Un réseau
-   * coupé, lui, laisse le canal réessayer.
-   */
-  const leaveIfUnseated = async (matchId: string): Promise<void> => {
-    const generation = matchGeneration;
-    if ((await stillSeated(matchId)) !== "gone" || generation !== matchGeneration) return;
-    leave();
-    await refresh();
-    shell.notify(messages().game.connectionLost);
-  };
-
-  const sit = (matchId: string, seat: string): void => {
-    queue?.close();
-    queue = undefined;
-    challengedFriend = undefined;
-    closeMatch();
-    void ensureBoard();
-    channel = connectToMatch(matchId, seat, handlersFor(false, matchId));
-  };
-
-  /**
-   * Regarder la partie d'un ami. Un refus du serveur ne se voit qu'à l'absence de vue —
-   * le socket est refusé avant d'exister — d'où l'échéance.
-   */
-  const watch = (friend: string, matchId: string, side: "A" | "B"): void => {
-    shell.notify("");
-    watching = friend;
-    go({ kind: "seek", seeking: "watch", friend });
-    void ensureBoard();
-    channel = watchMatch(matchId, side, handlersFor(true, matchId));
-    watchDeadline = setTimeout(() => {
-      if (match !== undefined) return;
-      leave();
-      shell.notify(messages().social.menu.cannotWatch(friend));
-    }, WATCH_TIMEOUT_MS);
-  };
-
-  const renderFriends = (): void => {
-    friendsPanel.render(socialState, canPlay(identity));
-  };
-
-  const reloadFriends = async (options: { force?: boolean } = { force: true }): Promise<void> => {
-    const outcome = await loadCache.request(friendsOverview, options);
-    if (!outcome.ok) return;
-    socialState = withOverview(socialState, outcome.value);
-    renderFriends();
-  };
-
-  /**
-   * La liste d'amis, avant de montrer le menu : le panneau paraît avec le reste au lieu
-   * de pousser le menu une seconde plus tard. Au-delà de `MENU_DEADLINE_MS`, le menu paraît
-   * sans elle — mieux vaut un panneau en retard qu'un menu qui n'arrive pas.
-   */
-  const friendsBeforeMenu = (force: boolean): Promise<void> =>
-    Promise.race([
-      reloadFriends({ force }),
-      new Promise<void>((resolve) => setTimeout(resolve, MENU_DEADLINE_MS)),
-    ]);
-
-  const onSocial = (message: SocialServerMessage): void => {
-    if (message.kind === "matched") {
-      // Un défi accepté : on s'assied, d'où que l'on vienne — sauf de sa propre partie,
-      // en déploiement ou en cours, que rien ne doit interrompre. La partie d'un ami
-      // qu'on regarde, ou une partie finie, cède la place.
-      const ownMatchRunning =
-        channel !== undefined && watching === undefined && match?.isOver !== true;
-      if (ownMatchRunning) return;
-      sit(message.matchId, message.seat);
-      return;
-    }
-    if (
-      message.kind === "challenge-cancelled" &&
-      message.to === challengedFriend &&
-      stage.kind === "waiting" &&
-      stage.seeking === "challenge"
-    ) {
-      const name = stage.friend ?? messages().social.menu.yourFriend;
-      challengedFriend = undefined;
-      go({ kind: "menu" });
-      shell.notify(messages().social.menu.declinedChallenge(name));
-    }
-    if (message.kind === "challenge" && stage.kind === "menu") {
-      shell.notify(messages().social.menu.challengesYou(message.challenge.from.handle));
-    }
-    const update = receive(socialState, message);
-    socialState = update.state;
-    renderFriends();
-    if (update.stale) void reloadFriends();
-  };
-
-  /** Le canal social suit l'identité : ouvert à un compte vérifié, refermé sinon. */
-  const syncSocial = (): void => {
-    const wanted = canPlay(identity);
-    if (wanted && social === undefined) {
-      social = openSocial("game", onSocial, (status) => {
-        if (status === "open") void reloadFriends();
-      });
-    }
-    if (!wanted && social !== undefined) {
-      social.close();
-      social = undefined;
-      socialState = EMPTY_SOCIAL;
-      renderFriends();
-    }
-  };
-
-  const shell = attachShell({
-    elements: {
-      boot: element<HTMLElement>("screen-boot"),
-      auth: element<HTMLElement>("screen-auth"),
-      menu: element<HTMLElement>("screen-menu"),
-      waiting: element<HTMLElement>("screen-waiting"),
-      deploy: element<HTMLElement>("screen-deploy"),
-      teams: element<HTMLElement>("screen-teams"),
-      teamsEntry: element<HTMLButtonElement>("menu-teams"),
-      board: host,
-      hud: element<HTMLElement>("console"),
-      identity: element<HTMLElement>("menu-identity"),
-      admin: element<HTMLElement>("menu-admin"),
-      corner: element<HTMLElement>("account-corner"),
-      cornerName: element<HTMLElement>("account-corner-name"),
-      resend: element<HTMLButtonElement>("account-resend"),
-      signOut: element<HTMLButtonElement>("account-signout"),
-      impersonation: element<HTMLElement>("impersonation"),
-      impersonated: element<HTMLElement>("impersonated"),
-      stopImpersonating: element<HTMLButtonElement>("stop-impersonating"),
-      notice: element<HTMLElement>("menu-notice"),
-      quick: element<HTMLButtonElement>("play-quick"),
-      host: element<HTMLButtonElement>("play-host"),
-      joinForm: element<HTMLFormElement>("join-form"),
-      joinCode: element<HTMLInputElement>("join-code"),
-      join: element<HTMLButtonElement>("play-join"),
-      waitingNote: element<HTMLElement>("waiting-note"),
-      waitingCode: element<HTMLElement>("waiting-code"),
-      copy: element<HTMLButtonElement>("waiting-copy"),
-      cancel: element<HTMLButtonElement>("waiting-cancel"),
-      leave: element<HTMLButtonElement>("leave-match"),
-    },
-    onSeek: (seeking, code) => {
-      shell.notify("");
-      go({ kind: "seek", seeking });
-      queue = joinQueue(intentOf(seeking, code), {
-        onWaiting: () => undefined,
-        onHosting: (code) => go({ kind: "hosting", code }),
-        onFault: (fault) => {
-          queue = undefined;
-          go({ kind: "menu" });
-          shell.notify(describeRoomFault(fault));
-        },
-        onProposal: ({ remainingMs, accepted }) => {
-          const receivedAt = found === undefined ? performance.now() : found.receivedAt;
-          found = {
-            remainingMs: found?.remainingMs ?? remainingMs,
-            receivedAt,
-            accepted,
-            onAccept: () => queue?.accept(),
-            onDecline: () => queue?.decline(),
-          };
-          showIslands();
-          go({ kind: "proposed" });
-        },
-        onLapsed: (requeued) => {
-          found = undefined;
-          showIslands();
-          if (!requeued) queue = undefined;
-          go({ kind: "lapsed", requeued });
-          shell.notify(requeued ? "" : messages().prepare.lapsed.dropped);
-          if (requeued) shell.notifyWaiting(messages().prepare.lapsed.requeued);
-        },
-        onSeated: ({ matchId, seat }) => {
-          queue = undefined;
-          found = undefined;
-          showIslands();
-          sit(matchId, seat);
-        },
-        onOutdated: (expected) => {
-          leave();
-          shell.notify(messages().game.outdated(expected));
-        },
-        onStatus: () => undefined,
-      });
-    },
-    onCancel: leave,
-    onLeaveMatch: () => {
-      // Aucun chemin ne ramène à un siège quitté : partir d'une partie vivante sans
-      // abandonner la laisserait « en cours » à jamais dans les deux historiques. La
-      // fenêtre `leave/` le demande ; partir d'une partie regardée ou finie, non.
-      if (watching === undefined && match !== undefined && !match.isOver) {
-        leaving = true;
-        showIslands();
-        return;
-      }
-      leave();
-    },
-    onStopImpersonating: () => {
-      leave();
-      void stopImpersonating().then(() => location.assign("/admin/"));
-    },
-    onSignOut: () => {
-      void signOut().then(() => refresh());
-    },
-    onTeams: () => {
-      teamsOpen = true;
-      showIslands();
-      go({ kind: "teams" });
-    },
-    onResend: () => {
-      const m = messages().game.menu;
-      shell.notify(m.sending);
-      void resendVerification(identity.email ?? "").then((outcome) => {
-        shell.notify(outcome.ok ? m.resent(identity.email ?? m.yourAddress) : outcome.message);
-      });
-    },
-  });
-
-  // Le parcours et le message de retour sont lus dans l'URL **avant** d'en retirer les
-  // paramètres : le jeton de réinitialisation ne doit pas rester dans la barre
-  // d'adresse, ni donc dans l'historique.
-  const initialRoute = routeOf(location.pathname, location.search);
-  let arrival = arrivalNotice(location.pathname, location.search);
-  const cleaned = cleanedSearch(location.search);
-  if (cleaned !== location.search)
-    history.replaceState(null, "", `${location.pathname}${cleaned}${location.hash}`);
-
-  const friendsPanel = attachFriendsPanel({
-    elements: {
-      root: element<HTMLElement>("menu-friends"),
-      challenges: element<HTMLElement>("friends-challenges"),
-      list: element<HTMLElement>("friends-list"),
-      empty: element<HTMLElement>("friends-empty"),
-    },
-    onChallenge: (friend) => {
-      shell.notify("");
-      void friends.challenge(friend.id).then((outcome) => {
-        if (!outcome.ok) {
-          shell.notify(outcome.message);
-          return;
-        }
-        challengedFriend = friend.id;
-        socialState = challenged(socialState, friend.id);
-        go({ kind: "seek", seeking: "challenge", friend: friend.handle });
-      });
-    },
-    onWatch: (friend, live) => watch(friend.handle, live.id, live.side),
-    onAccept: (challenge) => {
-      shell.notify("");
-      void friends.acceptChallenge(challenge.from.id).then((outcome) => {
-        // En cas de succès, `matched` arrive par le canal social et assied le joueur.
-        if (!outcome.ok) shell.notify(outcome.message);
-      });
-    },
-    onDecline: (challenge) => {
-      void friends.declineChallenge(challenge.from.id);
-    },
-  });
-
-  const renderAccount = mountAccount(element<HTMLElement>("account-root"));
-
-  /**
-   * Les îlots d'avant-partie et des équipes : leurs propriétés vivent ici, et
-   * `showIslands()` les rend toutes — après chaque message comme après un changement de
-   * langue. `undefined` vide un îlot.
-   */
-  const renderMatchFound = mountMatchFound(element<HTMLElement>("match-found-root"));
-  const renderDeployment = mountDeployment(element<HTMLElement>("deploy-root"));
-  const renderTeams = mountTeams(element<HTMLElement>("teams-root"));
-  const renderLeave = mountLeaveMatch(element<HTMLElement>("leave-root"));
-  let found: Omit<MatchFoundProps, "locale"> | undefined;
-  let deploying: Omit<DeploymentProps, "locale"> | undefined;
+  // ── État propre à la racine ───────────────────────────────────────────────────────
   let teamsOpen = false;
-  let leaving = false;
-  function showIslands(): void {
-    const locale = currentLocale();
-    renderLeave(
-      leaving
-        ? {
-            locale,
-            onConfirm: () => {
-              leaving = false;
-              channel?.submit({ kind: "resign" });
-              leave();
-            },
-            onCancel: () => {
-              leaving = false;
-              showIslands();
-            },
-          }
-        : undefined,
-    );
-    renderMatchFound(found === undefined ? undefined : { ...found, locale });
-    renderDeployment(deploying === undefined ? undefined : { ...deploying, locale });
-    renderTeams(
-      teamsOpen
-        ? {
-            locale,
-            onBack: () => {
-              teamsOpen = false;
-              showIslands();
-              go({ kind: "menu" });
-            },
-          }
-        : undefined,
-    );
+
+  // ── Écrans ────────────────────────────────────────────────────────────────────────
+  const boardHost = boardElement();
+  const settings = attachPreferences(settingsElements());
+  const shell = attachShell({
+    elements: shellElements(boardHost),
+    onSeek: (seeking, code) => matchmaking.seek(seeking, code),
+    onCancel: leave,
+    onLeaveMatch: leaveMatch,
+    onStopImpersonating: () => account.stopImpersonating(),
+    onSignOut: () => account.signOut(),
+    onResend: () => account.resendVerification(),
+    onTeams: openTeams,
+  });
+  const navigation = new Navigation(shell, settings);
+  const islands = new Islands({
+    leave: leaveDialog,
+    found: () => matchmaking.proposal,
+    deploying: () => matches.deploying,
+    teams: teamsScreen,
+  });
+
+  // ── Partie ────────────────────────────────────────────────────────────────────────
+  const matches = new MatchController({
+    connect: connectToMatch,
+    spectate: watchMatch,
+    presets: TEAM_PRESETS,
+    stillSeated,
+    stage: () => navigation.stage.kind,
+    go: (event) => navigation.go(event),
+    showIslands: () => islands.render(),
+    ensureBoard: () => void board.ensure(),
+    clearBoard: () => board.clear(),
+    seated: (terrain) => board.center(terrain),
+    reports: () => gameConsole,
+    notify: (message) => shell.notify(message),
+    leave,
+    connectionLost: async () => {
+      await account.refresh();
+      shell.notify(messages().game.connectionLost);
+    },
+  });
+  const gameConsole = attachConsole({
+    elements: consoleElements(),
+    match: () => matches.match,
+    play: (action) => matches.play(action),
+    pending: () => matches.pending,
+    watching: () => matches.watching,
+    spectators: () => matches.spectators,
+  });
+  const board = new BoardView(boardHost, matches, gameConsole);
+
+  // ── File d'attente, amis, compte ──────────────────────────────────────────────────
+  const matchmaking = new Matchmaking({
+    go: (event) => navigation.go(event),
+    notify: (message) => shell.notify(message),
+    notifyWaiting: (message) => shell.notifyWaiting(message),
+    showIslands: () => islands.render(),
+    seated: sit,
+    outdated: (expected) => {
+      leave();
+      shell.notify(messages().game.outdated(expected));
+    },
+  });
+  const friends = new Friends(friendsPanelElements(), {
+    stage: () => navigation.stage,
+    go: (event) => navigation.go(event),
+    notify: (message) => shell.notify(message),
+    playable: (): boolean => account.playable,
+    matched: sitAfterChallenge,
+    watch: (friend, matchId, side) => matches.watch(friend, matchId, side),
+  });
+  const account = new Account(identityRequest, {
+    stage: () => navigation.stage,
+    go: (event) => navigation.go(event),
+    shell,
+    friends,
+    leave,
+    welcomed: () => {
+      // L'écran des équipes s'ouvre alors complet, sans attente.
+      board.prewarm(() => loadCache.preload([presetsResource]));
+      void resume();
+    },
+  });
+
+  // ── Démarrage ─────────────────────────────────────────────────────────────────────
+  onLocaleChange(rewriteTexts);
+  navigation.render();
+  void account.refresh();
+
+  // ── Parcours ──────────────────────────────────────────────────────────────────────
+
+  /** Referme tout ce qui relie le client au serveur, vide la table et revient au menu. */
+  function leave(): void {
+    matchmaking.close();
+    friends.withdrawChallenge();
+    matches.close();
+    islands.render();
+    navigation.go({ kind: "menu" });
   }
-  let identity: Identity = { signedIn: false };
+
+  /** Assied le joueur à une partie : la file et le défi en cours n'ont plus lieu d'être. */
+  function sit(matchId: string, seat: string): void {
+    matchmaking.close();
+    friends.forgetChallenge();
+    matches.sit(matchId, seat);
+  }
+
+  /**
+   * Un défi accepté : on s'assied, d'où que l'on vienne — sauf de sa propre partie, en
+   * déploiement ou en cours, que rien ne doit interrompre. La partie d'un ami qu'on
+   * regarde, ou une partie finie, cède la place.
+   */
+  function sitAfterChallenge(matchId: string, seat: string): void {
+    if (matches.ownMatchRunning) return;
+    sit(matchId, seat);
+  }
 
   /**
    * Rassoit le joueur à sa partie en cours. Le jeton de siège ne vit que dans la page :
    * un rechargement le perd, et c'est le serveur qui le rend, à la seule session du
    * joueur. Il a `ABSENCE_MS` pour revenir avant de perdre par forfait.
    */
-  const resume = async (): Promise<void> => {
-    if (stage.kind !== "menu" || channel !== undefined || queue !== undefined) return;
-    const outcome = await (matchRequest ?? currentMatch());
-    matchRequest = undefined;
+  async function resume(): Promise<void> {
+    if (!idleOnMenu()) return;
+    const outcome = await (matchToResume ?? currentMatch());
+    matchToResume = undefined;
     if (!outcome.ok || outcome.value === null) return;
-    if (stage.kind !== "menu" || channel !== undefined || queue !== undefined) return;
+    // Le joueur a pu lancer une partie pendant la lecture.
+    if (!idleOnMenu()) return;
     sit(outcome.value.matchId, outcome.value.seat);
-  };
+  }
 
-  // L'identité vient du serveur, via un cookie de session : le client ne l'annonce
-  // jamais lui-même. Sans compte, la file d'attente répondrait 401.
-  const refresh = async (message?: string): Promise<void> => {
-    const request = identityRequest ?? whoAmI();
-    identityRequest = undefined;
-    identity = await request;
-    shell.setIdentity(identity);
-    // Le menu va paraître (premier écran, ou retour d'une connexion) : il attend sa liste
-    // d'amis. Celle de l'amorce est déjà partie ; après une connexion, elle est à relire.
-    const toMenu = identity.signedIn && (stage.kind === "boot" || stage.kind === "auth");
-    if (toMenu && identity.emailVerified !== false) await friendsBeforeMenu(stage.kind !== "boot");
-    syncSocial();
-    // Une déconnexion referme la partie en cours : sans session, ni la file ni le
-    // Durable Object n'accepteraient plus rien de ce client.
-    if (!identity.signedIn && stage.kind !== "auth" && stage.kind !== "boot") leave();
-    // Le formulaire est dessiné avant que son écran soit montré : le panneau ne paraît
-    // jamais vide.
-    if (!identity.signedIn) showAccount();
-    go({ kind: "identity", signedIn: identity.signedIn });
-
-    if (identity.signedIn) {
-      prewarmBoard();
-      // Connecté sur une URL de parcours de compte (un lien de connexion ouvert alors
-      // qu'on l'est déjà) : on revient à celle du menu.
-      if (location.pathname !== "/") history.replaceState(null, "", "/");
-      const notice = message ?? arrival?.text;
-      if (notice !== undefined) shell.notify(notice);
-      arrival = undefined;
-      void resume();
-    }
-  };
-  const showAccount = (): void => {
-    renderAccount({
-      initialRoute,
-      initialNotice: arrival,
-      providers: identity.providers ?? [],
-      onSignedIn: (text) => void refresh(text),
-      locale: currentLocale(),
-    });
-  };
-  void refresh();
-
-  // Tout ce qui est déjà écrit est réécrit : le HTML statique, l'écran courant, l'identité,
-  // l'îlot de compte. Les messages déjà affichés (`notify`) gardent leur langue d'origine.
-  onLocaleChange(() => {
-    translateDom(document);
-    settings.refresh();
-    shell.render(stage);
-    shell.setIdentity(identity);
-    gameConsole.refresh();
-    showIslands();
-    if (!identity.signedIn) showAccount();
-  });
-
-  gameConsole = attachConsole({
-    elements: {
-      form: element<HTMLFormElement>("command-form"),
-      input: element<HTMLInputElement>("command-input"),
-      log: element<HTMLElement>("command-log"),
-      status: element<HTMLElement>("status"),
-      readout: element<HTMLElement>("tile-readout"),
-      help: element<HTMLElement>("command-help"),
-    },
-    match: () => match,
-    play,
-    pending: () => pending,
-    watching: () => watching,
-    spectators: () => spectators,
-  });
-
-  shell.render(stage);
+  /** Au menu, sans partie ni attente en cours. */
+  function idleOnMenu(): boolean {
+    return navigation.stage.kind === "menu" && !matches.hasChannel && !matchmaking.searching;
+  }
 
   /**
-   * Charge le plateau une seule fois. Un échec (pas de WebGL) laisse le menu utilisable :
-   * il ne coûte que la partie, qui ne s'affichera pas.
+   * Aucun chemin ne ramène à un siège quitté : la fenêtre `leave/` demande l'abandon d'une
+   * partie vivante ; partir d'une partie regardée ou finie, non.
    */
-  function ensureBoard(): Promise<Board | undefined> {
-    boardLoading ??= import("./render/pixi/board.js")
-      .then(({ mountBoard }) =>
-        mountBoard(host, {
-          onResize: () => {
-            camera = withViewport(camera, viewport());
-          },
-          controls: {
-            getCamera: () => camera,
-            setCamera: (next) => {
-              camera = next;
-            },
-            pickTile: (point) =>
-              match === undefined
-                ? undefined
-                : tileAt(toProjectionSpace(camera, point), match.board, toProjection(camera)),
-            setHovered: (coord) => {
-              hovered = coord;
-            },
-            onPick: (coord) => {
-              if (match === undefined) return;
-              gameConsole.showTile(coord);
-
-              const outcome = resolveClick(match.legalActions, match.state, selection, coord);
-              if (outcome.kind === "select") selection = outcome.selection;
-              else if (outcome.kind === "clear") selection = undefined;
-              else gameConsole.playAction(outcome.action);
-            },
-          },
-          frame: (deltaMS) => {
-            if (match === undefined) return undefined;
-            camera = settle(camera, deltaMS);
-
-            if (animation !== undefined) {
-              animation = step(animation, deltaMS);
-              if (animation === undefined) gameConsole.refresh();
-            }
-
-            return {
-              board: match.board,
-              view: match.viewFor(match.player),
-              projection: toProjection(camera),
-              origin: originOf(camera),
-              hovered,
-              selection,
-              animation,
-            };
-          },
-        }),
-      )
-      .then((mounted) => (board = mounted))
-      .catch((error: unknown) => {
-        console.error("board unavailable", error);
-        return undefined;
-      });
-    return boardLoading;
+  function leaveMatch(): void {
+    if (matches.requestLeave()) {
+      islands.render();
+      return;
+    }
+    leave();
   }
 
-  /** Le plateau se charge au repos, une fois le menu affiché : rien ne l'attend avant. */
-  function prewarmBoard(): void {
-    if (boardLoading !== undefined) return;
-    const prewarm = (): void => {
-      void ensureBoard();
-      // L'écran des équipes s'ouvre alors complet, sans attente.
-      loadCache.preload([presetsResource]);
+  function leaveDialog(): LeaveDialog | undefined {
+    if (!matches.leaving) return undefined;
+    return {
+      onConfirm: () => {
+        matches.confirmLeave();
+        leave();
+      },
+      onCancel: () => {
+        matches.cancelLeave();
+        islands.render();
+      },
     };
-    if (typeof requestIdleCallback === "function") requestIdleCallback(prewarm);
-    else setTimeout(prewarm, 1);
   }
-}
 
-/** Au-delà, le menu paraît sans attendre la liste d'amis. */
-const MENU_DEADLINE_MS = 2500;
+  function openTeams(): void {
+    teamsOpen = true;
+    islands.render();
+    navigation.go({ kind: "teams" });
+  }
 
-/** Au-delà, une partie qui n'a envoyé aucune vue au spectateur lui est refusée. */
-const WATCH_TIMEOUT_MS = 6000;
+  function closeTeams(): void {
+    teamsOpen = false;
+    islands.render();
+    navigation.go({ kind: "menu" });
+  }
 
-/** L'entrée de menu choisie, dans la forme que la file d'attente attend. */
-function intentOf(seeking: QueueSeeking, code: string | undefined): QueueIntent {
-  if (seeking === "join") return { kind: "join", code: code ?? "" };
-  if (seeking === "host") return { kind: "host" };
-  return { kind: "quick" };
-}
+  function teamsScreen(): TeamsScreen | undefined {
+    if (!teamsOpen) return undefined;
+    return { onBack: closeTeams };
+  }
 
-function element<T extends HTMLElement>(id: string): T {
-  const found = document.getElementById(id);
-  if (found === null) throw new Error(`element #${id} not found`);
-  return found as T;
+  /**
+   * Tout ce qui est déjà écrit est réécrit : le HTML statique, l'écran courant, l'identité,
+   * l'îlot de compte. Les messages déjà affichés (`notify`) gardent leur langue d'origine.
+   */
+  function rewriteTexts(): void {
+    translateDom(document);
+    settings.refresh();
+    navigation.render();
+    account.render();
+    gameConsole.refresh();
+    islands.render();
+  }
 }
 
 main();

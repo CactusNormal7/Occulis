@@ -15,16 +15,10 @@ ligne. Voir [README.md](../../README.md) pour l'état fonctionnel du prototype.
    sert le client via ASSETS        envoie à chacun son viewFor()        users
 ```
 
-Trois principes, actés dans `docs/architecture.md` :
+Invariants dans [docs/architecture.md](../architecture.md#invariants) (déterminisme, log source de vérité, règles versionnées, hibernation, fog structurel, pas de verrou). Ici :
 
-- **1 Durable Object = 1 partie.** Il détient le `GameState` et les deux
-  `PlayerKnowledge`, et envoie à chaque joueur **son propre** `viewFor()`. Le fog est
-  donc structurel : un client ne peut pas recevoir ce que le DO ne lui envoie pas.
-- **Le DO est mono-threadé**, donc la sérialisation des tours est acquise. **Ne pas
-  ajouter de verrous.**
-- **Le log d'actions en D1 est la source de vérité ; l'état du DO n'est qu'un cache
-  reconstructible.** Cela dépend entièrement de l'invariant de déterminisme de
-  `packages/core`.
+- **1 Durable Object = 1 partie** : il détient le `GameState` et les deux
+  `PlayerKnowledge`, et envoie à chaque joueur **son propre** `viewFor()`.
 
 ## Fichiers
 
@@ -104,7 +98,7 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 | `/api/auth/reset-password`                                                                                                                                  | `POST`                | Better Auth — consomme le jeton et change le mot de passe                                                                                                                                                                                                                                                                         |
 | `/api/auth/send-verification-email`                                                                                                                         | `POST`                | Better Auth — renvoie le message de vérification                                                                                                                                                                                                                                                                                  |
 | `/api/auth/verify-email`                                                                                                                                    | `GET`                 | Better Auth — marque l'adresse vérifiée                                                                                                                                                                                                                                                                                           |
-| `/api/auth/admin/*`                                                                                                                                         | `GET`/`POST`          | Greffon `admin` de Better Auth — comptes, rôles, suspensions, sessions ; **403 sans le rôle `admin`**                                                                                                                                                                                                                             |
+| `/api/auth/admin/*`                                                                                                                                         | `GET`/`POST`          | Greffon `admin` de Better Auth — comptes, rôles, suspensions, sessions ; **403 sans le rôle `admin` ou `goy`**                                                                                                                                                                                                                    |
 | `/api/auth/update-user`, `/api/auth/admin/update-user` avec un `name`                                                                                       | `POST`                | **400 `HANDLE_READONLY`** — le pseudo se change par `/api/me/handle` ou `/api/admin/players/:id/handle`                                                                                                                                                                                                                           |
 | routes de compte de Better Auth (`ACCOUNT_MUTATIONS`) sous usurpation                                                                                       | `POST`                | **403 `IMPERSONATION_READONLY`**                                                                                                                                                                                                                                                                                                  |
 | tout le reste de `/api/auth/*`                                                                                                                              | toute                 | `auth.handler(request)`                                                                                                                                                                                                                                                                                                           |
@@ -137,7 +131,7 @@ liens envoyés par courrier depuis un preview de branche ramèneraient en produc
 | `realtimeAccount()`                   | `apps/server/src/index.ts`            | La garde des trois canaux temps réel : `Origin`, si présente, égale à celle du site (`SameSite=Lax` laisse passer le cookie d'un autre sous-domaine du même site), session, adresse vérifiée                                                                                                                              |
 | `joinSocial()`                        | `apps/server/src/index.ts`            | Le WebSocket `/api/social` : `realtimeAccount()`, puis `openSocial()`                                                                                                                                                                                                                                                     |
 | `watchMatch()`                        | `apps/server/src/index.ts`            | La garde du spectateur (`readWatchRow()`, `isFriend()`, `decideWatch()`), puis `https://do/watch`                                                                                                                                                                                                                         |
-| `isAdmin()`                           | `apps/server/src/auth/better-auth.ts` | Vrai si la colonne `role` contient `admin` (Better Auth y range plusieurs rôles séparés par des virgules)                                                                                                                                                                                                                 |
+| `isAdmin()`                           | `apps/server/src/auth/better-auth.ts` | Vrai si la colonne `role` contient `admin` ou `goy` (Better Auth y range plusieurs rôles séparés par des virgules) ; `isGoy()` ne reconnaît que `goy`, que `/api/auth/me` signale (`goy`) pour que le back-office chiffre ses textes                                                                                      |
 | `handleAdmin()`                       | `apps/server/src/admin/routes.ts`     | Garde de rôle, puis routage de `/api/admin/*`                                                                                                                                                                                                                                                                             |
 | `handleAuth()`                        | `apps/server/src/auth/routes.ts`      | `/api/auth/me`, puis délégation                                                                                                                                                                                                                                                                                           |
 | `sendLetter()`                        | `apps/server/src/auth/mail.ts`        | Resend ; sans clé, le courrier dans la console en local (`MAIL_TO_CONSOLE`), une erreur sans corps ailleurs                                                                                                                                                                                                               |
@@ -226,9 +220,7 @@ this.ctx.acceptWebSocket(pair[1], [player]);
 ```
 
 `acceptWebSocket()` — et **non** `server.accept()` — est ce qui autorise l'hibernation.
-Sans lui, le DO reste en mémoire tant que le socket est ouvert, pour un coût **~20 000
-fois supérieur** et aucune différence fonctionnelle (`docs/costs.md`). C'est le piège le
-plus coûteux de tout le projet.
+Sans lui le DO n'hiberne pas (invariant 4, [docs/architecture.md](../architecture.md#invariants) ; chiffrage dans `docs/costs.md`).
 
 Le second argument est une **étiquette** (`[player]`, donc `"A"` ou `"B"`) : c'est elle
 qui permet à `broadcastViews()` de retrouver les sockets d'un joueur donné via
@@ -393,10 +385,8 @@ occasion de diverger de la règle.
 Un rejeu qui échoue lève `Corrupted log for <matchId> at move <seq>` — volontairement fatal :
 poursuivre sur un état divergent serait pire.
 
-**Cette méthode n'est correcte que parce que `packages/core` est strictement
-déterministe.** Un `Math.random` ou un `Date.now` glissé dans `core` la casserait
-silencieusement, et la mémoire fantôme reconstruite ne correspondrait plus à celle que les
-joueurs ont réellement eue.
+Cette méthode suppose le déterminisme de `core` (invariant 1) : sans lui, la mémoire
+fantôme reconstruite ne correspondrait plus à celle des joueurs.
 
 ---
 
@@ -915,14 +905,12 @@ Quelques points de fonctionnement :
 - **Les sessions ne passent pas par `/api/auth/list-sessions`**, qui rend les jetons au
   JavaScript de la page. `listSessions()` lit `sessions` directement et n'en sort que
   l'identifiant, les dates, l'agent, l'IP et le marqueur d'usurpation.
-- **Le replay est vu de votre camp seulement.** `readMyMatch()` rejoue le log par
-  `replayLog()`, mais chaque image est `viewFor(state, knowledge[seat])` — exactement ce
-  que le `MatchDO` vous avait envoyé : vos pièces, les pièces adverses dans votre ligne de
-  vue, vos fantômes. Les coups adverses du log sont rendus avec `action: null` (sauf un
-  abandon) : ils nomment la pièce et sa destination, donc révéleraient des positions que
-  vous n'avez jamais vues. Une partie **en cours** est refusée : le replay resservirait la
-  vue courante hors du siège. Révéler toute la partie une fois finie serait une décision
-  de design, non tranchée.
+- **Le replay d'une partie finie est révélé en entier.** `readMyMatch()` rejoue le log par
+  `replayLog()` avec `frameOf()` du back-office : la position complète, la ligne de vue de
+  chaque camp et tous les coups, le client choisissant le point de vue (le sien, celui de
+  l'adversaire, ou les deux). Plus rien n'est à cacher une fois la partie finie — décision
+  de design. Une partie **en cours** reste refusée (409) : le replay resservirait sa
+  position courante, fog compris.
 
 ## `social/` et `social-do.ts` — le système d'amis
 
@@ -948,7 +936,7 @@ _l'autre_ joueur ; chaque requête de `social/queries.ts` reprend celui de la se
 | `/api/blocks/:id`                               | `DELETE`          | `unblock()`                                                 | `{ relation: "none" }` ou 404                                                                                                                            |
 | `/api/friends/:id`                              | `GET`             | `readFriendProfile()`                                       | `FriendProfile` — pseudo, présence, ami depuis, réglage spectateurs, bilan                                                                               |
 | `/api/friends/:id/matches`                      | `GET`             | `listMyMatches()` **sur l'ami**                             | `MeMatchPage`, de son point de vue                                                                                                                       |
-| `/api/friends/:id/matches/:matchId`             | `GET`             | `readMyMatch()` **sur l'ami**                               | `MeMatchDetail` **vu de son camp**, 409 en cours, 404 hors de ses parties                                                                                |
+| `/api/friends/:id/matches/:matchId`             | `GET`             | `readMyMatch()` **sur l'ami**                               | `MeMatchDetail` (partie révélée en entier), 409 en cours, 404 hors de ses parties                                                                        |
 | `/api/friends/:id/messages?before=`             | `GET`             | `listMessages()`                                            | `ChatPage` — 50 messages, du plus ancien au plus récent, `hasMore`                                                                                       |
 | `/api/friends/:id/messages`                     | `POST`            | `checkMessage()` puis `insertMessage()`                     | `ChatMessage` ; 400 `MESSAGE_EMPTY` / `MESSAGE_TOO_LONG`, 429 `RATE_LIMITED`                                                                             |
 | `/api/friends/:id/messages/read`                | `POST`            | `markRead()`                                                | `{ read: n }`                                                                                                                                            |
@@ -1142,10 +1130,8 @@ du roster (`packages/core/src/pieces/roster/`). Client et
 serveur doivent appliquer exactement les mêmes règles, donc une seule définition — voir
 [core.md](core.md), section `pieces/`.
 
-**Les règles sont versionnées par partie, pas par connexion.** Une partie démarrée sous un
-ruleset s'y termine, y compris à travers un déploiement — le pilier « temps de réflexion
-illimité » implique des parties qui traversent les mises en production. Conséquence
-directe : **les anciennes versions doivent rester chargeables ici indéfiniment**. Ne jamais
+Règles versionnées par partie (invariant 3, [docs/architecture.md](../architecture.md#invariants)). Conséquence ici :
+**les anciennes versions doivent rester chargeables indéfiniment**. Ne jamais
 retirer une entrée du registre tant qu'une partie peut la référencer.
 
 **Attention** : ni le roster ni les cartes ne sont actés (`docs/design.md` points ouverts 5
@@ -1167,8 +1153,7 @@ qui se cherche, se classe ou s'agrège va donc en D1.
 | `matches`       | Une partie                 | `ruleset_version` **figée à la création** ; index par joueur et date                  |
 | `match_actions` | Un enregistrement par coup | `PRIMARY KEY (match_id, seq)` ; `action` est l'`Action` de `@occulis/core` sérialisée |
 
-`match_actions` est **la source de vérité**. Rejouer ses lignes reconstruit l'état exact,
-mémoire fantôme comprise.
+`match_actions` est le log source de vérité (invariant 2) ; le rejouer reconstruit l'état exact, mémoire fantôme comprise.
 
 ### `migrations/0002_users.sql` et `0003_sessions.sql`
 
@@ -1337,7 +1322,7 @@ les types (`Cloudflare.Env`, `GlobalProps.mainModule`).
 | `social/social.integration.test.ts`  | workerd | Demande → acceptation → liste → retrait, **demande croisée**, soi et inconnu refusés, **401 et autre origine**, recherche par préfixe sans casse, **blocage : amitié coupée, bloqueur invisible, demande et message refusés**, **fiche et historique refusés à un non-ami, replay vu du camp de l'ami**, message poussé en direct, non-lus, **débit de 20 par minute**, **présence annoncée puis retirée à la fermeture**, **défi accepté une seule fois, `matched` des deux côtés**, défi refusé sans le jeu, **spectateur : vue identique sans coups légaux, action refusée, compteur ; adversaire, non-ami et refus rejetés**, **suppression du compte qui efface relations et messages**                                                                                                                                                                                                                                                                                                                  |
 | `maintenance.integration.test.ts`    | workerd | Purge des sessions périmées, des vérifications expirées et des compteurs retombés, **des seuls profils orphelins anciens sans partie**, et **format de conversion des horodatages de la migration**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
-**Les tests d'intégration sont aussi le test d'hibernation** que `CLAUDE.md` réclame :
+**Les tests d'intégration sont aussi le test d'hibernation** que `docs/architecture.md` (§7, point 7) réclame :
 `webSocketMessage()` et `webSocketClose()` ne sont appelés que sur un socket accepté par
 `ctx.acceptWebSocket()`. Passer à `server.accept()` — la variante qui empêche
 l'hibernation et multiplie le coût par ~20 000 — ferait taire ces gestionnaires et
@@ -1373,36 +1358,32 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
 
 ## Invariants à ne pas casser
 
-1. **`acceptWebSocket()`, jamais `accept()`.** Sinon le DO n'hiberne plus et le coût
-   explose (~20 000×).
-2. **Aucun verrou dans le DO.** Il est mono-threadé ; la sérialisation est acquise.
-3. **Écrire le log avant de diffuser.** Sinon un client peut voir un état que la source de
+1. **Invariants 1 à 5 de [docs/architecture.md](../architecture.md#invariants).** `acceptWebSocket()` jamais `accept()`, aucun verrou
+   dans le DO, `viewFor()` seul envoyé, déterminisme de `core` (dépendance dure de `load()`).
+2. **Écrire le log avant de diffuser.** Sinon un client peut voir un état que la source de
    vérité ignore.
-4. **Ne jamais retirer une version du registre de rulesets** tant qu'une partie peut la
+3. **Ne jamais retirer une version du registre de rulesets** tant qu'une partie peut la
    référencer.
-5. **Ne jamais envoyer autre chose qu'un `viewFor()` par joueur.** Envoyer le `GameState`
-   complet et masquer côté client rendrait le fog contournable via les devtools.
-6. **Le déterminisme de `packages/core` est une dépendance dure de `load()`.**
-7. **Tout DO qui accepte des sockets hibernables définit `webSocketClose()`.** Sans lui,
+4. **Tout DO qui accepte des sockets hibernables définit `webSocketClose()`.** Sans lui,
    le runtime lève une exception non rattrapée à chaque déconnexion.
-8. **Le schéma des tables Better Auth est généré, jamais édité.** `auth:schema` fait foi ;
+5. **Le schéma des tables Better Auth est généré, jamais édité.** `auth:schema` fait foi ;
    une colonne renommée à la main casse silencieusement les requêtes de la bibliothèque.
-9. **Les échéances en base sont du texte ISO 8601.** Les comparer à un nombre de
+6. **Les échéances en base sont du texte ISO 8601.** Les comparer à un nombre de
    millisecondes est toujours faux et ne signale rien.
-10. **Le pseudo s'écrit dans les deux tables à la fois.** `users.name` et
-    `players.handle` ne changent que par `renamePlayer()` (admin) et `changeHandle()`
-    (joueur), et à la création par le crochet d'inscription ; le crochet qui refuse `name`
-    sur les routes de Better Auth en est la garde. Tout pseudo passe `checkHandle()`.
-11. **Toute route `/api/admin/*` passe par la garde de rôle de `handleAdmin()`.** Une
-    route ajoutée hors de ce préfixe ne la reçoit pas.
-12. **Toute requête de `me/queries.ts` est bornée par l'identifiant de la session.** Jamais
-    par le seul identifiant venu de l'URL.
-13. **Une session d'emprunt ne modifie pas le compte.** Une route de compte ajoutée à
+7. **Le pseudo s'écrit dans les deux tables à la fois.** `users.name` et
+   `players.handle` ne changent que par `renamePlayer()` (admin) et `changeHandle()`
+   (joueur), et à la création par le crochet d'inscription ; le crochet qui refuse `name`
+   sur les routes de Better Auth en est la garde. Tout pseudo passe `checkHandle()`.
+8. **Toute route `/api/admin/*` passe par la garde de rôle de `handleAdmin()`.** Une
+   route ajoutée hors de ce préfixe ne la reçoit pas.
+9. **Toute requête de `me/queries.ts` est bornée par l'identifiant de la session.** Jamais
+   par le seul identifiant venu de l'URL.
+10. **Une session d'emprunt ne modifie pas le compte.** Une route de compte ajoutée à
     Better Auth (un greffon) doit rejoindre `ACCOUNT_MUTATIONS`, une route `/api/me/*` en
     `POST` hérite de la garde de `handleMe()`.
-14. **Le replay joueur ne contient que la vue de son siège.** Jamais `frameOf()` (la
-    position complète du back-office), jamais le coup adverse détaillé.
-15. **Google n'est pas un `trustedProvider`.** L'y déclarer lèverait les deux garde-fous de
+11. **Le replay joueur n'existe que pour une partie finie.** Une partie en cours est
+    refusée (409) : `frameOf()` révèle la position complète.
+12. **Google n'est pas un `trustedProvider`.** L'y déclarer lèverait les deux garde-fous de
     la liaison automatique, dont celui qui empêche la capture d'un compte par une adresse
     inscrite d'avance.
 
@@ -1444,7 +1425,7 @@ qu'ajouter des API Node disponibles ; le Worker n'en utilise aucune.
   production, et non plus sur un workerd de 2024. Le plugin a remplacé
   `@cloudflare/vitest-pool-workers`, déprécié.
 - **`VITE_SERVER_URL` n'existe nulle part dans le code**, contrairement à ce que
-  `CLAUDE.md` laisse entendre. Sur le web, le client étant servi par le même Worker, une
+  `tooling/infra/CLAUDE.md` laisse entendre. Sur le web, le client étant servi par le même Worker, une
   URL relative suffit. La contrainte « URL gravée dans le binaire » ne vaudra que pour la
   future distribution Electron, où le client n'est plus de même origine.
 

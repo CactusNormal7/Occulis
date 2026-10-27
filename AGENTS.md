@@ -7,9 +7,10 @@ remplacer par des suppositions.
 
 ## Avant de modifier
 
-- Lire `docs/design.md` avant toute décision de gameplay. Sa section 10 recense
-  les points ouverts : les soumettre au porteur du projet, ne pas les trancher
-  implicitement. Lire aussi `docs/implementation-notes.md` lorsqu'une règle
+- Lire `docs/design/rules.md` (sommaire : `docs/design.md`) avant toute décision de
+  gameplay. `docs/design/open-points.md` recense les points ouverts : les soumettre
+  au porteur du projet, ne pas les trancher implicitement. Avant de reproposer une
+  idée de règle, lire `docs/design/history.md`. Lire aussi `docs/implementation-notes.md` lorsqu'une règle
   repose sur une interprétation déjà encodée.
 - Lire `docs/architecture.md` avant de toucher à l'infrastructure, et le document
   pertinent de `docs/technical/` (`core.md`, `engine.md`, `server.md`, `ui.md`

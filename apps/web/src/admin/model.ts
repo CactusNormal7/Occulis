@@ -206,8 +206,11 @@ export interface QuickTarget extends BanState {
   readonly emailVerified: boolean;
 }
 
+/** `goy` ouvre le back-office comme `admin` : seul son habillage (chiffré) diffère. */
 export function isAdminRole(role: string | null | undefined): boolean {
-  return (role ?? "").split(",").some((entry) => entry.trim() === "admin");
+  return (role ?? "")
+    .split(",")
+    .some((entry) => entry.trim() === "admin" || entry.trim() === "goy");
 }
 
 /**

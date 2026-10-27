@@ -8,20 +8,20 @@ où elle se trouve, et comment les morceaux s'appellent entre eux.
 Ces fichiers décrivent **le code tel qu'il est**. Ils ne portent ni décision ni
 justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ici.
 
-| Question                                        | Document                                                   |
-| ----------------------------------------------- | ---------------------------------------------------------- |
-| Comment ça marche, quelle fonction, où ?        | **ici, `docs/technical/`**                                 |
-| Pourquoi cette règle de jeu ?                   | [docs/design.md](../design.md)                             |
-| Pourquoi cette infrastructure ?                 | [docs/architecture.md](../architecture.md)                 |
-| Qu'a-t-il fallu interpréter faute de décision ? | [docs/implementation-notes.md](../implementation-notes.md) |
-| Comment installer et déployer ?                 | [docs/setup.md](../setup.md)                               |
-| Combien ça coûte ?                              | [docs/costs.md](../costs.md)                               |
+| Question                                        | Document                                                                          |
+| ----------------------------------------------- | --------------------------------------------------------------------------------- |
+| Comment ça marche, quelle fonction, où ?        | **ici, `docs/technical/`**                                                        |
+| Pourquoi cette règle de jeu ?                   | [docs/design/rules.md](../design/rules.md) (sommaire : [design.md](../design.md)) |
+| Pourquoi cette infrastructure ?                 | [docs/architecture.md](../architecture.md)                                        |
+| Qu'a-t-il fallu interpréter faute de décision ? | [docs/implementation-notes.md](../implementation-notes.md)                        |
+| Comment installer et déployer ?                 | [docs/setup.md](../setup.md)                                                      |
+| Combien ça coûte ?                              | [docs/costs.md](../costs.md)                                                      |
 
 ## Les cinq documents
 
 | Fichier                | Couvre                                                                                                                                                                                  | Paquet                             |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| [core.md](core.md)     | Les règles du jeu : plateau, hauteur, ligne de vue, déplacement, capture, fog of war, types de pièces                                                                                   | `packages/core`                    |
+| [core.md](core.md)     | Les règles du jeu : plateau, hauteur, ligne de vue, déplacement, fog of war, types de pièces                                                                                            | `packages/core`                    |
 | [engine.md](engine.md) | Le moteur de rendu et le client : écrans de compte et de menu, entrée en partie, projection isométrique, caméra, sélection et déplacement animé, couches, code couleur, saisie de coups | `apps/web`                         |
 | [ui.md](ui.md)         | La charte graphique : tokens (seule source des couleurs), feuille de style, composants React, synchronisation vers Claude Design                                                        | `packages/ui`                      |
 | [server.md](server.md) | Le serveur : Worker, Durable Objects de partie et de file (appariement et salons privés), base D1, protocole réseau                                                                     | `apps/server`, `packages/protocol` |
@@ -65,11 +65,8 @@ le laisser diverger.
 - **Trois façons d'entrer en partie**, toutes par le même canal de file
   (`apps/web/src/net/queue-channel.ts` → `apps/server/src/queue-do.ts`) : appariement
   rapide, ouverture d'un salon privé avec un code, entrée par code.
-- **Le log d'actions en D1 est la source de vérité** ; l'état du Durable Object est un
-  cache reconstructible par rejeu.
-
-Le fog est donc structurel : un client ne peut pas recevoir ce que le serveur ne lui envoie
-pas.
+  Les invariants du système (déterminisme, log source de vérité, règles versionnées,
+  hibernation, fog structurel) sont énoncés une fois dans [docs/architecture.md](../architecture.md#invariants).
 
 ## Règle de maintenance
 

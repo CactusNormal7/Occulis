@@ -262,7 +262,7 @@ describe("profil : parties", () => {
     expect(await (await get("/api/me/current-match", cookie)).json()).toBeNull();
   });
 
-  it("ne liste que ses parties, et ne rejoue qu'une partie finie, vue de son camp", async () => {
+  it("ne liste que ses parties, et ne rejoue qu'une partie finie, révélée en entier", async () => {
     const meHandle = unique("blaise");
     const cookie = await signUp(meHandle);
     const opponentHandle = unique("chloe");
@@ -305,13 +305,12 @@ describe("profil : parties", () => {
     expect(detail.result).toBe("won");
     expect(detail.replayError).toBeNull();
     expect(detail.frames).toHaveLength(2);
-    // Le fog s'applique au replay : une pièce adverse n'apparaît que sur une case vue.
+    // Une partie finie se révèle en entier : les deux camps et la ligne de vue de chacun.
     for (const frame of detail.frames) {
-      for (const piece of frame.pieces) {
-        if (piece.owner !== "B") expect(frame.visible).toContain(`${piece.x},${piece.y}`);
-      }
+      expect(Array.isArray(frame.visible.A)).toBe(true);
+      expect(Array.isArray(frame.visible.B)).toBe(true);
     }
-    expect(JSON.stringify(detail)).not.toContain('"visible":{');
+    expect(detail.log).toEqual([{ seq: 0, player: "A", action: { kind: "resign" } }]);
 
     const theirs = (await (
       await get(`/api/me/matches/${matchId}`, opponentCookie)

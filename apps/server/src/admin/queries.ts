@@ -45,7 +45,7 @@ export async function readStats(db: D1Database, now: number): Promise<AdminStats
         `SELECT COUNT(*) AS users,
                 COALESCE(SUM(email_verified), 0) AS verified,
                 COALESCE(SUM(banned), 0) AS banned,
-                COALESCE(SUM(role = 'admin'), 0) AS admins,
+                COALESCE(SUM(role IN ('admin', 'goy')), 0) AS admins,
                 COALESCE(SUM(created_at >= ?), 0) AS recent
          FROM users`,
       )
@@ -245,7 +245,7 @@ export async function readLog(db: D1Database, matchId: string): Promise<Action[]
   return log.results.map((entry) => JSON.parse(entry.action) as Action);
 }
 
-function frameOf(memory: MatchMemory): AdminFrame {
+export function frameOf(memory: MatchMemory): AdminFrame {
   return {
     pieces: [...memory.state.pieces.values()].map((piece) => ({
       id: piece.id,

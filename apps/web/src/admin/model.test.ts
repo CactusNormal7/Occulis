@@ -8,6 +8,7 @@ import {
   describeBan,
   describeResult,
   formatDate,
+  isAdminRole,
   pageLabel,
   parseRoute,
   quickActions,
@@ -216,5 +217,15 @@ describe("navigateur d'une session", () => {
       shortAgent("Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0"),
     ).toBe("Firefox · Linux");
     expect(shortAgent(null)).toBe("inconnu");
+  });
+});
+
+describe("rôle d'administration", () => {
+  it("reconnaît `admin` et `goy`, seuls ou parmi d'autres rôles", () => {
+    expect(isAdminRole("admin")).toBe(true);
+    expect(isAdminRole("goy")).toBe(true);
+    expect(isAdminRole("user, goy")).toBe(true);
+    expect(isAdminRole("user")).toBe(false);
+    expect(isAdminRole(null)).toBe(false);
   });
 });

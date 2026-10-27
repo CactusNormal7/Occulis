@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { admin, oAuthProxy } from "better-auth/plugins";
+import { defaultRoles } from "better-auth/plugins/admin/access";
 import { DEFAULT_LOCALE, type Locale } from "@occulis/i18n";
 import { anonymousHandle, checkHandle, handleCandidates, handleKey } from "./handle.js";
 import { forgetPlayer } from "../social/queries.js";
@@ -48,7 +49,10 @@ export function buildAuth(env: Env, origin: string, locale: Locale = DEFAULT_LOC
       // colonnes suivent la convention du schéma, comme pour les tables ci-dessous.
       admin({
         defaultRole: "user",
-        adminRoles: [ADMIN_ROLE],
+        adminRoles: [ADMIN_ROLE, GOY_ROLE],
+        // Better Auth exige que chaque rôle d'administration soit déclaré : `goy` a les
+        // mêmes permissions qu'`admin`, seul son habillage côté client diffère.
+        roles: { ...defaultRoles, [GOY_ROLE]: defaultRoles.admin },
         // Une session d'emprunt dure une heure, puis tombe d'elle-même : l'oublier ouverte
         // ne doit pas laisser un administrateur jouer indéfiniment sous un autre nom.
         // Usurper un autre administrateur reste refusé (réglage par défaut du greffon).
@@ -342,12 +346,26 @@ export function buildAuth(env: Env, origin: string, locale: Locale = DEFAULT_LOC
 
 export type Auth = ReturnType<typeof buildAuth>;
 
-/** Le seul rôle qui ouvre le back-office. Tout autre compte porte le rôle `user`. */
+/** Un rôle qui ouvre le back-office. Tout autre compte porte le rôle `user`. */
 export const ADMIN_ROLE = "admin";
 
+/**
+ * Le second rôle qui ouvre le back-office, avec les mêmes permissions : le client y chiffre
+ * chaque texte en glyphes cryptiques (`apps/web/src/admin/cipher/`).
+ */
+export const GOY_ROLE = "goy";
+
 /** Better Auth range plusieurs rôles séparés par des virgules dans la même colonne. */
+function hasRole(role: string | null | undefined, wanted: string): boolean {
+  return (role ?? "").split(",").some((entry) => entry.trim() === wanted);
+}
+
 export function isAdmin(role: string | null | undefined): boolean {
-  return (role ?? "").split(",").some((entry) => entry.trim() === ADMIN_ROLE);
+  return hasRole(role, ADMIN_ROLE) || hasRole(role, GOY_ROLE);
+}
+
+export function isGoy(role: string | null | undefined): boolean {
+  return hasRole(role, GOY_ROLE);
 }
 
 /**

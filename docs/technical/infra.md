@@ -68,7 +68,7 @@ les règles recommandées de typescript-eslint ; sur les sources, trois règles 
 types — promesse ni attendue ni marquée `void`, promesse passée là où une fonction synchrone
 est attendue, `switch` non exhaustif sur une union ; les règles des hooks React
 (`rules-of-hooks`, `exhaustive-deps`, chaque exception justifiée en commentaire) ; les
-frontières de CLAUDE.md (`core` n'importe rien, le protocole que `core`, les modules purs du
+frontières des CLAUDE.md de paquet (`core` n'importe rien, le protocole que `core`, les modules purs du
 client ni Pixi ni React) ; et aucune couleur en dur hors de `tokens.ts`.
 
 **La couverture** se mesure dans `pnpm test` même (`vitest run --coverage`) pour

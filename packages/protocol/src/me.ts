@@ -2,12 +2,13 @@
  * Les réponses des routes `/api/me/*` : la page de profil, où un joueur consulte et gère
  * **son propre** compte.
  *
- * Le pendant des types `Admin*`, avec une différence de fond : rien ici ne dépasse ce que
- * le joueur savait déjà. Le replay d'une partie montre ce que **son** camp voyait, coup
- * par coup, et jamais la position complète — le fog s'applique aussi après la partie.
+ * Le pendant des types `Admin*` : rien ici ne dépasse ce que le joueur a le droit de voir.
+ * Le replay d'une partie **finie** montre la position complète et ce que chaque camp
+ * voyait ; une partie en cours reste refusée, le fog s'appliquant tant qu'elle dure.
  * Les horodatages sont en millisecondes.
  */
-import type { Action, Outcome, PlayerId, TeamEntry, Tile } from "@occulis/core";
+import type { AdminFrame, AdminLogEntry } from "./admin.js";
+import type { Outcome, PlayerId, TeamEntry, Tile } from "@occulis/core";
 
 export interface MeProfile {
   readonly handle: string;
@@ -89,33 +90,6 @@ export interface MeMatchPage {
   readonly total: number;
 }
 
-export interface MeFramePiece {
-  readonly id: string;
-  readonly kind: string;
-  readonly owner: PlayerId;
-  readonly x: number;
-  readonly y: number;
-}
-
-/** Ce que votre camp savait après un coup : exactement la vue reçue en partie. */
-export interface MeFrame {
-  /** Vos pièces et les pièces adverses dans votre ligne de vue. */
-  readonly pieces: readonly MeFramePiece[];
-  /** Les pièces adverses dont vous gardiez le souvenir hors de vue (mémoire fantôme). */
-  readonly ghosts: readonly MeFramePiece[];
-  readonly visible: readonly string[];
-}
-
-export interface MeLogEntry {
-  readonly seq: number;
-  readonly player: PlayerId | null;
-  /**
-   * Le coup, s'il est le vôtre. Celui de l'adversaire reste masqué : il nomme la pièce
-   * et sa destination, donc révélerait des positions que vous n'avez jamais vues.
-   */
-  readonly action: Action | null;
-}
-
 /** Un fait d'armes du catalogue, et où vous en êtes. Ses textes sont côté client (`@occulis/i18n`, domaine `feats`). */
 export interface MeFeat {
   readonly id: string;
@@ -155,9 +129,10 @@ export interface TeamPresetList {
 }
 
 export interface MeMatchDetail extends MeMatchSummary {
-  readonly log: readonly MeLogEntry[];
+  /** Tous les coups, les deux camps : une partie finie se révèle en entier. */
+  readonly log: readonly AdminLogEntry[];
   /** `frames[0]` est la position de départ, `frames[n + 1]` celle qui suit le coup `n`. */
-  readonly frames: readonly MeFrame[];
+  readonly frames: readonly AdminFrame[];
   /** Les cases de la carte que la partie a figée ; `null` si le rejeu n'a pas pu la lire. */
   readonly board: readonly Tile[] | null;
   readonly replayError: ReplayFailure | null;

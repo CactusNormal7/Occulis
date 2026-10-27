@@ -192,7 +192,7 @@ export const admin = {
     address: "address",
     password: "password",
     role: "role",
-    roles: { user: "player", admin: "administrator" },
+    roles: { user: "player", admin: "administrator", goy: "goy" },
     createNote: "The address is not verified on creation: mark it from the record if needed.",
   },
   match: {

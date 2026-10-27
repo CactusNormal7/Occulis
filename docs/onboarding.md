@@ -52,6 +52,25 @@ Worker avec Durable Objects sur `http://localhost:8787`.
 
    Se reconnecter ensuite : une session ouverte conserve son rôle précédent.
 
+### Lancer les tests
+
+Les tests sont des tests Vitest, sans service distant ni compte Cloudflare. Il n'y a pas de
+test E2E dans le navigateur à ce jour : le parcours ci-dessus en tient lieu.
+
+```bash
+pnpm test                          # tous les paquets
+pnpm --filter @occulis/core test   # un seul paquet (core, web, server, ui, i18n, protocol, infra)
+```
+
+- `packages/core`, `packages/protocol` et `apps/web` sont lancés avec la couverture
+  (`vitest run --coverage`) ; les seuils font échouer la commande.
+- `apps/server` exécute ses tests d'intégration dans workerd (Durable Objects et D1 en
+  mémoire) et exigent Node 24, comme le reste du dépôt.
+- Avant une PR, la suite complète est `pnpm typecheck && pnpm lint && pnpm test &&
+pnpm format:check && pnpm build` (voir [../CONTRIBUTING.md](../CONTRIBUTING.md)).
+- Une modification de `packages/core` se teste d'abord dans son paquet : le moteur est
+  déterministe, un test qui échoue se rejoue à l'identique.
+
 ## 3. Dépannage local
 
 - **Node ou pnpm introuvable** : rouvrir le terminal après l'installation et exécuter

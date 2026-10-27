@@ -259,9 +259,7 @@ describe("amis : fiche, historique et replay", () => {
     );
     expect(detail).toMatchObject({ seat: "A", result: "lost", opponentId: stranger.id });
     for (const frame of detail.frames) {
-      for (const piece of frame.pieces) {
-        if (piece.owner !== "A") expect(frame.visible).toContain(`${piece.x},${piece.y}`);
-      }
+      expect(Object.keys(frame.visible)).toEqual(["A", "B"]);
     }
   });
 });

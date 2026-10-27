@@ -30,10 +30,10 @@ async function get(path: string, cookie?: string): Promise<Response> {
 }
 
 /** Le rôle se pose à la main, comme pour le premier administrateur d'un environnement. */
-async function signUpAdmin(handle: string): Promise<string> {
+async function signUpAdmin(handle: string, role = "admin"): Promise<string> {
   await signUp(handle);
-  await env.DB.prepare("UPDATE users SET role = 'admin' WHERE email = ?")
-    .bind(`${handle}@occulis.test`)
+  await env.DB.prepare("UPDATE users SET role = ? WHERE email = ?")
+    .bind(role, `${handle}@occulis.test`)
     .run();
   // La session de l'inscription porte une copie du compte d'avant la promotion : on en
   // ouvre une neuve, qui lit le rôle à jour.
@@ -75,9 +75,22 @@ describe("back-office : contrôle d'accès", () => {
       email: `${handle}@occulis.test`,
       emailVerified: true,
       admin: true,
+      goy: false,
       impersonating: false,
       providers: [],
     });
+  });
+
+  it("ouvre le back-office au rôle `goy`, qu'il signale à `/api/auth/me`", async () => {
+    const cookie = await signUpAdmin(unique("goy"), "goy");
+    const me = (await (await get("/api/auth/me", cookie)).json()) as {
+      admin: boolean;
+      goy: boolean;
+    };
+    expect(me).toMatchObject({ admin: true, goy: true });
+    expect((await get("/api/admin/stats", cookie)).status).toBe(200);
+    // Les routes du greffon reconnaissent le rôle comme celui d'un administrateur.
+    expect((await get("/api/auth/admin/list-users", cookie)).status).toBe(200);
   });
 
   it("refuse une écriture venue d'une autre origine", async () => {
@@ -221,6 +234,7 @@ describe("back-office : usurpation", () => {
       email: `${target}@occulis.test`,
       emailVerified: true,
       admin: false,
+      goy: false,
       impersonating: true,
       providers: [],
     });
@@ -233,6 +247,7 @@ describe("back-office : usurpation", () => {
     expect(await (await get("/api/auth/me", cookie)).json()).toMatchObject({
       handle: admin,
       admin: true,
+      goy: false,
       impersonating: false,
     });
   });

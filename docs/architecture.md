@@ -7,6 +7,25 @@ prises et, comme le design doc, les points encore ouverts.
 Ces décisions sont en œuvre — Worker, Durable Objects, D1, environnements, CI/CD —, sauf la
 distribution Electron, pas encore construite, et les points ouverts de la section 7.
 
+## Invariants
+
+Source unique : les autres documents renvoient ici sans les reformuler. Chacun a son
+raisonnement dans la section indiquée.
+
+1. **Déterminisme de `packages/core`** — aucun `Math.random`, `Date.now`, ni horloge ou entropie ;
+   un aléa entre par un seed passé en paramètre. Tout replay et toute reconstruction serveur
+   reposent dessus (section 3).
+2. **Le log d'actions en D1 est la source de vérité** ; l'état du Durable Object est un cache
+   reconstructible (section 3).
+3. **Les règles sont versionnées par partie, pas par connexion** — la carte est figée dans la
+   partie à sa création (section 1).
+4. **Le DO hiberne** : `ctx.acceptWebSocket()`, jamais `accept()`, sous peine d'un coût ~20 000
+   fois supérieur sans aucune différence visible ; pas de minuteur, des alarmes (sections 2 et 6,
+   point ouvert 7 de la section 7 pour la couverture de test).
+5. **Le fog est structurel** : le serveur est autoritaire et n'envoie à chaque joueur que son
+   `viewFor()`, jamais de donnée hors de sa ligne de vue ; le client ne reconstruit qu'une
+   hypothèse optimiste (section 2). Un DO mono-threadé sérialise les tours : pas de verrou.
+
 ## 1. Cible de distribution
 
 L'objectif final est une **application téléchargeable** (Steam, desktop). C'était déjà la
@@ -121,9 +140,12 @@ dépendent donc pas de son acquisition.
 | Env     | URL                        | Déclencheur                           | Base                     | État |
 | ------- | -------------------------- | ------------------------------------- | ------------------------ | ---- |
 | Local   | `localhost`                | `pnpm dev` + `wrangler dev`           | SQLite local, hors quota | ✅   |
-| Preview | `occulis-<branche>.0kl.fr` | push sur une branche **sélectionnée** | créée par la CI          | ✗    |
+| Preview | `occulis-<branche>.0kl.fr` | push sur une branche **sélectionnée** | créée par la CI          | ⚠️   |
 | Recette | `occulis-staging.0kl.fr`   | push sur `staging`                    | fixe                     | ✅   |
 | Prod    | `occulis.0kl.fr`           | push sur `main`                       | fixe                     | ✅   |
+
+⚠️ Preview : créé et supprimé par `pnpm infra`, mais l'attache de l'URL n'est pas vérifiée
+bout en bout (points ouverts 2 et 3) et le seed des bases n'existe pas (point ouvert 4).
 
 **Schéma plat, un seul niveau sous la zone.** Le certificat universel de Cloudflare couvre
 `0kl.fr` et `*.0kl.fr`, mais **pas** `*.*.0kl.fr`. Vérifié en pratique : `staging.0kl.fr`
@@ -163,9 +185,9 @@ un tiret et jamais un point, pour la raison de certificat ci-dessus.
 choisi explicitement : on doit pouvoir en ajouter une et en retirer une autre à volonté, sans
 que la population d'environnements dérive avec le nombre de branches ouvertes.
 
-**Le mécanisme n'est pas arrêté** et reste à trancher (point ouvert 3). Plusieurs formes le
-permettraient — un label sur la PR, un manifeste versionné dans le dépôt, un déclenchement
-manuel du workflow, une convention de nommage — et le choix entre elles n'a aucune conséquence
+**Le mécanisme est arrêté** (point ouvert 3) : un manifeste versionné dans le dépôt,
+`.github/deploy-environments.json`, que la CI lit. D'autres formes auraient convenu — un label
+sur la PR, un déclenchement manuel du workflow, une convention de nommage — sans conséquence
 sur le reste de l'architecture. Seule la propriété compte : **la liste est décidée, pas subie.**
 
 Conséquence directe : la contrainte de quota ci-dessous cesse d'être un risque. La population
@@ -242,8 +264,8 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
 
 ## 7. Points ouverts
 
-1. **Versionnement du protocole et du ruleset** — la décision de section 1 ci-dessus est actée
-   mais ne figure pas dans les points ouverts du design doc. À y reporter.
+1. **Versionnement du protocole et du ruleset** — la décision de section 1 est actée et en
+   œuvre pour le ruleset ; reste le versionnement du **protocole** du fil.
 2. **Rattachement des hostnames de branche — mécanisme trouvé, reste à généraliser.** La
    production utilise `routes = [{ pattern = …, custom_domain = true }]`, que wrangler applique
    lui-même au déploiement : ni DNS wildcard ni appel à l'API Cloudflare. Reste à générer ce
@@ -269,7 +291,9 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
    entendu que la sélection explicite des branches le rend de toute façon peu contraignant.
 7. **Test d'hibernation.** Rien ne signale au développeur qu'un Durable Object n'hiberne pas :
    le jeu fonctionne à l'identique et seule la facture change (facteur ~20 000, section 6).
-   À couvrir par un test dédié dès l'implémentation du DO.
+   **Couvert indirectement** : les tests d'intégration de `match-do` échouent si
+   `acceptWebSocket()` est remplacé par `accept()` (docs/technical/server.md). Pas de test
+   dédié mesurant l'hibernation elle-même.
 8. **Marque.** Les environnements vivent sous `0kl.fr`, donc plus aucune URL ne dépend
    d'`occulis.fr`. Mais le risque de marque sur le **nom** « Occulis » lui-même (proximité avec
    Oculus, design doc section 9) reste entier et n'a jamais été vérifié — il porte sur le nom du
