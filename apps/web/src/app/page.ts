@@ -35,6 +35,7 @@ export function shellElements(board: HTMLElement): ShellElements {
     waiting: element<HTMLElement>("screen-waiting"),
     deploy: element<HTMLElement>("screen-deploy"),
     teams: element<HTMLElement>("screen-teams"),
+    debrief: element<HTMLElement>("screen-debrief"),
     teamsEntry: element<HTMLButtonElement>("menu-teams"),
     board,
     hud: element<HTMLElement>("console"),

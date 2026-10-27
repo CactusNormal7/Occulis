@@ -38,6 +38,7 @@ import {
   SettingList,
   SettingRow,
   Specimen,
+  WorkInProgress,
   Stage,
   StatTile,
   Swatch,
@@ -116,6 +117,19 @@ describe("composants", () => {
     expect(html(<UiRoot locale="fr">{pager}</UiRoot>)).toContain("26–50 sur 132");
     expect(html(<UiRoot locale="fr">{pager}</UiRoot>)).toContain('lang="fr"');
     expect(html(<UiRoot>{pager}</UiRoot>)).toContain("26–50 of 132");
+  });
+
+  it("signale un élément en chantier sans toucher à son contenu", () => {
+    const html = renderToStaticMarkup(
+      <UiRoot>
+        <WorkInProgress note="données factices">
+          <p>contenu</p>
+        </WorkInProgress>
+      </UiRoot>,
+    );
+    expect(html).toContain('class="occ-wip" title="données factices"');
+    expect(html).toContain("WIP");
+    expect(html).toContain("<p>contenu</p>");
   });
 
   it("rend les autres briques sans lever", () => {

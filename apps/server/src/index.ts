@@ -120,8 +120,15 @@ export const ACCOUNT_PATHS = [
   "/reset-password",
 ] as const;
 
+/**
+ * L'écran de fin d'une partie a son lien, servi par la page du jeu ; c'est la route
+ * `/api/me/matches/:id/debrief` qui dit s'il est encore ouvert.
+ */
+const DEBRIEF_PATH = /^\/debrief\/[\w-]+$/;
+
 function pageFor(pathname: string): string | undefined {
   if ((ACCOUNT_PATHS as readonly string[]).includes(pathname)) return "/";
+  if (DEBRIEF_PATH.test(pathname)) return "/";
   if (pathname === "/profile") return "/profile/";
   return undefined;
 }

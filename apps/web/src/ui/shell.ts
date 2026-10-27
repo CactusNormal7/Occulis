@@ -5,7 +5,7 @@ import { messages } from "../locale/current.js";
 import { sweepVeil } from "./veil.js";
 
 /**
- * Les écrans : compte, menu, attente, partie. Un seul est visible à la fois.
+ * Les écrans : compte, menu, attente, partie, fin de partie. Un seul est visible à la fois.
  *
  * Ce module montre ce que `flow.ts` a décidé — il ne décide rien lui-même, et
  * n'appelle jamais le réseau : il rend les gestes du joueur à la racine de
@@ -25,9 +25,10 @@ export interface ShellElements {
   readonly auth: HTMLElement;
   readonly menu: HTMLElement;
   readonly waiting: HTMLElement;
-  /** Le déploiement et les équipes : deux îlots React, ici seulement montrés ou masqués. */
+  /** Le déploiement, les équipes et l'écran de fin : des îlots React, ici seulement montrés ou masqués. */
   readonly deploy: HTMLElement;
   readonly teams: HTMLElement;
+  readonly debrief: HTMLElement;
   readonly teamsEntry: HTMLButtonElement;
   /** Le canevas de jeu, montré seulement une fois la partie commencée. */
   readonly board: HTMLElement;
@@ -138,6 +139,7 @@ export function attachShell(options: ShellOptions): Shell {
     e.waiting.hidden = stage.kind !== "waiting" && stage.kind !== "proposal";
     e.deploy.hidden = stage.kind !== "deploying";
     e.teams.hidden = stage.kind !== "teams";
+    e.debrief.hidden = stage.kind !== "debrief";
     e.board.hidden = stage.kind !== "game";
     e.hud.hidden = stage.kind !== "game";
     onMenu = stage.kind === "menu";

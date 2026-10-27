@@ -113,4 +113,18 @@ describe("advance", () => {
     expect(advance(teams, { kind: "menu" })).toEqual({ kind: "menu" });
     expect(advance({ kind: "game" }, { kind: "teams" })).toEqual({ kind: "game" });
   });
+
+  it("passe de la partie à son écran de fin, et en revient au menu", () => {
+    const debrief = advance({ kind: "game" }, { kind: "debrief", matchId: "m1" });
+    expect(debrief).toEqual({ kind: "debrief", matchId: "m1" });
+    // Une identité confirmée en chemin n'arrache pas le joueur à l'écran.
+    expect(advance(debrief, { kind: "identity", signedIn: true })).toEqual(debrief);
+    expect(advance(debrief, { kind: "menu" })).toEqual({ kind: "menu" });
+    // Par le lien, depuis le menu ; jamais par-dessus le formulaire de compte.
+    expect(advance({ kind: "menu" }, { kind: "debrief", matchId: "m1" })).toEqual(debrief);
+    expect(advance({ kind: "auth" }, { kind: "debrief", matchId: "m1" })).toEqual({
+      kind: "auth",
+    });
+    expect(advance(START, { kind: "debrief", matchId: "m1" })).toEqual(START);
+  });
 });
