@@ -53,7 +53,7 @@ pieces/ruleset.ts ──► team.ts ──► scenarios/  (zones et équipes par
 | `packages/core/src/pieces/roster/scout.ts`            | `Scout` — **provisoire**                                                                                                         |
 | `packages/core/src/pieces/roster/commander.ts`        | `Commander` — **provisoire**                                                                                                     |
 | `packages/core/src/pieces/roster/pawn.ts`             | `Pawn` — **provisoire**                                                                                                          |
-| `packages/core/src/pieces/roster/index.ts`            | Assemble le roster : `provisionalRuleset()`, `provisionalRulesetV0()`, `PROVISIONAL_TEAM`                                        |
+| `packages/core/src/pieces/roster/index.ts`            | Assemble le roster : `provisionalRuleset()`, `provisionalRulesetV1()`, `provisionalRulesetV0()`, `PROVISIONAL_TEAM`(`_V1`)       |
 | `packages/core/src/team.ts`                           | Le déploiement : `TeamEntry`, `Deployment`, `validateTeam()`, `deployTeams()`, `translateTeam()`, `teamForSide()`, `parseTeam()` |
 | `packages/core/src/rulesets/index.ts`                 | Le registre des rulesets par version : `rulesetFor()`, `CURRENT_RULESET_VERSION`                                                 |
 | `packages/core/src/los.ts`                            | Raycast et ligne de vue — **géométrie seule**                                                                                    |
@@ -259,14 +259,14 @@ construit une fois au démarrage et ne change plus, ce qui suppose qu'il **ne d�
 
 **Une classe par fichier**, assemblées par `roster/index.ts`.
 
-| Fichier               | Classe      | Caractéristiques, déclarées dans la classe                                                                                                                                                               |
-| --------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `roster/scout.ts`     | `Scout`     | 6 pas, vision 20, octile, grimpe                                                                                                                                                                         |
-| `roster/commander.ts` | `Commander` | 3 pas, vision 14, octile, grimpe ; rôle `commander`                                                                                                                                                      |
-| `roster/pawn.ts`      | `Pawn`      | 1 pas, vision 6, octile, grimpe ; rôle `pawn`                                                                                                                                                            |
-| `roster/index.ts`     | —           | `provisionalRuleset()` : roi, éclaireur, pion et `PROVISIONAL_TEAM` (1 roi, 3 à capacité, 4 pions) ; `provisionalRulesetV0()` : éclaireur et roi sans composition, le roster des parties `provisional-0` |
+| Fichier               | Classe      | Caractéristiques, déclarées dans la classe                                                                                                                                                                                                                                                                                               |
+| --------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `roster/scout.ts`     | `Scout`     | 6 pas, vision 20, octile, grimpe                                                                                                                                                                                                                                                                                                         |
+| `roster/commander.ts` | `Commander` | 3 pas, vision 14, octile, grimpe ; rôle `commander`                                                                                                                                                                                                                                                                                      |
+| `roster/pawn.ts`      | `Pawn`      | 1 pas, vision 6, octile, grimpe ; rôle `pawn`                                                                                                                                                                                                                                                                                            |
+| `roster/index.ts`     | —           | `provisionalRuleset()` : roi, éclaireur, pion et `PROVISIONAL_TEAM` (1 roi, 3 à capacité, 2 pions) ; `provisionalRulesetV1()` : les mêmes types sous `PROVISIONAL_TEAM_V1` (1, 3, 4 pions), le ruleset des parties `provisional-1` ; `provisionalRulesetV0()` : éclaireur et roi sans composition, le roster des parties `provisional-0` |
 
-**La composition et le profil du pion sont des décisions du porteur du projet** (la composition est passée à 1 + 3 + 2 le 2026-10-27, `docs/design/rules.md` section 7) ;
+**La composition 1 + 3 + 2 (depuis le 2026-10-27, avant 1 + 3 + 4) et le profil du pion sont des décisions du porteur du projet** ;
 les types eux-mêmes restent provisoires. Les trois pièces à capacité peuvent être du même
 type — il n'en existe qu'un, l'éclaireur.
 
@@ -754,7 +754,7 @@ client envoie, le client à son brouillon, sans la redéduire.
 ## `rulesets/` — le registre des versions
 
 `rulesetFor(version)` rend le ruleset d'une version, et lève si elle est inconnue ;
-`CURRENT_RULESET_VERSION` est celle des nouvelles parties (`provisional-1`, avec pion et
-composition). `provisional-0` reste chargeable — sans composition — pour rejouer les
-parties qui la référencent. Le registre vit dans `core` et non plus dans le serveur : le
+`CURRENT_RULESET_VERSION` est celle des nouvelles parties (`provisional-2`, composition
+1 roi, 3 à capacité, 2 pions). `provisional-1` (1, 3, 4 pions) et `provisional-0` (sans
+composition) restent chargeables pour rejouer les parties qui les référencent. Le registre vit dans `core` et non plus dans le serveur : le
 client doit appliquer la version de la partie qu'il joue, qu'il lit dans `welcome`.

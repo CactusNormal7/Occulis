@@ -6,7 +6,7 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 
 - En place : plateau à hauteur, LOS occultée par le relief **et par les pièces**, verticalité, déplacement avec blocage mutuel, tours alternés, fog of war avec mémoire fantôme, historique et rejeu, abandon.
 - **Retirés** sur décision du porteur : capture, échec et mat, pat, nulles (règle « échecs strict » injouable avec les portées du roster provisoire). **Une partie ne se termine que par abandon.** Voir [open-points](design/open-points.md) 13.
-- Non implémenté (points ouverts) : pièges, roster définitif. Plus d'attaque à distance (décision du 2026-10-27). Seule la composition d'équipe est actée : 1 roi, 3 pièces à capacité, 2 pions (décision du 2026-10-27, ouverte à modification ; le moteur dit encore 1/3/4 ; voir `rules.md` §7).
+- Non implémenté (points ouverts) : pièges, roster définitif. Plus d'attaque à distance (décision du 2026-10-27). Seule la composition d'équipe est actée : 1 roi, 3 pièces à capacité, 2 pions (décision du 2026-10-27, ouverte à modification, `rules.md` §7) : ruleset `provisional-2` ; `provisional-1` (1/3/4) reste chargeable.
 - Roster et cartes **provisoires** : rien ne s'équilibre dessus. Interprétations encodées : [implementation-notes.md](implementation-notes.md).
 
 ## Règles décidées le 2026-10-27 (non implémentées sauf mention)

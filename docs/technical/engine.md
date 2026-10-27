@@ -959,7 +959,7 @@ l'exécution, et les pluriels s'écrivent dans la fonction.
 ## `team-builder/` — le constructeur d'équipe
 
 `team-builder/model.ts` est **pur** : un `TeamDraft` est la liste des emplacements fixés par la
-composition du ruleset (`emptyDraft()` : roi, trois à capacité, quatre pions, le
+composition du ruleset (`emptyDraft()` : roi, trois à capacité, deux pions sous `provisional-2`, le
 roi en main), chacun avec son type et sa case, et l'emplacement « en main ».
 
 | Fonction                                                     | Rôle                                                                                                                                                                                               |
