@@ -13,8 +13,9 @@ export interface MovementProfile {
   readonly steps: number;
   readonly adjacency: Adjacency;
   /**
-   * Autorise la montée d'un niveau. Grimper comme capacité générique ou spécifique
-   * n'est pas tranché (docs/design.md point ouvert 7) : c'est donc déclaré par pièce.
+   * Autorise la montée d'un niveau. Grimper est une capacité de toutes les pièces
+   * (docs/design.md point ouvert 7, tranché le 2026-10-27) ; le champ reste déclaré par
+   * pièce pour les types de test qui s'en passent.
    */
   readonly canClimb: boolean;
 }

@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { Board } from "../../board.js";
 import { PieceType } from "../piece-type.js";
-import { Commander, Pawn, Scout, provisionalRuleset, provisionalRulesetV0 } from "./index.js";
+import {
+  Commander,
+  Pawn,
+  Scout,
+  provisionalRuleset,
+  provisionalRulesetV0,
+  provisionalRulesetV1,
+} from "./index.js";
 
 /**
  * Le roster est provisoire : ces vérifications portent sur des propriétés qui
@@ -58,7 +65,9 @@ describe("roster provisoire", () => {
     expect(ruleset.kinds().sort()).toEqual(["commander", "pawn", "scout"]);
     expect(ruleset.kindsOf("special")).toEqual(["scout"]);
     expect(ruleset.kindsOf("pawn")).toEqual(["pawn"]);
-    expect(ruleset.team).toEqual({ commander: 1, special: 3, pawn: 4 });
+    expect(ruleset.team).toEqual({ commander: 1, special: 3, pawn: 2 });
+    expect(provisionalRulesetV1().kinds().sort()).toEqual(["commander", "pawn", "scout"]);
+    expect(provisionalRulesetV1().team).toEqual({ commander: 1, special: 3, pawn: 4 });
     expect(provisionalRulesetV0().kinds().sort()).toEqual(["commander", "scout"]);
     expect(provisionalRulesetV0().team).toBeNull();
     expect(ruleset.get("scout")).toBeInstanceOf(Scout);

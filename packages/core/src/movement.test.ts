@@ -99,6 +99,24 @@ describe("reachableTiles — verticalité (design.md 5.3)", () => {
     expect(board.heightAt(position)).toBe(3);
   });
 
+  it("un déplacement long descend de 8 à 6 par des cases plus basses", () => {
+    const options = reachableTiles(Board.fromAscii(["876"]), { x: 0, y: 0 }, walker({ steps: 2 }));
+    expect(at(options, { x: 2, y: 0 })).toEqual({ coord: { x: 2, y: 0 }, cost: 2, kind: "walk" });
+  });
+
+  it("un déplacement long s'arrête à la première montée, même d'un niveau", () => {
+    // 8 → 5 → 6 : le pas de 5 à 6 monte, le chemin s'arrête en 5.
+    const options = reachableTiles(Board.fromAscii(["856"]), { x: 0, y: 0 }, walker({ steps: 2 }));
+    expect(at(options, { x: 1, y: 0 })?.kind).toBe("walk");
+    expect(at(options, { x: 2, y: 0 })).toBeUndefined();
+  });
+
+  it("un chemin à plat n'arrête pas un déplacement long", () => {
+    const options = reachableTiles(Board.fromAscii(["8886"]), { x: 0, y: 0 }, walker({ steps: 3 }));
+    expect(at(options, { x: 2, y: 0 })?.cost).toBe(2);
+    expect(at(options, { x: 3, y: 0 })).toEqual({ coord: { x: 3, y: 0 }, cost: 3, kind: "walk" });
+  });
+
   it("immobilise verticalement une pièce qui ne sait pas grimper", () => {
     const board = Board.fromAscii(["01"]);
     const options = reachableTiles(board, { x: 0, y: 0 }, walker({ canClimb: false }));
