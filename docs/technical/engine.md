@@ -47,6 +47,7 @@ qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 | `replay/`          | Le rejeu d'une partie, partagé par le back-office et le profil : coups entre deux images (`replay.ts`), plateau Canvas 2D (`replay-canvas.ts`), composant (`ReplayBoard.tsx`) | DOM (canevas) et React sauf `replay.ts`                                         |
 | `theme/`           | Tokens de DA du plateau (`theme.ts`), thème choisi (`theme-choice.ts`), code couleur passé au CSS (`palette.ts`)                                                              | Aucune sauf `theme-choice.ts` et `palette.ts` (DOM)                             |
 | `load/`            | La lecture des données des vues React : cache, `useLoad`, `whenReady`                                                                                                         | React sauf `cache.ts`                                                           |
+| `app/`             | La page du jeu découpée par responsabilité : partie en cours, file, amis, compte, plateau, îlots, écran courant, réglages, identifiants de la page                            | DOM et réseau sauf `match-controller.ts`                                        |
 | racine             | `main.ts` (composition)                                                                                                                                                       | —                                                                               |
 
 Les modules de `view/`, `game/` et `net/session.ts` sont purs : c'est là que vivent tous
@@ -61,7 +62,7 @@ par `ui/flow.ts`.
 
 ```
   ── ENTRÉE EN PARTIE ────────────────────────────────────────────────
-  main.ts        ── whoAmI() ─────────────► identity  (account/ si personne)
+  app/account.ts ── whoAmI() ─────────────► identity  (account/ si personne)
   ui/shell.ts    ── clic sur une entrée ──► seek
         │  ui/flow.ts        ── advance() : boot → auth | menu → waiting → game
         └─► net/queue-channel.ts ── joinQueue(intent)
@@ -78,7 +79,7 @@ sur le rendu.
         │  input/controls.ts   ── seul module qui écoute le canevas
         ├─► view/camera.ts     ── zoomAt / panBy / rotateBy / snapRotation / turn
         ├─► view/picking.ts    ── tileAt() : quelle case est sous le curseur ?
-        └─► onPick()           ── au clic, main.ts consulte :
+        └─► onPick()           ── au clic, app/board-view.ts consulte :
                  game/selection.ts ── resolveClick() → select | play | clear
 
   ── SAISIE ──────────────────────────────────────────────────────────
@@ -86,7 +87,7 @@ sur le rendu.
         │  ui/console.ts       ── seul module qui touche le DOM
         └─► ui/command.ts      ── parseCommand() puis toAction()
 
-  ── APPLICATION (main.ts) ───────────────────────────────────────────
+  ── APPLICATION (app/match-controller.ts) ───────────────────────────
         play(action)
         ├─► game/online-match.ts ── envoie l'action, applique l'anticipation locale
         ├─► view/animation.ts    ── startMove() si la pièce change de case
@@ -202,7 +203,16 @@ chaque ouverture du canal social.
 
 | Fichier                                          | Rôle                                                                                                                                                                                           | Pur ?                                           |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `apps/web/src/main.ts`                           | Racine de composition : câble tout, charge le plateau à part                                                                                                                                   | non                                             |
+| `apps/web/src/app/match-controller.ts`           | La partie en cours : canal, partie, coup en attente, sélection, animation, déploiement, spectateur                                                                                             | oui                                             |
+| `apps/web/src/app/matchmaking.ts`                | La file d'attente : `seek()`, `close()`, la partie proposée (`proposal`) et son compte à rebours                                                                                               | non                                             |
+| `apps/web/src/app/friends.ts`                    | Le panneau d'amis, le canal social et le défi en attente ; la liste attendue avant le menu, au plus `MENU_DEADLINE_MS`                                                                         | non                                             |
+| `apps/web/src/app/account.ts`                    | L'identité rendue par le serveur (`refresh()`), l'îlot de compte, les retours par l'URL, déconnexion et fin d'usurpation                                                                       | non                                             |
+| `apps/web/src/app/board-view.ts`                 | Charge `render/pixi/board.ts` une seule fois (`ensure()`, `prewarm()`), tient la caméra, rend clics et images à `MatchController`                                                              | non                                             |
+| `apps/web/src/app/islands.ts`                    | Monte les îlots React de la page du jeu et les redessine ensemble ; leurs propriétés sont lues chez leurs modules                                                                              | non                                             |
+| `apps/web/src/app/navigation.ts`                 | L'écran courant : `go()` fait avancer `ui/flow.ts`, réaffiche les écrans et montre ou cache l'engrenage                                                                                        | non                                             |
+| `apps/web/src/app/preferences.ts`                | Thème et langue retenus au démarrage, engrenage des réglages (`chooseTheme` sous le voile)                                                                                                     | non                                             |
+| `apps/web/src/app/page.ts`                       | `element()` et les identifiants de `index.html`, regroupés par module qui les reçoit                                                                                                           | non                                             |
+| `apps/web/src/main.ts`                           | Racine de composition : crée les modules de `app/` et les relie                                                                                                                                | non                                             |
 | `apps/web/src/load/cache.ts`                     | Cache des lectures, état d'une lecture, compteur des lectures en cours                                                                                                                         | oui                                             |
 | `apps/web/src/load/hooks.tsx`                    | `useLoad()`, `usePending()`, `whenReady()`                                                                                                                                                     | non                                             |
 | `apps/web/public/_headers`                       | Cache d'un an des fichiers hachés de `/assets/`, d'une semaine de la police                                                                                                                    | —                                               |
@@ -582,7 +592,7 @@ du WebSocket débloquait la partie. Un aller-retour est sans conséquence dans u
 par tour sans limite de temps de réflexion (`docs/design.md` section 2) ; une
 désynchronisation, elle, casse la partie.
 
-`main.ts` tient un **coup en attente** entre l'envoi et la réponse : tant qu'il est en vol,
+`MatchController` (`app/match-controller.ts`) tient un **coup en attente** entre l'envoi et la réponse : tant qu'il est en vol,
 clic et clavier sont inertes, sans quoi deux clics enverraient deux coups pour le même
 tour. L'attente se lève sur une vue **comme** sur un refus — un refus ne consomme rien, le
 joueur enchaîne aussitôt sur un autre coup.
@@ -643,14 +653,14 @@ pour voir et changer le pseudo dérivé de son nom Google ; une erreur revient s
 
 Le serveur ne parle au retour d'un lien ou de Google qu'en paramètres d'URL : `?verified=1`
 (adresse confirmée), `?deleted=1` (compte supprimé), `?error=…` (lien expiré, liaison
-refusée…), `?token=…` (réinitialisation). `main.ts` lit le parcours (`routeOf()`) et le
+refusée…), `?token=…` (réinitialisation). `Account` (`app/account.ts`) lit le parcours (`routeOf()`) et le
 message (`arrivalNotice()`) **avant** de retirer ces paramètres (`cleanedSearch()`,
 `history.replaceState`) : le jeton de réinitialisation ne doit rester ni dans la barre
 d'adresse ni dans l'historique. Le message s'affiche dans l'îlot si personne n'est connecté,
 sous le menu sinon. Un lien expiré propose d'en redemander un (`retry`).
 
 **L'état affiché n'est jamais déduit de ce qu'on vient d'envoyer** : après chaque action,
-`refresh()` (`main.ts`) redemande l'identité au serveur. Lui seul sait si l'adresse est
+`Account.refresh()` (`app/account.ts`) redemande l'identité au serveur. Lui seul sait si l'adresse est
 vérifiée, et c'est ce qui ouvre ou ferme le jeu en ligne. Connecté sur une URL de parcours,
 la page revient à `/`.
 
@@ -663,7 +673,7 @@ session à l'administrateur, et la page repart vers `/admin/`. Sous emprunt, on 
 `canPlay()` (`net/auth.ts`) — adresse vérifiée, session à soi — grise les entrées du menu et
 retient le canal social, que le serveur refuserait (403 `IMPERSONATION_READONLY`). C'est la
 même règle partout où le client décide s'il peut jouer : menu (`ui/shell.ts`), panneau
-d'amis et canal social (`main.ts`).
+d'amis et canal social (`app/friends.ts`).
 
 Le **coin du compte** (`#account-corner`), en haut à droite hors du panneau, affiche le
 pseudo et mène au profil : ce n'est pas un geste de jeu, il n'a pas sa place parmi les
@@ -690,7 +700,7 @@ et leurs gestes : **Défier** un ami en ligne, **Regarder** chacune de ses parti
 que le serveur dit `watchable`. La gestion de la liste et les messages vivent dans le
 profil, vers lequel il renvoie.
 
-`main.ts` ouvre le **canal social** (`net/social-channel.ts`, `surface=game`) dès que
+`Friends` (`app/friends.ts`) ouvre le **canal social** (`net/social-channel.ts`, `surface=game`) dès que
 l'identité est vérifiée, relit la liste (`GET /api/friends`) à chaque (re)connexion, et
 réduit chaque poussée par `social/model.ts` — une poussée qui périme la liste
 (`friend-request`, `friend-accepted`, `friends-changed`) la fait relire.
@@ -798,7 +808,7 @@ répéter le refus.
 **Une montée refusée ressemble à un réseau coupé.** Vu du WebSocket, une session expirée
 (401) ou une partie close (403, 404) ferment le socket comme une coupure. Après
 `FAILURES_BEFORE_UNREACHABLE` (3) échecs d'affilée, `channel.ts` signale `unreachable` sans
-cesser d'essayer ; pour un joueur assis, `leaveIfUnseated()` (`main.ts`) demande alors à
+cesser d'essayer ; pour un joueur assis, `MatchController.leaveIfUnseated()` demande alors à
 `stillSeated()` (`net/auth.ts`, `GET /api/me/current-match`) si la partie est encore la
 sienne. Non : le client la quitte, relit l'identité (écran de compte si la session est
 perdue) et l'annonce (`game.connectionLost`). Pas de réponse du serveur : c'est le réseau,
@@ -825,7 +835,7 @@ l'éditeur d'équipes préparées, qui prépare la carte des prochaines parties.
 **Les trois façons d'entrer en partie passent par un seul canal.** L'intention voyage dans
 le `hello` (`quick`, `host`, `join`) et non dans l'URL : le serveur ne doit pouvoir faire
 attendre un joueur qu'à un seul endroit (voir [server.md](server.md), `QueueDO`). Changer
-d'intention, c'est donc refermer ce canal et en rouvrir un — ce que fait `main.ts` à chaque
+d'intention, c'est donc refermer ce canal et en rouvrir un — ce que fait `Matchmaking` (`app/matchmaking.ts`) à chaque
 entrée de menu. Le canal se referme aussi de lui-même sur `matched` (la suite se joue sur
 celui de la partie) et sur `room-fault` (ce code n'amènera jamais d'adversaire).
 
@@ -994,8 +1004,10 @@ pour que sa zone se présente comme celle du camp A. Le clic passe par `tileAt()
   durées totales de `constants.ts` ne servent qu'à proportionner les anneaux : les
   échéances restent tenues par le serveur.
 
-`main.ts` tient les propriétés des trois îlots (`found`, `deploying`, `teamsOpen`) et les
-rend toutes par `showIslands()`, après chaque message comme après un changement de langue.
+`Islands` (`app/islands.ts`) monte les îlots et les rend tous à chaque `render()`, après chaque
+message comme après un changement de langue. Il ne tient aucune propriété : chacune est lue chez
+le module qui la fait vivre — `found` chez `Matchmaking`, `deploying` et `leaving` chez
+`MatchController`, l'écran des équipes dans `main.ts`.
 
 ## `presets/` — les équipes préparées
 
@@ -1069,7 +1081,7 @@ compte et le menu ont leurs écrans (`shell.ts`).
 **L'application d'une action lui est fournie (`play`), pas prise sur la partie.** C'est
 l'appelant qui décide ce qu'un coup déclenche — animation, passage de main — et ce module
 n'en sait rien. C'est aussi ce qui fait qu'un coup cliqué et un coup tapé sont rapportés
-exactement de la même façon : `main.ts` appelle `gameConsole.playAction()` pour le clic.
+exactement de la même façon : `app/board-view.ts` appelle `gameConsole.playAction()` pour le clic.
 
 `GameConsole` expose `refresh()`, `report()`, `showTile()` et `playAction()`. La partie lui
 est fournie **par accès** (`match: () => OnlineMatch | undefined`) : elle change d'objet à
@@ -1299,7 +1311,7 @@ Les épaisseurs sont en **pixels du plateau** (`view/pixel.ts`), jamais en pixel
 | `applyTheme()`  | Stockage, `<html data-theme>`, `setLook()`                           |
 
 Le bloc critique (`criticalHead()`) a déjà posé `data-theme` avant la première image, ce
-qui fait paraître toute page dans le bon thème. `main.ts` applique le thème au démarrage ;
+qui fait paraître toute page dans le bon thème. `app/preferences.ts` applique le thème au démarrage ;
 le choix se fait dans les réglages (`ui/settings.ts`) : un clic fait passer le voile tramé
 (`sweepVeil()`, `ui/veil.ts`), sous lequel le thème est appliqué et la palette CSS réécrite
 (`applyPalette()`).
@@ -1316,7 +1328,7 @@ changer change sous lui, à 200 ms, quand l'écran est couvert.
 | `sweepVeil(swap)`         | Pose le voile, appelle `swap` à `VEIL_SWAP_MS`, retire le voile après `VEIL_MS`. Sous mouvement réduit : pas de voile, `swap` tout de suite |
 | `VEIL_MS`, `VEIL_SWAP_MS` | 520 ms, 200 ms                                                                                                                              |
 
-Deux usages : le changement de thème (`main.ts`, `chooseTheme`) et l'entrée dans l'attente
+Deux usages : le changement de thème (`app/preferences.ts`, `chooseTheme`) et l'entrée dans l'attente
 depuis le menu — recherche rapide, création, code rejoint, ami défié (`shell.ts`). Dans ce
 second cas, `render()` ne montre pas tout de suite le nouvel écran : le menu reste affiché
 jusqu'à ce que le voile le couvre, puis `show()` applique **la dernière étape reçue** entre-
@@ -1343,7 +1355,7 @@ L'engrenage est montré partout sauf à l'amorce et sur les écrans pleine page 
 | `refresh()`                    | Marque le design et la langue en vigueur (`aria-current`), pose l'indication de chaque design                                                                                                                    |
 | `setAvailable()`               | Montre ou cache l'engrenage ; le cacher referme la fenêtre sans animation                                                                                                                                        |
 
-Le choix lui-même est délégué à `main.ts` (`chooseTheme`, `chooseLocale`) : ce module ne
+Le choix lui-même est délégué à `app/preferences.ts` (`chooseTheme`, `chooseLocale`) : ce module ne
 connaît ni le stockage ni le rendu. Le profil et le back-office appliquent le thème stocké au démarrage,
 pour que leurs rejeux en Canvas 2D en suivent les couleurs.
 
@@ -1360,29 +1372,53 @@ les tests de `@occulis/ui` gardent sa feuille, et `theme/colors.test.ts` garde `
 
 ---
 
+## `app/match-controller.ts` — la partie en cours
+
+`MatchController` possède tout ce qui n'a de sens que pendant une partie : le canal
+(`MatchChannel`), l'`OnlineMatch`, le coup en attente (`pending`), la sélection, l'animation du
+dernier coup, la case survolée, l'annonce de déploiement, l'ami regardé et le nombre de
+spectateurs. Les autres modules ne les lisent que par ses accesseurs.
+
+| Méthode                                               | Rôle                                                                                                                                              |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sit(matchId, seat)`                                  | `close()`, charge le plateau, ouvre le canal d'un joueur assis                                                                                    |
+| `watch(friend, matchId, side)`                        | `close()`, ouvre le canal d'un spectateur et arme l'échéance `WATCH_TIMEOUT_MS` (6 s) : sans vue, `leave()` puis l'annonce `cannotWatch`          |
+| `close()`                                             | Referme le canal et remet tout à zéro ; incrémente la génération qu'une réponse tardive (équipes préparées, `stillSeated`) compare avant d'écrire |
+| `play(action)`                                        | Envoie le coup sans rien déplacer et lève `pending` ; sans partie, `game-over`                                                                    |
+| `pick(coord)`                                         | Un clic : sélectionne, désélectionne, ou rend l'action à envoyer (`resolveClick`)                                                                 |
+| `advance(deltaMS)`                                    | Fait avancer l'animation ; la console se rafraîchit à sa fin                                                                                      |
+| `requestLeave()` / `confirmLeave()` / `cancelLeave()` | La fenêtre d'abandon : vraie pour une partie vivante, jamais pour un spectateur ni une partie finie                                               |
+
+Les gestionnaires du canal (`handlersFor`, interne) : `onSeated` construit l'`OnlineMatch` et
+recentre la caméra, `onDeployment` garde l'annonce (le compte à rebours ne repart que si
+`remainingMs` change), `onView` adopte la vue qui fait autorité — elle lève `pending`, efface la
+sélection et lance l'animation —, `onRejected` rend la main au joueur, ou garde le refus pour
+l'écran de déploiement, `onStatus` quitte une partie que le serveur ne tient plus.
+
+Le contrôleur ne touche ni le DOM ni le réseau : ses dépendances lui sont données (`MatchEffects`
+— ouverture des canaux, écran courant, console, plateau, `leave()`), si bien que
+`match-controller.test.ts` l'éprouve avec de faux canaux : un seul canal ouvert à la fois,
+`close()` remet tout à zéro, l'échéance du spectateur, la fenêtre d'abandon, les réponses
+tardives. Il reçoit `leave()` en effet (`MatchEffects.leave`) : quitter touche aussi la file
+et les défis, et c'est `main.ts` qui les tient ensemble.
+
+---
+
 ## `main.ts` — la racine de composition
 
-| Fonction                             | Rôle                                                                                                                                                                                                                                                                                |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `main()`                             | Lance `whoAmI()` avant tout, pose la palette, câble tout ; synchrone, sans attendre PixiJS                                                                                                                                                                                          |
-| `element()`                          | Résout un `id` du DOM ou lève                                                                                                                                                                                                                                                       |
-| `intentOf()`                         | L'entrée de menu choisie → l'intention que la file attend                                                                                                                                                                                                                           |
-| `go()` (interne)                     | Fait avancer `flow.ts` et réaffiche les écrans                                                                                                                                                                                                                                      |
-| `handlersFor(spectating)` (interne)  | Les gestionnaires d'une partie, assis ou spectateur : `OnlineMatch` à la première vue, déploiement (préréglages repris de `loadCache` puis relus, pour un joueur seulement), refus, compteur de spectateurs, `onWatching`                                                           |
-| `sit()` (interne)                    | Referme la file **et tout canal de partie déjà ouvert** (`closeMatch()`), ouvre celui de la partie avec `handlersFor(false, matchId)`                                                                                                                                               |
-| `resume()` (interne)                 | À l'arrivée au menu connecté (`refresh()`), demande `/api/me/current-match` (`currentMatch()`, `profile/api.ts`) et rassoit le joueur à sa partie en cours : le jeton de siège ne vit que dans la page, et un rechargement le perd. Rien s'il attend déjà une partie ou en joue une |
-| `watch()` (interne)                  | Ouvre le canal de spectateur (`handlersFor(true)`) et arme l'échéance `WATCH_TIMEOUT_MS`                                                                                                                                                                                            |
-| `onSocial()` (interne)               | Une poussée du canal social : `matched` assied, refus d'un défi ramène au menu, le reste passe par `social/model.ts`                                                                                                                                                                |
-| `syncSocial()` (interne)             | Ouvre ou referme le canal social selon l'identité                                                                                                                                                                                                                                   |
-| `reloadFriends(options)` (interne)   | Relit la liste d'amis (`friendsOverview`, relecture forcée par défaut) et redessine le panneau                                                                                                                                                                                      |
-| `friendsBeforeMenu(force)` (interne) | Attend la liste d'amis avant de montrer le menu, au plus `MENU_DEADLINE_MS`                                                                                                                                                                                                         |
-| `closeMatch()` (interne)             | Referme le canal de partie et oublie ce qui en dépend (partie, sélection, animation, déploiement, spectateur) ; change `matchGeneration`, qu'une relecture tardive des presets compare avant d'écrire                                                                               |
-| `leave()` (interne)                  | Referme la file, retire un défi en attente, `closeMatch()`, puis rend la main au menu                                                                                                                                                                                               |
-| `ensureBoard()` (interne)            | Charge `render/pixi/board.ts` une seule fois et monte le plateau ; appelé par `sit()` et `watch()`. Un échec (pas de WebGL) laisse le menu utilisable                                                                                                                               |
-| `prewarmBoard()` (interne)           | Une fois connecté, charge le plateau au repos (`requestIdleCallback`)                                                                                                                                                                                                               |
-| `onLeaveMatch` (option du shell)     | `#leave-match` : assis à une partie pas finie, ouvre la fenêtre `leave/` (`leaving`), dont la confirmation envoie `resign` avant `leave()` — aucun chemin ne ramène à un siège quitté ; spectateur ou partie finie, `leave()` seul                                                  |
-| `adopt()` (interne)                  | Une vue reçue fait autorité : efface sélection et animation                                                                                                                                                                                                                         |
-| `play()` (interne)                   | **Le seul point d'application d'une action**, clic comme clavier                                                                                                                                                                                                                    |
+`main.ts` lance les lectures du premier écran (`whoAmI()`, liste d'amis, partie à reprendre),
+crée les modules de `app/` et les relie par leurs effets. Il ne garde en propre que l'ouverture
+de l'écran des équipes (`teamsOpen`) et les parcours qui traversent plusieurs modules :
+
+| Fonction (interne à `main()`)  | Rôle                                                                                                                                                                                                                                                                                   |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `leave()`                      | Referme la file (`Matchmaking.close()`), retire un défi en attente, `MatchController.close()`, puis rend la main au menu ; passée en effet à `MatchController`                                                                                                                         |
+| `sit()`                        | Referme la file et oublie le défi, puis `MatchController.sit()`, qui referme **tout canal de partie déjà ouvert** avant d'ouvrir le sien                                                                                                                                               |
+| `sitAfterChallenge()`          | Un `matched` du canal social : `sit()`, sauf pendant sa propre partie (`ownMatchRunning`)                                                                                                                                                                                              |
+| `resume()`                     | À l'arrivée au menu connecté, demande `/api/me/current-match` (`currentMatch()`, `profile/api.ts`) et rassoit le joueur à sa partie en cours : le jeton de siège ne vit que dans la page, et un rechargement le perd. Rien s'il attend déjà une partie ou en joue une (`idleOnMenu()`) |
+| `leaveMatch()`                 | `#leave-match` : `requestLeave()` ouvre la fenêtre `leave/` pour une partie vivante, dont la confirmation (`confirmLeave()`) envoie `resign` avant `leave()` — aucun chemin ne ramène à un siège quitté ; spectateur ou partie finie, `leave()` seul                                   |
+| `openTeams()` / `closeTeams()` | L'écran des équipes préparées, depuis le menu                                                                                                                                                                                                                                          |
+| `rewriteTexts()`               | Après un changement de langue, réécrit le HTML statique, l'écran courant, l'identité, la console et les îlots                                                                                                                                                                          |
 
 ### `play()` et le passage de main différé
 
@@ -1390,7 +1426,7 @@ les tests de `@occulis/ui` gardent sa feuille, et `theme/colors.test.ts` garde `
 à sa place de départ — puis :
 
 - si la pièce change de case, démarre l'animation et diffère le compte rendu ;
-- sinon (frappe sur place, abandon), rafraîchit la ligne d'état immédiatement.
+- sinon (abandon), rafraîchit la ligne d'état immédiatement.
 
 Le rafraîchissement est différé jusqu'à la fin de l'animation, dans la boucle d'images (`frame` de `mountBoard()`) : l'état du
 tour ne doit pas annoncer un coup encore en cours de dessin.
@@ -1399,8 +1435,8 @@ tour ne doit pas annoncer un coup encore en cours de dessin.
 face — c'est tout l'objet du fog of war — donc aucun basculement de vue n'existe côté
 client, et `input/controls.ts` n'a plus de raccourci pour cela.
 
-`play()` est aussi le seul endroit à interroger `match`, qui peut être absent : au menu, il
-n'y a rien à jouer.
+`MatchController.play()` est aussi le seul endroit à interroger `match`, qui peut être absent : au
+menu, il n'y a rien à jouer.
 
 ---
 
@@ -1698,7 +1734,6 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 
 - **Aucun signal de déconnexion de l'adversaire** : rien ne distingue à l'écran un
   adversaire qui réfléchit d'un adversaire parti.
-- **Aucune animation des coups adverses** : ils apparaissent à la vue suivante.
 - **Aucun marquage des montées.** `MoveOption.kind` distingue `walk` de `climb` — grimper
   consomme le tour entier — et `STATE.climb` est déjà un token, mais `selectionFor()`
   filtre `legalActions()`, qui ne porte pas cette distinction.
@@ -1708,7 +1743,8 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 - **Aucun affichage d'échec ni de fin de partie automatique** : la règle « échecs strict »
   et les nulles sont retirées (`docs/design.md` 7.1 et 7.2). L'état du tour n'annonce plus
   `ÉCHEC`, et `describeOutcome()` ne connaît que l'abandon.
-- **Aucune différenciation visuelle** entre types de pièces.
+- **Aucune silhouette propre à chaque type de pièce** : seule l'initiale du type, portée
+  par la pièce, les distingue (point ouvert de design sur la silhouette par rôle).
 - **Aucun historique de saisie** dans le champ de commande.
 - **Aucune reprise de partie depuis le menu.** Quitter une partie referme le canal ; rien
   ne propose d'y revenir, alors que le Durable Object la tient toujours.
