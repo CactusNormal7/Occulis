@@ -17,7 +17,7 @@ Section sans objet depuis l'abandon de l'attaque à distance (décision du 2026-
 
 ## ~~5.3 Hauteur~~
 
-Section tranchée ou sans objet le 2026-10-27 ([rules.md](rules.md) § 5.3). Seule la capture sur une case plus haute reste ouverte : point 17.
+Section tranchée ou sans objet le 2026-10-27 ([rules.md](rules.md) § 5.3). La capture sur une case plus haute, d'abord laissée ouverte (point 17), est tranchée le même jour.
 
 - ~~Point ouvert : la portée d'attaque à distance suit-elle une distance horizontale pure indépendante de la hauteur ? Fortement probable par cohérence avec le reste, mais jamais confirmé explicitement mot pour mot.~~ — sans objet : plus d'attaque à distance.
 - ~~Point ouvert : grimper est-il une capacité générique (toute pièce peut le faire) ou une capacité spécifique à certaines pièces seulement ? Non tranché ("on verra au fur et à mesure").~~ — tranché : capacité de toutes les pièces.
@@ -45,20 +45,20 @@ Section tranchée ou sans objet le 2026-10-27 ([rules.md](rules.md) § 5.3). Seu
 
 8. Téléporteurs / mécaniques de déport de ligne de vue. Toujours ouvert.
 9. Capacité de pousser une pièce adverse (interaction avec pièges, bords de carte, hauteur non définie). Toujours ouvert.
-10. Objets posables bloquant la LOS (différence avec les pièges à formaliser : durée de vie, visibilité, effet). **Précisé le 2026-10-27 pour les murs créés par une capacité** (la capacité elle-même reste une idée) : traités comme des pièces ; posé hors de la LOS de l'adversaire, un mur lui reste invisible jusqu'à ce qu'il puisse l'apercevoir normalement (orientation du porteur, à confirmer à l'implémentation). Restent ouverts : durée de vie, hauteur, cases occupées, portée de pose, nombre maximal, et exceptions éventuelles à la règle « une pièce bloque ».
+10. Objets posables bloquant la LOS (différence avec les pièges à formaliser : durée de vie, visibilité, effet). **Précisé le 2026-10-27 pour les murs créés par une capacité** (la capacité elle-même reste une idée) : traités comme des pièces ; posé hors de la LOS de l'adversaire, un mur lui reste invisible jusqu'à ce qu'il puisse l'apercevoir normalement (orientation du porteur, à confirmer à l'implémentation). Le reste (durée de vie, hauteur, cases occupées, portée de pose, nombre maximal, exceptions à la règle « une pièce bloque ») **se décidera à la création de la capacité** : inutile de le spécifier avant.
 11. Confirmation explicite que les pièges suivent bien la règle générale de FOW (cachés par défaut) ou existe-t-il des pièges volontairement visibles ? Toujours ouvert.
 
 ### Cadre général
 
-12. Aucun roster concret de pièces n'a encore été esquissé — seul le principe directeur (différenciation par capacité/mouvement, pas par robustesse) a été acté. **Partiellement tranché** : la composition d'une équipe est actée — 1 roi, 3 pièces à capacité, 2 pions depuis le 2026-10-27 (avant : 1/3/4), ouverte à modification ; le style de déplacement aussi (proche des échecs ou très courte portée, [rules.md](rules.md) § 5.3). Restent ouverts : les types et capacités des 3 pièces à capacité, et les chiffres de toutes.
+12. Aucun roster concret de pièces n'a encore été esquissé — seul le principe directeur (différenciation par capacité/mouvement, pas par robustesse) a été acté. **Partiellement tranché** : la composition d'une équipe est actée — 1 roi, 3 pièces à capacité, 2 pions depuis le 2026-10-27 (avant : 1/3/4), ouverte à modification ; le style de déplacement aussi (proche des échecs ou très courte portée, [rules.md](rules.md) § 5.3). Restent ouverts : les types et capacités des 3 pièces à capacité, et les chiffres de toutes — « ça dépendra », selon le porteur du projet (2026-10-27).
 13. **Rouvert — fin de partie.** L'échec et mat (7.1) et les nulles (7.2) sont retirés du moteur, et la capture (3.1) avec eux : seul l'abandon termine une partie aujourd'hui. Reste à décider dans quel ordre les remettre, et sous quelle forme la règle de mat doit revenir pour rester jouable avec de vraies portées de pièces — c'est-à-dire, très probablement, une fois un roster esquissé (point 12).
     - **À trancher avec le retour de la prise : l'identité des pièces à travers le fog** (ajouté le 2026-10-21). Chaque pièce adverse vue arrive avec un identifiant stable : un client modifié sait donc que « le pion revu ici est celui aperçu là-bas », ce qu'un joueur humain ne distingue pas entre deux pions identiques, et l'identifiant trahit l'ordre dans lequel l'adversaire a composé son équipe. Deux voies : l'accepter, ou donner à chaque joueur des identifiants propres à sa vue, renouvelés quand une pièce sort de vue (coûteux : mémoire fantôme, rejeu et animations reposent sur l'identifiant). Sans prise, l'enjeu reste faible ; avec elle, il touche aussi aux refus de coup (`unknown-piece` / `not-your-piece` diraient si une pièce cachée a disparu).
 
 ### Ajoutés le 2026-10-27
 
-14. Composition d'équipe : qui choisit quelles pièces — composition imposée, ou choisie dans un pool ? À décider.
-15. Promotion : seuls les pions se promeuvent, sur une case définie par la carte (acté). Ouverts : la liste des pièces obtenues, et ce que l'adversaire voit de la promotion.
+14. ~~Composition d'équipe : qui choisit quelles pièces — composition imposée, ou choisie dans un pool ?~~ — tranché le 2026-10-27 : le joueur compose son équipe dans les quotas, comme le fait déjà le constructeur d'équipe ([rules.md](rules.md) § 7).
+15. Promotion : seuls les pions se promeuvent, sur une case définie par la carte (acté). Ouverts : la pièce obtenue — à décider plus tard, une des pièces de l'équipe ou une pièce spéciale plus forte encore — et ce que l'adversaire voit de la promotion.
 16. Types des pièces adverses : connus avant la partie, jamais leurs positions (acté). Ouvert : le mécanisme de révélation.
-17. Capture d'une pièce sur une case plus haute : non définie. Ne pas la déduire de `canMeleeReach`, qui encode l'ancienne mêlée par adjacence.
+17. ~~Capture d'une pièce sur une case plus haute.~~ — tranché le 2026-10-27 : la capture est un déplacement et suit ses règles de hauteur ; par une capacité, elle est bornée par la portée et la ligne de vue de celle-ci ([rules.md](rules.md) § 5.3).
 18. Condition de victoire selon le mode de jeu. Un mat est souhaité, non tranché (lié au point 13).
 19. Symétrie de la LOS contre portée de vision propre à chaque pièce : la LOS est symétrique par construction, mais deux pièces de portées de vision différentes ne se voient pas mutuellement à la même distance. Faut-il l'accepter, ou imposer une portée commune ?

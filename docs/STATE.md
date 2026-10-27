@@ -12,16 +12,17 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 ## Règles décidées le 2026-10-27 (non implémentées sauf mention)
 
 - Un tour : une seule pièce se déplace **ou** utilise une capacité, jamais les deux. Vaut pour toutes les capacités.
-- Capture de mêlée : en arrivant sur la case de la pièce adverse, comme aux échecs. Une pièce alliée bloque toujours.
+- Capture de mêlée : en arrivant sur la case de la pièce adverse, comme aux échecs. Une pièce alliée bloque toujours. C'est un déplacement : sur une case plus haute, mêmes règles de hauteur ; par une capacité, bornée par sa portée et sa LOS.
+- On ne peut pas passer son tour (déjà le cas dans le code).
 - Déplacements proches des échecs : lignes droites et diagonales, ou très courte portée.
 - Hauteur : un déplacement long ne comporte aucune montée, même de 1 niveau. Descendre est libre. Dès qu'il faut monter, le mouvement s'arrête. **Déjà implémenté** (`movement.ts`).
 - Grimper : capacité de toutes les pièces. **Déjà implémenté**, désormais acté.
-- Promotion : seuls les pions se promeuvent, sur une case de promotion définie par la carte. Pièces obtenues et visibilité : non définies.
+- Promotion : seuls les pions se promeuvent, sur une case de promotion définie par la carte. Pièce obtenue : plus tard (une pièce de l'équipe, ou une pièce spéciale plus forte) ; visibilité non définie.
 - Murs créés par une capacité : traités comme des pièces. Posé hors de la LOS de l'adversaire, un mur reste invisible pour lui jusqu'à ce qu'il puisse l'apercevoir normalement (orientation du porteur, à confirmer à l'implémentation). La capacité elle-même reste une idée.
 - Pas d'attaque à distance : toutes les captures se font en mêlée. L'attaque différée du repo est écartée ; open-points 1, 2, 3 et 6, sections 3.3 et 5.3, sans objet. Le 12 (roster) reste ouvert.
 - Les types des pièces adverses sont connus avant la partie, jamais leurs positions. Mécanisme de révélation non défini.
 - Cartes de taille similaire, avec moins de murs.
-- Composition d'équipe (imposée ou choisie dans un pool) : à décider pour le moment.
+- Composition d'équipe : le joueur la compose dans les quotas (déjà en place).
 - Vocabulaire : « roi » remplace « pièce maîtresse » dans les docs et textes affichés ; les identifiants (`commander`, `isCommander`…) ne changent pas.
 
 ## Idées, non décidées
@@ -50,6 +51,6 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 
 ## Prochaines décisions à soumettre
 
-- Types et capacités des 3 pièces à capacité, composition d'équipe, révélation des types adverses, pièces obtenues par promotion, identité des pièces à travers le fog (open-points). Capture : règle décidée le 2026-10-27, à réimplémenter. Condition de victoire : non tranchée.
+- Types et capacités des 3 pièces à capacité (« ça dépendra »), révélation des types adverses, pièce obtenue par promotion et sa visibilité, détails des murs (à la création de la capacité), identité des pièces à travers le fog (open-points). Capture : règle décidée le 2026-10-27, à réimplémenter. Condition de victoire : non tranchée.
 - Choix du thème ; migration du menu, de l'attente et du bandeau vers la charte.
 - Points ouverts d'infra : [architecture.md](architecture.md) §7.
