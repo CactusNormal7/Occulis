@@ -6,21 +6,23 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 
 - En place : plateau à hauteur, LOS occultée par le relief **et par les pièces**, verticalité, déplacement avec blocage mutuel, tours alternés, fog of war avec mémoire fantôme, historique et rejeu, abandon.
 - **Retirés** sur décision du porteur : capture, échec et mat, pat, nulles (règle « échecs strict » injouable avec les portées du roster provisoire). **Une partie ne se termine que par abandon.** Voir [open-points](design/open-points.md) 13.
-- Non implémenté (points ouverts) : pièges, roster définitif. Plus d'attaque à distance (décision du 2026-10-27). Seule la composition d'équipe est actée : 1 roi, 3 pièces à capacité, 2 pions (décision du 2026-10-27, ouverte à modification ; le moteur et `rules.md` §6 disent encore 1 maîtresse, 3, 4 pions).
+- Non implémenté (points ouverts) : pièges, roster définitif. Plus d'attaque à distance (décision du 2026-10-27). Seule la composition d'équipe est actée : 1 roi, 3 pièces à capacité, 2 pions (décision du 2026-10-27, ouverte à modification ; le moteur dit encore 1/3/4 ; voir `rules.md` §7).
 - Roster et cartes **provisoires** : rien ne s'équilibre dessus. Interprétations encodées : [implementation-notes.md](implementation-notes.md).
 
-## Règles décidées le 2026-10-27 (non implémentées)
+## Règles décidées le 2026-10-27 (non implémentées sauf mention)
 
 - Un tour : une seule pièce se déplace **ou** utilise une capacité, jamais les deux. Vaut pour toutes les capacités.
 - Capture de mêlée : en arrivant sur la case de la pièce adverse, comme aux échecs. Une pièce alliée bloque toujours.
 - Déplacements proches des échecs : lignes droites et diagonales, ou très courte portée.
-- Hauteur : un déplacement long ne comporte aucune montée, même de 1 niveau. Descendre est libre. Dès qu'il faut monter, le mouvement s'arrête.
-- Les pions pourront devenir des pièces plus fortes, comme aux échecs, sur une case de promotion particulière. Pièces obtenues : non définies.
-- Murs créés par une capacité : traités comme des pièces. Posé hors de la LOS de l'adversaire, un mur reste invisible pour lui jusqu'à ce qu'il puisse l'apercevoir normalement (orientation du porteur, à confirmer à l'implémentation).
-- Pas d'attaque à distance : toutes les captures se font en mêlée. L'attaque différée du repo est écartée ; open-points 5 et 12 (portée et hauteur) sans objet.
+- Hauteur : un déplacement long ne comporte aucune montée, même de 1 niveau. Descendre est libre. Dès qu'il faut monter, le mouvement s'arrête. **Déjà implémenté** (`movement.ts`).
+- Grimper : capacité de toutes les pièces. **Déjà implémenté**, désormais acté.
+- Promotion : seuls les pions se promeuvent, sur une case de promotion définie par la carte. Pièces obtenues et visibilité : non définies.
+- Murs créés par une capacité : traités comme des pièces. Posé hors de la LOS de l'adversaire, un mur reste invisible pour lui jusqu'à ce qu'il puisse l'apercevoir normalement (orientation du porteur, à confirmer à l'implémentation). La capacité elle-même reste une idée.
+- Pas d'attaque à distance : toutes les captures se font en mêlée. L'attaque différée du repo est écartée ; open-points 1, 2, 3 et 6, sections 3.3 et 5.3, sans objet. Le 12 (roster) reste ouvert.
 - Les types des pièces adverses sont connus avant la partie, jamais leurs positions. Mécanisme de révélation non défini.
 - Cartes de taille similaire, avec moins de murs.
 - Composition d'équipe (imposée ou choisie dans un pool) : à décider pour le moment.
+- Vocabulaire : « roi » remplace « pièce maîtresse » dans les docs et textes affichés ; les identifiants (`commander`, `isCommander`…) ne changent pas.
 
 ## Idées, non décidées
 
