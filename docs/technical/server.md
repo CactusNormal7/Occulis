@@ -902,8 +902,9 @@ Quelques points de fonctionnement :
   que les identifiants ; noms et descriptions vivent dans `@occulis/i18n` (domaine `feats`).
 - **Un preset s'écrit dans la zone du camp A** de sa carte ; au déploiement, le client le
   transpose vers le camp tenu (`teamForSide()`). Sa validité est **recalculée à chaque
-  lecture** contre les règles de son ruleset et de sa carte (`isValid()`) : une équipe que
-  de nouvelles règles rendent caduque est gardée et signalée (`valid: false`), jamais
+  lecture** contre sa carte et le ruleset **courant** (`isValid()`), celui des parties qu'il
+  servira : une équipe que de nouvelles règles rendent caduque (une équipe à huit pièces de
+  `provisional-1` sous `provisional-2`) est gardée et signalée (`valid: false`), jamais
   effacée.
 - **Les sessions ne passent pas par `/api/auth/list-sessions`**, qui rend les jetons au
   JavaScript de la page. `listSessions()` lit `sessions` directement et n'en sort que
@@ -1120,7 +1121,7 @@ plutôt que le laisser diverger en silence.
 
 | Fonction / constante      | Emplacement                            | Rôle                                                                                                                            |
 | ------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `CURRENT_RULESET_VERSION` | `packages/core/src/rulesets/index.ts`  | Version attribuée aux nouvelles parties — `"provisional-1"`                                                                     |
+| `CURRENT_RULESET_VERSION` | `packages/core/src/rulesets/index.ts`  | Version attribuée aux nouvelles parties — `"provisional-2"`                                                                     |
 | `rulesetFor()`            | `packages/core/src/rulesets/index.ts`  | Version → `Ruleset` ; **lève** si inconnue                                                                                      |
 | `DEFAULT_SCENARIO`        | `packages/core/src/scenarios/index.ts` | Scénario des nouvelles parties — `"ridge-1"`                                                                                    |
 | `scenarioFor()`           | `packages/core/src/scenarios/index.ts` | Nom → `Scenario` ; **lève** si inconnu. Ne sert plus qu'à figer la carte d'une nouvelle partie et à rejouer les parties d'avant |

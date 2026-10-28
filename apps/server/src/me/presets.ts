@@ -15,8 +15,11 @@ import type { TeamPreset, TeamPresetList } from "@occulis/protocol";
  * des nouvelles parties, dans la zone du camp A (`TeamPreset`).
  *
  * La validité n'est pas figée à l'enregistrement : elle est recalculée à chaque lecture
- * contre les règles de **son** ruleset et de **sa** carte. Un preset que de nouvelles
- * règles rendent caduc est gardé et signalé (`valid: false`), jamais effacé en silence.
+ * contre **sa** carte et le ruleset **courant**, celui des parties qu'il servira. Valider
+ * contre son propre ruleset le laisserait « valide » après un changement de composition
+ * (1/3/4 → 1/3/2), alors qu'aucune nouvelle partie ne peut plus le charger. Un preset que
+ * de nouvelles règles rendent caduc est gardé et signalé (`valid: false`), jamais effacé
+ * en silence (docs/implementation-notes.md #26).
  */
 export const PRESET_LIMIT = 10;
 const NAME_MAX = 32;
@@ -186,7 +189,7 @@ function toPreset(row: PresetRow): TeamPreset {
     rulesetVersion: row.ruleset_version,
     team,
     isDefault: row.is_default === 1,
-    valid: isValid(row.scenario, row.ruleset_version, team),
+    valid: isValid(row.scenario, CURRENT_RULESET_VERSION, team),
     updatedAt: row.updated_at,
   };
 }

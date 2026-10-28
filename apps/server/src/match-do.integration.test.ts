@@ -151,7 +151,7 @@ describe("MatchDO dans workerd", () => {
     const deployment = await a.awaitKind("deployment");
     expect(deployment.zone).toHaveLength(16);
     expect(deployment.opponentZone).toHaveLength(16);
-    expect(deployment.defaultTeam).toHaveLength(8);
+    expect(deployment.defaultTeam).toHaveLength(6);
     expect(deployment.locks).toEqual({ self: false, opponent: false });
     expect(deployment.remainingMs).toBeGreaterThan(0);
     expect(deployment.remainingMs).toBeLessThanOrEqual(DEPLOYMENT_MS);
@@ -213,8 +213,6 @@ describe("MatchDO dans workerd", () => {
       "a-3",
       "a-4",
       "a-5",
-      "a-6",
-      "a-7",
     ]);
     // Les zones de la carte n'ont pas de vue mutuelle : rien de B ne doit passer.
     expect(view.visibleEnemies).toEqual([]);
@@ -224,7 +222,7 @@ describe("MatchDO dans workerd", () => {
     const row = await env.DB.prepare("SELECT setup FROM matches WHERE id = ?")
       .bind(match.matchId)
       .first<{ setup: string | null }>();
-    expect(JSON.parse(row?.setup ?? "[]")).toHaveLength(16);
+    expect(JSON.parse(row?.setup ?? "[]")).toHaveLength(12);
 
     a.socket.close();
     b.socket.close();
@@ -252,7 +250,7 @@ describe("MatchDO dans workerd", () => {
       .bind(match.matchId)
       .first<{ setup: string }>();
     const setup = JSON.parse(row?.setup ?? "[]") as { owner: string }[];
-    expect(setup.filter((piece) => piece.owner === "B")).toHaveLength(8);
+    expect(setup.filter((piece) => piece.owner === "B")).toHaveLength(6);
 
     a.socket.close();
   });

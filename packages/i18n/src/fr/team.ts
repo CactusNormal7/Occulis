@@ -1,8 +1,8 @@
 import type { Messages } from "../messages.js";
 
 export const team: Messages["team"] = {
-  roles: { commander: "Maîtresse", special: "Pièces à capacité", pawn: "Pions" },
-  kinds: { commander: "Maîtresse", scout: "Éclaireur", pawn: "Pion" },
+  roles: { commander: "Roi", special: "Pièces à capacité", pawn: "Pions" },
+  kinds: { commander: "Roi", scout: "Éclaireur", pawn: "Pion" },
   kindDescriptions: {
     commander: "La pièce à protéger. Se déplace de 3, voit à 14.",
     scout: "Rapide et voyant loin. Se déplace de 6, voit à 20.",

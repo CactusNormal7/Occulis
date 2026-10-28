@@ -13,7 +13,7 @@ import {
 
 /**
  * Le brouillon d'une équipe, sans DOM ni réseau : des emplacements fixés par la
- * composition du ruleset (une maîtresse, des pièces à capacité, des pions), chacun avec
+ * composition du ruleset (un roi, des pièces à capacité, des pions), chacun avec
  * son type et sa case. Le constructeur d'équipe (`TeamBuilder.tsx`) ne fait que
  * l'afficher et lui transmettre les clics.
  *
@@ -35,7 +35,7 @@ export interface TeamDraft {
 
 const ROLES: readonly PieceRole[] = ["commander", "special", "pawn"];
 
-/** Les emplacements vides d'une équipe, dans l'ordre maîtresse, capacités, pions. */
+/** Les emplacements vides d'une équipe, dans l'ordre roi, capacités, pions. */
 export function emptyDraft(ruleset: Ruleset): TeamDraft {
   const rules = ruleset.team;
   const slots: Slot[] = [];
