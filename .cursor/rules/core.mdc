@@ -5,12 +5,12 @@ globs:
 alwaysApply: false
 ---
 
-Lire `AGENTS.md`, `docs/design.md`, `docs/implementation-notes.md` et
+Lire `AGENTS.md`, `docs/design/rules.md`, `docs/implementation-notes.md` et
 `docs/technical/core.md` avant de modifier ce paquet.
 
 - Garder `core` déterministe : ni horloge, ni entropie, ni `Math.random`; un aléa passe par
   un seed explicite.
 - Les règles retournent des `Result` et restent indépendantes du rendu, du DOM et du transport.
-- Une règle de gameplay ouverte dans `docs/design.md` doit être soumise au porteur, jamais
+- Une règle de gameplay ouverte dans `docs/design/open-points.md` doit être soumise au porteur, jamais
   choisie dans le code.
 - Préserver la symétrie de la LOS et l'occultation identique des pièces alliées et adverses.

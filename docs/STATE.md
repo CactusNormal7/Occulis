@@ -1,13 +1,32 @@
 # État du projet
 
-Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-10-21.
+Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-10-27.
 
 ## Jeu (`packages/core`)
 
 - En place : plateau à hauteur, LOS occultée par le relief **et par les pièces**, verticalité, déplacement avec blocage mutuel, tours alternés, fog of war avec mémoire fantôme, historique et rejeu, abandon.
 - **Retirés** sur décision du porteur : capture, échec et mat, pat, nulles (règle « échecs strict » injouable avec les portées du roster provisoire). **Une partie ne se termine que par abandon.** Voir [open-points](design/open-points.md) 13.
-- Non implémenté (points ouverts) : attaque à distance différée, pièges, roster définitif. Seule la composition d'équipe est actée (1 maîtresse, 3 pièces à capacité, 4 pions).
+- Non implémenté (points ouverts) : pièges, roster définitif. Plus d'attaque à distance (décision du 2026-10-27). Seule la composition d'équipe est actée : 1 roi, 3 pièces à capacité, 2 pions (décision du 2026-10-27, ouverte à modification ; le moteur et `rules.md` §6 disent encore 1 maîtresse, 3, 4 pions).
 - Roster et cartes **provisoires** : rien ne s'équilibre dessus. Interprétations encodées : [implementation-notes.md](implementation-notes.md).
+
+## Règles décidées le 2026-10-27 (non implémentées)
+
+- Un tour : une seule pièce se déplace **ou** utilise une capacité, jamais les deux. Vaut pour toutes les capacités.
+- Capture de mêlée : en arrivant sur la case de la pièce adverse, comme aux échecs. Une pièce alliée bloque toujours.
+- Déplacements proches des échecs : lignes droites et diagonales, ou très courte portée.
+- Hauteur : un déplacement long ne comporte aucune montée, même de 1 niveau. Descendre est libre. Dès qu'il faut monter, le mouvement s'arrête.
+- Les pions pourront devenir des pièces plus fortes, comme aux échecs, sur une case de promotion particulière. Pièces obtenues : non définies.
+- Murs créés par une capacité : traités comme des pièces. Posé hors de la LOS de l'adversaire, un mur reste invisible pour lui jusqu'à ce qu'il puisse l'apercevoir normalement (orientation du porteur, à confirmer à l'implémentation).
+- Pas d'attaque à distance : toutes les captures se font en mêlée. L'attaque différée du repo est écartée ; open-points 5 et 12 (portée et hauteur) sans objet.
+- Les types des pièces adverses sont connus avant la partie, jamais leurs positions. Mécanisme de révélation non défini.
+- Cartes de taille similaire, avec moins de murs.
+- Composition d'équipe (imposée ou choisie dans un pool) : à décider pour le moment.
+
+## Idées, non décidées
+
+- Un mat est souhaité, en comptant sur les capacités pour le rendre jouable ; l'expérience dira. La condition de victoire n'est pas tranchée.
+- Poison à échéance (la pièce meurt dans X tours, purge possible mais forte), ou poison presque aussi difficile à déclencher qu'une capture normale. À voir plus tard.
+- Rounds (manches), éventuellement selon un mode de jeu, sans forcer la condition de victoire. À voir plus tard.
 
 ## Multijoueur (`apps/server`)
 
@@ -29,6 +48,6 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 
 ## Prochaines décisions à soumettre
 
-- Roster, capture et fin de partie (open-points 12 et 13), identité des pièces à travers le fog.
+- Types et capacités des 3 pièces à capacité, composition d'équipe, révélation des types adverses, pièces obtenues par promotion, identité des pièces à travers le fog (open-points). Capture : règle décidée le 2026-10-27, à réimplémenter. Condition de victoire : non tranchée.
 - Choix du thème ; migration du menu, de l'attente et du bandeau vers la charte.
 - Points ouverts d'infra : [architecture.md](architecture.md) §7.
