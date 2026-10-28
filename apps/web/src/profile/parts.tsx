@@ -194,7 +194,13 @@ export function MatchReplayView({ match: m, back, friend }: MatchReplayViewProps
  * camp, de l'autre, ou les deux ensemble, au départ celui qu'on tenait. Survoler un coup
  * de la liste le montre, cliquer l'épingle.
  */
-function Replay({ match: m, friend }: { match: MeMatchDetail; friend: string | undefined }) {
+export function Replay({
+  match: m,
+  friend,
+}: {
+  match: MeMatchDetail;
+  friend?: string | undefined;
+}) {
   const all = useMessages();
   const t = all.profile;
   const count = m.frames.length;

@@ -75,6 +75,7 @@ export {
   type ListRowProps,
 } from "./components/Table.js";
 export { Dialog, Note, type DialogProps } from "./components/Dialog.js";
+export { WorkInProgress, type WorkInProgressProps } from "./components/WorkInProgress.js";
 export { CountdownRing, type CountdownRingProps } from "./components/Countdown.js";
 export {
   PlayerPlate,
