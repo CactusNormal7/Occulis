@@ -4,10 +4,12 @@ import { guardCaller } from "../auth/guard.js";
 import { parsePage } from "../admin/paging.js";
 import {
   changeHandle,
+  leaveMyDebrief,
   listMyMatches,
   listSessions,
   nextHandleChange,
   readCurrentMatch,
+  readMyDebrief,
   readMyMatch,
   readProfileRow,
   revokeOtherSessions,
@@ -96,6 +98,16 @@ export async function handleMe(
       if (match === "ongoing") return Response.json({ code: "MATCH_ONGOING" }, { status: 409 });
       return Response.json(match);
     }
+
+    const debriefId = path.match(/^\/matches\/([\w-]+)\/debrief$/)?.[1];
+    if (debriefId !== undefined) {
+      const debrief = await readMyDebrief(env.DB, playerId, debriefId);
+      if (debrief === "unknown") return new Response("not found", { status: 404 });
+      if (debrief === "ongoing") return Response.json({ code: "MATCH_ONGOING" }, { status: 409 });
+      // 410 : l'écran a bien existé, les deux joueurs l'ont quitté ; il ne se rouvre plus.
+      if (debrief === "closed") return Response.json({ code: "DEBRIEF_CLOSED" }, { status: 410 });
+      return Response.json(debrief);
+    }
   }
 
   if (request.method === "POST") {
@@ -138,6 +150,12 @@ export async function handleMe(
       return Response.json({
         revoked: await revokeOtherSessions(env.DB, user.id, session.session.id),
       });
+    }
+    const leftId = path.match(/^\/matches\/([\w-]+)\/debrief\/leave$/)?.[1];
+    if (leftId !== undefined) {
+      return (await leaveMyDebrief(env.DB, playerId, leftId, now))
+        ? Response.json({ left: true })
+        : new Response("not found", { status: 404 });
     }
     const sessionId = path.match(/^\/sessions\/([\w-]+)\/revoke$/)?.[1];
     if (sessionId !== undefined) {

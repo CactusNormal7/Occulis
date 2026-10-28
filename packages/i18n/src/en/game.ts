@@ -53,8 +53,9 @@ export const game = {
     },
     leave: "Leave the match",
     leaveTitle: "Leave the match?",
-    leaveConfirm: "Leaving the match means resigning it: your opponent wins.",
-    leaveAction: "Resign and leave",
+    leaveConfirm:
+      "Leaving the match means resigning it: your opponent wins, and you both go to the end screen.",
+    leaveAction: "Resign",
     pending: "Move already sent: waiting for the server.",
     spectating: "You are watching this match: there is no move to play.",
     resigned: "Resignation.",
@@ -80,6 +81,60 @@ export const game = {
   outcome: {
     victory: (winner: string, reason: string) => `${winner} wins (${reason}).`,
     reasons: { resignation: "resignation" },
+  },
+  /** La fin d'une partie regardée, chez le spectateur. */
+  end: {
+    friendWon: (friend: string) => `${friend} wins`,
+    friendLost: (friend: string) => `${friend} loses`,
+    resignation: {
+      friendWon: "Their opponent resigned the match.",
+      friendLost: (friend: string) => `${friend} resigned the match.`,
+    },
+    menu: "Back to menu",
+    board: "View the board",
+  },
+  /** L'écran de fin d'une partie jouée. */
+  debrief: {
+    victory: "Victory",
+    defeat: "Defeat",
+    resignation: {
+      won: (move: number) => `Your opponent resigned on move ${move}.`,
+      lost: (move: number) => `You resigned on move ${move}.`,
+    },
+    you: "You",
+    opponent: "Opponent",
+    elo: (elo: number) => `${elo} Elo`,
+    eloChange: (before: number, after: number, change: string) =>
+      `${before} → ${after} (${change})`,
+    rated: "ranked",
+    unrated: "unranked",
+    facts: {
+      duration: "duration",
+      moves: "moves",
+      map: "map",
+      rules: "rules",
+      finished: "finished",
+    },
+    stats: {
+      title: "Match stats",
+      you: "you",
+      them: "them",
+      moves: "moves played",
+      pieces: "pieces moved",
+      seen: "tiles seen",
+      thinking: "average think",
+      longest: "longest think",
+      placeholder: "Placeholder figures: think times are not recorded yet.",
+    },
+    feats: {
+      title: "Feats of this match",
+      lead: "What this match earned you.",
+      placeholder: "Placeholder feats: per-match feats are not computed yet.",
+    },
+    playAgain: "Play again",
+    menu: "Back to menu",
+    closed:
+      "This end screen is closed: both players have left it. The match stays in your history.",
   },
   turn: {
     line: (turn: number, whose: string, seat: string) =>
