@@ -1,0 +1,18 @@
+{
+  "title": "Un plateau qui cache autant qu'il montre",
+  "intro": "Le squelette des échecs : deux camps, un roi à protéger, chacun son tour. Tout le reste change.",
+  "pillars": [
+    {
+      "title": "Vous ne voyez que ce que vos pièces voient",
+      "text": "Un mur, une crête ou une autre pièce coupe le regard. L'adversaire existe surtout là où vous ne regardez pas."
+    },
+    {
+      "title": "Le calcul plutôt que le réflexe",
+      "text": "Chacun joue à son tour. Une partie se gagne en lisant le terrain, pas en cliquant plus vite."
+    },
+    {
+      "title": "Peu de règles, beaucoup de profondeur",
+      "text": "Si vous connaissez les échecs, vous connaissez l'essentiel. La difficulté vient de la carte et de ce qu'elle vous cache."
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+---
+import { contentFor, type Locale } from "../i18n";
+
+interface Props {
+  locale: Locale;
+}
+
+const { beta } = contentFor(Astro.props.locale);
+---
+
+<section class="section section--beta" id="beta" aria-labelledby="beta-title" tabindex="-1">
+  <div class="frame beta">
+    <div class="beta__text">
+      <h2 id="beta-title" class="section__title">{beta.title}</h2>
+      <p class="section__intro">{beta.text}</p>
+    </div>
+
+    {/* Sans JavaScript, le formulaire s'envoie normalement et le Worker redirige vers une
+        page de résultat ; avec, il reste sur place et annonce le résultat. */}
+    <form
+      class="form"
+      method="post"
+      action="/api/beta"
+      novalidate
+      data-beta-form
+      data-messages={JSON.stringify(beta.messages)}
+      data-sending={beta.sending}
+    >
+      <div class="field">
+        <label class="field__label" for="beta-email">{beta.emailLabel}</label>
+        <input
+          class="field__input"
+          id="beta-email"
+          name="email"
+          type="email"
+          inputmode="email"
+          autocomplete="email"
+          spellcheck="false"
+          required
+          maxlength="254"
+          aria-describedby="beta-email-hint beta-status"
+        />
+        <p class="field__hint" id="beta-email-hint">{beta.emailHint}</p>
+      </div>
+
+      <div class="consent">
+        <input class="consent__box" id="beta-consent" name="consent" type="checkbox" value="yes" required />
+        <label for="beta-consent">{beta.consent}</label>
+      </div>
+
+      {/* Piège à robots : invisible et hors du parcours clavier, il doit rester vide. */}
+      <div class="trap" aria-hidden="true">
+        <label for="beta-website">{beta.honeypotLabel}</label>
+        <input id="beta-website" name="website" type="text" tabindex="-1" autocomplete="off" />
+      </div>
+      <input type="hidden" name="shown" value="" data-shown />
+
+      <button class="button" type="submit">{beta.submit}</button>
+      <p class="form__status" id="beta-status" role="status" aria-live="polite"></p>
+
+      <p class="form__privacy">
+        {beta.privacy} <a href="/confidentialite/">{beta.privacyLink}</a>.
+      </p>
+
+      {
+        beta.steam.enabled && beta.steam.url !== "" && (
+          <p class="form__steam">
+            <a href={beta.steam.url} rel="noopener">
+              {beta.steam.label}
+            </a>
+          </p>
+        )
+      }
+    </form>
+  </div>
+</section>
+
+<script>
+  type Messages = Record<string, string>;
+
+  const form = document.querySelector<HTMLFormElement>("[data-beta-form]");
+  if (form) {
+    const messages = JSON.parse(form.dataset.messages ?? "{}") as Messages;
+    const status = form.querySelector<HTMLElement>("#beta-status");
+    const email = form.querySelector<HTMLInputElement>("#beta-email");
+    const consent = form.querySelector<HTMLInputElement>("#beta-consent");
+    const button = form.querySelector<HTMLButtonElement>("button[type=submit]");
+    const shown = form.querySelector<HTMLInputElement>("[data-shown]");
+    // L'heure d'affichage du formulaire : un envoi trop rapide trahit un robot.
+    if (shown) shown.value = String(Date.now());
+
+    const announce = (code: string, failed: boolean) => {
+      if (!status) return;
+      status.textContent = messages[code] ?? messages.failed ?? "";
+      status.dataset.state = failed ? "error" : "ok";
+      if (code === "invalid-email") email?.setAttribute("aria-invalid", "true");
+      else email?.removeAttribute("aria-invalid");
+      if (code === "consent-required") consent?.setAttribute("aria-invalid", "true");
+      else consent?.removeAttribute("aria-invalid");
+    };
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!email || !consent || !button) return;
+      // La même vérification que le Worker, pour répondre sans aller-retour.
+      if (!email.validity.valid || email.value.trim() === "") {
+        announce("invalid-email", true);
+        email.focus();
+        return;
+      }
+      if (!consent.checked) {
+        announce("consent-required", true);
+        consent.focus();
+        return;
+      }
+      const label = button.textContent;
+      button.disabled = true;
+      button.textContent = form.dataset.sending ?? label;
+      void fetch(form.action, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: new FormData(form),
+      })
+        .then(async (response) => {
+          const body = (await response.json().catch(() => ({}))) as { code?: string };
+          const code = body.code ?? (response.ok ? "sent" : "failed");
+          announce(code, !response.ok);
+          if (response.ok) form.reset();
+        })
+        .catch(() => announce("failed", true))
+        .finally(() => {
+          button.disabled = false;
+          button.textContent = label;
+        });
+    });
+  }
+</script>

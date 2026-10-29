@@ -1,0 +1,13 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { Content, frontmatter } from "../../content/fr/confidentialite.md";
+---
+
+<Layout title={`${frontmatter.title} — Occulis`} description={frontmatter.description}>
+  <article class="section prose" aria-labelledby="doc-title">
+    <div class="frame">
+      <h1 id="doc-title" class="section__title">{frontmatter.title}</h1>
+      <Content />
+    </div>
+  </article>
+</Layout>

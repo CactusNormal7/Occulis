@@ -1,0 +1,26 @@
+---
+import { contentFor, type Locale } from "../i18n";
+
+interface Props {
+  locale: Locale;
+}
+
+const { concept } = contentFor(Astro.props.locale);
+---
+
+<section class="section" aria-labelledby="concept-title">
+  <div class="frame">
+    <h2 id="concept-title" class="section__title">{concept.title}</h2>
+    <p class="section__intro">{concept.intro}</p>
+    <ul class="pillars">
+      {
+        concept.pillars.map((pillar) => (
+          <li class="pillar">
+            <h3 class="pillar__title">{pillar.title}</h3>
+            <p>{pillar.text}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>

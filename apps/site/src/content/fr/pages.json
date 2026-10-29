@@ -1,0 +1,33 @@
+{
+  "sent": {
+    "title": "Vérifiez votre boîte de réception",
+    "text": "Nous venons de vous envoyer un lien de confirmation. Ouvrez-le pour terminer votre inscription à la beta. Rien n'arrive ? Regardez dans les indésirables, ou réessayez dans quelques minutes."
+  },
+  "confirmed": {
+    "title": "Inscription confirmée",
+    "text": "C'est noté. Nous vous écrirons à l'ouverture de la beta, et pour rien d'autre."
+  },
+  "refused": {
+    "title": "L'inscription n'a pas abouti",
+    "text": "L'adresse est invalide, la case de consentement n'était pas cochée, ou trop de tentatives sont parties de votre connexion. Revenez au formulaire pour réessayer."
+  },
+  "invalidLink": {
+    "title": "Ce lien n'est plus valable",
+    "text": "Un lien de confirmation sert une fois et expire après sept jours. Inscrivez-vous de nouveau pour en recevoir un autre."
+  },
+  "unsubscribe": {
+    "title": "Se désinscrire de la beta",
+    "text": "Votre adresse sera effacée de notre liste, et nous ne vous écrirons plus.",
+    "button": "Me désinscrire"
+  },
+  "unsubscribed": {
+    "title": "Désinscription faite",
+    "text": "Votre adresse est effacée. Vous pouvez vous réinscrire à tout moment."
+  },
+  "back": "Revenir à l'accueil",
+  "backToForm": "Revenir au formulaire",
+  "notFound": {
+    "title": "Cette page n'existe pas",
+    "text": "L'adresse est peut-être mal recopiée. L'accueil présente le jeu et l'inscription à la beta."
+  }
+}

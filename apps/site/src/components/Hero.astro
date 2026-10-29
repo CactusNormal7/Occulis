@@ -1,0 +1,24 @@
+---
+import { contentFor, type Locale } from "../i18n";
+import BoardIsland from "./BoardIsland.astro";
+
+interface Props {
+  locale: Locale;
+}
+
+const { hero } = contentFor(Astro.props.locale);
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="frame hero__grid">
+    <div class="hero__text">
+      <h1 id="hero-title" class="hero__title">{hero.title}</h1>
+      <p class="hero__lede">{hero.lede}</p>
+      <a class="button" href="#beta">{hero.cta}</a>
+    </div>
+    <figure class="hero__board">
+      <BoardIsland label={hero.boardLabel} />
+      <figcaption class="hero__caption">{hero.boardCaption}</figcaption>
+    </figure>
+  </div>
+</section>

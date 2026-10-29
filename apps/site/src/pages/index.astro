@@ -1,0 +1,20 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Hero from "../components/Hero.astro";
+import Concept from "../components/Concept.astro";
+import Differences from "../components/Differences.astro";
+import Gallery from "../components/Gallery.astro";
+import BetaForm from "../components/BetaForm.astro";
+import { contentFor } from "../i18n";
+
+const locale = "fr";
+const { site } = contentFor(locale);
+---
+
+<Layout locale={locale} title={site.title} description={site.description}>
+  <Hero locale={locale} />
+  <Concept locale={locale} />
+  <Differences locale={locale} />
+  <Gallery locale={locale} />
+  <BetaForm locale={locale} />
+</Layout>

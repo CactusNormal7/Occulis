@@ -1,0 +1,21 @@
+{
+  "title": "Le plateau, tel qu'il est",
+  "intro": "Images tirées du rendu du jeu, sur une carte en cours d'essai.",
+  "items": [
+    {
+      "image": "fog",
+      "alt": "Le camp bleu dans un angle du plateau ; au-delà de l'arête rocheuse, toutes les cases sont tramées : on ne voit rien du camp adverse.",
+      "caption": "Au départ, l'arête cache chaque camp à l'autre."
+    },
+    {
+      "image": "summit",
+      "alt": "Un éclaireur bleu sur le col de l'arête ; les cases du camp adverse sont éclairées et les pièces rouges apparaissent.",
+      "caption": "Du haut du col, tout le camp d'en face apparaît."
+    },
+    {
+      "image": "ghosts",
+      "alt": "L'éclaireur bleu redescendu ; le camp adverse est de nouveau tramé et les pièces rouges ne sont plus que des contours.",
+      "caption": "Redescendu, il ne reste que des contours : la dernière position connue."
+    }
+  ]
+}

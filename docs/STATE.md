@@ -1,6 +1,6 @@
 # État du projet
 
-Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-10-28.
+Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-10-29.
 
 ## Jeu (`packages/core`)
 
@@ -44,6 +44,12 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 - **Voile tramé du changement de thème : acté, verrouillé par `veil.test.ts`, ne jamais le retoucher sans demande explicite.**
 - Aucune partie locale (hot-seat retiré, implementation-notes 18). Un coup se joue au clic ou par saisie de coordonnées ; la sélection filtre `legalActions`, elle ne redéduit jamais la légalité.
 - Charte `@occulis/ui` portant back-office, profil, compte, préparation. Le menu, l'attente et le bandeau de partie n'y ont pas migré.
+
+## Site vitrine (`apps/site`) — 2026-10-29
+
+- Page unique (Astro statique, Worker `occulis-site`), inscription beta en double opt-in sur une D1 dédiée. Décision : [architecture.md](architecture.md) §8 ; fonctionnement : [technical/site.md](technical/site.md).
+- Rendu Canvas 2D du plateau extrait dans `packages/board`, partagé avec `apps/web`.
+- Non en ligne : domaine, identité de l'éditeur et contact à fournir ; base, secrets et Resend à provisionner ; pas de déploiement CI.
 
 ## Outil de gestion de projet — 2026-10-28
 

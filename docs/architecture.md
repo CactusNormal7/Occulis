@@ -327,3 +327,41 @@ consomme ~20 000 fois plus, sans aucun signal fonctionnel. Voir costs.md.
     `safeStorage` — et Better Auth refuse `403` les routes qui changent l'état quand l'en-tête
     `Origin` manque, ce qui impose de déclarer `trustedOrigins`. À traiter avant le premier build
     Electron, pas après.
+
+12. **Domaine du site vitrine.** Le site se déploie provisoirement sous
+    `occulis-site.0kl.fr` (`SITE_URL` et `MAIL_FROM` dans `apps/site/wrangler.toml`, route
+    encore commentée). Le domaine public définitif, l'identité de l'éditeur et l'adresse de
+    contact restent à fournir (section 8).
+
+## 8. Site vitrine
+
+Décision du 2026-10-29. Fonctionnement détaillé dans
+[technical/site.md](technical/site.md).
+
+**Stack : Astro, sortie statique.** La page est un document, pas une application : HTML
+rendu au build, aucun framework livré au navigateur. Le seul JavaScript est le plateau du
+hero, une île chargée quand le navigateur est libre (~8 Ko compressé). Il réutilise le
+rendu Canvas 2D du jeu, extrait pour cela dans `packages/board` : pas de PixiJS, et les
+mêmes tokens (`packages/ui/src/tokens.ts`) que le client. Écartés : réutiliser `apps/web`
+(son bundle PixiJS ruinerait le score mobile) et une page HTML écrite à la main (aucune
+structure pour séparer contenus et code, ni pour une seconde langue).
+
+**Hébergement : un Worker à part, `occulis-site`.** Il sert les fichiers statiques et la
+seule route dynamique, `/api/beta`. Séparé du Worker du jeu pour que la vitrine se déploie,
+tombe ou change de domaine sans toucher aux parties, et inversement. Même compte
+Cloudflare, même plan : coût marginal nul.
+
+**Stockage des adresses : une base D1 dédiée, `occulis-site`.** « Chez nous » : ni outil
+d'emailing ni CRM tiers ne détient la liste ; seul Resend, déjà sous-traitant du jeu, voit
+l'adresse le temps d'envoyer le lien. Base distincte de celle du jeu : une adresse
+d'inscription n'est pas un compte, et la purger ne doit rien risquer côté parties.
+Double opt-in obligatoire, attentes effacées après sept jours, désinscription qui efface la
+ligne, texte du consentement conservé comme preuve. Exporter la liste pour l'annonce
+reste une requête D1 ; l'outil d'envoi de l'annonce elle-même n'est pas choisi.
+
+**Mesure d'audience : Cloudflare Web Analytics**, sans cookie, donc sans bandeau ; aucun
+script tiers avant consentement, polices auto-hébergées.
+
+Avant la mise en ligne : domaine, identité de l'éditeur et contact (point ouvert 12) ;
+création de la base et `database_id` ; secrets `BETA_SECRET` et `RESEND_API_KEY` ; domaine
+d'envoi vérifié chez Resend ; jeton Web Analytics. Le déploiement n'est pas dans la CI.

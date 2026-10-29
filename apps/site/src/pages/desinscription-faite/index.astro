@@ -1,0 +1,8 @@
+---
+import MessagePage from "../../components/MessagePage.astro";
+import { contentFor } from "../../i18n";
+
+const { pages } = contentFor("fr");
+---
+
+<MessagePage title={pages.unsubscribed.title} text={pages.unsubscribed.text} back="home" />

@@ -1,0 +1,29 @@
+{
+  "name": "@occulis/site",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Le site vitrine d'Occulis : une page, une inscription à la beta.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "capture": "node scripts/capture.mjs",
+    "preview": "wrangler dev",
+    "deploy": "astro build && wrangler deploy",
+    "typecheck": "astro sync && tsc --noEmit && tsc -p src/worker/tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@occulis/board": "workspace:*",
+    "@occulis/core": "workspace:*",
+    "@occulis/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@fontsource/atkinson-hyperlegible-next": "^5.3.0",
+    "astro": "7.4.4",
+    "playwright-core": "^1.64.1",
+    "sharp": "^0.35.5",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.12"
+  }
+}
