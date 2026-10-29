@@ -7,11 +7,11 @@ import {
   flattenQuad,
   project,
   tileQuad,
-} from "../../view/iso.js";
+} from "@occulis/board/iso";
 import { type Landing, cascadeOf, landingAt, sparksOf } from "../../view/effects.js";
 import { easeOutCubic, phase } from "../../view/easing.js";
 import type { Selection } from "../../game/selection.js";
-import { MOTION_FX, look } from "../../theme/theme.js";
+import { MOTION_FX, look } from "@occulis/board/theme";
 
 /**
  * Couche de surbrillance : survol, sélection et retombées. Dessinée par-dessus le monde

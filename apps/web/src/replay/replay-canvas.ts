@@ -1,6 +1,6 @@
 import type { Board, Coord } from "@occulis/core";
 import type { AdminFrame } from "@occulis/protocol";
-import { METRICS, look } from "../theme/theme.js";
+import { METRICS, look } from "@occulis/board/theme";
 import {
   type Drawable,
   drawPiece,
@@ -8,17 +8,17 @@ import {
   fitPixelCanvas,
   strokeQuad,
   terrainDrawables,
-} from "../render/canvas2d/paint.js";
+} from "@occulis/board/paint";
 import { cssColor } from "@occulis/ui/tokens";
 import { type Camera, createCamera, pivotOf, settle, toProjection, turn } from "../view/camera.js";
 import { type MoveAnimation, advance, positionOf, startMove } from "../view/animation.js";
-import { compareDepth, depthOf, project, tileQuad } from "../view/iso.js";
+import { compareDepth, depthOf, project, tileQuad } from "@occulis/board/iso";
 import { centerOffset, fitScale, movesBetween, type Perspective } from "./replay.js";
 
 /**
  * Le plateau du rejeu, dessiné en Canvas 2D et non en PixiJS : le back-office ne charge
  * pas le moteur. Il reprend pourtant **la même géométrie** que le jeu — projection
- * (`view/iso.ts`), caméra et quart de tour amorti (`view/camera.ts`), glissement des
+ * (`@occulis/board/iso`), caméra et quart de tour amorti (`view/camera.ts`), glissement des
  * pièces (`view/animation.ts`), métriques et code couleur (`theme.ts`) — pour que ce
  * que l'administrateur voit soit ce que les joueurs ont vu.
  *

@@ -12,7 +12,7 @@ import {
   toProjectionSpace,
   withViewport,
 } from "../view/camera.js";
-import type { ScreenPoint } from "../view/iso.js";
+import type { ScreenPoint } from "@occulis/board/iso";
 import { tileAt } from "../view/picking.js";
 import type { MatchController } from "./match-controller.js";
 

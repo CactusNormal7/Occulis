@@ -1,5 +1,5 @@
 import { INK_ALPHA, PANEL_ALPHA, cssColor, cssVariables } from "@occulis/ui/tokens";
-import { look } from "./theme.js";
+import { look } from "@occulis/board/theme";
 
 /**
  * Passe le code couleur du thème en vigueur (`theme.ts`) à la feuille de style de

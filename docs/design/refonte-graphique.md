@@ -96,7 +96,7 @@ voile est verrouillé par `veil.test.ts`.
 Des durées sont encore écrites en dur hors des tokens : `OPEN_MS` / `CLOSE_MS`
 (`window-reveal.ts`), `VEIL_MS` (`veil.ts`, **verrouillé**), une dizaine de littéraux dans
 `styles.css` (`100ms`, `120ms`, `0.2s`, `0.22s`, `0.16s`, `0.4s`, `1.4s`, scintillement
-`4.7s` / `6.1s`), et la table `MOTION_FX` du plateau (`apps/web/src/theme/theme.ts`). Le
+`4.7s` / `6.1s`), et la table `MOTION_FX` du plateau (`packages/board/src/theme.ts`). Le
 `prefers-reduced-motion` actuel de `styles.css` ramène **toutes** les durées à 0,01 ms, fondus
 compris, alors que la proposition garde des fondus courts sous `still` (voir questions).
 

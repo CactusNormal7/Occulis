@@ -1,7 +1,7 @@
 /*
  * Chrome commun aux maquettes.
  *
- * Le code couleur reproduit `apps/web/src/theme/theme.ts`, qui reste la source de
+ * Le code couleur reproduit `packages/board/src/theme.ts`, qui reste la source de
  * vérité : ces maquettes sont une documentation, pas le client. Toute
  * divergence se corrige ici, jamais dans l'autre sens.
  */

@@ -217,7 +217,7 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   menace) : une lueur signifie toujours quelque chose. La contrainte est verrouillée
   mécaniquement — une règle ESLint interdit toute valeur de couleur hors de
   `packages/ui/src/tokens.ts`, seul détenteur du code couleur, que le rendu PixiJS
-  (`apps/web/src/theme/theme.ts`) et la charte d'interface (`@occulis/ui`) partagent.
+  (`packages/board/src/theme.ts`) et la charte d'interface (`@occulis/ui`) partagent.
 - **Faces pleines, et non plus filaire.** Le rendu filaire des débuts a été abandonné avec
   la refonte : les faces opaques rétablissent l'occlusion par surface (une pièce derrière
   un relief est cachée par une matière, plus seulement par l'ordre des traits), et c'est

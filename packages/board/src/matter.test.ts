@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { look } from "../theme/theme.js";
+import { look } from "./theme.js";
 import { topColor } from "./matter.js";
 
 const brightness = (color: number) => ((color >> 16) & 255) + ((color >> 8) & 255) + (color & 255);

@@ -3,7 +3,7 @@
 Rendu isométrique en pixel art léger, en dessin procédural : aucun sprite, aucune image,
 aucun moteur 3D. Tout est tracé par `Graphics` de PixiJS 8, à partir des coordonnées
 logiques de `packages/core`, dans un tampon plus petit que l'écran puis agrandi au plus
-proche voisin — le pixel se voit, fin, et le mouvement reste continu (`view/pixel.ts`). Toute partie est arbitrée par le serveur : le client porte les
+proche voisin — le pixel se voit, fin, et le mouvement reste continu (`@occulis/board/pixel`). Toute partie est arbitrée par le serveur : le client porte les
 écrans de compte et de menu, l'entrée en partie, puis le plateau — à la souris ou au
 clavier.
 
@@ -27,30 +27,30 @@ pièce adverse n'est ni une cible ni une destination — juste un obstacle.
 Le dossier dit la **classe de dépendance** du module, pas seulement son sujet. C'est ce
 qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 
-| Dossier            | Contenu                                                                                                                                                                       | Dépendances                                                                     |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `view/`            | Projection, caméra, désignation, animation                                                                                                                                    | **Aucune** — ni PixiJS, ni DOM                                                  |
-| `game/`            | La partie côté client, la sélection, le scénario                                                                                                                              | **Aucune** — ni PixiJS, ni DOM                                                  |
-| `net/`             | La lecture des messages du serveur                                                                                                                                            | **Aucune** sauf `channel.ts` (WebSocket)                                        |
-| `render/pixi/`     | Le dessin ; `board.ts`, chargé à part, monte le plateau                                                                                                                       | PixiJS                                                                          |
-| `input/`           | Les gestes sur le canevas                                                                                                                                                     | DOM                                                                             |
-| `ui/`              | Les écrans et le bandeau de partie                                                                                                                                            | DOM sauf `flow.ts`, `messages.ts`, `command.ts`                                 |
-| `account/`         | L'écran de compte, îlot React sur `@occulis/ui` dans la page du jeu                                                                                                           | React, DOM et réseau sauf `model.ts`                                            |
-| `profile/`         | La page de profil, page à part sous `/profile/`, en React sur `@occulis/ui`                                                                                                   | React, DOM et réseau sauf `model.ts`                                            |
-| `locale/`          | La langue courante (`current.ts`) et son choix dans le navigateur (`browser.ts`)                                                                                              | Aucune sauf `browser.ts` (DOM, stockage, cookie)                                |
-| `team-builder/`    | Le brouillon d'équipe (`model.ts`), le constructeur (`TeamBuilder.tsx`) et son plateau (`placement-canvas.ts`)                                                                | React, DOM sauf `model.ts`                                                      |
-| `prepare/`         | Les îlots d'avant-partie : fenêtre d'acceptation et déploiement (annonce de l'adversaire comprise)                                                                            | React, DOM sauf `model.ts`                                                      |
-| `leave/`           | L'îlot « quitter la partie » : la fenêtre qui demande d'abandonner (`Dialog` en teinte de refus)                                                                              | React, DOM                                                                      |
-| `end/`             | La fenêtre de fin d'une partie regardée, chez le spectateur                                                                                                                   | React, DOM sauf `model.ts`                                                      |
-| `debrief/`         | L'écran de fin d'une partie jouée (`/debrief/:id`) : résultat, Elo, statistiques, faits d'armes (factices) et replay                                                          | React, DOM et réseau sauf `model.ts`                                            |
-| `presets/`         | Les équipes préparées, depuis le menu                                                                                                                                         | React, DOM et réseau                                                            |
-| `render/canvas2d/` | Les primitives du plateau en Canvas 2D, partagées par le rejeu et le déploiement                                                                                              | DOM (canevas)                                                                   |
-| `admin/`           | Le back-office, page à part sous `/admin/`, en React sur `@occulis/ui`, design system compris (`design/`)                                                                     | React, DOM et réseau sauf `model.ts`, `design/catalog.ts` et `design/tweaks.ts` |
-| `replay/`          | Le rejeu d'une partie, partagé par le back-office et le profil : coups entre deux images (`replay.ts`), plateau Canvas 2D (`replay-canvas.ts`), composant (`ReplayBoard.tsx`) | DOM (canevas) et React sauf `replay.ts`                                         |
-| `theme/`           | Tokens de DA du plateau (`theme.ts`), thème choisi (`theme-choice.ts`), code couleur passé au CSS (`palette.ts`)                                                              | Aucune sauf `theme-choice.ts` et `palette.ts` (DOM)                             |
-| `load/`            | La lecture des données des vues React : cache, `useLoad`, `whenReady`                                                                                                         | React sauf `cache.ts`                                                           |
-| `app/`             | La page du jeu découpée par responsabilité : partie en cours, file, amis, compte, plateau, îlots, écran courant, réglages, identifiants de la page                            | DOM et réseau sauf `match-controller.ts`                                        |
-| racine             | `main.ts` (composition)                                                                                                                                                       | —                                                                               |
+| Dossier          | Contenu                                                                                                                                                                       | Dépendances                                                                     |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `view/`          | Projection, caméra, désignation, animation                                                                                                                                    | **Aucune** — ni PixiJS, ni DOM                                                  |
+| `game/`          | La partie côté client, la sélection, le scénario                                                                                                                              | **Aucune** — ni PixiJS, ni DOM                                                  |
+| `net/`           | La lecture des messages du serveur                                                                                                                                            | **Aucune** sauf `channel.ts` (WebSocket)                                        |
+| `render/pixi/`   | Le dessin ; `board.ts`, chargé à part, monte le plateau                                                                                                                       | PixiJS                                                                          |
+| `input/`         | Les gestes sur le canevas                                                                                                                                                     | DOM                                                                             |
+| `ui/`            | Les écrans et le bandeau de partie                                                                                                                                            | DOM sauf `flow.ts`, `messages.ts`, `command.ts`                                 |
+| `account/`       | L'écran de compte, îlot React sur `@occulis/ui` dans la page du jeu                                                                                                           | React, DOM et réseau sauf `model.ts`                                            |
+| `profile/`       | La page de profil, page à part sous `/profile/`, en React sur `@occulis/ui`                                                                                                   | React, DOM et réseau sauf `model.ts`                                            |
+| `locale/`        | La langue courante (`current.ts`) et son choix dans le navigateur (`browser.ts`)                                                                                              | Aucune sauf `browser.ts` (DOM, stockage, cookie)                                |
+| `team-builder/`  | Le brouillon d'équipe (`model.ts`), le constructeur (`TeamBuilder.tsx`) et son plateau (`placement-canvas.ts`)                                                                | React, DOM sauf `model.ts`                                                      |
+| `prepare/`       | Les îlots d'avant-partie : fenêtre d'acceptation et déploiement (annonce de l'adversaire comprise)                                                                            | React, DOM sauf `model.ts`                                                      |
+| `leave/`         | L'îlot « quitter la partie » : la fenêtre qui demande d'abandonner (`Dialog` en teinte de refus)                                                                              | React, DOM                                                                      |
+| `end/`           | La fenêtre de fin d'une partie regardée, chez le spectateur                                                                                                                   | React, DOM sauf `model.ts`                                                      |
+| `debrief/`       | L'écran de fin d'une partie jouée (`/debrief/:id`) : résultat, Elo, statistiques, faits d'armes (factices) et replay                                                          | React, DOM et réseau sauf `model.ts`                                            |
+| `presets/`       | Les équipes préparées, depuis le menu                                                                                                                                         | React, DOM et réseau                                                            |
+| `@occulis/board` | Projection, grain, thèmes du rendu et primitives Canvas 2D, extraits dans `packages/board` pour le site vitrine                                                               | DOM (canevas)                                                                   |
+| `admin/`         | Le back-office, page à part sous `/admin/`, en React sur `@occulis/ui`, design system compris (`design/`)                                                                     | React, DOM et réseau sauf `model.ts`, `design/catalog.ts` et `design/tweaks.ts` |
+| `replay/`        | Le rejeu d'une partie, partagé par le back-office et le profil : coups entre deux images (`replay.ts`), plateau Canvas 2D (`replay-canvas.ts`), composant (`ReplayBoard.tsx`) | DOM (canevas) et React sauf `replay.ts`                                         |
+| `theme/`         | Tokens de DA du plateau (`theme.ts`), thème choisi (`theme-choice.ts`), code couleur passé au CSS (`palette.ts`)                                                              | Aucune sauf `theme-choice.ts` et `palette.ts` (DOM)                             |
+| `load/`          | La lecture des données des vues React : cache, `useLoad`, `whenReady`                                                                                                         | React sauf `cache.ts`                                                           |
+| `app/`           | La page du jeu découpée par responsabilité : partie en cours, file, amis, compte, plateau, îlots, écran courant, réglages, identifiants de la page                            | DOM et réseau sauf `match-controller.ts`                                        |
+| racine           | `main.ts` (composition)                                                                                                                                                       | —                                                                               |
 
 Les modules de `view/`, `game/` et `net/session.ts` sont purs : c'est là que vivent tous
 les tests, avec `ui/flow.ts`, `ui/command.ts`, `ui/messages.ts`, `account/model.ts`,
@@ -234,16 +234,16 @@ chaque ouverture du canal social.
 | `apps/web/src/load/hooks.tsx`                      | `useLoad()`, `usePending()`, `whenReady()`                                                                                                                                                         | non                                             |
 | `apps/web/public/_headers`                         | Cache d'un an des fichiers hachés de `/assets/`, d'une semaine de la police                                                                                                                        | —                                               |
 | `apps/web/public/fonts/`                           | La police pixel Tiny5 (sous-ensemble latin) et sa licence OFL, à adresse fixe                                                                                                                      | —                                               |
-| `apps/web/src/theme/theme.ts`                      | Couleurs reprises de `tokens.ts`, métriques, alphas et épaisseurs du rendu                                                                                                                         | oui                                             |
-| `apps/web/src/view/iso.ts`                         | Projection isométrique et géométrie des cases                                                                                                                                                      | oui                                             |
+| `packages/board/src/theme.ts`                      | Couleurs reprises de `tokens.ts`, métriques, alphas et épaisseurs du rendu                                                                                                                         | oui                                             |
+| `packages/board/src/iso.ts`                        | Projection isométrique et géométrie des cases                                                                                                                                                      | oui                                             |
 | `apps/web/src/view/camera.ts`                      | État de caméra et ses transitions                                                                                                                                                                  | oui                                             |
 | `apps/web/src/view/picking.ts`                     | Point à l'écran → case du plateau                                                                                                                                                                  | oui                                             |
 | `apps/web/src/view/animation.ts`                   | Interpolation d'un déplacement de pièce                                                                                                                                                            | oui                                             |
-| `apps/web/src/view/pixel.ts`                       | Le grain du plateau (`pixelResolution()`), arrondi à la grille, mélange de couleurs, respiration                                                                                                   | oui                                             |
+| `packages/board/src/pixel.ts`                      | Le grain du plateau (`pixelResolution()`), arrondi à la grille, mélange de couleurs, respiration                                                                                                   | oui                                             |
 | `apps/web/src/view/easing.ts`                      | Les courbes d'animation                                                                                                                                                                            | oui                                             |
 | `apps/web/src/view/reveal.ts`                      | La lumière de chaque case, animée : vague de ligne de vue                                                                                                                                          | oui                                             |
 | `apps/web/src/view/effects.ts`                     | Entrée du plateau, cascade, retombée, matérialisation                                                                                                                                              | oui                                             |
-| `apps/web/src/view/matter.ts`                      | La teinte du dessus d'une case, selon sa hauteur et sa visibilité                                                                                                                                  | oui                                             |
+| `packages/board/src/matter.ts`                     | La teinte du dessus d'une case, selon sa hauteur et sa visibilité                                                                                                                                  | oui                                             |
 | `apps/web/src/view/ambient.ts`                     | Poussières, lucioles, étoiles, constellations, étoiles filantes : à graine, fonctions du temps                                                                                                     | oui                                             |
 | `apps/web/src/game/online-match.ts`                | La partie arbitrée par le serveur, vue du client                                                                                                                                                   | oui                                             |
 | `apps/web/src/game/hypothesis.ts`                  | `PlayerView` → position telle que le joueur peut la croire                                                                                                                                         | oui                                             |
@@ -273,7 +273,7 @@ chaque ouverture du canal social.
 | `apps/web/src/team-builder/model.ts`               | Le brouillon d'une équipe : emplacements, clic sur une case, échange, remplissage ; verdict délégué à `validateTeam()`                                                                             | oui                                             |
 | `apps/web/src/team-builder/TeamBuilder.tsx`        | Le constructeur d'équipe : emplacements, plateau, actions                                                                                                                                          | non                                             |
 | `apps/web/src/team-builder/placement-canvas.ts`    | Le plateau de placement en Canvas 2D : zones, pièces posées, survol, clic                                                                                                                          | non                                             |
-| `apps/web/src/render/canvas2d/paint.ts`            | Relief, cases et pièces en Canvas 2D, avec la géométrie du jeu                                                                                                                                     | non                                             |
+| `packages/board/src/paint.ts`                      | Relief, cases et pièces en Canvas 2D, avec la géométrie du jeu                                                                                                                                     | non                                             |
 | `apps/web/src/prepare/model.ts`                    | Temps restant, envoi automatique, presets jouables, équipe préchargée                                                                                                                              | oui                                             |
 | `apps/web/src/prepare/MatchFound.tsx`              | La fenêtre « partie trouvée »                                                                                                                                                                      | non                                             |
 | `apps/web/src/prepare/Deployment.tsx`              | L'écran de déploiement : annonce de l'adversaire, compte à rebours, constructeur, verrou                                                                                                           | non                                             |
@@ -336,7 +336,7 @@ chaque ouverture du canal social.
 
 ---
 
-## `view/iso.ts` — projection et géométrie
+## `@occulis/board/iso` — projection et géométrie
 
 Conformément à `docs/design.md` section 8, **rien n'est jamais pivoté au niveau du
 rendu** : la rotation est un recalcul appliqué aux coordonnées logiques avant projection.
@@ -999,7 +999,7 @@ d'une pièce à capacité au choix parmi ceux de son rôle), et le plateau. Il n
 état — `draft` et `onChange` viennent de l'appelant, le déploiement ou les équipes.
 
 `placement-canvas.ts` dessine le plateau en Canvas 2D, comme le rejeu et avec les
-primitives de `render/canvas2d/paint.ts` : la page n'a pas encore de partie à confier à PixiJS, et
+primitives de `@occulis/board/paint` : la page n'a pas encore de partie à confier à PixiJS, et
 le même plateau sert hors partie. La zone du joueur est dans la teinte de son camp, celle
 d'en face en pointillé dans la sienne, la pièce en main dans la teinte de la sélection — de
 l'information de partie, donc en couleur. Les pièces portent **l'initiale de leur type**,
@@ -1043,7 +1043,7 @@ que porte le message `deployment` (`MatchZones`) et non celles du registre. Les 
 `profile/api.ts` (`/api/me/presets`), les mêmes que lit le déploiement. Le serveur valide
 chaque équipe ; un preset que de nouvelles règles rendent caduc reste listé, grisé.
 
-## `render/canvas2d/paint.ts` — le plateau en Canvas 2D
+## `@occulis/board/paint` — le plateau en Canvas 2D
 
 Les primitives communes au rejeu (`replay/replay-canvas.ts`) et au placement :
 `fitPixelCanvas()` (dimensionne le tampon au grain du plateau, `pixelResolution()`, et pose
@@ -1158,7 +1158,7 @@ commande ferait pivoter le plateau.
 ## `render/pixi/board.ts` et `render/pixi/scene.ts` — couches, tri et animation
 
 `mountBoard()` initialise PixiJS **sans anticrénelage**, à la résolution
-`pixelResolution(devicePixelRatio)` (`view/pixel.ts`) avec `autoDensity`, et pose
+`pixelResolution(devicePixelRatio)` (`@occulis/board/pixel`) avec `autoDensity`, et pose
 `image-rendering: pixelated` sur le canevas : le tampon fait la moitié de l'écran en pixels
 physiques, et le navigateur l'agrandit au plus proche voisin. Un pixel du plateau couvre
 donc toujours **deux pixels physiques** (`ART_PIXEL`). À chaque image, il passe la taille de
@@ -1225,7 +1225,7 @@ ensemble par `compareDepth()`. Les cases sont poussées en premier : le tri de J
 stable, à profondeur égale une pièce se dessine donc toujours **après** la case qui la porte.
 
 **La profondeur d'une pièce est celle de la case sur laquelle elle se tient**
-(`standingDepth()`, `view/iso.ts`) : la case la plus proche de sa position, fractionnaire en
+(`standingDepth()`, `@occulis/board/iso`) : la case la plus proche de sa position, fractionnaire en
 cours de déplacement, un demi-niveau au-dessus. Calculée depuis la position exacte, une pièce
 qui glissait vers l'avant passait derrière la case qu'elle allait atteindre — dessinée après
 elle — et semblait s'enfoncer sous le sol. Rattachée à sa case, elle bascule dans l'ordre du
@@ -1275,23 +1275,23 @@ pièces partagent aujourd'hui la même silhouette**.
 
 ## `view/` — les modules purs du rendu animé
 
-| Fonction                                                                     | Emplacement         | Rôle                                                                                                                                                                                                                      |
-| ---------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pixelResolution()`                                                          | `view/pixel.ts`     | `devicePixelRatio / ART_PIXEL` : la résolution qui fait d'un pixel du plateau deux pixels physiques                                                                                                                       |
-| `snap()`, `mixColor()`, `breath()`                                           | `view/pixel.ts`     | Arrondi à la grille, mélange de couleurs, pulsation en cosinus                                                                                                                                                            |
-| `topColor(height, light)`                                                    | `view/matter.ts`    | Teinte du dessus, continue entre hors de vue (0) et en vue (1)                                                                                                                                                            |
-| `clamp01()`, `easeOutCubic()`, `easeInOutSine()`, `easeOutBack()`, `phase()` | `view/easing.ts`    | Les courbes ; `easeOutBack` dépasse sa cible avant de s'y poser                                                                                                                                                           |
-| `relight()`                                                                  | `view/reveal.ts`    | Nouvel éclairage après un changement de vue : chaque case part de son éclairage courant, avec un retard par case de distance à la plus proche pièce qui voit (vague qui se déploie ; extinction plus rapide et d'un bloc) |
-| `lightAt()`, `crestAt()`, `settling()`                                       | `view/reveal.ts`    | Éclairage d'une case à un instant, front de la vague, transition en cours                                                                                                                                                 |
-| `litTiles()`, `awaitsMove()`                                                 | `view/reveal.ts`    | Cases qu'une vue éclaire (aucune une fois la partie finie, `outcome` n'étant `null` que pendant la partie) ; trait au joueur dans une partie qui dure, ce qui déclenche `turnAt`                                          |
-| `introOf()`, `introLength()`                                                 | `view/effects.ts`   | Entrée d'une case selon son rang de profondeur                                                                                                                                                                            |
-| `cascadeOf()`                                                                | `view/effects.ts`   | Ouverture d'une destination selon sa distance à la pièce sélectionnée                                                                                                                                                     |
-| `sparksOf()`, `landingAt()`                                                  | `view/effects.ts`   | Étincelles d'une retombée et état de la retombée                                                                                                                                                                          |
-| `materializeAt()`                                                            | `view/effects.ts`   | Matérialisation : opacité, chute de quelques pixels, éclat de l'œil                                                                                                                                                       |
-| `liftOf()`, `lagging()`                                                      | `view/animation.ts` | Arc d'un déplacement ; la même animation en retard (image rémanente)                                                                                                                                                      |
-| `standingDepth()`                                                            | `view/iso.ts`       | Profondeur d'une pièce : celle de la case qui la porte                                                                                                                                                                    |
-| `createMotes()`, `moteAt()`, `fireflyAt()`                                   | `view/ambient.ts`   | Nuée à graine ; poussière qui monte, luciole qui erre                                                                                                                                                                     |
-| `createStars()`, `starAlpha()`, `constellationsOf()`, `shootingStarAt()`     | `view/ambient.ts`   | La voûte, son scintillement, ses segments, une étoile filante par période                                                                                                                                                 |
+| Fonction                                                                     | Emplacement             | Rôle                                                                                                                                                                                                                      |
+| ---------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pixelResolution()`                                                          | `@occulis/board/pixel`  | `devicePixelRatio / ART_PIXEL` : la résolution qui fait d'un pixel du plateau deux pixels physiques                                                                                                                       |
+| `snap()`, `mixColor()`, `breath()`                                           | `@occulis/board/pixel`  | Arrondi à la grille, mélange de couleurs, pulsation en cosinus                                                                                                                                                            |
+| `topColor(height, light)`                                                    | `@occulis/board/matter` | Teinte du dessus, continue entre hors de vue (0) et en vue (1)                                                                                                                                                            |
+| `clamp01()`, `easeOutCubic()`, `easeInOutSine()`, `easeOutBack()`, `phase()` | `view/easing.ts`        | Les courbes ; `easeOutBack` dépasse sa cible avant de s'y poser                                                                                                                                                           |
+| `relight()`                                                                  | `view/reveal.ts`        | Nouvel éclairage après un changement de vue : chaque case part de son éclairage courant, avec un retard par case de distance à la plus proche pièce qui voit (vague qui se déploie ; extinction plus rapide et d'un bloc) |
+| `lightAt()`, `crestAt()`, `settling()`                                       | `view/reveal.ts`        | Éclairage d'une case à un instant, front de la vague, transition en cours                                                                                                                                                 |
+| `litTiles()`, `awaitsMove()`                                                 | `view/reveal.ts`        | Cases qu'une vue éclaire (aucune une fois la partie finie, `outcome` n'étant `null` que pendant la partie) ; trait au joueur dans une partie qui dure, ce qui déclenche `turnAt`                                          |
+| `introOf()`, `introLength()`                                                 | `view/effects.ts`       | Entrée d'une case selon son rang de profondeur                                                                                                                                                                            |
+| `cascadeOf()`                                                                | `view/effects.ts`       | Ouverture d'une destination selon sa distance à la pièce sélectionnée                                                                                                                                                     |
+| `sparksOf()`, `landingAt()`                                                  | `view/effects.ts`       | Étincelles d'une retombée et état de la retombée                                                                                                                                                                          |
+| `materializeAt()`                                                            | `view/effects.ts`       | Matérialisation : opacité, chute de quelques pixels, éclat de l'œil                                                                                                                                                       |
+| `liftOf()`, `lagging()`                                                      | `view/animation.ts`     | Arc d'un déplacement ; la même animation en retard (image rémanente)                                                                                                                                                      |
+| `standingDepth()`                                                            | `@occulis/board/iso`    | Profondeur d'une pièce : celle de la case qui la porte                                                                                                                                                                    |
+| `createMotes()`, `moteAt()`, `fireflyAt()`                                   | `view/ambient.ts`       | Nuée à graine ; poussière qui monte, luciole qui erre                                                                                                                                                                     |
+| `createStars()`, `starAlpha()`, `constellationsOf()`, `shootingStarAt()`     | `view/ambient.ts`       | La voûte, son scintillement, ses segments, une étoile filante par période                                                                                                                                                 |
 
 La vague de lumière ne lit que la vue transmise : elle anime ce que le serveur a envoyé,
 elle ne révèle rien d'autre.
@@ -1325,7 +1325,7 @@ voûte (`stars`), les constellations, les étoiles filantes, les nuées.
 | `astral`            | Noir à peine prune, matière violette, camps cyan et magenta     | Voûte dense, constellations, étoiles filantes, nuées |
 
 `STATE.legalMove` est **délibérément distinct des deux couleurs de camp** dans chaque thème.
-Les épaisseurs sont en **pixels du plateau** (`view/pixel.ts`), jamais en pixels CSS.
+Les épaisseurs sont en **pixels du plateau** (`@occulis/board/pixel`), jamais en pixels CSS.
 
 ## `theme/theme-choice.ts` — le choix du joueur
 
@@ -1594,7 +1594,7 @@ choisi et passe en fantôme (`PIECES.alphaGhost`) les pièces adverses qu'il ne 
 l'image, le point de vue et le nombre de quarts de tour ; le dessin et ses animations restent
 hors du cycle de rendu, et `destroy()` cesse d'observer le canevas au démontage. Le plateau est
 dessiné en **Canvas 2D**, pas en PixiJS, mais avec la géométrie du jeu à l'identique —
-`view/iso.ts` pour la projection et l'ordre du peintre (relief et pièces dans une seule
+`@occulis/board/iso` pour la projection et l'ordre du peintre (relief et pièces dans une seule
 liste), `view/camera.ts` pour le quart de tour amorti, `view/animation.ts` pour le glissement
 des pièces, `theme.ts` pour les métriques et les couleurs — et la carte vient du serveur
 (`board` du détail de la partie, les cases qu'elle a figées à sa création). Le dernier coup est marqué : départ en pointillé, trajet dans la
