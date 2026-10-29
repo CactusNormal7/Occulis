@@ -11,8 +11,11 @@ const { beta } = contentFor(Astro.props.locale);
 <section class="section section--beta" id="beta" aria-labelledby="beta-title" tabindex="-1">
   <div class="frame beta">
     <div class="beta__text">
-      <h2 id="beta-title" class="section__title">{beta.title}</h2>
-      <p class="section__intro">{beta.text}</p>
+      <h2 id="beta-title" class="display beta__title reveal">
+        <span class="line"><span>{beta.titleLines[0]}</span></span>
+        <span class="line line--fog"><span>{beta.titleLines[1]}</span></span>
+      </h2>
+      <p class="beta__intro">{beta.text}</p>
     </div>
 
     {/* Sans JavaScript, le formulaire s'envoie normalement et le Worker redirige vers une

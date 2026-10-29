@@ -21,15 +21,21 @@ describe("tokens", () => {
     expect(onDisk).toBe(tokensStylesheet());
   });
 
+  // `styles.css` et les feuilles qu'il importe.
+  const sheets = () =>
+    ["./styles.css", "./wip.css"]
+      .map((path) => readFileSync(new URL(path, import.meta.url), "utf8"))
+      .join("\n");
+
   it("styles.css ne lit que des propriétés définies par les tokens", () => {
-    const styles = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+    const styles = sheets();
     const defined = new Set(Object.keys(cssVariables()));
     const used = [...styles.matchAll(/var\((--occ-[\w-]+)\)/g)].map((match) => match[1]);
     expect(used.filter((name) => !defined.has(name as string))).toEqual([]);
   });
 
   it("styles.css ne contient aucune couleur en dur", () => {
-    const styles = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+    const styles = sheets();
     expect(styles).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/i);
   });
 

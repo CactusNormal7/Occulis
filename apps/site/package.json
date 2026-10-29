@@ -9,6 +9,7 @@
     "build": "astro build",
     "capture": "node scripts/capture.mjs",
     "preview": "wrangler dev",
+    "local": "astro build && wrangler d1 migrations apply occulis-site --local && wrangler dev",
     "deploy": "astro build && wrangler deploy",
     "typecheck": "astro sync && tsc --noEmit && tsc -p src/worker/tsconfig.json",
     "test": "vitest run"

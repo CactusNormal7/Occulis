@@ -1,0 +1,25 @@
+{
+  "label": "Principes",
+  "items": [
+    {
+      "icon": "sight",
+      "word": "Vision",
+      "text": "Vos pièces voient ce qui est devant elles. Un mur ou une autre pièce coupe le regard."
+    },
+    {
+      "icon": "height",
+      "word": "Relief",
+      "text": "Monter prend un tour par niveau. D'en haut, on voit par-dessus les autres."
+    },
+    {
+      "icon": "ghost",
+      "word": "Mémoire",
+      "text": "Une pièce adverse perdue de vue laisse une trace. Elle a pu bouger depuis."
+    },
+    {
+      "icon": "turns",
+      "word": "Réflexion",
+      "text": "Chacun son tour, sans action en temps réel. Personne ne gagne en cliquant vite."
+    }
+  ]
+}

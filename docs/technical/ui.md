@@ -21,12 +21,13 @@ composants.
 | `src/index.ts`                      | Point d'entrée : tokens et composants                                                                                                                                               |
 | `src/cx.ts`                         | Assemblage de noms de classe                                                                                                                                                        |
 | `src/critical.ts`                   | `criticalHead()` et `withCriticalHead()` : le bloc de tête de chaque page HTML (sous-chemin `@occulis/ui/critical`)                                                                 |
+| `src/wip.css`                       | Le ruban de chantier (`.occ-wip`), importé par `styles.css` et repris seul par le site vitrine (sous-chemin `@occulis/ui/wip.css`)                                                  |
 | `src/window-reveal.ts`              | `revealWindow()` : l'ouverture et la fermeture d'une fenêtre qu'un clic ouvre, depuis son centre ou la souris, et son calendrier pur (sous-chemin `@occulis/ui/reveal`, sans React) |
 | `scripts/build-tokens.ts`           | Écrit `generated/tokens.css` et `generated/proposed-tokens.css` (`pnpm --filter @occulis/ui tokens`)                                                                                |
 | `src/generated/proposed-tokens.css` | Les tokens **proposés** de la refonte (`PROPOSED`), générés eux aussi, lus par le seul labo                                                                                         |
 | `src/lab/`                          | Le labo de la refonte (sous-chemin `@occulis/ui/lab`, feuille `@occulis/ui/lab.css`) : composants proposés, qu'aucun écran n'importe — voir « Le labo de la refonte »               |
 | `previews/`                         | La page d'aperçus du labo, servie sous `/lab/` par `apps/web/lab/`                                                                                                                  |
-| `scripts/bundle-css.mjs`            | Écrit `dist/styles.css` : tokens **inclus**, sans `@import`                                                                                                                         |
+| `scripts/bundle-css.mjs`            | Écrit `dist/styles.css` : tokens et `wip.css` **inclus**, sans `@import`                                                                                                            |
 | `tsup.config.ts`                    | Le build publié : `dist/index.js`, `dist/index.d.ts`, `dist/styles.css`                                                                                                             |
 
 Dans le monorepo, les consommateurs lisent les **sources** (`exports` pointe sur `src/`) : rien

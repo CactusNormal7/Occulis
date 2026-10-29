@@ -1,0 +1,35 @@
+---
+import { contentFor, type Locale } from "../i18n";
+import SectionBar from "./SectionBar.astro";
+
+interface Props {
+  locale: Locale;
+}
+
+const { match } = contentFor(Astro.props.locale);
+const pad = (n: number): string => String(n).padStart(2, "0");
+---
+
+<section class="section" id="partie" aria-labelledby="match-title" tabindex="-1">
+  <div class="frame">
+    <SectionBar id="match-title" label={match.label} />
+    {/* Les phases d'une partie, dans l'ordre : la numérotation dit cet ordre. Le mot seul
+        est visible ; la ligne s'inverse et s'ouvre au survol ou au focus. */}
+    <ol class="phases">
+      {
+        match.steps.map((step, index) => (
+          <li class="phase reveal" tabindex="0">
+            <span class="phase__index" aria-hidden="true">
+              {pad(index + 1)}
+            </span>
+            <h3 class="phase__word">{step.word}</h3>
+            <span class="phase__meta">{step.meta}</span>
+            <div class="phase__more">
+              <p class="phase__text">{step.text}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>

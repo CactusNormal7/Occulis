@@ -1,9 +1,34 @@
 {
   "lang": "fr",
-  "title": "Occulis — les échecs, avec du relief, des murs et du brouillard",
-  "description": "Occulis est un jeu de stratégie en un contre un, au tour par tour : vos pièces ne voient que ce qui est devant elles. Inscrivez-vous à la beta.",
-  "ogImageAlt": "Le plateau isométrique d'Occulis : une arête rocheuse sépare deux camps, le reste est dans le brouillard.",
+  "title": "Occulis — jeu de stratégie en un contre un",
+  "description": "Occulis est un jeu de stratégie en un contre un, au tour par tour, où vos pièces ne voient que ce qui est devant elles. Inscrivez-vous à la beta.",
+  "ogImageAlt": "Le plateau isométrique d'Occulis : une arête rocheuse sépare deux camps.",
   "skipLink": "Aller au contenu",
   "headerCta": "Rejoindre la beta",
-  "homeLabel": "Occulis, retour en haut de la page"
+  "homeLabel": "Occulis, retour en haut de la page",
+  "nav": {
+    "label": "Sections",
+    "items": [
+      {
+        "href": "#jeu",
+        "text": "Le jeu"
+      },
+      {
+        "href": "#principes",
+        "text": "Principes"
+      },
+      {
+        "href": "#plateau",
+        "text": "Plateau"
+      },
+      {
+        "href": "#partie",
+        "text": "Une partie"
+      },
+      {
+        "href": "#questions",
+        "text": "Questions"
+      }
+    ]
+  }
 }

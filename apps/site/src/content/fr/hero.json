@@ -1,7 +1,6 @@
 {
-  "title": "Les échecs, avec du relief, des murs et du brouillard.",
-  "lede": "Occulis est un jeu de stratégie en un contre un, au tour par tour. Vos pièces ne voient que ce qui est devant elles : protégez votre roi, et trouvez celui d'en face.",
+  "title": "Occulis",
+  "lede": "Un jeu de stratégie en un contre un, au tour par tour. Vos pièces ne voient que ce qui est devant elles.",
   "cta": "Rejoindre la beta",
-  "boardLabel": "Animation du plateau : une pièce bleue grimpe sur une arête rocheuse et découvre les pièces rouges du camp adverse, puis redescend et n'en garde que la trace.",
-  "boardCaption": "Votre éclaireur grimpe sur le col. De là-haut, il découvre le camp adverse ; redescendu, il n'en garde que des traces."
+  "secondaryCta": "Voir le jeu"
 }

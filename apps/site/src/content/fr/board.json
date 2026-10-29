@@ -1,0 +1,86 @@
+{
+  "label": "Sur le plateau",
+  "wip": {
+    "tag": "WIP",
+    "label": "En construction",
+    "note": "Démonstration en préparation : les chiffres affichés sont fictifs."
+  },
+  "wipNote": "Données fictives",
+  "hint": "Défilez pour avancer",
+  "end": "Continuez vers la suite",
+  "boardLabel": "Le plateau du jeu : une arête rocheuse sépare un camp bleu d'un camp rouge. Un éclaireur bleu s'approche du col, y monte, découvre les pièces rouges, puis redescend et n'en garde que la trace.",
+  "steps": [
+    {
+      "word": "Départ",
+      "text": "Les deux camps sont en place. De l'autre côté de l'arête, rien.",
+      "data": [
+        {
+          "label": "Tour",
+          "value": "01"
+        },
+        {
+          "label": "Cases vues",
+          "value": "21"
+        },
+        {
+          "label": "Hauteur",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "word": "Approche",
+      "text": "Un éclaireur s'avance jusqu'au pied du col.",
+      "data": [
+        {
+          "label": "Tour",
+          "value": "02"
+        },
+        {
+          "label": "Cases vues",
+          "value": "26"
+        },
+        {
+          "label": "Hauteur",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "word": "Sommet",
+      "text": "Il monte d'un niveau. D'en haut, le camp rouge apparaît.",
+      "data": [
+        {
+          "label": "Tour",
+          "value": "03"
+        },
+        {
+          "label": "Cases vues",
+          "value": "48"
+        },
+        {
+          "label": "Hauteur",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "word": "Souvenir",
+      "text": "Il redescend. Du rouge, il ne reste que la dernière position connue.",
+      "data": [
+        {
+          "label": "Tour",
+          "value": "04"
+        },
+        {
+          "label": "Cases vues",
+          "value": "23"
+        },
+        {
+          "label": "Hauteur",
+          "value": "0"
+        }
+      ]
+    }
+  ]
+}

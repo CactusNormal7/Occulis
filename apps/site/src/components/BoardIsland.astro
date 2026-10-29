@@ -1,6 +1,6 @@
 ---
 /**
- * Le plateau du hero. Une image fixe d'abord (le même rendu, capturé par
+ * Le plateau en boucle, pour les pages de capture. Une image fixe d'abord (le même rendu, capturé par
  * `scripts/capture.mjs`), qui suffit sans JavaScript et sous « mouvement réduit » ;
  * puis, quand le navigateur est libre, le vrai rendu Canvas 2D du jeu prend sa place
  * (`src/island/board.ts`). Il ne charge jamais PixiJS.
@@ -12,6 +12,7 @@ interface Props {
 }
 
 const { label, frame } = Astro.props;
+const poster = "summit";
 ---
 
 <div class="board" data-board data-frame={frame}>
@@ -20,17 +21,17 @@ const { label, frame } = Astro.props;
       <picture>
         <source
           type="image/avif"
-          srcset="/images/board-summit-720.avif 720w, /images/board-summit-1440.avif 1440w"
-          sizes="(min-width: 960px) 58vw, 100vw"
+          srcset={`/images/board-${poster}-720.avif 720w, /images/board-${poster}-1440.avif 1440w`}
+          sizes="100vw"
         />
         <source
           type="image/webp"
-          srcset="/images/board-summit-720.webp 720w, /images/board-summit-1440.webp 1440w"
-          sizes="(min-width: 960px) 58vw, 100vw"
+          srcset={`/images/board-${poster}-720.webp 720w, /images/board-${poster}-1440.webp 1440w`}
+          sizes="100vw"
         />
         <img
           class="board__poster"
-          src="/images/board-summit-1440.webp"
+          src={`/images/board-${poster}-1440.webp`}
           width="1440"
           height="720"
           alt=""
@@ -49,7 +50,9 @@ const { label, frame } = Astro.props;
     const frameAttribute = host.dataset.frame;
     const start = () => {
       void import("../island/board").then(({ mountBoard }) => {
-        mountBoard(host, canvas, frameAttribute === undefined ? undefined : Number(frameAttribute));
+        mountBoard(host, canvas, {
+          still: frameAttribute === undefined ? undefined : Number(frameAttribute),
+        });
       });
     };
     // Le premier écran passe d'abord : le plateau attend que le navigateur soit libre.

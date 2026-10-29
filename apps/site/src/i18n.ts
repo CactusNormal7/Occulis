@@ -10,15 +10,28 @@
  * ce sont des contenus éditoriaux, pas des messages d'interface du jeu.
  */
 import beta from "./content/fr/beta.json";
+import board from "./content/fr/board.json";
 import concept from "./content/fr/concept.json";
-import differences from "./content/fr/differences.json";
+import faq from "./content/fr/faq.json";
 import footer from "./content/fr/footer.json";
-import gallery from "./content/fr/gallery.json";
 import hero from "./content/fr/hero.json";
+import match from "./content/fr/match.json";
 import pages from "./content/fr/pages.json";
+import principles from "./content/fr/principles.json";
 import site from "./content/fr/site.json";
 
-const fr = { site, hero, concept, differences, gallery, beta, footer, pages };
+const fr = {
+  site,
+  hero,
+  concept,
+  principles,
+  board,
+  match,
+  faq,
+  beta,
+  footer,
+  pages,
+};
 
 export type Content = typeof fr;
 export type Locale = "fr";

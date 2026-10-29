@@ -60,9 +60,33 @@ function distanceToViewers(coord: Coord, viewers: readonly Piece[]): number {
   return best === Infinity ? 0 : best;
 }
 
-export function mountBoard(host: HTMLElement, canvas: HTMLCanvasElement, still?: number): void {
+export interface BoardOptions {
+  /** Une image arrêtée du scénario, sans boucle (captures). */
+  readonly still?: number;
+  /**
+   * Piloté de l'extérieur : aucune boucle, l'horloge ne bouge que par `seek` — le
+   * défilement de la page, par exemple.
+   */
+  readonly manual?: boolean;
+}
+
+/** Ce que le plateau expose à qui le pilote. */
+export interface BoardControl {
+  /** La durée du scénario, en millisecondes d'horloge. */
+  readonly total: number;
+  /** Place l'horloge à `now` et redessine. */
+  seek(now: number): void;
+  /** L'image du scénario en vigueur à l'instant `now` (`FRAMES`). */
+  frameAt(now: number): number;
+}
+
+export function mountBoard(
+  host: HTMLElement,
+  canvas: HTMLCanvasElement,
+  { still, manual = false }: BoardOptions = {},
+): BoardControl | undefined {
   const context = canvas.getContext("2d");
-  if (context === null) return;
+  if (context === null) return undefined;
   const frames = buildFrames();
   const board: Board = frames[0]!.state.board;
   const timeline = timelineOf(frames.length);
@@ -217,7 +241,9 @@ export function mountBoard(host: HTMLElement, canvas: HTMLCanvasElement, still?:
     drawables.sort((a, b) => compareDepth(a.depth, b.depth));
     // La boucle repart en fondu, jamais d'un coup.
     const fade =
-      frozen === undefined ? clamp01((timeline.total - now) / FADE_MS) * clamp01(now / FADE_MS) : 1;
+      frozen === undefined && !manual
+        ? clamp01((timeline.total - now) / FADE_MS) * clamp01(now / FADE_MS)
+        : 1;
     context.globalAlpha = fade;
     for (const drawable of drawables) drawable.paint();
     context.globalAlpha = 1;
@@ -247,6 +273,10 @@ export function mountBoard(host: HTMLElement, canvas: HTMLCanvasElement, still?:
   };
 
   function schedule(): void {
+    if (manual) {
+      draw(clock, staticFrame());
+      return;
+    }
     if (staticFrame() !== undefined) {
       last = undefined;
       draw(0, staticFrame());
@@ -288,4 +318,13 @@ export function mountBoard(host: HTMLElement, canvas: HTMLCanvasElement, still?:
   document.addEventListener("visibilitychange", schedule);
   reduced.addEventListener("change", schedule);
   schedule();
+
+  return {
+    total: timeline.total,
+    seek(now) {
+      clock = Math.min(Math.max(now, 0), timeline.total);
+      draw(clock, staticFrame());
+    },
+    frameAt: (now) => sightAt(now).k,
+  };
 }

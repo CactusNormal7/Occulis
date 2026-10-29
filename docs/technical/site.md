@@ -18,7 +18,8 @@ apps/site/
     i18n.ts             contentFor(locale) — la seule porte vers les textes
     tokens.ts           les propriétés --occ-* posées sur :root au build
     layouts/, components/, pages/
-    island/             le plateau animé du hero (script.ts pur, board.ts canevas)
+    island/             le plateau (script.ts pur, board.ts canevas) et la lumière du hero (lantern.ts)
+    scripts/reveal.ts   les apparitions au défilement
     worker/             l'API d'inscription (beta.ts pur, store.ts D1, mail.ts Resend)
 packages/board/         rendu du plateau sans PixiJS, partagé avec apps/web
 ```
@@ -28,8 +29,8 @@ et `@occulis/board`.
 
 ## Textes et langues
 
-Tout texte affiché vit dans `src/content/fr/` (`site`, `hero`, `concept`, `differences`,
-`gallery`, `beta`, `pages`, `footer`, `mail` en JSON ; mentions légales et confidentialité
+Tout texte affiché vit dans `src/content/fr/` (`site`, `hero`, `concept`, `principles`,
+`board`, `match`, `faq`, `beta`, `pages`, `footer`, `mail` en JSON ; mentions légales et confidentialité
 en Markdown). Les composants reçoivent une `locale` et lisent `contentFor(locale)`.
 
 Pour ajouter l'anglais : copier `content/fr/` en `content/en/`, l'enregistrer dans
@@ -58,7 +59,60 @@ Deux polices auto-hébergées sous `public/fonts/`, licences OFL jointes : Tiny5
 titres, boutons, toujours en multiples de 8 px) et Atkinson Hyperlegible Next 400/700
 (texte courant), copiée depuis `@fontsource/atkinson-hyperlegible-next`.
 
-## Le plateau du hero
+## La page
+
+Dans l'ordre (`pages/index.astro`) : hero, bandeau, le jeu (`Concept`), principes
+(`Principles`), le plateau (`BoardScrub`), une partie (`Match`), l'inscription
+(`BetaForm`), questions (`Faq`). Chaque section commence par `SectionBar` : le nom de la
+section — le même que dans la navigation — sur un filet pleine largeur.
+
+- **Hero** : le nom en très grand, tramé, sur la grille de `island/lantern.ts` (voir
+  plus bas) ; une phrase, deux boutons, puis le bandeau : une rangée de cases du plateau
+  qui défile (murs, cases vues, pièces, une trace), sans texte, décorative.
+- **Principes** : quatre cases, un pictogramme (`Glyph.astro`, grille de 9 × 9 en SVG,
+  `--occ-camp-a` / `--occ-camp-b` pour les pièces) et un mot, côte à côte dès 900 px. Le
+  pictogramme occupe la case (`--glyph` : la largeur de la colonne, lue en `cqi` sur la
+  liste, jusqu'à 216 px). Avec une souris, au survol ou au focus (les cases sont
+  focalisables), il se replie à 56 px dans le coin sans déplacer le mot, ses cases
+  s'allument une à une et la phrase prend sa place.
+- **Une partie** : les quatre phases en lignes, numérotées parce que c'est une suite. Avec
+  une souris, la ligne s'inverse et s'ouvre sur sa phrase au survol ou au focus. Sous
+  720 px, le repère de droite est masqué.
+- **Écran tactile** (`hover: none`) : tout le texte est visible d'emblée.
+- **Titres d'affiche** (`.display`) : une ligne pleine, une ligne tramée par un
+  `repeating-conic-gradient` des tokens (trois points d'os sur quatre).
+- **Textes** : la typographie française met une espace fine insécable (U+202F) avant
+  « : ; ? ! » dans les JSON.
+
+### Mouvement
+
+- au chargement, le titre et le pied du hero arrivent (CSS seul) ;
+- la lumière du hero suit la souris ;
+- le bandeau défile en boucle (CSS, en pause au survol) ;
+- le plateau se joue au défilement ;
+- `scripts/reveal.ts` pose `motion` sur `<html>`, puis `is-seen` sur chaque `.reveal` qui
+  entre à l'écran : le texte monte, les cases et les lignes arrivent l'une après l'autre ;
+- la barre de progression de l'en-tête suit le défilement (`animation-timeline`), là où
+  le navigateur le permet.
+
+Rien n'est caché sans le script : c'est lui qui pose la classe qui cache. Sous
+`prefers-reduced-motion`, il ne la pose pas, et la feuille coupe toutes les animations.
+
+## La lumière du hero
+
+`island/lantern.ts` dessine sous le titre une grille de cases de 24 px avec des murs
+courts, placés par un tirage reproductible. Autour du pointeur, les cases s'éclairent
+dans un carré de cinq cases de rayon, et la vue s'arrête aux murs, comme la ligne de vue
+d'une pièce. Une case qui sort de la vue garde son contour 1,6 s : c'est la mémoire du
+jeu. Le titre net est masqué sur ce même carré (`--l/--r/--t/--b`, deux dégradés en
+`mask-composite: intersect`) au-dessus du titre tramé.
+
+Sans pointeur précis, ou deux secondes et demie après que la souris a quitté le hero, la
+lumière se promène seule, case par case. Elle s'arrête hors écran et quand l'onglet est
+caché. Sous `prefers-reduced-motion`, la grille est dessinée une fois et le titre reste
+net. Les couleurs sont lues dans les propriétés `--occ-ink-*` de la page.
+
+## Le plateau
 
 `island/script.ts` (pur) joue cinq coups sur la carte des nouvelles parties (`ridge-1`)
 avec les équipes par défaut : `buildFrames()` rend chaque position et la connaissance du
@@ -68,17 +122,44 @@ col, puis réduit à des fantômes.
 
 `island/board.ts` dessine avec `@occulis/board/paint` (`terrainDrawables`, `drawPiece`) :
 
-- tout se déduit du temps écoulé (`sightAt(now)`), sans état de transition ;
+- tout se déduit du temps de la séquence (`sightAt(now)`), sans état de transition ;
 - la vue se déploie case par case depuis les pièces (`MOTION_FX.revealPerTileMs`) et se
   retire d'un bloc (`dimPerTileMs`) ; une pièce adverse n'est dessinée que sur une case
   éclairée, un souvenir (`remembered`) hors de vue devient un fantôme ;
-- entre deux coups, rien ne bouge : `nextChange()` endort la boucle (`setTimeout`) au
-  lieu de redessiner chaque image ; elle s'arrête aussi quand le plateau sort de l'écran
-  ou que l'onglet est caché ;
+- en mode `manual`, aucune boucle : `mountBoard()` rend un `BoardControl` dont `seek(now)`
+  dessine l'instant voulu et `frameAt(now)` dit quel coup est joué ;
+- sinon (pages de capture), la séquence joue seule et `nextChange()` endort la boucle
+  entre deux coups ;
 - sous `prefers-reduced-motion`, une seule image fixe (`FRAMES.summit`).
 
-`BoardIsland.astro` affiche d'abord l'image capturée (`board-summit-*.avif|webp`), qui
-suffit sans JavaScript, puis importe `island/board.ts` quand le navigateur est libre
+`BoardScrub.astro` épingle le plateau (avec `motion` seulement) : la piste fait 360vh, la
+scène reste collée sous l'en-tête, et la position dans la piste devient le temps de la
+séquence (`seek`). Quatre étapes (départ, approche, sommet, souvenir) se déduisent du
+coup joué (`FRAMES`). Ce qui montre que le défilement fait avancer :
+
+- un rail en haut, un filet que `--scrub` remplit, avec une marque par étape (creuse à
+  venir, pleine une fois passée, agrandie pour l'étape en cours : `is-done`,
+  `is-current`) ;
+- un compteur « 02 / 04 » et une flèche qui descend, remplacée à la dernière étape par
+  l'invitation à continuer (`is-ending`) ;
+- les coins d'un viseur autour de la scène.
+
+L'attribut `data-step` de la section choisit la légende et le panneau visibles. À partir
+de 900 px, la légende passe en bas à gauche du plateau et le panneau en haut à droite, dans
+les coins que le losange laisse vides ; en dessous, ils suivent le plateau.
+
+**Démonstration provisoire.** La scène est enveloppée du ruban de chantier de la charte :
+`WorkInProgress.astro` reprend le balisage du composant React `WorkInProgress` de
+`@occulis/ui` (celui de l'écran de fin de partie) et sa feuille, `@occulis/ui/wip.css`,
+avec les textes de `board.wip`. Le panneau (tour, cases vues, hauteur) affiche des chiffres **fictifs**,
+écrits dans `board.json` et marqués « Données fictives ». La section accueillera plus tard
+une vraie démonstration ; ces chiffres ne décrivent pas le moteur.
+
+Sans script ou sous « mouvement réduit », rien n'est épinglé : l'image fixe, puis les
+quatre étapes l'une sous l'autre, sans rail.
+
+La section affiche d'abord l'image capturée (`board-summit-*.avif|webp`), qui suffit sans
+JavaScript, puis importe `island/board.ts` quand le navigateur est libre
 (`requestIdleCallback`). Le module pèse environ 8 Ko compressé, `core` compris.
 
 ## Images
@@ -87,8 +168,7 @@ suffit sans JavaScript, puis importe `island/board.ts` quand le navigateur est l
 en lance un), ouvre les pages `/capture/<image>/` — générées en développement seulement —
 avec le Chrome installé (`playwright-core`, aucun navigateur téléchargé), et écrit :
 
-- `public/images/board-{fog,summit,ghosts}-{720,1440}.{avif,webp}`, réduites au plus
-  proche voisin ;
+- `public/images/board-summit-{720,1440}.{avif,webp}`, réduites au plus proche voisin ;
 - `public/og.png` (1200 × 630), l'image de partage ;
 - `public/favicon.svg`, `favicon.ico`, `apple-touch-icon.png` : l'œil des pièces, en os
   sur le vide, couleurs prises aux tokens.
@@ -162,13 +242,16 @@ pnpm --filter @occulis/site typecheck  # astro sync + tsc (site et Worker)
 pnpm --filter @occulis/site capture    # images, og.png, icônes
 ```
 
-Le parcours complet en local (`.dev.vars` copié depuis `.dev.vars.example`) :
+Le parcours complet en local, formulaire compris, depuis la racine (`.dev.vars` copié
+depuis `.dev.vars.example`) :
 
 ```bash
-pnpm --filter @occulis/site build
-pnpm --filter @occulis/site exec wrangler d1 migrations apply occulis-site --local
-pnpm --filter @occulis/site preview    # wrangler dev, http://localhost:8787
+pnpm site    # build, migrations D1 locales, wrangler dev — http://localhost:8787
 ```
+
+C'est une commande à part : `pnpm local` ne lance que le jeu. Au premier lancement,
+wrangler demande de confirmer la migration. Les messages s'affichent dans le terminal
+(`MAIL_TO_CONSOLE=on`). Une page modifiée demande de relancer la commande.
 
 `astro check` n'est pas utilisé : `@astrojs/check` ne se charge pas dans ce monorepo pnpm
 (dépendance `@emnapi/runtime` introuvable). Le frontmatter des `.astro` n'est donc pas

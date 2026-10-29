@@ -1,9 +1,9 @@
 {
   "subject": "Confirmez votre inscription à la beta d'Occulis",
   "greeting": "Bonjour,",
-  "body": "Vous avez demandé à recevoir l'annonce de l'ouverture de la beta d'Occulis. Pour confirmer votre adresse, ouvrez ce lien :",
+  "body": "Vous avez demandé à recevoir l'annonce de l'ouverture de la beta d'Occulis. Pour confirmer votre adresse, ouvrez ce lien :",
   "button": "Confirmer mon inscription",
   "expiry": "Le lien est valable sept jours. Sans confirmation, votre adresse est effacée.",
-  "ignore": "Vous n'êtes pas à l'origine de cette demande ? Ignorez ce message : rien ne sera conservé.",
+  "ignore": "Vous n'êtes pas à l'origine de cette demande ? Ignorez ce message : rien ne sera conservé.",
   "unsubscribe": "Se désinscrire"
 }

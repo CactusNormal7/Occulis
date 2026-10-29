@@ -24,7 +24,7 @@ const PUBLIC = new URL("../public/", import.meta.url);
 // tourne déjà (`pnpm --filter @occulis/site dev`), sinon on en démarre un.
 const PORT = 4321;
 const ORIGIN = `http://localhost:${PORT}`;
-const BOARD_IMAGES = ["fog", "summit", "ghosts"];
+const BOARD_IMAGES = ["summit"];
 
 async function running() {
   try {
