@@ -50,6 +50,7 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 Décision : Nota (base « Tâches », espace Tengram Ydays) remplace Notion comme outil de gestion de projet par défaut.
 Raison : choix de Jules, Nota devient l'outil de référence.
 Conséquences :
+
 - Les statuts, priorités et dates se mettent à jour dans Nota ; Notion n'est plus la source de vérité.
 - Base resynchronisée le 2026-10-28 (OCC-1 à OCC-128, 120 lignes). Chaque ligne garde son « Lien Notion ».
 - Les prompts et docs qui disent « passer la tâche Notion en Fait » (ex. prompt des Refontes 1-5, bilan hebdomadaire) sont à mettre à jour vers Nota (OCC-121).
