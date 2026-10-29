@@ -38,7 +38,7 @@ existe en anglais et en français via `@occulis/i18n`; aucune couleur ne va hors
 
 ## Pull requests et fusion
 
-- Ouvrir la PR vers `staging`, avec le ticket Notion associé et le modèle rempli.
+- Ouvrir la PR vers `staging`, avec le ticket Nota associé et le modèle rempli.
 - Ajouter une capture ou un enregistrement lorsque l'interface change.
 - Le porteur du projet, `@CactusNormal7`, relit les chemins critiques et est le seul à
   fusionner vers `staging` ou `main`.

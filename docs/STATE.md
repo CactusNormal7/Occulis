@@ -1,6 +1,6 @@
 # État du projet
 
-Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-10-27.
+Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-10-28.
 
 ## Jeu (`packages/core`)
 
@@ -44,6 +44,16 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 - **Voile tramé du changement de thème : acté, verrouillé par `veil.test.ts`, ne jamais le retoucher sans demande explicite.**
 - Aucune partie locale (hot-seat retiré, implementation-notes 18). Un coup se joue au clic ou par saisie de coordonnées ; la sélection filtre `legalActions`, elle ne redéduit jamais la légalité.
 - Charte `@occulis/ui` portant back-office, profil, compte, préparation. Le menu, l'attente et le bandeau de partie n'y ont pas migré.
+
+## Outil de gestion de projet — 2026-10-28
+
+Décision : Nota (base « Tâches », espace Tengram Ydays) remplace Notion comme outil de gestion de projet par défaut.
+Raison : choix de Jules, Nota devient l'outil de référence.
+Conséquences :
+
+- Les statuts, priorités et dates se mettent à jour dans Nota ; Notion n'est plus la source de vérité.
+- Base resynchronisée le 2026-10-28 (OCC-1 à OCC-128, 120 lignes). Chaque ligne garde son « Lien Notion ».
+- Les prompts et docs qui disent « passer la tâche Notion en Fait » (ex. prompt des Refontes 1-5, bilan hebdomadaire) sont à mettre à jour vers Nota (OCC-121).
 
 ## Vérifié le 2026-10-21
 
