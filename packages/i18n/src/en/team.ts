@@ -1,7 +1,7 @@
 /** La composition et le placement d'une équipe : constructeur, erreurs, presets. */
 export const team = {
-  roles: { commander: "Commander", special: "Specials", pawn: "Pawns" },
-  kinds: { commander: "Commander", scout: "Scout", pawn: "Pawn" } as Record<string, string>,
+  roles: { commander: "King", special: "Specials", pawn: "Pawns" },
+  kinds: { commander: "King", scout: "Scout", pawn: "Pawn" } as Record<string, string>,
   kindDescriptions: {
     commander: "The piece to protect. Moves 3, sees 14.",
     scout: "Fast and far-sighted. Moves 6, sees 20.",

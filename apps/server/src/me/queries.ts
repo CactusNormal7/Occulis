@@ -1,5 +1,6 @@
 import type { Outcome, PlayerId } from "@occulis/core";
 import type {
+  MeMatchDebrief,
   MeMatchDetail,
   MeMatchPage,
   MeMatchSummary,
@@ -313,6 +314,78 @@ export async function readMyMatch(
   const { frames, players, board, replayError } = replayLog(row, actions, frameOf);
   const log = actions.map((action, seq) => ({ seq, player: players[seq] ?? null, action }));
   return { ...summary, log, frames, board, replayError };
+}
+
+export type MyDebrief = MeMatchDebrief | "unknown" | "ongoing" | "closed";
+
+/**
+ * L'écran de fin d'une partie : son replay (`readMyMatch()`) et l'Elo des deux joueurs.
+ * Réservé aux deux joueurs, il se ferme pour de bon dès que **tous deux** l'ont quitté
+ * (`leaveMyDebrief()`) : le lien ne le rouvre plus, seul le replay de l'historique reste.
+ */
+export async function readMyDebrief(
+  db: D1Database,
+  playerId: string,
+  matchId: string,
+): Promise<MyDebrief> {
+  const row = await db
+    .prepare(
+      `SELECT m.player_a, m.debrief_left_a, m.debrief_left_b, m.rating_change_a,
+              m.rating_change_b, pa.elo AS elo_a, pb.elo AS elo_b
+       FROM matches m
+       JOIN players pa ON pa.id = m.player_a
+       JOIN players pb ON pb.id = m.player_b
+       WHERE m.id = ?1 AND (m.player_a = ?2 OR m.player_b = ?2)`,
+    )
+    .bind(matchId, playerId)
+    .first<DebriefRow>();
+  if (row === null) return "unknown";
+  if (row.debrief_left_a !== null && row.debrief_left_b !== null) return "closed";
+
+  const match = await readMyMatch(db, playerId, matchId);
+  if (typeof match === "string") return match;
+  const mine = row.player_a === playerId;
+  return {
+    ...match,
+    elo: mine ? row.elo_a : row.elo_b,
+    opponentElo: mine ? row.elo_b : row.elo_a,
+    opponentRatingChange: mine ? row.rating_change_b : row.rating_change_a,
+  };
+}
+
+interface DebriefRow {
+  player_a: string;
+  debrief_left_a: number | null;
+  debrief_left_b: number | null;
+  rating_change_a: number | null;
+  rating_change_b: number | null;
+  elo_a: number;
+  elo_b: number;
+}
+
+/**
+ * Le joueur quitte l'écran de fin de sa partie finie. Seul son camp est noté, une fois :
+ * le premier départ compte, un second ne le repousse pas. Faux si la partie n'est pas la
+ * sienne ou pas finie.
+ */
+export async function leaveMyDebrief(
+  db: D1Database,
+  playerId: string,
+  matchId: string,
+  now: number,
+): Promise<boolean> {
+  const result = await db
+    .prepare(
+      `UPDATE matches SET
+         debrief_left_a = CASE WHEN player_a = ?2 THEN COALESCE(debrief_left_a, ?3)
+                               ELSE debrief_left_a END,
+         debrief_left_b = CASE WHEN player_b = ?2 THEN COALESCE(debrief_left_b, ?3)
+                               ELSE debrief_left_b END
+       WHERE id = ?1 AND (player_a = ?2 OR player_b = ?2) AND finished_at IS NOT NULL`,
+    )
+    .bind(matchId, playerId, now)
+    .run();
+  return result.meta.changes > 0;
 }
 
 function mySummary(row: MatchRow, playerId: string): MeMatchSummary {

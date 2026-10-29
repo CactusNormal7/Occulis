@@ -5,7 +5,7 @@ import { BoardPrototype, PieceIcon } from "./BoardPrototype.js";
 import type { Role } from "./board-mock.js";
 
 const ROLES: readonly { role: Role; label: string }[] = [
-  { role: "master", label: "Master — eye on a mast" },
+  { role: "master", label: "King — eye on a mast" },
   { role: "ability", label: "Ability — lozenge and spike" },
   { role: "pawn", label: "Pawn — short leaning mast" },
 ];
@@ -102,7 +102,7 @@ function ScreenThreshold() {
             <CountdownRing totalMs={90000} remainingMs={90000} size="lg" label="Time left">
               90
             </CountdownRing>
-            <Badge tone="dim">1 master · 3 abilities · 4 pawns</Badge>
+            <Badge tone="dim">1 king · 3 abilities · 2 pawns</Badge>
           </div>
         )}
         <PaperInversion

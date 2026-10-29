@@ -1,6 +1,6 @@
 ## Summary
 
-<!-- Explain the user-facing and technical intent. Link the Notion task. -->
+<!-- Explain the user-facing and technical intent. Link the Nota task. -->
 
 Closes or relates to:
 

@@ -21,6 +21,8 @@ import {
   SettingEditor,
   SettingList,
   SettingRow,
+  SkeletonScreen,
+  type SkeletonLayout,
   TextField,
   TileAvatar,
   ToastProvider,
@@ -58,7 +60,9 @@ import {
   handleCooldownLabel,
   parseProfileRoute,
   profileHash,
+  screenOf,
   sinceLabel,
+  skeletonOf,
   tabOf,
   type ProfileRoute,
 } from "./model.js";
@@ -127,7 +131,7 @@ function Frame({
 }) {
   const all = useMessages();
   const m = all.profile;
-  const route = useHashRoute(parseProfileRoute, resourcesOf);
+  const { route, target, switching } = useHashRoute(parseProfileRoute, resourcesOf, screenOf);
   const signedIn = loaded.state === "ready";
   const unread = unreadTotal(useSocial().state);
 
@@ -143,17 +147,17 @@ function Frame({
                 {
                   href: profileHash({ view: "account" }),
                   label: m.tabs.account,
-                  current: route.view === "account",
+                  current: target.view === "account",
                 },
                 {
                   href: profileHash({ view: "matches", offset: 0 }),
                   label: m.tabs.matches,
-                  current: tabOf(route) === "matches",
+                  current: tabOf(target) === "matches",
                 },
                 {
                   href: profileHash({ view: "friends" }),
                   label: unread > 0 ? all.social.tabUnread(unread) : all.social.tab,
-                  current: tabOf(route) === "friends",
+                  current: tabOf(target) === "friends",
                 },
               ]
             : []
@@ -167,7 +171,12 @@ function Frame({
         }
       />
       <main className="occ-page">
-        <Gate loaded={loaded} route={route} reload={reload} />
+        <Gate
+          loaded={loaded}
+          route={route}
+          reload={reload}
+          skeleton={switching ? skeletonOf(target) : undefined}
+        />
       </main>
     </>
   );
@@ -177,10 +186,13 @@ function Gate({
   loaded,
   route,
   reload,
+  skeleton,
 }: {
   loaded: Loaded<MeProfile>;
   route: ProfileRoute;
   reload: () => void;
+  /** L'écran visé n'est pas arrivé : sa forme, à la place de l'écran de `route`. */
+  skeleton: SkeletonLayout | undefined;
 }) {
   const m = useMessages().profile;
   if (loaded.state === "failed") {
@@ -190,7 +202,8 @@ function Gate({
   }
   const profile = loaded.value;
   return (
-    <div key={profileHash(route)} className="occ-stack">
+    // Une clé par écran : une autre page de l'historique garde l'écran et son focus.
+    <div key={screenOf(route)} className="occ-stack">
       {profile.impersonating && (
         <Banner
           icon="impersonate"
@@ -206,19 +219,43 @@ function Gate({
           {m.impersonation.text}
         </Banner>
       )}
-      {route.view === "account" && <Account profile={profile} reload={reload} />}
-      {route.view === "matches" && (
-        <Matches offset={route.offset} readOnly={profile.impersonating} />
+      {/* L'onglet a déjà changé : l'écran suivant, s'il n'est pas arrivé, montre sa forme
+          plutôt que l'écran qu'on quitte (« Chargement et premier rendu »). */}
+      {skeleton === undefined ? (
+        <View profile={profile} route={route} reload={reload} />
+      ) : (
+        <SkeletonScreen layout={skeleton} />
       )}
-      {route.view === "match" && <MatchReplay id={route.id} />}
-      {route.view === "friends" && <FriendsView readOnly={profile.impersonating} />}
-      {route.view === "friend" && (
-        <FriendView id={route.id} offset={route.offset} readOnly={profile.impersonating} />
-      )}
-      {route.view === "friendMatch" && <FriendMatchReplay id={route.id} matchId={route.matchId} />}
-      {route.view === "chat" && <ChatView id={route.id} readOnly={profile.impersonating} />}
     </div>
   );
+}
+
+function View({
+  profile,
+  route,
+  reload,
+}: {
+  profile: MeProfile;
+  route: ProfileRoute;
+  reload: () => void;
+}) {
+  const readOnly = profile.impersonating;
+  switch (route.view) {
+    case "account":
+      return <Account profile={profile} reload={reload} />;
+    case "matches":
+      return <Matches offset={route.offset} readOnly={readOnly} />;
+    case "match":
+      return <MatchReplay id={route.id} />;
+    case "friends":
+      return <FriendsView readOnly={readOnly} />;
+    case "friend":
+      return <FriendView id={route.id} offset={route.offset} readOnly={readOnly} />;
+    case "friendMatch":
+      return <FriendMatchReplay id={route.id} matchId={route.matchId} />;
+    case "chat":
+      return <ChatView id={route.id} readOnly={readOnly} />;
+  }
 }
 
 // --- Compte ---------------------------------------------------------------------------

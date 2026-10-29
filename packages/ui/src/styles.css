@@ -51,6 +51,9 @@
   /* Une police pixel ne se lisse pas : lissée, elle bave d'un demi-pixel. */
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: unset;
+  /* Un toucher ne fait pas clignoter de rectangle sur ce qu'il vise : chaque geste a déjà
+     son état (survol, appui, focus au clavier). */
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Le fond d'une page : un halo d'aura qui tombe d'en haut, sous la voûte. */
@@ -878,6 +881,42 @@ a.occ-person:hover .occ-tile-avatar:not(.occ-tile-avatar--A, .occ-tile-avatar--B
   margin-left: auto;
 }
 
+/* Le ruban de chantier : discret, sur le bord haut, sans toucher au contenu. */
+.occ-wip {
+  position: relative;
+}
+
+.occ-wip::before {
+  position: absolute;
+  z-index: 1;
+  inset: 0 0 auto;
+  height: 4px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--occ-caution) 0 6px,
+    var(--occ-caution-ground) 6px 12px
+  );
+  content: "";
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.occ-wip__tag {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: var(--occ-space-3);
+  padding: 0 var(--occ-space-1);
+  background: var(--occ-caution-ground);
+  border: 1px solid var(--occ-caution);
+  color: var(--occ-caution);
+  font-size: var(--occ-text-xs);
+  letter-spacing: var(--occ-caps);
+  line-height: 1;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
 .occ-empty {
   display: flex;
   flex-wrap: wrap;
@@ -924,6 +963,59 @@ a.occ-person:hover .occ-tile-avatar:not(.occ-tile-avatar--A, .occ-tile-avatar--B
 
 .occ-skeleton__line:nth-child(3n) {
   width: 46%;
+}
+
+/* Un écran entier pendant une navigation : il paraît aussitôt, en fondu depuis le
+   transparent, sans le délai d'un `Skeleton` seul — la barre du haut a déjà changé, la
+   place ne reste jamais vide. Ses blocs se posent sans délai propre. */
+.occ-skeleton-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  opacity: 0;
+  animation: occ-skeleton-in var(--occ-base) ease-in forwards;
+}
+
+.occ-skeleton-screen .occ-skeleton {
+  opacity: 1;
+  animation: none;
+}
+
+.occ-skeleton-screen__hero {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: var(--occ-space-5) 22px;
+  border: 1px solid var(--occ-ink-line);
+}
+
+.occ-skeleton-screen__hero .occ-skeleton {
+  flex: 1;
+}
+
+.occ-skeleton__tile,
+.occ-skeleton__title,
+.occ-skeleton__area {
+  display: block;
+  background: var(--occ-ink-ghost);
+  animation: occ-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.occ-skeleton__tile {
+  flex: none;
+  width: 104px;
+  height: 52px;
+}
+
+.occ-skeleton__title {
+  width: 240px;
+  max-width: 60%;
+  height: 18px;
+}
+
+.occ-skeleton__area {
+  height: 420px;
+  border: 1px solid var(--occ-ink-line);
 }
 
 /* ---- Faits et définitions ------------------------------------------------------------- */
@@ -1360,8 +1452,10 @@ select.occ-input option {
   transition: opacity var(--occ-fast);
 }
 
+/* Le focus au clavier seulement : après un clic, la barre se rééteint avec le survol au
+   lieu de rester allumée tant que le bouton garde le focus. */
 .occ-table tr:hover .occ-actions-cell .occ-quick-bar,
-.occ-actions-cell .occ-quick-bar:focus-within {
+.occ-actions-cell .occ-quick-bar:has(:focus-visible) {
   opacity: 1;
 }
 

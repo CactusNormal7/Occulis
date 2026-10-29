@@ -34,10 +34,12 @@ import {
   Reveal,
   Segmented,
   Skeleton,
+  SkeletonScreen,
   SettingEditor,
   SettingList,
   SettingRow,
   Specimen,
+  WorkInProgress,
   Stage,
   StatTile,
   Swatch,
@@ -116,6 +118,19 @@ describe("composants", () => {
     expect(html(<UiRoot locale="fr">{pager}</UiRoot>)).toContain("26–50 sur 132");
     expect(html(<UiRoot locale="fr">{pager}</UiRoot>)).toContain('lang="fr"');
     expect(html(<UiRoot>{pager}</UiRoot>)).toContain("26–50 of 132");
+  });
+
+  it("signale un élément en chantier sans toucher à son contenu", () => {
+    const html = renderToStaticMarkup(
+      <UiRoot>
+        <WorkInProgress note="données factices">
+          <p>contenu</p>
+        </WorkInProgress>
+      </UiRoot>,
+    );
+    expect(html).toContain('class="occ-wip" title="données factices"');
+    expect(html).toContain("WIP");
+    expect(html).toContain("<p>contenu</p>");
   });
 
   it("rend les autres briques sans lever", () => {
@@ -339,6 +354,14 @@ describe("préparation d'une partie", () => {
     expect(lines.match(/occ-skeleton__line/g)).toHaveLength(4);
     expect(lines).not.toContain("occ-skeleton--card");
     expect(html(<Skeleton card />)).toContain("occ-skeleton--card");
+  });
+
+  it("annonce un écran à venir d'une seule voix, dans la forme demandée", () => {
+    const screen = html(<SkeletonScreen layout="hero" />);
+    expect(screen.match(/role="status"/g)).toHaveLength(1);
+    expect(screen).toContain("occ-skeleton__tile");
+    expect(html(<SkeletonScreen />)).toContain("occ-skeleton__title");
+    expect(html(<SkeletonScreen layout="detail" />)).toContain("occ-skeleton__area");
   });
 
   it("montre la charte : code échappé, échantillon modifiable ou non, lien courant marqué", () => {
