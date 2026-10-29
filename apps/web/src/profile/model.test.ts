@@ -8,6 +8,8 @@ import {
   parseProfileRoute,
   profileHash,
   sinceLabel,
+  screenOf,
+  skeletonOf,
   tabOf,
 } from "./model.js";
 
@@ -41,6 +43,27 @@ describe("routes du profil", () => {
     expect(tabOf({ view: "match", id: "x" })).toBe("matches");
     expect(tabOf({ view: "chat", id: "x" })).toBe("friends");
     expect(tabOf({ view: "account" })).toBe("account");
+  });
+
+  it("garde l'écran entre deux pages d'une liste, en change d'une fiche à l'autre", () => {
+    expect(screenOf({ view: "matches", offset: 0 })).toBe(
+      screenOf({ view: "matches", offset: 20 }),
+    );
+    expect(screenOf({ view: "friend", id: "a", offset: 0 })).toBe(
+      screenOf({ view: "friend", id: "a", offset: 20 }),
+    );
+    expect(screenOf({ view: "friend", id: "a", offset: 0 })).not.toBe(
+      screenOf({ view: "friend", id: "b", offset: 0 }),
+    );
+    expect(screenOf({ view: "chat", id: "a" })).not.toBe(
+      screenOf({ view: "friend", id: "a", offset: 0 }),
+    );
+  });
+
+  it("donne à chaque écran la forme de son squelette", () => {
+    expect(skeletonOf({ view: "account" })).toBe("hero");
+    expect(skeletonOf({ view: "matches", offset: 0 })).toBe("list");
+    expect(skeletonOf({ view: "friendMatch", id: "a", matchId: "m" })).toBe("detail");
   });
 
   it("ramène un identifiant d'ami suspect à la liste", () => {

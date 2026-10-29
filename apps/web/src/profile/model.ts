@@ -1,4 +1,5 @@
 import type { MeMatchSummary, MeProfile, MeResult } from "@occulis/protocol";
+import type { SkeletonLayout } from "@occulis/ui";
 import { currentLocale, messages } from "../locale/current.js";
 import { redirectMessage } from "../net/auth.js";
 
@@ -67,6 +68,41 @@ export function profileHash(route: ProfileRoute): string {
       return `#/friends/${route.id}/messages`;
     case "account":
       return "#/";
+  }
+}
+
+/**
+ * L'écran d'une route : deux routes du même écran (une autre page de l'historique) se
+ * remplacent sans squelette, l'écran affiché restant le temps que l'autre arrive.
+ */
+export function screenOf(route: ProfileRoute): string {
+  switch (route.view) {
+    case "match":
+    case "friend":
+    case "chat":
+      return `${route.view}:${route.id}`;
+    case "friendMatch":
+      return `${route.view}:${route.id}:${route.matchId}`;
+    case "account":
+    case "matches":
+    case "friends":
+      return route.view;
+  }
+}
+
+/** La forme de l'écran d'une route, montrée pendant qu'il arrive. */
+export function skeletonOf(route: ProfileRoute): SkeletonLayout {
+  switch (route.view) {
+    case "account":
+    case "friend":
+      return "hero";
+    case "match":
+    case "friendMatch":
+      return "detail";
+    case "matches":
+    case "friends":
+    case "chat":
+      return "list";
   }
 }
 

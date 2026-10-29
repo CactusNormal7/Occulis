@@ -112,9 +112,12 @@ retenus — jamais un état qu'on fait évoluer image par image.
 ## Chargement et premier rendu
 
 **La convention de tout le client : un écran paraît d'un seul tenant.** Aucune partie d'un
-écran ne s'affiche avant les autres — ni cadre vide, ni squelette, ni bloc qui arrive une
-seconde plus tard en poussant le reste. Elle vaut pour tout écran à venir ; ses règles et ce
-qui les porte :
+écran ne s'affiche avant les autres — ni cadre vide, ni bloc qui arrive une seconde plus tard
+en poussant le reste. **Une seule exception, la navigation à l'intérieur d'une page React**
+(décision du porteur du projet, 2026-10-29) : un clic doit répondre tout de suite, et
+l'écran suivant, s'il n'est pas encore arrivé, montre **son squelette entier** plutôt que de
+laisser l'écran qu'on quitte en place (règle 4). Le premier rendu d'une page, lui, reste
+d'un seul tenant. Elle vaut pour tout écran à venir ; ses règles et ce qui les porte :
 
 1. **Peinture immédiate du fond.** Chaque page HTML porte en tête de `<head>`, juste après
    l'encodage, le bloc de `criticalHead()` (`packages/ui/src/critical.ts`), injecté au build
@@ -135,11 +138,23 @@ qui les porte :
    reste sur son fond jusqu'à ce que toutes ses vues aient leurs données, puis paraît en une
    fois. Pendant l'attente, seule la `ProgressBar` de la charte, qui n'apparaît qu'après
    0,4 s : une attente courte ne montre rien du tout.
-4. **Une navigation garde l'écran affiché.** `useHashRoute(parse, resourcesOf)` précharge la
-   route suivante puis la pose en **transition** (`startTransition`) : React garde l'écran
-   courant jusqu'à ce que le suivant soit complet, puis le remplace d'un bloc. Un écran déjà vu
-   revient aussitôt depuis le cache, puis se relit s'il a plus de `FRESH_MS` (3 s) —
+4. **Une navigation est immédiate.** `useHashRoute(parse, resourcesOf, screenOf)` rend la
+   route affichée (`route`), la route visée (`target`) et `switching`. Au clic, la barre du
+   haut passe à `target` sans attendre. Si tout ce que l'écran suivant lit est déjà dans le
+   cache, il remplace l'écran courant dans la même image ; sinon la route passe en
+   **transition** (`startTransition`) et, pendant l'attente, `switching` fait montrer
+   `SkeletonScreen` (charte) dans la forme de l'écran visé (`skeletonOf(route)`, `hero`,
+   `list` ou `detail`), sous la barre du haut et le bandeau d'usurpation, qui ne bougent
+   pas. Il paraît en fondu depuis le transparent (`--occ-base`) : une réponse rapide le
+   remplace avant qu'il se voie. **Entre deux états d'un même écran** (`screenOf()` égal :
+   une autre page d'une table, une recherche au fil de la frappe, un filtre), pas de
+   squelette : l'écran affiché reste jusqu'à ce que l'autre état soit complet. Un écran déjà
+   vu revient aussitôt depuis le cache, puis se relit s'il a plus de `FRESH_MS` (3 s) —
    _stale-while-revalidate_. `reload()` relit après une écriture en gardant l'écran.
+   **Les liens d'un fragment se préchargent** : `useHashRoute` lit les ressources de la
+   route d'un lien `href="#…"` après 60 ms de survol (`HOVER_PREFETCH_MS` : traverser une
+   liste ne lance pas une lecture par ligne), dès le focus et dès l'appui — le plus souvent,
+   l'écran est arrivé avant le relâchement du clic et le squelette n'a pas lieu.
 5. **Pas d'entrée en cascade.** `occ-enter` (charte) est un fondu du bloc entier, jamais de
    ses parties l'une après l'autre ; les écrans du profil et du back-office se remplacent sans
    animation. Un îlot React de la page du jeu est rendu **de façon synchrone** (`flushSync`,
@@ -193,7 +208,7 @@ analysé avant d'afficher le menu ; il se charge au repos une fois le menu affic
 | `load/hooks.tsx` — `useLoad()`                                                          | Lit une ressource ; **suspend** tant qu'elle n'est jamais arrivée, relit au montage si elle n'est plus fraîche ; `reload()` force la relecture                |
 | `load/hooks.tsx` — `usePending()`                                                       | Vrai tant qu'une lecture est en cours : la `ProgressBar` le suit                                                                                              |
 | `load/hooks.tsx` — `whenReady()`                                                        | Le refus (`EmptyState`) ou le rendu d'une ressource arrivée                                                                                                   |
-| `load/hooks.tsx` — `useHashRoute()`                                                     | La route du fragment ; un changement précharge la route suivante et passe en transition                                                                       |
+| `load/hooks.tsx` — `useHashRoute()`                                                     | La route affichée et la route visée ; un changement est immédiat si l'écran est en cache, en transition avec squelette sinon ; précharge les liens au survol  |
 
 Le fil d'un ami (`ChatView`) lit sa première page par `useLoad(chat(id))`, puis y fond ce que
 le canal pousse, ce qu'on envoie et les messages plus anciens (`merged()`, sans doublon, dans
@@ -1526,8 +1541,10 @@ est revérifié par `handleAdmin()` ou par le greffon Better Auth (`docs/technic
 **Le routage tient dans le fragment** (`#/users/<id>`, `#/matches?status=ongoing`…) : la page
 reste un seul fichier statique, et une fiche se partage par son lien. `parseRoute()` et
 `routeHash()` (`model.ts`) sont inverses l'un de l'autre, ce que les tests vérifient ;
-`useHashRoute(parseRoute, resourcesOf)` suit `hashchange`. `App` rend la vue sous une clé
-égale à la route : l'écran suivant remplace le précédent d'un bloc.
+`useHashRoute(parseRoute, resourcesOf, screenOf)` suit `hashchange` : l'onglet change au clic,
+et un écran pas encore arrivé montre son squelette (`skeletonOf()`). `App` rend la vue sous
+une clé égale à son écran (`screenOf()`) : l'écran suivant remplace le précédent d'un bloc,
+mais une recherche ou une page de table garde l'écran monté, son champ et son focus.
 
 **Les données passent par les ressources de `resources.ts`, `useLoad()` et `whenReady()`**
 (`load/`, voir « Chargement et premier rendu ») : tout ce qu'une route lit est préchargé

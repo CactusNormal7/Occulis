@@ -1,5 +1,6 @@
 import type { Action, PlayerId } from "@occulis/core";
 import type { AdminMatchSummary } from "@occulis/protocol";
+import type { SkeletonLayout } from "@occulis/ui";
 import { messages } from "../locale/current.js";
 
 /**
@@ -85,6 +86,40 @@ function query(values: Record<string, string | number>): string {
   }
   const text = parameters.toString();
   return text.length === 0 ? "" : `?${text}`;
+}
+
+/**
+ * L'écran d'une route : une recherche, une page, un filtre ou une page du design system
+ * gardent l'écran affiché le temps que l'autre état arrive, sans squelette.
+ */
+export function screenOf(route: Route): string {
+  switch (route.view) {
+    case "user":
+    case "player":
+    case "match":
+      return `${route.view}:${route.id}`;
+    case "overview":
+    case "users":
+    case "matches":
+    case "design":
+      return route.view;
+  }
+}
+
+/** La forme de l'écran d'une route, montrée pendant qu'il arrive. */
+export function skeletonOf(route: Route): SkeletonLayout {
+  switch (route.view) {
+    case "overview":
+    case "user":
+    case "player":
+      return "hero";
+    case "match":
+      return "detail";
+    case "users":
+    case "matches":
+    case "design":
+      return "list";
+  }
 }
 
 /** L'onglet allumé pour une route : une fiche reste rangée sous sa liste. */

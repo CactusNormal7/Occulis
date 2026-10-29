@@ -34,6 +34,7 @@ import {
   Reveal,
   Segmented,
   Skeleton,
+  SkeletonScreen,
   SettingEditor,
   SettingList,
   SettingRow,
@@ -353,6 +354,14 @@ describe("préparation d'une partie", () => {
     expect(lines.match(/occ-skeleton__line/g)).toHaveLength(4);
     expect(lines).not.toContain("occ-skeleton--card");
     expect(html(<Skeleton card />)).toContain("occ-skeleton--card");
+  });
+
+  it("annonce un écran à venir d'une seule voix, dans la forme demandée", () => {
+    const screen = html(<SkeletonScreen layout="hero" />);
+    expect(screen.match(/role="status"/g)).toHaveLength(1);
+    expect(screen).toContain("occ-skeleton__tile");
+    expect(html(<SkeletonScreen />)).toContain("occ-skeleton__title");
+    expect(html(<SkeletonScreen layout="detail" />)).toContain("occ-skeleton__area");
   });
 
   it("montre la charte : code échappé, échantillon modifiable ou non, lien courant marqué", () => {
