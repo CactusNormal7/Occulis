@@ -1,6 +1,6 @@
 {
   "label": "The game",
-  "statement": "Two players, one map, and neither sees all of it. Scout, climb, and work out where the other king is hiding.",
+  "statement": "Each player commands a team on a map with walls and high ground. Enemy pieces stay hidden until one of yours has line of sight.",
   "facts": [
     {
       "term": "Format",

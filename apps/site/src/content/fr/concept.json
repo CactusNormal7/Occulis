@@ -1,6 +1,6 @@
 {
   "label": "Le jeu",
-  "statement": "Deux joueurs, deux camps, un roi chacun. La carte a du relief et des murs, et chaque pièce ne voit que ce qui se trouve devant elle. Le reste, il faut le deviner.",
+  "statement": "Chaque joueur dirige une équipe sur une carte avec des murs et des hauteurs. Les pièces adverses restent cachées tant qu'aucune des vôtres n'a de ligne de vue.",
   "facts": [
     {
       "term": "Format",

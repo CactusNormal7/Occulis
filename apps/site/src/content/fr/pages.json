@@ -5,7 +5,7 @@
   },
   "confirmed": {
     "title": "Inscription confirmée",
-    "text": "C'est noté. Nous vous écrirons à l'ouverture de la beta, et pour rien d'autre."
+    "text": "Vous êtes sur la liste. Nous vous écrirons à l'ouverture de la beta."
   },
   "refused": {
     "title": "L'inscription n'a pas abouti",

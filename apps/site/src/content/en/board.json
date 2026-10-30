@@ -12,7 +12,7 @@
   "steps": [
     {
       "word": "Start",
-      "text": "Both camps are in place. Beyond the ridge, nothing.",
+      "text": "Both teams are in position. The red team is hidden behind the ridge.",
       "data": [
         {
           "label": "Turn",
@@ -48,7 +48,7 @@
     },
     {
       "word": "Summit",
-      "text": "It climbs one level. From up there, the red camp comes into view.",
+      "text": "It climbs the pass and can now see the red team.",
       "data": [
         {
           "label": "Turn",
@@ -66,7 +66,7 @@
     },
     {
       "word": "Memory",
-      "text": "It comes back down. All that's left of red is its last known position.",
+      "text": "Back down, the red pieces are hidden again. The map marks where they were last seen.",
       "data": [
         {
           "label": "Turn",

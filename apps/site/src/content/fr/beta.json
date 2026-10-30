@@ -1,13 +1,16 @@
 {
   "label": "Beta",
-  "titleLines": ["Jouez avant", "tout le monde."],
-  "text": "Laissez votre adresse : on vous écrit quand une place s'ouvre. Elle ne sert à rien d'autre.",
+  "titleLines": [
+    "Rejoignez",
+    "la beta."
+  ],
+  "text": "Laissez votre adresse et nous vous préviendrons quand des places s'ouvriront.",
   "emailLabel": "Adresse email",
-  "emailHint": "Un seul usage : vous prévenir pour la beta.",
+  "emailHint": "Nous ne l'utiliserons que pour la beta.",
   "consent": "J'accepte qu'Occulis m'écrive au sujet de la beta. Chaque message permet de se désinscrire en un clic.",
   "submit": "Rejoindre la beta",
   "sending": "Envoi en cours…",
-  "privacy": "Votre adresse est conservée chez nous, jamais revendue ni partagée. Détails dans la",
+  "privacy": "Nous conservons votre adresse nous-mêmes, sans la vendre ni la partager. Voir la",
   "privacyLink": "politique de confidentialité",
   "honeypotLabel": "Laissez ce champ vide",
   "messages": {

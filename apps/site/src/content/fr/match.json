@@ -4,22 +4,22 @@
     {
       "word": "Préparation",
       "meta": "Avant la carte",
-      "text": "Vous choisissez les pièces de votre équipe."
+      "text": "Choisissez les pièces de votre équipe."
     },
     {
       "word": "Déploiement",
       "meta": "À couvert",
-      "text": "Chacun place ses pièces dans sa zone, en même temps, sans voir l'autre."
+      "text": "Les deux joueurs placent leurs pièces dans leur zone en même temps, sans voir le placement de l'autre."
     },
     {
       "word": "Partie",
       "meta": "Tour par tour",
-      "text": "Une pièce bouge à chaque tour. Avancez, grimpez, cherchez le roi d'en face."
+      "text": "Déplacez une pièce par tour, prenez les hauteurs et cherchez le roi adverse."
     },
     {
       "word": "Revue",
       "meta": "Après coup",
-      "text": "Rejouez la partie coup par coup, de votre côté ou du sien."
+      "text": "Rejouez la partie coup par coup, de votre côté ou de celui de l'adversaire."
     }
   ]
 }

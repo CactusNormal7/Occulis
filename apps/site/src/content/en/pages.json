@@ -5,7 +5,7 @@
   },
   "confirmed": {
     "title": "Sign-up confirmed",
-    "text": "You're on the list. We'll write when the beta opens, and for nothing else."
+    "text": "You're on the list. We'll email you when the beta opens."
   },
   "refused": {
     "title": "The sign-up didn't go through",

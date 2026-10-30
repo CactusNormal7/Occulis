@@ -1,16 +1,16 @@
 {
   "label": "Beta",
   "titleLines": [
-    "Play before",
-    "anyone else."
+    "Join",
+    "the beta."
   ],
-  "text": "Leave your address and we'll write when a spot opens. We use it for nothing else.",
+  "text": "Leave your email and we'll let you know when spots open.",
   "emailLabel": "Email address",
-  "emailHint": "One use only: telling you about the beta.",
+  "emailHint": "We'll only use it for the beta.",
   "consent": "I agree that Occulis may email me about the beta. Every message has a one-click unsubscribe link.",
   "submit": "Join the beta",
   "sending": "Sending…",
-  "privacy": "We keep your address ourselves and never sell or share it. Details in the",
+  "privacy": "We store your address ourselves and don't sell or share it. See the",
   "privacyLink": "privacy policy",
   "honeypotLabel": "Leave this field empty",
   "messages": {

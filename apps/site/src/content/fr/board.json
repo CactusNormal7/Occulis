@@ -12,7 +12,7 @@
   "steps": [
     {
       "word": "Départ",
-      "text": "Les deux camps sont en place. De l'autre côté de l'arête, rien.",
+      "text": "Les deux équipes sont en place. L'équipe rouge est cachée derrière l'arête.",
       "data": [
         {
           "label": "Tour",
@@ -48,7 +48,7 @@
     },
     {
       "word": "Sommet",
-      "text": "Il monte d'un niveau. D'en haut, le camp rouge apparaît.",
+      "text": "Il monte sur le col et voit maintenant l'équipe rouge.",
       "data": [
         {
           "label": "Tour",
@@ -66,7 +66,7 @@
     },
     {
       "word": "Souvenir",
-      "text": "Il redescend. Du rouge, il ne reste que la dernière position connue.",
+      "text": "Redescendu, il ne voit plus les pièces rouges. La carte marque leur dernière position connue.",
       "data": [
         {
           "label": "Tour",

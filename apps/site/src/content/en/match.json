@@ -4,22 +4,22 @@
     {
       "word": "Setup",
       "meta": "Before the map",
-      "text": "You choose the pieces on your team."
+      "text": "Pick the pieces for your team."
     },
     {
       "word": "Deployment",
       "meta": "Under cover",
-      "text": "Each player places their pieces in their zone, at the same time, without seeing the other."
+      "text": "Both players place their pieces in their zone at the same time, without seeing each other's setup."
     },
     {
       "word": "Play",
       "meta": "Turn by turn",
-      "text": "One piece moves each turn. Advance, climb, hunt down the enemy king."
+      "text": "Move one piece per turn, take the high ground and look for the enemy king."
     },
     {
       "word": "Review",
       "meta": "Afterwards",
-      "text": "Replay the match move by move, from your side or theirs."
+      "text": "Replay the match move by move, from your side or your opponent's."
     }
   ]
 }

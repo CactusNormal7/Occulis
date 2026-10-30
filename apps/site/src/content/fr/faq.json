@@ -3,15 +3,15 @@
   "items": [
     {
       "question": "Quand commence la beta ?",
-      "answer": "Aucune date n'est fixée. Nous écrirons aux inscrits dès qu'une place s'ouvre."
+      "answer": "Pas encore. Nous écrirons à tous les inscrits quand des places s'ouvriront."
     },
     {
       "question": "Faut-il savoir jouer aux échecs ?",
-      "answer": "Non. Les pièces se déplacent un peu comme aux échecs, ce qui aide au début ; tout le reste s'apprend sur la carte."
+      "answer": "Non. Certains déplacements vous sembleront familiers si vous y jouez, et le reste s'apprend en jouant."
     },
     {
       "question": "Le jeu est-il terminé ?",
-      "answer": "Non. Les règles de base sont en place et se jouent déjà en ligne, mais les pièces et les cartes changent encore. La beta sert à les tester."
+      "answer": "Non. Les règles de base fonctionnent et se jouent déjà en ligne, mais les pièces et les cartes changent encore. Nous testerons tout ça pendant la beta."
     }
   ]
 }
