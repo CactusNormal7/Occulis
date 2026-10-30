@@ -1,9 +1,6 @@
 {
   "label": "Beta",
-  "titleLines": [
-    "Rejoignez",
-    "la beta."
-  ],
+  "titleLines": ["Rejoignez", "la beta."],
   "text": "Laissez votre adresse et nous vous préviendrons quand des places s'ouvriront.",
   "emailLabel": "Adresse email",
   "emailHint": "Nous ne l'utiliserons que pour la beta.",
