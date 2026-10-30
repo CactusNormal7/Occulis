@@ -35,6 +35,8 @@ Wrap every screen in `UiRoot`. It sets the ink (`occ-ink`), the pixel font (`--o
    - `occ-threat` / `occ-refused`: a threat, a refusal, a sanction, a destructive button, the last five seconds of a `CountdownRing`.
    - Account states stay in bone (`Badge tone="strong" | "plain" | "dim"`); only a suspension takes `tone="refused"`.
 
+**Development signal.** `occ-caution` / `occ-caution-ground` (a yellow-and-black tape, identical under every theme) belong to `WorkInProgress` alone. They mean "unfinished, possibly placeholder", not game information, and leave with the element once it is finished.
+
 **Themes.** Three dark proposals share the grammar and change only matter and light; none is decided yet. _Obsidian_ (default) — grey neutral matter, cold bone, icy cyan and red glows. _Reliquary_ — warm brown-black, golden bone, mint and orange glows, fireflies. _Astral_ — plum-black, a dense star vault, cyan and magenta glows. The `occ-swatch-*` tokens are identical under every theme so a theme picker shows each proposal in its own colours.
 
 **Type.** Tiny5 (SIL OFL) everywhere, drawn on an 8px grid, so every size is a multiple of 8 (`occ-text-*`: 16, 24, 32, 48) and font smoothing is off. Headings glow softly with `occ-ink-glow`. System monospace (`--occ-font-mono`) only for code, long data and HTML mail.
@@ -64,6 +66,7 @@ Style your own layout glue with `var(--occ-*)` only. Helper classes: `occ-page`,
 - **Account flows:** `FormPanel` with `FormMessage`, `TextField`/`PasswordField`, `Divider` and `ProviderButton`; one form and one URL per flow.
 - **Settings:** `SettingList` of `SettingRow`s that unfold a `SettingEditor` in place.
 - Results go through `useToast()`; empty or failed loads use `EmptyState`.
+- **Unfinished elements:** wrap them in `WorkInProgress` (with a `note` saying what is missing) whenever placeholder data is shown.
 
 ## Not synced
 

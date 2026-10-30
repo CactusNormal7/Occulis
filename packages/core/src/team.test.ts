@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { type Coord } from "./coord.js";
-import { provisionalRuleset, provisionalRulesetV0 } from "./pieces/index.js";
+import { provisionalRuleset, provisionalRulesetV0, provisionalRulesetV1 } from "./pieces/index.js";
 import { type TeamEntry, deployTeams, parseTeam, translateTeam, validateTeam } from "./team.js";
 
 const ZONE: Coord[] = Array.from({ length: 12 }, (_, index) => ({
@@ -15,6 +15,11 @@ const TEAM: TeamEntry[] = [
   { kind: "scout", coord: { x: 3, y: 0 } },
   { kind: "pawn", coord: { x: 0, y: 1 } },
   { kind: "pawn", coord: { x: 1, y: 1 } },
+];
+
+/** L'équipe à huit pièces d'avant le 2026-10-27 : celle des parties `provisional-1`. */
+const TEAM_V1: TeamEntry[] = [
+  ...TEAM,
   { kind: "pawn", coord: { x: 2, y: 1 } },
   { kind: "pawn", coord: { x: 3, y: 1 } },
 ];
@@ -22,8 +27,20 @@ const TEAM: TeamEntry[] = [
 describe("validateTeam", () => {
   const ruleset = provisionalRuleset();
 
-  it("accepte une maîtresse, trois pièces à capacité et quatre pions dans la zone", () => {
+  it("accepte un roi, trois pièces à capacité et deux pions dans la zone", () => {
     expect(validateTeam(ruleset, ZONE, TEAM).ok).toBe(true);
+  });
+
+  it("refuse les huit pièces d'avant, que le ruleset `provisional-1` accepte toujours", () => {
+    expect(validateTeam(ruleset, ZONE, TEAM_V1)).toEqual({
+      ok: false,
+      error: { code: "wrong-count", role: "pawn", expected: 2, actual: 4 },
+    });
+    expect(validateTeam(provisionalRulesetV1(), ZONE, TEAM_V1).ok).toBe(true);
+    expect(validateTeam(provisionalRulesetV1(), ZONE, TEAM)).toMatchObject({
+      ok: false,
+      error: { code: "wrong-count", role: "pawn", expected: 4, actual: 2 },
+    });
   });
 
   it("exige exactement les quotas de chaque rôle", () => {
@@ -34,7 +51,7 @@ describe("validateTeam", () => {
       ok: false,
       error: { code: "wrong-count", role: "commander", expected: 1, actual: 2 },
     });
-    expect(validateTeam(ruleset, ZONE, TEAM.slice(0, 7))).toMatchObject({
+    expect(validateTeam(ruleset, ZONE, TEAM.slice(0, 5))).toMatchObject({
       ok: false,
       error: { code: "wrong-count", role: "pawn" },
     });
@@ -97,16 +114,12 @@ describe("deployTeams", () => {
       "a-3",
       "a-4",
       "a-5",
-      "a-6",
-      "a-7",
       "b-0",
       "b-1",
       "b-2",
       "b-3",
       "b-4",
       "b-5",
-      "b-6",
-      "b-7",
     ]);
     expect(first.ok && first.value[0]).toEqual({
       id: "a-0",

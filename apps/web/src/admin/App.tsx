@@ -4,6 +4,7 @@ import {
   EmptyState,
   LocaleSwitch,
   ProgressBar,
+  SkeletonScreen,
   ToastProvider,
   TopBar,
   UiRoot,
@@ -13,7 +14,7 @@ import { chooseLocale, initLocale } from "../locale/browser.js";
 import { stopImpersonating, type Identity } from "../net/auth.js";
 import { useHashRoute, useLoad, usePending, whenReady } from "../load/hooks.js";
 import { MatchDetail } from "./MatchDetail.js";
-import { parseRoute, routeHash, sectionOf, type Route } from "./model.js";
+import { parseRoute, screenOf, sectionOf, skeletonOf, type Route } from "./model.js";
 import { designSystem, identity as identityResource, resourcesOf } from "./resources.js";
 import { MatchList, Overview, PlayerDetail, UserDetail, UserList } from "./views.js";
 import { ScreenReady } from "../load/page.js";
@@ -53,8 +54,8 @@ function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
   const identity: Identity = loaded.state === "ready" ? loaded.value : { signedIn: false };
   const pending = usePending();
 
-  const route = useHashRoute(parseRoute, resourcesOf);
-  const section = sectionOf(route);
+  const { route, target, switching } = useHashRoute(parseRoute, resourcesOf, screenOf);
+  const section = sectionOf(target);
   const admin = identity.signedIn && identity.impersonating !== true && identity.admin === true;
 
   return (
@@ -82,7 +83,13 @@ function Page({ localeSwitch }: { localeSwitch: ReactNode }) {
         }
       />
       <main className="occ-page">
-        <Gate identity={identity} route={route} />
+        {/* L'onglet a déjà changé : l'écran suivant, s'il n'est pas arrivé, montre sa
+            forme plutôt que l'écran qu'on quitte (« Chargement et premier rendu »). */}
+        {switching && admin ? (
+          <SkeletonScreen layout={skeletonOf(target)} />
+        ) : (
+          <Gate identity={identity} route={route} />
+        )}
       </main>
     </ToastProvider>
   );
@@ -111,9 +118,10 @@ function Gate({ identity, route }: { identity: Identity; route: Route }) {
   }
   if (identity.admin !== true) return <EmptyState>{m.adminsOnly}</EmptyState>;
 
-  // Une clé par route : l'écran suivant remplace le précédent d'un bloc, sans en garder l'état.
+  // Une clé par écran : l'écran suivant remplace le précédent d'un bloc, sans en garder
+  // l'état ; une recherche ou une page de table garde l'écran, son champ et son focus.
   return (
-    <div key={routeHash(route)} className="occ-stack">
+    <div key={screenOf(route)} className="occ-stack">
       <View route={route} self={identity.handle ?? ""} />
     </div>
   );

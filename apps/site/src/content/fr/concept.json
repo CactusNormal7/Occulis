@@ -1,0 +1,22 @@
+{
+  "label": "Le jeu",
+  "statement": "Chaque joueur dirige une équipe sur une carte avec des murs et des hauteurs. Les pièces adverses restent cachées tant qu'aucune des vôtres n'a de ligne de vue.",
+  "facts": [
+    {
+      "term": "Format",
+      "text": "Un contre un, en ligne"
+    },
+    {
+      "term": "Tours",
+      "text": "Alternés, une pièce à la fois"
+    },
+    {
+      "term": "Plateau",
+      "text": "Isométrique, avec relief"
+    },
+    {
+      "term": "État",
+      "text": "En développement"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Board } from "@occulis/core";
-import { type IsoProjection, project } from "./iso.js";
+import { type IsoProjection, project } from "@occulis/board/iso";
 import { sameCoord, tileAt } from "./picking.js";
 
 function projection(overrides: Partial<IsoProjection> = {}): IsoProjection {

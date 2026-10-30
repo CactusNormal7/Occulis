@@ -1,0 +1,13 @@
+---
+/** La barre qui ouvre une section : son nom, à gauche, sur un filet qui traverse la page. */
+interface Props {
+  id: string;
+  label: string;
+}
+
+const { id, label } = Astro.props;
+---
+
+<div class="bar">
+  <h2 id={id} class="bar__label">{label}</h2>
+</div>

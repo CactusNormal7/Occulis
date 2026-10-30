@@ -12,7 +12,7 @@
  *   lueur signifie toujours quelque chose.
  *
  * Deux consommateurs, deux formats :
- * - `apps/web/src/theme/theme.ts` (PixiJS) reprend les entiers 0xRRGGBB ;
+ * - `packages/board/src/theme.ts` (PixiJS) reprend les entiers 0xRRGGBB ;
  * - les composants de ce paquet lisent les propriétés CSS `--occ-*` de
  *   `generated/tokens.css`, produit depuis ce fichier par `pnpm --filter @occulis/ui
  *   tokens` et verrouillé par un test : il ne se modifie jamais à la main.
@@ -141,6 +141,13 @@ export const CAMP = DEFAULT_PALETTE.camp;
 export const STATE = DEFAULT_PALETTE.state;
 
 /**
+ * Le ruban de chantier (`WorkInProgress`) : un signal de développement, ni couleur de
+ * partie ni matière de thème. Il garde donc le jaune et le noir de la signalétique dans
+ * tous les thèmes, et disparaît avec l'élément une fois celui-ci fini.
+ */
+export const CAUTION = { tape: 0xf5c518, ground: 0x0a0a0a } as const;
+
+/**
  * Les opacités de l'os, du plus présent au plus discret. L'interface n'a pas d'autre
  * moyen de hiérarchiser : pas de gris, seulement de l'os plus ou moins posé.
  */
@@ -261,6 +268,8 @@ export function paletteVariables(palette: Palette): Record<string, string> {
     // d'état, pas une couleur d'interface propre.
     "--occ-accepted": cssColor(state.legalMove),
     "--occ-refused": cssColor(state.threat),
+    "--occ-caution": cssColor(CAUTION.tape),
+    "--occ-caution-ground": cssColor(CAUTION.ground),
     // Les échantillons de chaque thème, identiques sous tous les thèmes : le sélecteur
     // montre chaque proposition dans ses propres couleurs.
     ...Object.fromEntries(

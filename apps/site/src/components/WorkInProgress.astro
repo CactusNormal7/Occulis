@@ -1,0 +1,21 @@
+---
+import "@occulis/ui/wip.css";
+
+/**
+ * Le ruban de chantier de la charte (`WorkInProgress` de `@occulis/ui`, celui de l'écran de
+ * fin de partie), en Astro : même balisage, même feuille (`@occulis/ui/wip.css`). Il dit
+ * que ce qu'il entoure est un rendu provisoire, aux données peut-être factices.
+ */
+interface Props {
+  tag: string;
+  label: string;
+  note: string;
+}
+
+const { tag, label, note } = Astro.props;
+---
+
+<div class="occ-wip" title={note}>
+  <span class="occ-wip__tag" aria-label={`${label} — ${note}`}>{tag}</span>
+  <slot />
+</div>

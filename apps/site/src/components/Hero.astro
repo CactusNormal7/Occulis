@@ -1,0 +1,73 @@
+---
+import { contentFor, type Locale } from "../i18n";
+
+interface Props {
+  locale: Locale;
+}
+
+const { hero } = contentFor(Astro.props.locale);
+
+/*
+ * Le bandeau : une rangée de cases du plateau qui défile, sans texte. Chaque signe est une
+ * case — `#` un mur, `o` une case vue, `.` un repère, `a` / `b` une pièce de chaque camp,
+ * `g` la trace d'une pièce perdue de vue, espace une case vide.
+ */
+const ROW = "..#o. ##.a .o.#.. g .##o..b. #.o..# .a..##.o .g..#. o.b..#..o ##. .";
+const CELL_KIND: Record<string, string> = {
+  "#": "wall",
+  o: "seen",
+  ".": "dot",
+  a: "a",
+  b: "b",
+  g: "ghost",
+  " ": "empty",
+};
+const cells = [...ROW.repeat(2)].map((char) => CELL_KIND[char] ?? "empty");
+---
+
+<section class="hero" aria-labelledby="hero-title" data-lantern>
+  {/* La grille du fond : sous le pointeur, les cases s'éclairent comme une ligne de vue,
+      coupée par les murs, et gardent un moment la trace d'avoir été vues
+      (`island/lantern.ts`). Décorative. */}
+  <canvas class="hero__grid" aria-hidden="true"></canvas>
+
+  <div class="frame hero__inner">
+    {/* Le nom est dans le brouillard ; la lumière le découvre case par case. */}
+    <h1 id="hero-title" class="hero__title" data-lantern-title>
+      <span class="hero__name hero__name--fog">{hero.title}</span>
+      <span class="hero__name hero__name--clear" aria-hidden="true">{hero.title}</span>
+    </h1>
+
+    <div class="hero__foot">
+      <p class="hero__lede">{hero.lede}</p>
+      <div class="hero__actions">
+        <a class="button" href="#beta">{hero.cta}</a>
+        <a class="button button--ghost" href="#jeu">{hero.secondaryCta}</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+{/* Décoratif : une rangée de cases qui défile, comme un morceau de plateau. */}
+<div class="band" aria-hidden="true">
+  <div class="band__track">
+    {
+      [0, 1].map(() => (
+        <div class="band__row">
+          {cells.map((kind) => (
+            <span class={`band__cell band__cell--${kind}`} />
+          ))}
+        </div>
+      ))
+    }
+  </div>
+</div>
+
+<script>
+  const host = document.querySelector<HTMLElement>("[data-lantern]");
+  const canvas = host?.querySelector("canvas");
+  const title = host?.querySelector<HTMLElement>("[data-lantern-title]");
+  if (host && canvas && title) {
+    void import("../island/lantern").then(({ mountLantern }) => mountLantern(host, canvas, title));
+  }
+</script>

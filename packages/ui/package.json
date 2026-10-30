@@ -11,6 +11,7 @@
     "./tokens": "./src/tokens.ts",
     "./critical": "./src/critical.ts",
     "./styles.css": "./src/styles.css",
+    "./wip.css": "./src/wip.css",
     "./reveal": "./src/window-reveal.ts",
     "./lab": "./src/lab/index.ts",
     "./lab.css": "./src/lab/lab.css"

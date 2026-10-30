@@ -139,6 +139,19 @@ export interface MeMatchDetail extends MeMatchSummary {
 }
 
 /**
+ * L'écran de fin d'une partie tout juste close : son replay, et l'Elo des deux joueurs.
+ * Il n'est servi qu'aux deux joueurs, et plus du tout une fois que tous deux l'ont quitté
+ * (`410 DEBRIEF_CLOSED`, lien compris) : reste alors le replay de l'historique.
+ */
+export interface MeMatchDebrief extends MeMatchDetail {
+  /** L'Elo courant du joueur, partie comprise. */
+  readonly elo: number;
+  readonly opponentElo: number;
+  /** Ce que la partie a fait gagner ou perdre à l'adversaire ; `null` si non classée. */
+  readonly opponentRatingChange: number | null;
+}
+
+/**
  * Le coup où un rejeu s'arrête, et pourquoi : le code d'erreur de `core` (log corrompu,
  * ruleset retiré), ou `unreadable` sans coup quand la partie elle-même ne se lit pas. Un
  * code et non un texte : le client le met en mots, et la cause brute reste au serveur.

@@ -1,0 +1,35 @@
+{
+  "lang": "en",
+  "ogLocale": "en_US",
+  "title": "Occulis — one-on-one strategy game",
+  "description": "Occulis is a turn-based tactics game for two players, with fog of war and real terrain. Sign up for the beta.",
+  "ogImageAlt": "The isometric board of Occulis: a rocky ridge separates two camps.",
+  "skipLink": "Skip to content",
+  "headerCta": "Join the beta",
+  "homeLabel": "Occulis, back to the top of the page",
+  "nav": {
+    "label": "Sections",
+    "items": [
+      {
+        "href": "#jeu",
+        "text": "The game"
+      },
+      {
+        "href": "#principes",
+        "text": "Principles"
+      },
+      {
+        "href": "#plateau",
+        "text": "Board"
+      },
+      {
+        "href": "#partie",
+        "text": "A match"
+      },
+      {
+        "href": "#questions",
+        "text": "Questions"
+      }
+    ]
+  }
+}

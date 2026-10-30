@@ -12,13 +12,16 @@ lire avant toute modification ; ce fichier ne les remplace pas et ne les dupliqu
   `graphify explain` ou `graphify path`. La carte est locale, ignorée par Git et se régénère
   avec `graphify update .` après une modification de code lorsque l'outil est disponible.
 
-## Tâches Notion
+## Tâches Nota
 
-- À chaque nouvelle tâche demandée, créer une tâche dans la base Notion « Tasks » de l'espace
-  Occulis (source de données `collection://0ff7a269-667e-48e7-8c62-a9b6940a77c8`), ou, si elle
-  prolonge une tâche existante, la rattacher à celle-ci (la chercher d'abord avec
-  `notion-search`) au lieu d'en ouvrir une nouvelle.
+- À chaque nouvelle tâche demandée, créer une tâche dans la base Nota « Tâches » de l'espace
+  Tengram Ydays (base `1c3c9e01-7a77-45d8-bec8-d43df793f78d`, espace
+  `69f10604-45d9-42df-a8c9-1c78d7177dd1`), ou, si elle prolonge une tâche existante, la
+  rattacher à celle-ci (« Tâche parente » ; la chercher d'abord avec `query_database`) au lieu
+  d'en ouvrir une nouvelle.
 - Renseigner Statut, Type, Domaine et Priorité ; passer la tâche en « Fait » à la fin.
+- Notion n'est plus la source de vérité depuis le 2026-10-28 : ne plus y créer ni y mettre à
+  jour de tâche.
 
 ## Branches
 

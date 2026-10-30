@@ -1,9 +1,9 @@
-import { look } from "../theme/theme.js";
+import { look } from "./theme.js";
 import { mixColor } from "./pixel.js";
 
 /**
  * La teinte du dessus d'une case. Module pur, partagé par le jeu (`render/pixi/terrain.ts`) et
- * les plateaux Canvas 2D (`render/canvas2d/paint.ts`).
+ * les plateaux Canvas 2D (`@occulis/board/paint`).
  *
  * Une case vue s'éclaircit avec sa hauteur, du sol au plus haut relief : c'est la
  * valeur, et non une teinte, qui fait lire le relief (docs/design.md 8.1). Une case hors

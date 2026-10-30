@@ -1,8 +1,15 @@
 import type { TeamPresetList } from "@occulis/protocol";
 import { Account } from "./app/account.js";
 import { BoardView } from "./app/board-view.js";
+import { Debrief, debriefFromPath } from "./app/debrief.js";
 import { Friends } from "./app/friends.js";
-import { Islands, type LeaveDialog, type TeamsScreen } from "./app/islands.js";
+import {
+  type DebriefScreen,
+  type EndScreen,
+  Islands,
+  type LeaveDialog,
+  type TeamsScreen,
+} from "./app/islands.js";
 import { MatchController, type PresetSource } from "./app/match-controller.js";
 import { Matchmaking } from "./app/matchmaking.js";
 import { Navigation } from "./app/navigation.js";
@@ -14,6 +21,7 @@ import {
   shellElements,
 } from "./app/page.js";
 import { applyStoredPreferences, attachPreferences } from "./app/preferences.js";
+import * as debriefApi from "./debrief/api.js";
 import { loadCache } from "./load/cache.js";
 import { translateDom } from "./locale/browser.js";
 import { messages, onLocaleChange } from "./locale/current.js";
@@ -62,9 +70,20 @@ function main(): void {
   const navigation = new Navigation(shell, settings);
   const islands = new Islands({
     leave: leaveDialog,
+    ended: endScreen,
     found: () => matchmaking.proposal,
     deploying: () => matches.deploying,
     teams: teamsScreen,
+    debrief: debriefScreen,
+  });
+
+  // ── Écran de fin ──────────────────────────────────────────────────────────────────
+  const debrief = new Debrief({
+    load: (matchId) => loadCache.request(debriefApi.debrief(matchId), { force: true }),
+    leave: (matchId) => void debriefApi.leave(matchId),
+    go: (event) => navigation.go(event),
+    setPath: (path) => history.replaceState(history.state, "", path),
+    showIslands: () => islands.render(),
   });
 
   // ── Partie ────────────────────────────────────────────────────────────────────────
@@ -86,6 +105,7 @@ function main(): void {
       await account.refresh();
       shell.notify(messages().game.connectionLost);
     },
+    finished,
   });
   const gameConsole = attachConsole({
     elements: consoleElements(),
@@ -126,7 +146,7 @@ function main(): void {
     welcomed: () => {
       // L'écran des équipes s'ouvre alors complet, sans attente.
       board.prewarm(() => loadCache.preload([presetsResource]));
-      void resume();
+      void arrive();
     },
   });
 
@@ -137,8 +157,12 @@ function main(): void {
 
   // ── Parcours ──────────────────────────────────────────────────────────────────────
 
-  /** Referme tout ce qui relie le client au serveur, vide la table et revient au menu. */
+  /**
+   * Referme tout ce qui relie le client au serveur, vide la table et revient au menu.
+   * L'écran de fin se quitte aussi par là, et le serveur l'apprend.
+   */
   function leave(): void {
+    debrief.close();
     matchmaking.close();
     friends.withdrawChallenge();
     matches.close();
@@ -148,6 +172,7 @@ function main(): void {
 
   /** Assied le joueur à une partie : la file et le défi en cours n'ont plus lieu d'être. */
   function sit(matchId: string, seat: string): void {
+    debrief.close();
     matchmaking.close();
     friends.forgetChallenge();
     matches.sit(matchId, seat);
@@ -161,6 +186,36 @@ function main(): void {
   function sitAfterChallenge(matchId: string, seat: string): void {
     if (matches.ownMatchRunning) return;
     sit(matchId, seat);
+  }
+
+  /**
+   * La partie jouée est close : son écran de fin remplace la table une fois lu. Refusé
+   * (illisible, réseau), on revient au menu en le disant.
+   */
+  function finished(matchId: string): void {
+    void debrief.open(matchId).then((opening) => {
+      if (opening.kind === "stale") return;
+      if (opening.kind === "opened") {
+        matches.close();
+        return;
+      }
+      leave();
+      shell.notify(opening.message);
+    });
+  }
+
+  /**
+   * L'arrivée au menu, connecté : par le lien d'un écran de fin, on l'ouvre si le serveur
+   * le tient encore ouvert ; sinon on rassoit le joueur à sa partie en cours.
+   */
+  async function arrive(): Promise<void> {
+    const linked = debriefFromPath(location.pathname);
+    if (linked !== undefined) {
+      const opening = await debrief.open(linked);
+      if (opening.kind === "opened") return;
+      if (opening.kind === "refused") shell.notify(opening.message);
+    }
+    await resume();
   }
 
   /**
@@ -185,9 +240,12 @@ function main(): void {
 
   /**
    * Aucun chemin ne ramène à un siège quitté : la fenêtre `leave/` demande l'abandon d'une
-   * partie vivante ; partir d'une partie regardée ou finie, non.
+   * partie vivante, puis la table attend la vue finale pour montrer l'écran de fin ;
+   * partir d'une partie regardée ou finie, non.
    */
   function leaveMatch(): void {
+    // L'abandon est parti : seul l'écran de fin attend le joueur, pas le menu.
+    if (matches.resigning) return;
     if (matches.requestLeave()) {
       islands.render();
       return;
@@ -200,11 +258,37 @@ function main(): void {
     return {
       onConfirm: () => {
         matches.confirmLeave();
-        leave();
+        islands.render();
       },
       onCancel: () => {
         matches.cancelLeave();
         islands.render();
+      },
+    };
+  }
+
+  function endScreen(): EndScreen | undefined {
+    const ended = matches.ended;
+    if (ended === undefined) return undefined;
+    return {
+      ...ended,
+      onMenu: leave,
+      onBoard: () => {
+        matches.dismissEnd();
+        islands.render();
+      },
+    };
+  }
+
+  function debriefScreen(): DebriefScreen | undefined {
+    const matchId = debrief.matchId;
+    if (matchId === undefined) return undefined;
+    return {
+      matchId,
+      onMenu: leave,
+      onPlayAgain: () => {
+        leave();
+        matchmaking.seek("quick");
       },
     };
   }

@@ -1,0 +1,29 @@
+---
+import { contentFor, type Locale } from "../i18n";
+import SectionBar from "./SectionBar.astro";
+
+interface Props {
+  locale: Locale;
+}
+
+const { concept } = contentFor(Astro.props.locale);
+---
+
+<section class="section section--tight" id="jeu" aria-labelledby="concept-title" tabindex="-1">
+  <div class="frame">
+    <SectionBar id="concept-title" label={concept.label} />
+    <div class="concept">
+      <p class="statement reveal">{concept.statement}</p>
+      <dl class="facts">
+        {
+          concept.facts.map((fact) => (
+            <div class="fact reveal">
+              <dt>{fact.term}</dt>
+              <dd>{fact.text}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </div>
+  </div>
+</section>

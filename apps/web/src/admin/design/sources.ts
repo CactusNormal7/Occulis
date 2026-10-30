@@ -3,7 +3,7 @@ import conventions from "../../../../../.design-sync/conventions.md?raw";
 import designDoc from "../../../../../docs/design.md?raw";
 import charterCss from "../../../../../packages/ui/src/styles.css?raw";
 import gameCss from "../../ui/ui.css?raw";
-import themeSource from "../../theme/theme.ts?raw";
+import themeSource from "../../../../../packages/board/src/theme.ts?raw";
 import {
   baseName,
   categoryOf,

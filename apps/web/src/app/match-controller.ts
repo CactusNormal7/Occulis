@@ -34,6 +34,20 @@ import { type MoveAnimation, advance as step, startMove } from "../view/animatio
 /** Au-delà, une partie qui n'a envoyé aucune vue au spectateur lui est refusée. */
 const WATCH_TIMEOUT_MS = 6000;
 
+/**
+ * Au-delà, un abandon resté sans vue finale va chercher l'écran de fin lui-même : le
+ * serveur a pu clore la partie sans que la vue arrive. S'il la tient encore ouverte, la
+ * racine revient au menu en le disant ; il la clora de toute façon, au pire par forfait.
+ */
+const RESIGN_TIMEOUT_MS = 6000;
+
+/** La fin d'une partie regardée, du camp de l'ami suivi. */
+export interface MatchEnd {
+  readonly outcome: Outcome;
+  readonly side: PlayerId;
+  readonly friend: string;
+}
+
 /** Ce que la console de partie sait faire pour la partie, sans que celle-ci la connaisse. */
 export interface MatchReports {
   refresh(): void;
@@ -73,6 +87,8 @@ export interface MatchEffects {
   readonly leave: () => void;
   /** Rend compte d'une partie perdue : relit l'identité, puis le dit au joueur. */
   readonly connectionLost: () => Promise<void>;
+  /** La partie jouée vient de se clore : la racine ouvre son écran de fin (`debrief/`). */
+  readonly finished: (matchId: string) => void;
 }
 
 export class MatchController {
@@ -89,6 +105,10 @@ export class MatchController {
   private overTile: Coord | undefined;
   private announcement: Omit<DeploymentProps, "locale"> | undefined;
   private confirmingLeave = false;
+  private resignDeadline: ReturnType<typeof setTimeout> | undefined;
+  /** La partie où le joueur est assis ; absente pour un spectateur. */
+  private seatedMatch: string | undefined;
+  private endDismissed = false;
 
   constructor(private readonly effects: MatchEffects) {}
 
@@ -143,9 +163,34 @@ export class MatchController {
     return this.announcement;
   }
 
+  /**
+   * L'abandon est parti, la vue qui clôt la partie pas encore arrivée. Rien ne doit alors
+   * ramener au menu : celui qui abandonne aboutit à l'écran de fin, comme son adversaire.
+   */
+  get resigning(): boolean {
+    return this.resignDeadline !== undefined;
+  }
+
   /** Vrai pendant que la fenêtre « abandonner ? » attend la réponse du joueur. */
   get leaving(): boolean {
     return this.confirmingLeave;
+  }
+
+  /**
+   * La fin d'une partie **regardée**, que le spectateur n'a pas encore écartée pour revoir
+   * le plateau. Un joueur, lui, passe à l'écran de fin de sa partie (`finished`).
+   */
+  get ended(): MatchEnd | undefined {
+    const match = this.matchOnTable;
+    if (match === undefined || match.state.outcome === null || this.endDismissed) return undefined;
+    if (this.friend === undefined) return undefined;
+    return { outcome: match.state.outcome, side: match.player, friend: this.friend };
+  }
+
+  /** Le spectateur écarte la fin et reste devant le plateau final. */
+  dismissEnd(): void {
+    // Une fermeture qui arrive après le retour au menu ne doit pas masquer la fin suivante.
+    if (this.matchOnTable?.isOver === true) this.endDismissed = true;
   }
 
   hover(coord: Coord | undefined): void {
@@ -156,6 +201,7 @@ export class MatchController {
   sit(matchId: string, seat: string): void {
     this.close();
     this.effects.ensureBoard();
+    this.seatedMatch = matchId;
     this.channel = this.effects.connect(matchId, seat, this.handlersFor(false, matchId));
   }
 
@@ -184,6 +230,10 @@ export class MatchController {
   close(): void {
     this.generation += 1;
     this.confirmingLeave = false;
+    clearTimeout(this.resignDeadline);
+    this.resignDeadline = undefined;
+    this.seatedMatch = undefined;
+    this.endDismissed = false;
     this.channel?.close();
     this.channel = undefined;
     this.friend = undefined;
@@ -211,6 +261,8 @@ export class MatchController {
 
     this.awaitingReply = true;
     this.picked = undefined;
+    // Abandonner par la console mène, comme par la fenêtre, à l'écran de fin.
+    if (action.kind === "resign") this.awaitEnd();
     return sent;
   }
 
@@ -243,24 +295,44 @@ export class MatchController {
   /**
    * Partir d'une partie vivante sans abandonner la laisserait « en cours » à jamais dans
    * les deux historiques : la fenêtre `leave/` le demande. Rend vrai quand elle doit
-   * s'ouvrir ; partir d'une partie regardée ou finie n'a rien à confirmer.
+   * s'ouvrir ; partir d'une partie regardée, finie ou déjà abandonnée n'a rien à confirmer.
    */
   requestLeave(): boolean {
-    if (this.friend !== undefined || this.matchOnTable === undefined || this.matchOnTable.isOver) {
+    if (
+      this.friend !== undefined ||
+      this.matchOnTable === undefined ||
+      this.matchOnTable.isOver ||
+      this.resignDeadline !== undefined
+    ) {
       return false;
     }
     this.confirmingLeave = true;
     return true;
   }
 
-  /** Le joueur confirme : l'abandon part avant que la table soit vidée. */
+  /**
+   * Le joueur confirme : l'abandon part, et la table reste mise jusqu'à la vue qui clôt
+   * la partie, pour que l'écran de fin s'ouvre chez lui comme chez l'adversaire.
+   */
   confirmLeave(): void {
     this.confirmingLeave = false;
     this.channel?.submit({ kind: "resign" });
+    this.awaitEnd();
   }
 
   cancelLeave(): void {
     this.confirmingLeave = false;
+  }
+
+  /** Arme l'échéance de l'abandon : sans vue finale, l'écran de fin est demandé quand même. */
+  private awaitEnd(): void {
+    clearTimeout(this.resignDeadline);
+    this.resignDeadline = setTimeout(() => {
+      const matchId = this.seatedMatch;
+      if (this.matchOnTable?.isOver !== true && matchId !== undefined) {
+        this.effects.finished(matchId);
+      }
+    }, RESIGN_TIMEOUT_MS);
   }
 
   /**
@@ -346,7 +418,12 @@ export class MatchController {
       },
       onView: (incoming) => {
         this.adopt(this.matchOnTable?.receive(incoming));
-        if (incoming.outcome !== null) this.effects.reports().announce(incoming.outcome);
+        if (incoming.outcome !== null) {
+          clearTimeout(this.resignDeadline);
+          this.effects.reports().announce(incoming.outcome);
+          if (spectating) this.effects.showIslands();
+          else this.effects.finished(matchId);
+        }
       },
       onRejected: (rejection) => {
         if (this.effects.stage() === "deploying" && this.announcement !== undefined) {

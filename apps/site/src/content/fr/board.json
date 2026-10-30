@@ -1,0 +1,86 @@
+{
+  "label": "Sur le plateau",
+  "wip": {
+    "tag": "WIP",
+    "label": "En construction",
+    "note": "Démonstration en préparation : les chiffres affichés sont fictifs."
+  },
+  "wipNote": "Données fictives",
+  "hint": "Défilez pour avancer",
+  "end": "Continuez vers la suite",
+  "boardLabel": "Le plateau du jeu : une arête rocheuse sépare un camp bleu d'un camp rouge. Un éclaireur bleu s'approche du col, y monte, découvre les pièces rouges, puis redescend et n'en garde que la trace.",
+  "steps": [
+    {
+      "word": "Départ",
+      "text": "Les deux équipes sont en place. L'équipe rouge est cachée derrière l'arête.",
+      "data": [
+        {
+          "label": "Tour",
+          "value": "01"
+        },
+        {
+          "label": "Cases vues",
+          "value": "21"
+        },
+        {
+          "label": "Hauteur",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "word": "Approche",
+      "text": "Un éclaireur s'avance jusqu'au pied du col.",
+      "data": [
+        {
+          "label": "Tour",
+          "value": "02"
+        },
+        {
+          "label": "Cases vues",
+          "value": "26"
+        },
+        {
+          "label": "Hauteur",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "word": "Sommet",
+      "text": "Il monte sur le col et voit maintenant l'équipe rouge.",
+      "data": [
+        {
+          "label": "Tour",
+          "value": "03"
+        },
+        {
+          "label": "Cases vues",
+          "value": "48"
+        },
+        {
+          "label": "Hauteur",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "word": "Souvenir",
+      "text": "Redescendu, il ne voit plus les pièces rouges. La carte marque leur dernière position connue.",
+      "data": [
+        {
+          "label": "Tour",
+          "value": "04"
+        },
+        {
+          "label": "Cases vues",
+          "value": "23"
+        },
+        {
+          "label": "Hauteur",
+          "value": "0"
+        }
+      ]
+    }
+  ]
+}

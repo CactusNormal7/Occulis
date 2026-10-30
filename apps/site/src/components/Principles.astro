@@ -1,0 +1,30 @@
+---
+import { contentFor, type Locale } from "../i18n";
+import Glyph from "./Glyph.astro";
+import SectionBar from "./SectionBar.astro";
+
+interface Props {
+  locale: Locale;
+}
+
+const { principles } = contentFor(Astro.props.locale);
+---
+
+<section class="section section--tight section--flush-end" id="principes" aria-labelledby="principles-title" tabindex="-1">
+  <div class="frame">
+    <SectionBar id="principles-title" label={principles.label} />
+    {/* Un mot par principe et son pictogramme, qui s'anime au survol. La phrase ne sert
+        qu'aux lecteurs d'écran : le pictogramme, décoratif, leur est masqué. */}
+    <ul class="principles">
+      {
+        principles.items.map((item) => (
+          <li class="principle reveal">
+            <Glyph name={item.icon} />
+            <h3 class="principle__word">{item.word}</h3>
+            <p class="principle__text">{item.text}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>

@@ -53,7 +53,7 @@ pieces/ruleset.ts ──► team.ts ──► scenarios/  (zones et équipes par
 | `packages/core/src/pieces/roster/scout.ts`            | `Scout` — **provisoire**                                                                                                         |
 | `packages/core/src/pieces/roster/commander.ts`        | `Commander` — **provisoire**                                                                                                     |
 | `packages/core/src/pieces/roster/pawn.ts`             | `Pawn` — **provisoire**                                                                                                          |
-| `packages/core/src/pieces/roster/index.ts`            | Assemble le roster : `provisionalRuleset()`, `provisionalRulesetV0()`, `PROVISIONAL_TEAM`                                        |
+| `packages/core/src/pieces/roster/index.ts`            | Assemble le roster : `provisionalRuleset()`, `provisionalRulesetV1()`, `provisionalRulesetV0()`, `PROVISIONAL_TEAM`(`_V1`)       |
 | `packages/core/src/team.ts`                           | Le déploiement : `TeamEntry`, `Deployment`, `validateTeam()`, `deployTeams()`, `translateTeam()`, `teamForSide()`, `parseTeam()` |
 | `packages/core/src/rulesets/index.ts`                 | Le registre des rulesets par version : `rulesetFor()`, `CURRENT_RULESET_VERSION`                                                 |
 | `packages/core/src/los.ts`                            | Raycast et ligne de vue — **géométrie seule**                                                                                    |
@@ -196,8 +196,9 @@ interface VisionProfile {
 Elles vivent dans leur propre module pour que `movement.ts` et `los.ts`, qui les
 consomment, n'aient pas à connaître la hiérarchie de classes qui les déclare.
 
-`canClimb` est déclaré par type — grimper comme capacité générique ou spécifique n'est pas
-tranché (`docs/design.md` point ouvert 7).
+`canClimb` est déclaré par type. Grimper est une capacité de toutes les pièces depuis le
+2026-10-27 (`docs/design.md` point ouvert 7, tranché) : les trois types du roster provisoire déclarent
+`canClimb: true`.
 
 ### `pieces/piece-type.ts` — le comportement
 
@@ -209,7 +210,7 @@ ruleset**, jamais une par pièce en jeu.
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `kind`, `movement`, `vision` | Abstraits : chaque type les déclare                                                                                                                           |
 | `role`                       | Accesseur : `commander`, `special` (par défaut) ou `pawn` — la place du type dans une équipe, sur laquelle portent les quotas (`TeamRules`)                   |
-| `isCommander`                | Accesseur, dérivé de `role`. La prise d'une pièce maîtresse finira la partie quand la prise reviendra (point ouvert 13)                                       |
+| `isCommander`                | Accesseur, dérivé de `role`. La prise du roi finira la partie quand la prise reviendra (point ouvert 13)                                                      |
 | `destinationsFrom()`         | Cases atteignables en un tour ; délègue à `reachableTiles()`                                                                                                  |
 | `canSee()`                   | Voit-elle `to` depuis `from` ? Portée d'abord, occultation ensuite                                                                                            |
 | `fieldOfView()`              | Champ de vision complet, **dérivé de `canSee()`** via `collectVisible()`, plus la case de chaque pièce qui coupe un regard dans la portée (`blockingPiece()`) |
@@ -258,14 +259,14 @@ construit une fois au démarrage et ne change plus, ce qui suppose qu'il **ne d�
 
 **Une classe par fichier**, assemblées par `roster/index.ts`.
 
-| Fichier               | Classe      | Caractéristiques, déclarées dans la classe                                                                                                                                                                                 |
-| --------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `roster/scout.ts`     | `Scout`     | 6 pas, vision 20, octile, grimpe                                                                                                                                                                                           |
-| `roster/commander.ts` | `Commander` | 3 pas, vision 14, octile, grimpe ; rôle `commander`                                                                                                                                                                        |
-| `roster/pawn.ts`      | `Pawn`      | 1 pas, vision 6, octile, grimpe ; rôle `pawn`                                                                                                                                                                              |
-| `roster/index.ts`     | —           | `provisionalRuleset()` : maîtresse, éclaireur, pion et `PROVISIONAL_TEAM` (1 maîtresse, 3 à capacité, 4 pions) ; `provisionalRulesetV0()` : éclaireur et maîtresse sans composition, le roster des parties `provisional-0` |
+| Fichier               | Classe      | Caractéristiques, déclarées dans la classe                                                                                                                                                                                                                                                                                               |
+| --------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `roster/scout.ts`     | `Scout`     | 6 pas, vision 20, octile, grimpe                                                                                                                                                                                                                                                                                                         |
+| `roster/commander.ts` | `Commander` | 3 pas, vision 14, octile, grimpe ; rôle `commander`                                                                                                                                                                                                                                                                                      |
+| `roster/pawn.ts`      | `Pawn`      | 1 pas, vision 6, octile, grimpe ; rôle `pawn`                                                                                                                                                                                                                                                                                            |
+| `roster/index.ts`     | —           | `provisionalRuleset()` : roi, éclaireur, pion et `PROVISIONAL_TEAM` (1 roi, 3 à capacité, 2 pions) ; `provisionalRulesetV1()` : les mêmes types sous `PROVISIONAL_TEAM_V1` (1, 3, 4 pions), le ruleset des parties `provisional-1` ; `provisionalRulesetV0()` : éclaireur et roi sans composition, le roster des parties `provisional-0` |
 
-**La composition 1 + 3 + 4 et le profil du pion sont des décisions du porteur du projet** ;
+**La composition 1 + 3 + 2 (depuis le 2026-10-27, avant 1 + 3 + 4) et le profil du pion sont des décisions du porteur du projet** ;
 les types eux-mêmes restent provisoires. Les trois pièces à capacité peuvent être du même
 type — il n'en existe qu'un, l'éclaireur.
 
@@ -283,7 +284,7 @@ Corollaire pour les tests : une vérification de _règle_ ne doit jamais s'appuy
 valeurs, sous peine de casser au premier réglage. `piece-type.test.ts` exerce donc le
 comportement sur des types construits pour le test ; `roster/roster.test.ts` ne vérifie que
 des propriétés qui tiennent quelles que soient les valeurs (l'éclaireur voit plus loin que
-la pièce maîtresse, par exemple).
+le roi, par exemple).
 
 Le principe « aucun roster dans `core` » est donc infléchi, et l'arbitrage est consigné
 dans `docs/implementation-notes.md` (point 12) : le comportement d'une pièce est de la
@@ -469,17 +470,17 @@ pas diverger de la position qu'il décrit. C'est ce que le serveur persiste en D
 (`docs/architecture.md` section 3) ; `ActionRecord` porte le camp qui a joué, que la
 position seule ne dit plus.
 
-| Fonction        | Rôle                                                                    |
-| --------------- | ----------------------------------------------------------------------- |
-| `createGame()`  | Construit l'état initial et **valide** le placement                     |
-| `pieceAt()`     | La pièce sur une case, par balayage linéaire                            |
-| `occupancy()`   | Ensemble des cases occupées                                             |
-| `piecesOf()`    | Les pièces d'un joueur                                                  |
-| `commanderOf()` | La pièce maîtresse d'un joueur, via `ruleset.typeOf(piece).isCommander` |
+| Fonction        | Rôle                                                        |
+| --------------- | ----------------------------------------------------------- |
+| `createGame()`  | Construit l'état initial et **valide** le placement         |
+| `pieceAt()`     | La pièce sur une case, par balayage linéaire                |
+| `occupancy()`   | Ensemble des cases occupées                                 |
+| `piecesOf()`    | Les pièces d'un joueur                                      |
+| `commanderOf()` | Le roi d'un joueur, via `ruleset.typeOf(piece).isCommander` |
 
-`commanderOf()` n'a plus d'appelant dans le moteur depuis le retrait de l'échec : la pièce
-maîtresse reste un concept de design acté (`docs/design.md` section 7), seule la règle qui
-la protégeait s'en va.
+`commanderOf()` n'a plus d'appelant dans le moteur depuis le retrait de l'échec : le roi
+reste un concept de design acté (`docs/design.md` section 7), seule la règle qui
+le protégeait s'en va.
 
 `createGame()` lève sur identifiant dupliqué, sur deux pièces à la même case, ou sur une
 pièce posée sur une case infranchissable. Ce sont des erreurs de programmation, pas des
@@ -525,9 +526,9 @@ découle, et qui est la seule règle d'interaction entre pièces aujourd'hui :
 
 ### Plus aucune règle d'échec
 
-**Un coup qui expose sa propre pièce maîtresse est légal.** La règle « échecs strict »
+**Un coup qui expose son propre roi est légal.** La règle « échecs strict »
 (`docs/design.md` section 7.1) est retirée : elle n'était pas jouable avec les portées
-démesurées du roster provisoire, qui mettaient la maîtresse en échec quasi permanent et
+démesurées du roster provisoire, qui mettaient le roi en échec quasi permanent et
 supprimaient tous ses coups légaux. Ont disparu avec elle `isCommanderThreatened()`,
 `leavesCommanderExposed()`, `project()` — qui n'existait que pour tester la légalité sur la
 position produite — et `withOutcome()`.
@@ -685,8 +686,9 @@ client et le serveur vit dans `pieces/roster/`, pas ici.
 ## Non implémenté
 
 Tout ce qui suit est listé comme ouvert en section 10 de `docs/design.md` et **n'a
-volontairement pas été codé** : attaque à distance différée, pièges,
-roster de pièces définitif, téléporteurs, poussée, objets bloquant la LOS.
+volontairement pas été codé** : pièges (et la file de résolution différée qu'ils supposent),
+roster de pièces définitif, téléporteurs, poussée, objets bloquant la LOS. L'attaque à
+distance différée, elle, est écartée depuis le 2026-10-27 (section 3.2).
 
 S'y ajoutent trois règles **actées mais retirées du moteur**, sur décision explicite du
 porteur du projet (point ouvert 13) : la **capture de mêlée** (section 3.1), la règle
@@ -752,7 +754,7 @@ client envoie, le client à son brouillon, sans la redéduire.
 ## `rulesets/` — le registre des versions
 
 `rulesetFor(version)` rend le ruleset d'une version, et lève si elle est inconnue ;
-`CURRENT_RULESET_VERSION` est celle des nouvelles parties (`provisional-1`, avec pion et
-composition). `provisional-0` reste chargeable — sans composition — pour rejouer les
-parties qui la référencent. Le registre vit dans `core` et non plus dans le serveur : le
+`CURRENT_RULESET_VERSION` est celle des nouvelles parties (`provisional-2`, composition
+1 roi, 3 à capacité, 2 pions). `provisional-1` (1, 3, 4 pions) et `provisional-0` (sans
+composition) restent chargeables pour rejouer les parties qui les référencent. Le registre vit dans `core` et non plus dans le serveur : le
 client doit appliquer la version de la partie qu'il joue, qu'il lit dans `welcome`.

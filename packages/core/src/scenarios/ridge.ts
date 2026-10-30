@@ -39,13 +39,13 @@ function mirror(coord: Coord): Coord {
   return { x: WIDTH - 1 - coord.x, y: HEIGHT - 1 - coord.y };
 }
 
-/** Le coin bas-gauche, 4 × 4 cases : de quoi poser huit pièces en choisissant. */
+/** Le coin bas-gauche, 4 × 4 cases : de quoi poser six pièces en choisissant. */
 const ZONE_A: readonly Coord[] = Array.from({ length: 16 }, (_, index) => ({
   x: index % 4,
   y: 6 + Math.floor(index / 4),
 }));
 
-/** Les pions devant, vers l'arête ; les éclaireurs derrière eux ; la maîtresse au coin. */
+/** Les pions devant, vers l'arête ; les éclaireurs derrière eux ; le roi au coin. */
 const TEAM_A: readonly TeamEntry[] = [
   { kind: "commander", coord: { x: 0, y: 9 } },
   { kind: "scout", coord: { x: 1, y: 7 } },
@@ -53,8 +53,6 @@ const TEAM_A: readonly TeamEntry[] = [
   { kind: "scout", coord: { x: 3, y: 8 } },
   { kind: "pawn", coord: { x: 1, y: 6 } },
   { kind: "pawn", coord: { x: 2, y: 6 } },
-  { kind: "pawn", coord: { x: 3, y: 6 } },
-  { kind: "pawn", coord: { x: 3, y: 7 } },
 ];
 
 const mirrored = (side: readonly TeamEntry[]): TeamEntry[] =>

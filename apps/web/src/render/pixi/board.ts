@@ -1,7 +1,7 @@
 import { Application } from "pixi.js";
 import { type ControlsOptions, attachControls } from "../../input/controls.js";
-import { look } from "../../theme/theme.js";
-import { pixelResolution } from "../../view/pixel.js";
+import { look } from "@occulis/board/theme";
+import { pixelResolution } from "@occulis/board/pixel";
 import { Scene, type SceneInput } from "./scene.js";
 
 /**
@@ -26,7 +26,7 @@ export interface Board {
 
 export async function mountBoard(host: HTMLElement, hooks: BoardHooks): Promise<Board> {
   // Le plateau est rendu en basse résolution, sans lissage, puis agrandi au plus proche
-  // voisin : c'est ce qui fait le pixel (docs/design.md 8.1, `view/pixel.ts`).
+  // voisin : c'est ce qui fait le pixel (docs/design.md 8.1, `@occulis/board/pixel`).
   const resolution = pixelResolution(window.devicePixelRatio);
   const app = new Application();
   await app.init({

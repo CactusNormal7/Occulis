@@ -1,0 +1,10 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true
+  },
+  "include": [".astro/types.d.ts", "src", "scripts"],
+  // Le Worker a ses propres types (workers-types, sans DOM) : src/worker/tsconfig.json.
+  "exclude": ["dist", "src/worker", "**/* 2.*"]
+}

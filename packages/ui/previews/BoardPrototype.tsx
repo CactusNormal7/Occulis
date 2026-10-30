@@ -63,7 +63,7 @@ function Wall({ tile }: { tile: Tile }) {
 
 /**
  * La silhouette d'une pièce, posée sur l'origine (le centre de sa case). Le rôle se lit à la
- * forme seule, jamais à la couleur : la maîtresse porte un œil cranté au sommet d'un mât, la
+ * forme seule, jamais à la couleur : le roi porte un œil cranté au sommet d'un mât, la
  * pièce à capacité un losange et une pointe, le pion un mât court penché et un chevron.
  */
 export function PieceShape({ role }: { role: Role }): ReactNode {

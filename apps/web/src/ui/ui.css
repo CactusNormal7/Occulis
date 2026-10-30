@@ -3,7 +3,7 @@
  *
  * Mise en page seulement. Aucune couleur en dur ici : les propriétés personnalisées
  * `--ink`, `--panel`, `--accepted` et `--refused` sont posées par `palette.ts` à
- * partir des tokens de `src/theme/theme.ts`, seul détenteur du code couleur du client
+ * partir des tokens de `@occulis/board/theme`, seul détenteur du code couleur du client
  * (docs/design.md 8.1).
  *
  * `palette.ts` y pose aussi toutes les propriétés `--occ-*` de la charte : les écrans
@@ -42,6 +42,12 @@ html[data-theme] {
 html body,
 html[data-theme] body {
   background: transparent;
+}
+
+/* Un toucher ne fait pas clignoter de rectangle sur ce qu'il vise : chaque geste a déjà
+   son état (survol, appui, focus au clavier). */
+html {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* La voûte : deux trames d'étoiles d'un pixel à pas premiers entre eux, pour qu'aucun
@@ -569,9 +575,11 @@ button.primary:focus-visible::after {
   color: var(--ink-dim);
 }
 
+/* Le focus visible seulement (clavier, champ de saisie) : une carte cliquée à la souris ne
+   reste pas allumée une fois le pointeur parti. */
 #screen-menu button.primary:hover:not(:disabled),
 #screen-menu button.primary:focus-visible,
-#screen-menu .primary:focus-within {
+#screen-menu .primary:has(:focus-visible) {
   outline: none;
   border-color: var(--ink);
 }

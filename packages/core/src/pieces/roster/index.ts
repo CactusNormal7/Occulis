@@ -16,15 +16,23 @@ export { Pawn } from "./pawn.js";
 export { Scout } from "./scout.js";
 
 /**
- * Une maîtresse, trois pièces à capacité (doublons permis : il n'en existe qu'un type),
- * quatre pions. Décision du porteur du projet ; seuls les types restent provisoires
- * (docs/design.md point ouvert 12).
+ * Un roi, trois pièces à capacité (doublons permis : il n'en existe qu'un type), deux
+ * pions. Décision du porteur du projet du 2026-10-27, pour des parties plus rapides ;
+ * seuls les types restent provisoires (docs/design.md point ouvert 12).
  */
-export const PROVISIONAL_TEAM: TeamRules = { commander: 1, special: 3, pawn: 4 };
+export const PROVISIONAL_TEAM: TeamRules = { commander: 1, special: 3, pawn: 2 };
 
-/** Le roster provisoire courant : éclaireur, maîtresse, pion, et la composition d'équipe. */
+/** La composition d'avant le 2026-10-27, celle des parties `provisional-1` : quatre pions. */
+export const PROVISIONAL_TEAM_V1: TeamRules = { commander: 1, special: 3, pawn: 4 };
+
+/** Le roster provisoire courant : éclaireur, roi, pion, et la composition d'équipe. */
 export function provisionalRuleset(): Ruleset {
   return new Ruleset([new Commander(), new Scout(), new Pawn()], PROVISIONAL_TEAM);
+}
+
+/** Les mêmes types sous la composition à huit pièces : le ruleset des parties `provisional-1`. */
+export function provisionalRulesetV1(): Ruleset {
+  return new Ruleset([new Commander(), new Scout(), new Pawn()], PROVISIONAL_TEAM_V1);
 }
 
 /**

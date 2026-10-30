@@ -252,6 +252,11 @@
       <section id="screen-teams" class="screen screen--page" hidden>
         <div id="teams-root"></div>
       </section>
+
+      <!-- L'écran de fin d'une partie jouée : résultat, Elo, replay (`src/debrief/`). -->
+      <section id="screen-debrief" class="screen screen--page" hidden>
+        <div id="debrief-root"></div>
+      </section>
     </main>
 
     <!-- La fenêtre « partie trouvée », modale, au-dessus de l'écran d'attente. -->
@@ -259,6 +264,9 @@
 
     <!-- La fenêtre « quitter la partie », qui demande d'abandonner (`src/leave/`). -->
     <div id="leave-root"></div>
+
+    <!-- La fin d'une partie regardée, chez le spectateur (`src/end/`). -->
+    <div id="end-root"></div>
 
     <!--
       Bandeau de partie : état du tour, lecture de case et saisie de coups. La saisie

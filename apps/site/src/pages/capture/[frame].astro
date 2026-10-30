@@ -1,0 +1,33 @@
+---
+/**
+ * Pages de capture, en développement seulement (`scripts/capture.mjs`) : une image arrêtée
+ * du plateau, à la taille des visuels. Le build de production n'en produit aucune.
+ */
+import { rootDeclarations } from "../../tokens";
+import BoardIsland from "../../components/BoardIsland.astro";
+import "../../styles/site.css";
+import { FRAMES } from "../../island/script";
+
+export function getStaticPaths() {
+  if (!import.meta.env.DEV) return [];
+  return [
+    { params: { frame: "summit" }, props: { frame: FRAMES.summit, og: false } },
+    { params: { frame: "og" }, props: { frame: FRAMES.summit, og: true } },
+  ];
+}
+
+const { frame, og } = Astro.props as { frame: number; og: boolean };
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style is:inline set:html={rootDeclarations()} />
+  </head>
+  <body class={og ? "capture capture--og" : "capture"}>
+    {og && <p class="capture__wordmark">Occulis</p>}
+    <BoardIsland label="" frame={frame} />
+    {og && <p class="capture__line">Jeu de stratégie en un contre un</p>}
+  </body>
+</html>

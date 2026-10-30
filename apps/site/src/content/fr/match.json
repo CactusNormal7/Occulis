@@ -1,0 +1,25 @@
+{
+  "label": "Une partie",
+  "steps": [
+    {
+      "word": "Préparation",
+      "meta": "Avant la carte",
+      "text": "Choisissez les pièces de votre équipe."
+    },
+    {
+      "word": "Déploiement",
+      "meta": "À couvert",
+      "text": "Les deux joueurs placent leurs pièces dans leur zone en même temps, sans voir le placement de l'autre."
+    },
+    {
+      "word": "Partie",
+      "meta": "Tour par tour",
+      "text": "Déplacez une pièce par tour, prenez les hauteurs et cherchez le roi adverse."
+    },
+    {
+      "word": "Revue",
+      "meta": "Après coup",
+      "text": "Rejouez la partie coup par coup, de votre côté ou de celui de l'adversaire."
+    }
+  ]
+}
