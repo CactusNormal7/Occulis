@@ -1,5 +1,5 @@
 import { BACKGROUND, INK, INK_ALPHA, hexColor } from "@occulis/ui/tokens";
-import text from "../content/fr/mail.json";
+import text from "../content/en/mail.json";
 import type { ConfirmationMail } from "./beta";
 
 export interface MailEnv {
@@ -27,7 +27,7 @@ export function confirmationMessage(mail: ConfirmationMail): {
   const confirm = escape(mail.confirmUrl);
   const unsubscribe = escape(mail.unsubscribeUrl);
   const html = `<!doctype html>
-<html lang="fr"><body style="margin:0;padding:32px 16px;background:${bg};color:${ink};font-family:system-ui,sans-serif;font-size:16px;line-height:1.6">
+<html lang="en"><body style="margin:0;padding:32px 16px;background:${bg};color:${ink};font-family:system-ui,sans-serif;font-size:16px;line-height:1.6">
 <div style="max-width:520px;margin:0 auto">
 <p style="font-family:ui-monospace,monospace;letter-spacing:0.5em;margin:0 0 32px">OCCULIS</p>
 <p>${escape(text.greeting)}</p>
@@ -46,7 +46,7 @@ export function confirmationMessage(mail: ConfirmationMail): {
     text.expiry,
     text.ignore,
     "",
-    `${text.unsubscribe} : ${mail.unsubscribeUrl}`,
+    `${text.unsubscribe}: ${mail.unsubscribeUrl}`,
   ].join("\n");
   return { subject: text.subject, html, text: plain };
 }

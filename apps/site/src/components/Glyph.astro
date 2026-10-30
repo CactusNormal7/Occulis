@@ -3,8 +3,8 @@
  * Les pictogrammes des règles : une grille de 9 × 9 cases vue de dessus (de côté pour la
  * hauteur), dessinée comme le plateau — l'os pour la géométrie, la couleur des camps pour
  * les pièces. Les cases `wave` s'éclairent l'une après l'autre quand le pictogramme entre
- * à l'écran (`scripts/reveal.ts`), comme la ligne de vue du jeu. Décoratifs : le texte
- * de la règle dit tout.
+ * à l'écran (`scripts/reveal.ts`), comme la ligne de vue du jeu. Au survol, chacun joue sa
+ * règle (`glyph--<nom>` dans `site.css`). Décoratifs : le texte de la règle dit tout.
  */
 type Name = "sight" | "height" | "ghost" | "turns";
 type Cell = readonly [number, number];
@@ -51,7 +51,7 @@ const dots = cells([0, 0], [8, 8])
   .join("");
 ---
 
-<svg class="glyph" viewBox="0 0 72 72" width="72" height="72" aria-hidden="true" focusable="false">
+<svg class={`glyph glyph--${Astro.props.name}`} viewBox="0 0 72 72" width="72" height="72" aria-hidden="true" focusable="false">
   <path class="glyph__dot" d={dots} />
   {drawing.dim?.map(([x, y]) => <rect class="glyph__dim" x={x * C + 1} y={y * C + 1} width="6" height="6" />)}
   {

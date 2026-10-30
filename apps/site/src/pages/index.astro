@@ -7,9 +7,9 @@ import BoardScrub from "../components/BoardScrub.astro";
 import Match from "../components/Match.astro";
 import BetaForm from "../components/BetaForm.astro";
 import Faq from "../components/Faq.astro";
-import { contentFor } from "../i18n";
+import { DEFAULT_LOCALE, contentFor } from "../i18n";
 
-const locale = "fr";
+const locale = DEFAULT_LOCALE;
 const { site } = contentFor(locale);
 ---
 

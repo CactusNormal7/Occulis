@@ -1,0 +1,86 @@
+{
+  "label": "On the board",
+  "wip": {
+    "tag": "WIP",
+    "label": "Under construction",
+    "note": "Demo in progress: the numbers shown are placeholders."
+  },
+  "wipNote": "Placeholder data",
+  "hint": "Scroll to advance",
+  "end": "Continue to the next section",
+  "boardLabel": "The game board: a rocky ridge separates a blue camp from a red camp. A blue scout approaches the pass, climbs it, spots the red pieces, then comes back down and keeps only their last trace.",
+  "steps": [
+    {
+      "word": "Start",
+      "text": "Both camps are in place. Beyond the ridge, nothing.",
+      "data": [
+        {
+          "label": "Turn",
+          "value": "01"
+        },
+        {
+          "label": "Tiles seen",
+          "value": "21"
+        },
+        {
+          "label": "Height",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "word": "Approach",
+      "text": "A scout moves up to the foot of the pass.",
+      "data": [
+        {
+          "label": "Turn",
+          "value": "02"
+        },
+        {
+          "label": "Tiles seen",
+          "value": "26"
+        },
+        {
+          "label": "Height",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "word": "Summit",
+      "text": "It climbs one level. From up there, the red camp comes into view.",
+      "data": [
+        {
+          "label": "Turn",
+          "value": "03"
+        },
+        {
+          "label": "Tiles seen",
+          "value": "48"
+        },
+        {
+          "label": "Height",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "word": "Memory",
+      "text": "It comes back down. All that's left of red is its last known position.",
+      "data": [
+        {
+          "label": "Turn",
+          "value": "04"
+        },
+        {
+          "label": "Tiles seen",
+          "value": "23"
+        },
+        {
+          "label": "Height",
+          "value": "0"
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import beta from "../content/fr/beta.json";
+import beta from "../content/en/beta.json";
 import {
   PENDING_TTL_MS,
   confirm,

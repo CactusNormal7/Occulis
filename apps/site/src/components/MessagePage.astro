@@ -1,6 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { contentFor, type Locale } from "../i18n";
+import { DEFAULT_LOCALE, contentFor, type Locale } from "../i18n";
 
 interface Props {
   locale?: Locale;
@@ -10,7 +10,7 @@ interface Props {
   back?: "home" | "form";
 }
 
-const { locale = "fr", title, text, back = "home" } = Astro.props;
+const { locale = DEFAULT_LOCALE, title, text, back = "home" } = Astro.props;
 const { pages } = contentFor(locale);
 ---
 

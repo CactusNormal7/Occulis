@@ -1,0 +1,22 @@
+{
+  "label": "The game",
+  "statement": "Two players, one map, and neither sees all of it. Scout, climb, and work out where the other king is hiding.",
+  "facts": [
+    {
+      "term": "Format",
+      "text": "One on one, online"
+    },
+    {
+      "term": "Turns",
+      "text": "One piece at a time"
+    },
+    {
+      "term": "Board",
+      "text": "Isometric, with height"
+    },
+    {
+      "term": "Status",
+      "text": "In development"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "label": "Questions",
+  "items": [
+    {
+      "question": "When does the beta start?",
+      "answer": "There's no date yet. We'll write to everyone signed up as soon as a spot opens."
+    },
+    {
+      "question": "Do I need to know chess?",
+      "answer": "No. The pieces move a bit like chess pieces, which helps at first; everything else you learn on the map."
+    },
+    {
+      "question": "Is the game finished?",
+      "answer": "No. The core rules are in place and already playable online, but the pieces and maps are still changing. That's what the beta is for."
+    }
+  ]
+}

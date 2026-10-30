@@ -1,0 +1,25 @@
+{
+  "label": "A match",
+  "steps": [
+    {
+      "word": "Setup",
+      "meta": "Before the map",
+      "text": "You choose the pieces on your team."
+    },
+    {
+      "word": "Deployment",
+      "meta": "Under cover",
+      "text": "Each player places their pieces in their zone, at the same time, without seeing the other."
+    },
+    {
+      "word": "Play",
+      "meta": "Turn by turn",
+      "text": "One piece moves each turn. Advance, climb, hunt down the enemy king."
+    },
+    {
+      "word": "Review",
+      "meta": "Afterwards",
+      "text": "Replay the match move by move, from your side or theirs."
+    }
+  ]
+}

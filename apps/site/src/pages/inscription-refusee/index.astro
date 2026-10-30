@@ -2,7 +2,7 @@
 import MessagePage from "../../components/MessagePage.astro";
 import { contentFor } from "../../i18n";
 
-const { pages } = contentFor("fr");
+const { pages } = contentFor();
 ---
 
 <MessagePage title={pages.refused.title} text={pages.refused.text} back="form" />

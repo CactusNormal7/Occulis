@@ -562,6 +562,15 @@ section:focus {
   padding-block: var(--site-section);
 }
 
+/* Une section brève, et une section qui laisse la suivante poser seule l'écart. */
+.section--tight {
+  padding-block: calc(var(--site-section) / 2);
+}
+
+.section--flush-end {
+  padding-bottom: 0;
+}
+
 /* Les pages de texte gardent un titre simple. */
 .section__title {
   font-family: var(--occ-font-pixel);
@@ -617,27 +626,24 @@ section:focus {
 
 .concept {
   display: grid;
-  gap: 48px;
+  gap: 32px;
 }
 
 .statement {
-  max-width: 26ch;
-  font-size: 1.75rem;
-  line-height: 1.35;
+  max-width: 44ch;
+  font-size: 1.375rem;
+  line-height: 1.4;
   text-wrap: pretty;
 }
 
 .facts {
-  align-self: end;
-  border-top: 1px solid var(--occ-ink-line);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
 }
 
 .fact {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  padding-block: 16px;
-  border-bottom: 1px solid var(--occ-ink-line);
+  min-width: 0;
 }
 
 .fact dt {
@@ -647,20 +653,13 @@ section:focus {
   color: var(--occ-ink-soft);
 }
 
-.fact dd {
-  text-align: right;
-}
-
 @media (min-width: 720px) {
   .statement {
-    font-size: 2.5rem;
+    font-size: 1.75rem;
   }
-}
 
-@media (min-width: 1040px) {
-  .concept {
-    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    gap: 96px;
+  .facts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -675,7 +674,7 @@ section:focus {
 
 /*
  * --glyph : le côté du pictogramme. Il occupe la case, jusqu'à 216 px (trois fois sa grille
- * de 72) ; au survol il se replie à 56 px dans le coin et la phrase prend sa place.
+ * de 72).
  */
 .principle {
   --glyph: 216px;
@@ -690,10 +689,6 @@ section:focus {
   transition: background-color var(--occ-base) var(--occ-ease);
 }
 
-.principle:focus-visible {
-  outline-offset: -4px;
-}
-
 .principle__word {
   font-family: var(--occ-font-pixel);
   font-size: 40px;
@@ -701,9 +696,14 @@ section:focus {
   line-height: 1;
 }
 
+/* Pour les lecteurs d'écran seulement : à l'œil, le mot et le pictogramme suffisent. */
 .principle__text {
-  max-width: 28ch;
-  color: var(--occ-ink-soft);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 @media (min-width: 720px) {
@@ -724,68 +724,153 @@ section:focus {
 }
 
 /*
- * Avec une souris : le mot seul ; au survol ou au focus, la case s'éclaire, la grille du
- * pictogramme s'allume une case après l'autre et la phrase monte. Sur un écran tactile,
- * tout reste visible.
+ * Avec une souris, la case s'éclaire au survol et le pictogramme joue sa règle, case par
+ * case comme le jeu : la vue balaie jusqu'au mur, la pièce gravit la butte et découvre le
+ * rouge, la trace erre dans le noir, les deux camps avancent chacun leur tour. Sur un écran
+ * tactile, le dessin reste entier et immobile ; les mouvements sont réservés à `.motion`.
  */
 @media (hover: hover) {
-  .principle:is(:hover, :focus-visible) {
+  .principle:hover {
     background: var(--occ-surface);
-  }
-
-  /* Replié, il garde sa place : la marge rend ce que le côté perd, le mot ne bouge pas. */
-  .principle .glyph {
-    transition:
-      width var(--occ-slow) var(--occ-ease),
-      height var(--occ-slow) var(--occ-ease),
-      margin-bottom var(--occ-slow) var(--occ-ease);
-  }
-
-  .principle:is(:hover, :focus-visible) .glyph {
-    width: 56px;
-    height: 56px;
-    margin-bottom: calc(var(--glyph) - 56px);
-  }
-
-  /* La phrase s'inscrit dans la place que le pictogramme libère, au-dessus du mot. */
-  .principle__text {
-    position: absolute;
-    top: calc(32px + 56px + 12px);
-    right: 24px;
-    left: 24px;
-    max-height: calc(var(--glyph) - 56px - 12px);
-    font-size: 0.9375rem;
-    line-height: 1.45;
-    opacity: 0;
-    transform: translateY(16px);
-    transition:
-      opacity var(--occ-base) var(--occ-ease),
-      transform var(--occ-base) var(--occ-ease);
-  }
-
-  .principle:is(:hover, :focus-visible) .principle__text {
-    opacity: 1;
-    transform: none;
   }
 
   .principle .glyph__wave {
     opacity: 0;
-    transition: opacity 1ms steps(1);
   }
 
-  .principle:is(:hover, :focus-visible) .glyph__wave {
+  .principle:hover .glyph__wave {
     opacity: 1;
-    transition-delay: calc(var(--i) * 60ms);
   }
 
-  .principle:is(:hover, :focus-visible) .glyph__ghost {
-    animation: blink 900ms steps(2) infinite;
+  .motion .principle:hover .glyph--sight .glyph__wave {
+    animation: glyph-sweep 1800ms steps(1) calc(var(--i) * 60ms) infinite;
+  }
+
+  .motion .principle:hover .glyph--height .glyph__a {
+    animation: glyph-climb 900ms steps(1) both;
+  }
+
+  .motion .principle:hover .glyph--height .glyph__wave {
+    animation: glyph-show 1ms calc(900ms + var(--i) * 120ms) both;
+  }
+
+  .motion .principle:hover .glyph--height .glyph__b {
+    animation: glyph-spot 600ms steps(1) 1260ms both;
+  }
+
+  .motion .principle:hover .glyph--ghost .glyph__ghost {
+    animation: glyph-wander 2400ms steps(1) infinite;
+  }
+
+  .motion .principle:hover .glyph--turns .glyph__a {
+    animation: glyph-turn-a 2000ms steps(1) infinite;
+  }
+
+  .motion .principle:hover .glyph--turns .glyph__b {
+    animation: glyph-turn-b 2000ms steps(1) infinite;
   }
 }
 
-@keyframes blink {
+@keyframes glyph-sweep {
+  0% {
+    opacity: 0;
+  }
+
+  10%,
+  75% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 0;
+  }
+}
+
+/* La pièce part du sol, à gauche, et monte une marche à chaque temps. */
+@keyframes glyph-climb {
+  0% {
+    transform: translate(-24px, 24px);
+  }
+
+  25% {
+    transform: translate(-16px, 16px);
+  }
+
+  50% {
+    transform: translate(-8px, 0);
+  }
+
+  75%,
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes glyph-show {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes glyph-spot {
+  0%,
   50% {
     opacity: 0;
+  }
+
+  25%,
+  75%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes glyph-wander {
+  0%,
+  100% {
+    transform: none;
+  }
+
+  25% {
+    transform: translate(8px, 0);
+  }
+
+  50% {
+    transform: translate(8px, 8px);
+  }
+
+  75% {
+    transform: translate(0, 8px);
+  }
+}
+
+@keyframes glyph-turn-a {
+  0%,
+  75%,
+  100% {
+    transform: none;
+  }
+
+  25%,
+  50% {
+    transform: translate(8px, 8px);
+  }
+}
+
+@keyframes glyph-turn-b {
+  0%,
+  25%,
+  100% {
+    transform: none;
+  }
+
+  50%,
+  75% {
+    transform: translate(-8px, -8px);
   }
 }
 
@@ -1494,7 +1579,7 @@ section:focus {
 
 /* Une phase survolée répond tout de suite, sans le délai de son apparition. */
 .motion .phase.is-seen:is(:hover, :focus-visible),
-.motion .principle.is-seen:is(:hover, :focus-visible) {
+.motion .principle.is-seen:hover {
   transition-delay: 0ms;
 }
 

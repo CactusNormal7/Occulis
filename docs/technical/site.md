@@ -14,7 +14,8 @@ apps/site/
   public/               polices, images capturées, icônes, og.png, _headers (CSP, cache)
   scripts/capture.mjs   produit images, og.png et icônes depuis le vrai rendu
   src/
-    content/fr/         TOUS les textes : JSON par section, Markdown pour les pages légales
+    content/en/         TOUS les textes servis : JSON par section, Markdown pour les pages légales
+    content/fr/         la version française, gardée à jour, non servie
     i18n.ts             contentFor(locale) — la seule porte vers les textes
     tokens.ts           les propriétés --occ-* posées sur :root au build
     layouts/, components/, pages/
@@ -29,14 +30,15 @@ et `@occulis/board`.
 
 ## Textes et langues
 
-Tout texte affiché vit dans `src/content/fr/` (`site`, `hero`, `concept`, `principles`,
+Tout texte affiché vit dans `src/content/en/`, la langue du site (`DEFAULT_LOCALE`) ; `src/content/fr/`
+en est la version française, prête mais non servie (fichiers `site`, `hero`, `concept`, `principles`,
 `board`, `match`, `faq`, `beta`, `pages`, `footer`, `mail` en JSON ; mentions légales et confidentialité
 en Markdown). Les composants reçoivent une `locale` et lisent `contentFor(locale)`.
 
-Pour ajouter l'anglais : copier `content/fr/` en `content/en/`, l'enregistrer dans
-`CONTENT` (`i18n.ts`), puis créer `src/pages/en/` sur le modèle de `src/pages/`. Le Worker
-lit encore `content/fr/beta.json` (texte du consentement) et `mail.json` en dur ; il faudra
-lui passer la langue du formulaire.
+Pour servir aussi le français : créer `src/pages/fr/` sur le modèle de `src/pages/`, en
+passant la `locale` aux pages. Le Worker lit `content/en/beta.json` (texte du consentement)
+et `mail.json` en dur ; il faudra lui passer la langue du formulaire. Les adresses des pages
+(`/confidentialite/`, `/mentions-legales/`) et les ancres (`#jeu`) restent en français.
 
 C'est une exception assumée à la règle d'AGENTS.md (« tout texte passe par
 `@occulis/i18n` ») : ce sont des contenus éditoriaux, pas des messages d'interface du jeu.
@@ -72,16 +74,16 @@ section — le même que dans la navigation — sur un filet pleine largeur.
 - **Principes** : quatre cases, un pictogramme (`Glyph.astro`, grille de 9 × 9 en SVG,
   `--occ-camp-a` / `--occ-camp-b` pour les pièces) et un mot, côte à côte dès 900 px. Le
   pictogramme occupe la case (`--glyph` : la largeur de la colonne, lue en `cqi` sur la
-  liste, jusqu'à 216 px). Avec une souris, au survol ou au focus (les cases sont
-  focalisables), il se replie à 56 px dans le coin sans déplacer le mot, ses cases
-  s'allument une à une et la phrase prend sa place.
+  liste, jusqu'à 216 px). La phrase de la règle ne sert qu'aux lecteurs d'écran. Avec une
+  souris, le pictogramme joue sa règle au survol (`glyph--<nom>`, en `.motion` seulement) :
+  la vue balaie, la pièce gravit la butte, la trace erre, les camps avancent à tour de rôle.
 - **Une partie** : les quatre phases en lignes, numérotées parce que c'est une suite. Avec
   une souris, la ligne s'inverse et s'ouvre sur sa phrase au survol ou au focus. Sous
   720 px, le repère de droite est masqué.
 - **Écran tactile** (`hover: none`) : tout le texte est visible d'emblée.
 - **Titres d'affiche** (`.display`) : une ligne pleine, une ligne tramée par un
   `repeating-conic-gradient` des tokens (trois points d'os sur quatre).
-- **Textes** : la typographie française met une espace fine insécable (U+202F) avant
+- **Textes** : dans `content/fr/`, la typographie française met une espace fine insécable (U+202F) avant
   « : ; ? ! » dans les JSON.
 
 ### Mouvement

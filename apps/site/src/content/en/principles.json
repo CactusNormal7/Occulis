@@ -1,0 +1,25 @@
+{
+  "label": "Principles",
+  "items": [
+    {
+      "icon": "sight",
+      "word": "Vision",
+      "text": "Your pieces see what's in front of them. A wall or another piece blocks the view."
+    },
+    {
+      "icon": "height",
+      "word": "Height",
+      "text": "Climbing takes one turn per level. From up high, you see over the others."
+    },
+    {
+      "icon": "ghost",
+      "word": "Memory",
+      "text": "An enemy piece you lose sight of leaves a trace. It may have moved since."
+    },
+    {
+      "icon": "turns",
+      "word": "Thinking",
+      "text": "Each in turn, nothing in real time. Nobody wins by clicking fast."
+    }
+  ]
+}
