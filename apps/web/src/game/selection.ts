@@ -21,6 +21,12 @@ export interface Selection {
   readonly piece: Piece;
   /** Cases où la pièce peut se rendre, indexées par leur clé. */
   readonly moves: ReadonlyMap<CoordKey, Coord>;
+  /**
+   * Parmi elles, celles où se tient une pièce adverse **que le joueur voit** : y aller,
+   * c'est la prendre. Une case tenue par une pièce cachée n'y figure pas — le serveur ne
+   * la distingue pas d'une case libre, et le client n'a pas à le deviner.
+   */
+  readonly captures: ReadonlySet<CoordKey>;
 }
 
 export type ClickOutcome =
@@ -34,7 +40,11 @@ export type ClickOutcome =
  * il ignore les pièces cachées qui occupent une case ou barrent une route, donc il
  * proposerait des coups refusés.
  */
-export function selectionFor(legal: readonly Action[], piece: Piece): Selection {
+export function selectionFor(
+  legal: readonly Action[],
+  piece: Piece,
+  enemies: Iterable<Piece> = [],
+): Selection {
   const moves = new Map<CoordKey, Coord>();
 
   for (const action of legal) {
@@ -42,7 +52,12 @@ export function selectionFor(legal: readonly Action[], piece: Piece): Selection 
     moves.set(coordKey(action.to), action.to);
   }
 
-  return { piece, moves };
+  const captures = new Set<CoordKey>();
+  for (const enemy of enemies) {
+    const key = coordKey(enemy.coord);
+    if (enemy.owner !== piece.owner && moves.has(key)) captures.add(key);
+  }
+  return { piece, moves, captures };
 }
 
 /**
@@ -70,8 +85,9 @@ export function resolveClick(
     }
   }
 
+  // Testé après les destinations : cliquer une pièce adverse à portée la prend.
   const piece = pieceAt(state, coord);
   // On ne sélectionne que ses propres pièces, et seulement à son tour.
   if (piece === undefined || piece.owner !== state.activePlayer) return { kind: "clear" };
-  return { kind: "select", selection: selectionFor(legal, piece) };
+  return { kind: "select", selection: selectionFor(legal, piece, state.pieces.values()) };
 }

@@ -50,6 +50,8 @@ export function describeActionError(error: ActionError): string {
       return m.notYourPiece;
     case "unreachable":
       return m.unreachable(formatCoord(error.to));
+    case "leaves-king-exposed":
+      return m.leavesKingExposed;
   }
 }
 
@@ -81,6 +83,7 @@ export function describeRejection(rejection: Rejection): string {
     case "unknown-piece":
     case "not-your-piece":
     case "unreachable":
+    case "leaves-king-exposed":
       return describeActionError(rejection);
   }
 }
@@ -137,7 +140,8 @@ export function describeMove(piece: Piece, to: Coord): string {
 
 export function describeOutcome(outcome: NonNullable<GameState["outcome"]>): string {
   const m = messages().game.outcome;
-  return m.victory(outcome.winner, m.reasons[outcome.reason]);
+  const reason = m.reasons[outcome.reason];
+  return outcome.kind === "victory" ? m.victory(outcome.winner, reason) : m.draw(reason);
 }
 
 /**

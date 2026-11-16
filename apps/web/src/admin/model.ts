@@ -150,13 +150,15 @@ export function seatHandle(match: AdminMatchSummary, seat: PlayerId): string {
 }
 
 /**
- * Une partie qui n'a jamais été conclue reste « en cours » : seul l'abandon termine une
- * partie aujourd'hui (design.md 7.1), donc une partie délaissée le reste indéfiniment.
+ * Une partie qui n'a jamais été conclue reste « en cours » : sous les rulesets d'avant la
+ * prise, seul l'abandon termine une partie, donc une partie délaissée le reste indéfiniment.
  */
 export function describeResult(match: AdminMatchSummary): string {
   const m = messages().admin.result;
   if (match.outcome === null) return m.ongoing;
-  return m.victory(seatHandle(match, match.outcome.winner));
+  const reason = messages().game.outcome.reasons[match.outcome.reason];
+  if (match.outcome.kind === "draw") return m.draw(reason);
+  return m.victory(seatHandle(match, match.outcome.winner), reason);
 }
 
 export function describeAction(action: Action): string {

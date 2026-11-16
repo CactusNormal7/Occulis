@@ -27,7 +27,7 @@ import { formatDate } from "../admin/model.js";
 import { useLoad } from "../load/hooks.js";
 import { MyResult, Replay } from "../profile/parts.js";
 import * as api from "./api.js";
-import { PLACEHOLDER, debriefStats, eloBefore, formatDuration } from "./model.js";
+import { PLACEHOLDER, debriefReason, debriefStats, eloBefore, formatDuration } from "./model.js";
 
 /**
  * L'écran de fin d'une partie jouée : le résultat, l'Elo des deux joueurs et ce qu'il a
@@ -69,11 +69,12 @@ function Debrief({ matchId, onPlayAgain, onMenu }: Omit<DebriefAppProps, "locale
   const match = loaded.value;
   const stats = debriefStats(match);
   const won = match.result === "won";
-  const reason = won ? m.resignation.won(stats.endedOn) : m.resignation.lost(stats.endedOn);
+  const title = match.result === "drawn" ? m.draw : won ? m.victory : m.defeat;
+  const reason = debriefReason(m, match.outcome, won, stats.endedOn);
   return (
     <>
       <Hero
-        title={won ? m.victory : m.defeat}
+        title={title}
         badges={<MyResult match={match} />}
         meta={[reason, formatDate(match.finishedAt)]}
         actions={

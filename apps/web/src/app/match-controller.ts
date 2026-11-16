@@ -423,6 +423,10 @@ export class MatchController {
           this.effects.reports().announce(incoming.outcome);
           if (spectating) this.effects.showIslands();
           else this.effects.finished(matchId);
+        } else if (incoming.check && !spectating) {
+          // L'échec peut venir d'une pièce que le joueur ne voit pas : sans cette ligne,
+          // des coups disparaîtraient de ses choix sans qu'il sache pourquoi.
+          this.effects.reports().report(messages().game.outcome.check, false);
         }
       },
       onRejected: (rejection) => {

@@ -44,7 +44,8 @@ export const admin: Messages["admin"] = {
   },
   result: {
     ongoing: "en cours",
-    victory: (handle) => `victoire de ${handle} (abandon)`,
+    victory: (handle, reason) => `victoire de ${handle} (${reason})`,
+    draw: (reason) => `nulle (${reason})`,
   },
   resign: "abandon",
   pageLabel: {

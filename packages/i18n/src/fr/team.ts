@@ -4,9 +4,9 @@ export const team: Messages["team"] = {
   roles: { commander: "Roi", special: "Pièces à capacité", pawn: "Pions" },
   kinds: { commander: "Roi", scout: "Éclaireur", pawn: "Pion" },
   kindDescriptions: {
-    commander: "La pièce à protéger. Se déplace de 3, voit à 14.",
-    scout: "Rapide et voyant loin. Se déplace de 6, voit à 20.",
-    pawn: "La pièce de base. Se déplace de 1, voit à 6.",
+    commander: "La pièce à protéger : la perdre, c'est perdre la partie.",
+    scout: "Rapide et voyant loin.",
+    pawn: "La pièce de base, sans capacité.",
   },
   unknownKind: (kind) => kind,
   stats: (steps, range) => `déplacement ${steps} · vue ${range}`,
