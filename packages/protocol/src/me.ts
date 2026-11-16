@@ -52,7 +52,7 @@ export interface MeSession {
   readonly impersonated: boolean;
 }
 
-export type MeResult = "won" | "lost" | "ongoing" | "ended";
+export type MeResult = "won" | "lost" | "drawn" | "ongoing" | "ended";
 
 /**
  * La partie en cours du joueur, de quoi s'y rasseoir après un rechargement : le jeton de

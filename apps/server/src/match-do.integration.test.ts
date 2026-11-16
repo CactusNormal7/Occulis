@@ -6,7 +6,7 @@ import { HEARTBEAT, PROTOCOL_VERSION } from "@occulis/protocol";
 import type { StartedMatch } from "./match-setup.js";
 import { startTestMatch } from "./test-helpers.js";
 import { ABSENCE_MS, DEPLOYMENT_MS, type MatchConfig } from "./match-do.js";
-import type { ScenarioSnapshot } from "@occulis/core";
+import type { Coord, ScenarioSnapshot } from "@occulis/core";
 
 /**
  * Tests d'intégration dans **workerd**, le runtime réel.
@@ -477,6 +477,67 @@ describe("MatchDO dans workerd", () => {
       .bind(match.matchId)
       .first();
     expect(row).toEqual({ rated: 1, rating_change_a: -16, rating_change_b: 16 });
+
+    a.socket.close();
+    b.socket.close();
+  });
+
+  it("clôt une partie classée sur une nulle par répétition, sans vainqueur ni variation d'Elo", async () => {
+    const [anne, boris] = [`anne-${crypto.randomUUID()}`, `boris-${crypto.randomUUID()}`];
+    const match = await startTestMatch(anne, boris, { rated: true });
+    const { a, b } = await deployed(match);
+    const heights = new Map(
+      (await a.awaitKind("welcome")).board.map((tile) => [
+        `${tile.coord.x},${tile.coord.y}`,
+        tile.height,
+      ]),
+    );
+    const seats = { A: a, B: b };
+    let view = (await a.awaitKind("view")).view;
+    await b.awaitKind("view");
+
+    // Chaque camp fait l'aller-retour d'une pièce entre deux cases de même hauteur : la
+    // position de départ revient deux fois, soit trois occurrences.
+    const trips: Partial<Record<"A" | "B", { pieceId: string; from: Coord; to: Coord }>> = {};
+    for (let ply = 0; ply < 8; ply++) {
+      const side = view.activePlayer;
+      let trip = trips[side];
+      if (trip === undefined) {
+        const own = side === view.player ? view.ownPieces : [];
+        for (const action of view.legalActions) {
+          if (action.kind !== "move") continue;
+          const from = own.find((piece) => piece.id === action.pieceId)?.coord;
+          if (from === undefined) continue;
+          const flat =
+            heights.get(`${from.x},${from.y}`) === heights.get(`${action.to.x},${action.to.y}`);
+          if (flat) {
+            trip = { pieceId: action.pieceId, from, to: action.to };
+            break;
+          }
+        }
+        if (trip === undefined) throw new Error("aucun aller-retour à plat");
+        trips[side] = trip;
+      }
+      const to = ply % 4 < 2 ? trip.to : trip.from;
+      seats[side].send({ kind: "action", action: { kind: "move", pieceId: trip.pieceId, to } });
+      const forA = (await a.awaitKind("view")).view;
+      const forB = (await b.awaitKind("view")).view;
+      view = forA.activePlayer === "A" ? forA : forB;
+      if (ply < 7) expect(view.outcome).toBeNull();
+    }
+
+    expect(view.outcome).toEqual({ kind: "draw", reason: "repetition" });
+    const row = await env.DB.prepare(
+      "SELECT outcome, rating_change_a, rating_change_b, finished_at IS NOT NULL AS closed FROM matches WHERE id = ?",
+    )
+      .bind(match.matchId)
+      .first();
+    expect(row).toEqual({
+      outcome: '{"kind":"draw","reason":"repetition"}',
+      rating_change_a: 0,
+      rating_change_b: 0,
+      closed: 1,
+    });
 
     a.socket.close();
     b.socket.close();
