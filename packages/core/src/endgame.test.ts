@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { type Action, applyAction, legalActions, replay, validateAction } from "./actions.js";
 import { Board } from "./board.js";
-import { isKingThreatened } from "./endgame.js";
+import { isKingThreatened, leavesKingExposed, outcomeOf, project } from "./endgame.js";
 import { advanceMemory, startMemory, viewFor } from "./fog.js";
 import type { Piece, PlayerId } from "./pieces/index.js";
 import type { Result } from "./result.js";
-import { type GameState, createGame } from "./state.js";
+import { Ruleset } from "./pieces/index.js";
+import { type GameState, createGame, winnerOf } from "./state.js";
 import { chessRuleset, definePiece, placePiece } from "./testing.js";
 
 /**
@@ -301,5 +302,37 @@ describe("la prise sous le fog et dans le rejeu", () => {
     expect([...replayed.pieces.values()]).toEqual([...played.pieces.values()]);
     expect(replayed.outcome).toEqual(played.outcome);
     expect(replayed.draw).toEqual(played.draw);
+  });
+});
+
+describe("cas limites", () => {
+  it("ne met jamais en échec un camp sans roi", () => {
+    const kingless = game([
+      placePiece("a-guard", "guard", "A", 0, 0),
+      placePiece("b-rook", "rook", "B", 2, 0),
+    ]);
+    expect(isKingThreatened(kingless, "A")).toBe(false);
+    expect(legalActions(kingless).length).toBeGreaterThan(0);
+  });
+
+  it("ignore un déplacement qui désigne une pièce absente", () => {
+    const state = game(KINGS);
+    const ghostMove = { pieceId: "nobody", to: { x: 1, y: 1 } };
+    expect(project(state.pieces, ghostMove)).toEqual({ pieces: state.pieces, captured: undefined });
+    expect(leavesKingExposed(state, ghostMove)).toBe(false);
+  });
+
+  it("garde l'issue d'une partie déjà finie", () => {
+    const resigned = play(game(KINGS), { kind: "resign" });
+    expect(outcomeOf(resigned, () => true)).toEqual(resigned.outcome);
+  });
+
+  it("nomme le vainqueur d'une victoire, personne pour une nulle", () => {
+    expect(winnerOf({ kind: "victory", winner: "B", reason: "checkmate" })).toBe("B");
+    expect(winnerOf({ kind: "draw", reason: "stalemate" })).toBeUndefined();
+  });
+
+  it("refuse un ruleset qui déclare l'échec sans la prise", () => {
+    expect(() => new Ruleset(TYPES, null, { capture: false, check: true, draws: null })).toThrow();
   });
 });
