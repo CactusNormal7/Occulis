@@ -20,6 +20,7 @@ import {
   settingsElements,
   shellElements,
 } from "./app/page.js";
+import { attachPieceInfo } from "./ui/piece-info.js";
 import { applyStoredPreferences, attachPreferences } from "./app/preferences.js";
 import * as debriefApi from "./debrief/api.js";
 import { loadCache } from "./load/cache.js";
@@ -115,7 +116,7 @@ function main(): void {
     watching: () => matches.watching,
     spectators: () => matches.spectators,
   });
-  const board = new BoardView(boardHost, matches, gameConsole);
+  const board = new BoardView(boardHost, matches, gameConsole, attachPieceInfo(document.body));
 
   // ── File d'attente, amis, compte ──────────────────────────────────────────────────
   const matchmaking = new Matchmaking({

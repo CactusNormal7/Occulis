@@ -229,6 +229,64 @@ body::after {
   transform: rotate(45deg);
 }
 
+/* La fiche d'une pièce : une fenêtre flottante posée au-dessus de la pièce cliquée du
+   bouton droit (`piece-info.ts`). Sa position vient du script, tout le reste d'ici. */
+#piece-info {
+  position: fixed;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 280px;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+  padding: 16px;
+  border: var(--line);
+  background: var(--panel);
+  box-shadow: 0 4px 0 var(--occ-shade);
+  clip-path: var(--notch);
+  color: var(--ink);
+}
+
+#piece-info[hidden] {
+  display: none;
+}
+
+#piece-info p,
+#piece-info dl,
+#piece-info dd {
+  margin: 0;
+}
+
+.piece-info__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 10px var(--occ-ink-glow);
+  text-transform: uppercase;
+}
+
+.piece-info__owner,
+.piece-info__note,
+#piece-info dt {
+  color: var(--ink-dim);
+}
+
+.piece-info__alert {
+  color: var(--occ-threat);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.piece-info__facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  padding-top: 10px;
+  border-top: var(--line);
+}
+
 /* La fenêtre des réglages, accrochée sous l'engrenage. */
 #settings {
   position: absolute;
