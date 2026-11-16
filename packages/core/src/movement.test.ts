@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Board } from "./board.js";
 import { type Coord, coordKey } from "./coord.js";
-import { canMeleeReach, reachableTiles } from "./movement.js";
+import { reachableTiles } from "./movement.js";
 import type { MovementProfile } from "./pieces/index.js";
 
 const walker = (overrides: Partial<MovementProfile> = {}): MovementProfile => ({
@@ -63,13 +63,23 @@ describe("reachableTiles — verticalité (design.md 5.3)", () => {
   it("descend librement, quel que soit le dénivelé", () => {
     const board = Board.fromAscii(["90"]);
     const options = reachableTiles(board, { x: 0, y: 0 }, walker({ steps: 1 }));
-    expect(at(options, { x: 1, y: 0 })).toEqual({ coord: { x: 1, y: 0 }, cost: 1, kind: "walk" });
+    expect(at(options, { x: 1, y: 0 })).toEqual({
+      coord: { x: 1, y: 0 },
+      cost: 1,
+      kind: "walk",
+      capture: false,
+    });
   });
 
   it("monter d'un niveau consomme le tour entier", () => {
     const board = Board.fromAscii(["01"]);
     const options = reachableTiles(board, { x: 0, y: 0 }, walker({ steps: 3 }));
-    expect(at(options, { x: 1, y: 0 })).toEqual({ coord: { x: 1, y: 0 }, cost: 3, kind: "climb" });
+    expect(at(options, { x: 1, y: 0 })).toEqual({
+      coord: { x: 1, y: 0 },
+      cost: 3,
+      kind: "climb",
+      capture: false,
+    });
   });
 
   it("refuse un dénivelé de 2 niveaux ou plus", () => {
@@ -101,7 +111,12 @@ describe("reachableTiles — verticalité (design.md 5.3)", () => {
 
   it("un déplacement long descend de 8 à 6 par des cases plus basses", () => {
     const options = reachableTiles(Board.fromAscii(["876"]), { x: 0, y: 0 }, walker({ steps: 2 }));
-    expect(at(options, { x: 2, y: 0 })).toEqual({ coord: { x: 2, y: 0 }, cost: 2, kind: "walk" });
+    expect(at(options, { x: 2, y: 0 })).toEqual({
+      coord: { x: 2, y: 0 },
+      cost: 2,
+      kind: "walk",
+      capture: false,
+    });
   });
 
   it("un déplacement long s'arrête à la première montée, même d'un niveau", () => {
@@ -114,7 +129,12 @@ describe("reachableTiles — verticalité (design.md 5.3)", () => {
   it("un chemin à plat n'arrête pas un déplacement long", () => {
     const options = reachableTiles(Board.fromAscii(["8886"]), { x: 0, y: 0 }, walker({ steps: 3 }));
     expect(at(options, { x: 2, y: 0 })?.cost).toBe(2);
-    expect(at(options, { x: 3, y: 0 })).toEqual({ coord: { x: 3, y: 0 }, cost: 3, kind: "walk" });
+    expect(at(options, { x: 3, y: 0 })).toEqual({
+      coord: { x: 3, y: 0 },
+      cost: 3,
+      kind: "walk",
+      capture: false,
+    });
   });
 
   it("immobilise verticalement une pièce qui ne sait pas grimper", () => {
@@ -124,22 +144,49 @@ describe("reachableTiles — verticalité (design.md 5.3)", () => {
   });
 });
 
-describe("canMeleeReach", () => {
-  it("frappe librement vers le bas", () => {
-    const board = Board.fromAscii(["90"]);
-    expect(canMeleeReach(board, { x: 0, y: 0 }, { x: 1, y: 0 })).toBe(true);
+describe("reachableTiles — prise à l'arrivée", () => {
+  const at = (x: number, y: number): string => coordKey({ x, y });
+
+  it("s'arrête sur une case prenable sans la traverser", () => {
+    const board = Board.flat(5, 1);
+    const enemy = new Set([at(2, 0)]);
+    const options = reachableTiles(board, { x: 0, y: 0 }, walker({ steps: 4 }), enemy, enemy);
+
+    expect(options.get(at(2, 0))).toMatchObject({ capture: true, kind: "walk" });
+    expect(options.get(at(1, 0))).toMatchObject({ capture: false });
+    expect(options.has(at(3, 0))).toBe(false);
   });
 
-  it("frappe un niveau au-dessus", () => {
-    const board = Board.fromAscii(["01"]);
-    expect(canMeleeReach(board, { x: 0, y: 0 }, { x: 1, y: 0 })).toBe(true);
+  it("n'entre pas sur une case occupée qui n'est pas prenable", () => {
+    const board = Board.flat(3, 1);
+    const options = reachableTiles(
+      board,
+      { x: 0, y: 0 },
+      walker({ steps: 2 }),
+      new Set([at(1, 0)]),
+    );
+    expect(options.size).toBe(0);
   });
 
-  it("devient asymétrique à partir de 2 niveaux d'écart", () => {
-    const board = Board.fromAscii(["03"]);
-    const low = { x: 0, y: 0 };
-    const high = { x: 1, y: 0 };
-    expect(canMeleeReach(board, high, low)).toBe(true);
-    expect(canMeleeReach(board, low, high)).toBe(false);
+  it("suit la règle de hauteur du déplacement : aucune montée en cours de route", () => {
+    const board = Board.fromAscii(["001"]);
+    const enemy = new Set([at(2, 0)]);
+    const options = reachableTiles(board, { x: 0, y: 0 }, walker({ steps: 3 }), enemy, enemy);
+    expect(options.has(at(2, 0))).toBe(false);
+  });
+
+  it("prend en grimpant d'un niveau, collée au relief, jamais de deux", () => {
+    const enemy = new Set([at(1, 0)]);
+    const oneUp = reachableTiles(Board.fromAscii(["01"]), { x: 0, y: 0 }, walker(), enemy, enemy);
+    expect(oneUp.get(at(1, 0))).toMatchObject({ capture: true, kind: "climb" });
+
+    const twoUp = reachableTiles(Board.fromAscii(["02"]), { x: 0, y: 0 }, walker(), enemy, enemy);
+    expect(twoUp.size).toBe(0);
+  });
+
+  it("prend librement vers le bas", () => {
+    const enemy = new Set([at(1, 0)]);
+    const down = reachableTiles(Board.fromAscii(["90"]), { x: 0, y: 0 }, walker(), enemy, enemy);
+    expect(down.get(at(1, 0))).toMatchObject({ capture: true });
   });
 });

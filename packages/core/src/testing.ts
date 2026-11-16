@@ -4,8 +4,10 @@ import {
   type Piece,
   type PieceId,
   type PieceType,
+  type EngineRules,
   type PlayerId,
   Ruleset,
+  STRICT_CHESS_RULES,
 } from "./pieces/index.js";
 
 /**
@@ -35,8 +37,14 @@ export function definePiece(kind: string, options: DefineOptions = {}): PieceTyp
   });
 }
 
+/** Un ruleset d'avant la prise : on ne fait que se déplacer. */
 export function testRuleset(...types: PieceType[]): Ruleset {
   return new Ruleset(types);
+}
+
+/** Un ruleset avec prise, échec et nulles — ou les règles de moteur fournies. */
+export function chessRuleset(types: PieceType[], rules: EngineRules = STRICT_CHESS_RULES): Ruleset {
+  return new Ruleset(types, null, rules);
 }
 
 export function placePiece(

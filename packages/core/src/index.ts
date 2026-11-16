@@ -4,6 +4,7 @@ export * from "./pieces/index.js";
 export * from "./los.js";
 export * from "./movement.js";
 export * from "./state.js";
+export * from "./endgame.js";
 export * from "./actions.js";
 export * from "./fog.js";
 export * from "./result.js";

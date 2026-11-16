@@ -3,6 +3,7 @@ import {
   provisionalRuleset,
   provisionalRulesetV0,
   provisionalRulesetV1,
+  provisionalRulesetV2,
 } from "../pieces/index.js";
 
 /**
@@ -17,10 +18,11 @@ import {
 const REGISTRY = new Map<string, Ruleset>([
   ["provisional-0", provisionalRulesetV0()],
   ["provisional-1", provisionalRulesetV1()],
-  ["provisional-2", provisionalRuleset()],
+  ["provisional-2", provisionalRulesetV2()],
+  ["provisional-3", provisionalRuleset()],
 ]);
 
-export const CURRENT_RULESET_VERSION = "provisional-2";
+export const CURRENT_RULESET_VERSION = "provisional-3";
 
 export function rulesetFor(version: string): Ruleset {
   const ruleset = REGISTRY.get(version);
