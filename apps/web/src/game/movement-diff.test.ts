@@ -14,6 +14,7 @@ function view(pieces: {
     turn: 0,
     outcome: null,
     legalActions: [],
+    check: false,
     visible: new Set(),
     ownPieces: make(pieces.own ?? [], "A"),
     visibleEnemies: make(pieces.enemies ?? [], "B"),

@@ -22,4 +22,22 @@ describe("endTexts", () => {
       detail: m.resignation.friendLost("Ada"),
     });
   });
+
+  it("distingue le mat de l'abandon", () => {
+    const mated = { kind: "victory", winner: "B", reason: "checkmate" } as const;
+    expect(endTexts(m, { outcome: mated, side: "A", friend: "Ada" })).toEqual({
+      won: false,
+      title: m.friendLost("Ada"),
+      detail: m.checkmate.friendLost("Ada"),
+    });
+  });
+
+  it("ne donne ni vainqueur ni perdant à une nulle", () => {
+    const drawn = { kind: "draw", reason: "repetition" } as const;
+    expect(endTexts(m, { outcome: drawn, side: "A", friend: "Ada" })).toEqual({
+      won: false,
+      title: m.friendDrew("Ada"),
+      detail: m.draws.repetition,
+    });
+  });
 });

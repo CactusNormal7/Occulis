@@ -3,9 +3,9 @@ export const team = {
   roles: { commander: "King", special: "Specials", pawn: "Pawns" },
   kinds: { commander: "King", scout: "Scout", pawn: "Pawn" } as Record<string, string>,
   kindDescriptions: {
-    commander: "The piece to protect. Moves 3, sees 14.",
-    scout: "Fast and far-sighted. Moves 6, sees 20.",
-    pawn: "The basic piece. Moves 1, sees 6.",
+    commander: "The piece to protect: lose it and you lose the match.",
+    scout: "Fast and far-sighted.",
+    pawn: "The basic piece, with no ability.",
   } as Record<string, string>,
   unknownKind: (kind: string) => kind,
   stats: (steps: number, range: number) => `moves ${steps} · sees ${range}`,

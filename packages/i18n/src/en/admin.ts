@@ -38,7 +38,8 @@ export const admin = {
   },
   result: {
     ongoing: "ongoing",
-    victory: (handle: string) => `${handle} wins (resignation)`,
+    victory: (handle: string, reason: string) => `${handle} wins (${reason})`,
+    draw: (reason: string) => `draw (${reason})`,
   },
   resign: "resignation",
   pageLabel: {

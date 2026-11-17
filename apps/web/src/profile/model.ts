@@ -176,6 +176,8 @@ export function describeMyResult(match: Pick<MeMatchSummary, "result" | "outcome
   const results = messages().profile.results;
   if (match.outcome?.reason === "resignation")
     return match.result === "won" ? results.wonByResignation : results.lostByResignation;
+  if (match.outcome?.reason === "checkmate")
+    return match.result === "won" ? results.wonByCheckmate : results.lostByCheckmate;
   const RESULTS: Record<MeResult, string> = results;
   return RESULTS[match.result];
 }

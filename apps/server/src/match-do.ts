@@ -19,6 +19,7 @@ import {
   frozenScenario,
   validateTeam,
   viewFor,
+  winnerOf,
 } from "@occulis/core";
 import {
   HEARTBEAT,
@@ -697,7 +698,10 @@ export class MatchDO extends DurableObject<Env> {
       .bind(A, B)
       .all<{ id: string; elo: number }>();
     const elo = (id: string) => rows.results.find((row) => row.id === id)?.elo ?? INITIAL_RATING;
-    const changes = ratingChanges(elo(A), elo(B), state.outcome.winner === "A" ? 1 : 0);
+    // Une nulle vaut un demi-point : l'Elo bouge quand même, vers le moins bien classé.
+    const winner = winnerOf(state.outcome);
+    const scoreA = winner === undefined ? 0.5 : winner === "A" ? 1 : 0;
+    const changes = ratingChanges(elo(A), elo(B), scoreA);
     const bump = db.prepare(
       `UPDATE players SET elo = elo + ? WHERE id = ?
          AND EXISTS (SELECT 1 FROM matches WHERE id = ? AND finished_at IS NULL)`,

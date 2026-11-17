@@ -8,6 +8,49 @@ import type { PieceRole, PieceType } from "./piece-type.js";
 export type TeamRules = Readonly<Record<PieceRole, number>>;
 
 /**
+ * Les seuils des nulles anti-blocage (docs/design/rules.md 7.2). `withoutCapture` compte
+ * des **actions**, pas des rondes : 60 actions valent 30 tours par camp.
+ */
+export interface DrawRules {
+  /** Nombre d'occurrences d'une même position qui met fin à la partie. */
+  readonly repetition: number;
+  /** Nombre d'actions consécutives sans prise qui met fin à la partie. */
+  readonly withoutCapture: number;
+}
+
+/**
+ * Les règles du moteur qui ne tiennent pas à un type de pièce : la prise, l'échec et les
+ * nulles. Elles vivent dans le ruleset parce qu'une partie se rejoue depuis son log
+ * avec **ses** règles (docs/architecture.md section 3) : une partie commencée avant le
+ * retour de la prise doit se rejouer sans elle, indéfiniment.
+ */
+export interface EngineRules {
+  /** Une pièce prend en arrivant sur la case d'une pièce adverse (rules.md 3.1). */
+  readonly capture: boolean;
+  /**
+   * « Échecs strict » (rules.md 7.1) : un coup qui laisse son roi prenable est illégal,
+   * et une partie sans coup légal se termine — mat si le roi est menacé, pat sinon.
+   * N'a de sens qu'avec `capture`.
+   */
+  readonly check: boolean;
+  /** `null` : aucune nulle automatique. */
+  readonly draws: DrawRules | null;
+}
+
+/** Les règles d'avant le retour de la prise : on ne fait que se déplacer, seul l'abandon termine. */
+export const MOVE_ONLY_RULES: EngineRules = { capture: false, check: false, draws: null };
+
+/**
+ * Prise, échec et mat, et les deux nulles des échecs modernes. Les seuils reprennent ceux
+ * d'avant le retrait (docs/implementation-notes #17) : un point de départ, pas un équilibrage.
+ */
+export const STRICT_CHESS_RULES: EngineRules = {
+  capture: true,
+  check: true,
+  draws: { repetition: 3, withoutCapture: 60 },
+};
+
+/**
  * Table des types de pièces d'une partie, fournie par la carte ou le mode de jeu.
  *
  * Les règles sont versionnées par partie et non par connexion
@@ -22,10 +65,20 @@ export class Ruleset {
    * les parties qui les référencent doivent pouvoir rejouer telles quelles.
    */
   readonly team: TeamRules | null;
+  /** `MOVE_ONLY_RULES` par défaut : un ruleset ne gagne la prise qu'en la déclarant. */
+  readonly rules: EngineRules;
 
-  constructor(types: Iterable<PieceType>, team: TeamRules | null = null) {
+  constructor(
+    types: Iterable<PieceType>,
+    team: TeamRules | null = null,
+    rules: EngineRules = MOVE_ONLY_RULES,
+  ) {
+    if (rules.check && !rules.capture) {
+      throw new Error("Ruleset: `check` requires `capture`");
+    }
     this.types = new Map([...types].map((type) => [type.kind, type]));
     this.team = team;
+    this.rules = rules;
   }
 
   get(kind: PieceKind): PieceType {

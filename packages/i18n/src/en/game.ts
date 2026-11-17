@@ -73,6 +73,7 @@ export const game = {
     unknownPiece: "Unknown piece.",
     notYourPiece: "This piece is not to move.",
     unreachable: (coord: string) => `${coord} is out of this piece's reach this turn.`,
+    leavesKingExposed: "That move would leave your king open to capture.",
   },
   rejection: {
     unknownSeat: "Unknown seat: this connection belongs to neither side.",
@@ -80,15 +81,51 @@ export const game = {
   },
   outcome: {
     victory: (winner: string, reason: string) => `${winner} wins (${reason}).`,
-    reasons: { resignation: "resignation" },
+    draw: (reason: string) => `Draw (${reason}).`,
+    reasons: {
+      resignation: "resignation",
+      checkmate: "checkmate",
+      stalemate: "stalemate",
+      repetition: "threefold repetition",
+      "no-capture": "60 moves without a capture",
+    },
+    check: "Check: your king can be captured.",
+  },
+  /** La fiche d'une pièce, ouverte d'un clic droit. */
+  pieceInfo: {
+    label: "Piece details",
+    own: "Yours",
+    enemy: "Opponent",
+    ghost: (turn: number) => `Opponent, last seen on turn ${turn}`,
+    inCheck: "In check",
+    movement: "Movement",
+    steps: (steps: number) => (steps === 1 ? "1 tile" : `${steps} tiles`),
+    adjacency: { octile: "in any direction", orthogonal: "no diagonals" },
+    climbs: "climbs one level",
+    noClimb: "does not climb",
+    vision: "Vision",
+    range: (range: number) => (range === 1 ? "1 tile" : `${range} tiles`),
+    unlimited: "unlimited",
+    capture: "Captures by moving onto an opposing piece.",
+    king: "If it cannot escape capture, the match is lost.",
   },
   /** La fin d'une partie regardée, chez le spectateur. */
   end: {
     friendWon: (friend: string) => `${friend} wins`,
     friendLost: (friend: string) => `${friend} loses`,
+    friendDrew: (friend: string) => `${friend} draws`,
     resignation: {
       friendWon: "Their opponent resigned the match.",
       friendLost: (friend: string) => `${friend} resigned the match.`,
+    },
+    checkmate: {
+      friendWon: "Their opponent was checkmated.",
+      friendLost: (friend: string) => `${friend} was checkmated.`,
+    },
+    draws: {
+      stalemate: "The side to move had no legal move left.",
+      repetition: "The same position came up three times.",
+      "no-capture": "60 moves went by without a capture.",
     },
     menu: "Back to menu",
     board: "View the board",
@@ -97,9 +134,19 @@ export const game = {
   debrief: {
     victory: "Victory",
     defeat: "Defeat",
+    draw: "Draw",
     resignation: {
       won: (move: number) => `Your opponent resigned on move ${move}.`,
       lost: (move: number) => `You resigned on move ${move}.`,
+    },
+    checkmate: {
+      won: (move: number) => `You checkmated your opponent on move ${move}.`,
+      lost: (move: number) => `You were checkmated on move ${move}.`,
+    },
+    draws: {
+      stalemate: (move: number) => `Stalemate on move ${move}: no legal move left.`,
+      repetition: (move: number) => `The same position came up three times, on move ${move}.`,
+      "no-capture": (move: number) => `60 moves without a capture, on move ${move}.`,
     },
     you: "You",
     opponent: "Opponent",

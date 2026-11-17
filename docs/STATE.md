@@ -1,12 +1,12 @@
 # État du projet
 
-Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-10-29.
+Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-11-17.
 
 ## Jeu (`packages/core`)
 
 - En place : plateau à hauteur, LOS occultée par le relief **et par les pièces**, verticalité, déplacement avec blocage mutuel, tours alternés, fog of war avec mémoire fantôme, historique et rejeu, abandon.
-- **Retirés** sur décision du porteur : capture, échec et mat, pat, nulles (règle « échecs strict » injouable avec les portées du roster provisoire). **Une partie ne se termine que par abandon.** Voir [open-points](design/open-points.md) 13.
-- Non implémenté (points ouverts) : pièges, roster définitif. Plus d'attaque à distance (décision du 2026-10-27). Seule la composition d'équipe est actée : 1 roi, 3 pièces à capacité, 2 pions (décision du 2026-10-27, ouverte à modification, `rules.md` §7) : ruleset `provisional-2` ; `provisional-1` (1/3/4) reste chargeable.
+- **Fin de partie (2026-11-16)** : prise à l'arrivée, échec et mat « échecs strict », pat, triple répétition et 60 actions sans prise, sous le ruleset `provisional-3` (roi 1 pas, éclaireur 3, pion 1). Les parties `provisional-0..2` se rejouent sans. Fiche d'une pièce au clic droit.
+- Non implémenté (points ouverts) : pièges, roster définitif. Plus d'attaque à distance (décision du 2026-10-27). Seule la composition d'équipe est actée : 1 roi, 3 pièces à capacité, 2 pions (décision du 2026-10-27, ouverte à modification, `rules.md` §7) : ruleset `provisional-3` (`provisional-2` : mêmes quotas, anciennes portées, sans prise) ; `provisional-1` (1/3/4) reste chargeable.
 - Roster et cartes **provisoires** : rien ne s'équilibre dessus. Interprétations encodées : [implementation-notes.md](implementation-notes.md).
 
 ## Règles décidées le 2026-10-27 (non implémentées sauf mention)
@@ -27,7 +27,7 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 
 ## Idées, non décidées
 
-- Un mat est souhaité, en comptant sur les capacités pour le rendre jouable ; l'expérience dira. La condition de victoire n'est pas tranchée.
+- Le mat est la condition de victoire du mode actuel (2026-11-16) ; d'autres modes pourront en avoir une autre.
 - Poison à échéance (la pièce meurt dans X tours, purge possible mais forte), ou poison presque aussi difficile à déclencher qu'une capture normale. À voir plus tard.
 - Rounds (manches), éventuellement selon un mode de jeu, sans forcer la condition de victoire. À voir plus tard.
 

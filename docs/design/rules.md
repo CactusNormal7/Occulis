@@ -31,7 +31,7 @@ Nom du projet : Occulis (voir section 8 — nom retenu avec réserve documentée
 
 - Capture instantanée, façon échecs classiques : une pièce capture en **arrivant sur la case** d'une pièce adverse, pour toutes les pièces (précisé le 2026-10-27). Une pièce alliée bloque toujours : on n'entre jamais sur sa case.
 - Choisi après avoir écarté un modèle 100% différé, jugé trop complexe (calcul de mat généralisé à chaque capture) et trop lent en rythme de jeu.
-- **Suspendue à l'implémentation (décision de développement, la règle reste actée).** Aucune capture n'existe dans le moteur pour l'instant : une pièce ne peut simplement pas entrer sur la case d'une autre, alliée ou adverse. La décision est de reconstruire d'abord la géométrie du jeu — déplacement, blocage, ligne de vue — avant d'y reposer une règle de prise. La capture étant un déplacement, elle suit les règles de hauteur du déplacement (section 5.3). `canMeleeReach` reste codé et testé dans `packages/core`, mais il encode l'ancienne mêlée par adjacence et ne fait pas foi.
+- **Implémentée le 2026-11-16** (ruleset `provisional-3`), après avoir été suspendue le temps de reconstruire la géométrie du jeu. La capture étant un déplacement, elle suit les règles de hauteur du déplacement (section 5.3), et une pièce prise ne se traverse pas. Le joueur ne déclare pas la prise : il désigne la case, et la position dit s'il y avait une pièce. Les parties créées sous les rulesets antérieurs se rejouent sans prise.
 
 ### 3.2 ~~Attaque à distance~~ — écartée le 2026-10-27
 
@@ -71,7 +71,7 @@ Réécrite le 2026-10-27, avec les décisions du porteur du projet.
 - La hauteur n'affecte jamais la portée horizontale : elle affecte la LOS et le déplacement.
 - **Un déplacement long ne comporte aucune montée, même d'un niveau.** Descendre est libre et sans limite ; un chemin à plat n'arrête pas le déplacement. Dès qu'un pas du chemin monterait, le mouvement s'arrête avant lui. Exemple : depuis une case de hauteur 8, une pièce peut aller sur une case de hauteur 6 si aucune case du chemin n'est plus haute que la précédente ; le chemin 8 → 5 → 6, qui remonte, est interdit. C'est déjà le comportement de `movement.ts`.
 - **Grimper est une capacité de toutes les pièces** (décision du 2026-10-27, conforme au code). Monter d'un niveau coûte un déplacement complet par niveau, et nécessite d'être préalablement collé au mur/à la pente. Exemple : une pièce à côté d'un mur de hauteur 3 doit d'abord s'y coller, puis monter de 1, puis 1, puis 1 (plusieurs tours).
-- **Capture d'une pièce sur une case plus haute (décision du 2026-10-27)** : la capture est un déplacement, elle suit donc exactement les règles ci-dessus — un déplacement long ne monte pas, grimper d'un niveau reste possible aux mêmes conditions. Une capture faite par une capacité est bornée par la portée et la ligne de vue de cette capacité. `canMeleeReach`, qui encode l'ancienne mêlée par adjacence, ne fait pas foi.
+- **Capture d'une pièce sur une case plus haute (décision du 2026-10-27)** : la capture est un déplacement, elle suit donc exactement les règles ci-dessus — un déplacement long ne monte pas, grimper d'un niveau reste possible aux mêmes conditions. Une capture faite par une capacité est bornée par la portée et la ligne de vue de cette capacité.
 - **Retirés le 2026-10-27** : l'atteignabilité en mêlée entre cases adjacentes de hauteurs différentes, avec son asymétrie (la pièce haute atteignait la basse, pas l'inverse), et la conséquence « la hauteur protège contre les attaques à distance ». La capture se fait désormais en arrivant sur la case (3.1) et il n'y a plus d'attaque à distance (3.2) : ces deux règles n'ont plus d'objet.
 
 ### 5.4 Fog of war — confirmé
@@ -100,18 +100,12 @@ Réécrite le 2026-10-27, avec les décisions du porteur du projet.
 - Point ouvert, à noter pour le level design futur : chaque carte doit décider consciemment si les zones de déploiement des deux joueurs ont LOS mutuelle ou non — c'est un paramètre de conception de carte, pas une règle générale.
 - Roi : gardé simple pour l'instant (mouvement/règles standards, pas de spécificité), avec possibilité d'évolution plus tard.
 - Fin de partie : abandon possible, et égalité/nulle prévue "de la même manière qu'aux échecs, plus aucun coup possible sans attaque à part entière" — interprété comme un pat classique (aucun coup légal du tout, ni déplacement ni attaque). Point explicitement reporté par le porteur du projet : aucune décision prise sur une éventuelle règle anti-blocage/anti-répétition (équivalent de la règle des 50 coups aux échecs), pour éviter des parties qui tournent en rond sans jamais qu'aucun roi ne soit menacé.
-- **Condition de victoire (2026-10-27) :** elle dépend du mode de jeu. Un mat est souhaité, mais n'est pas tranché (point ouvert 18).
+- **Condition de victoire (2026-10-27, précisée le 2026-11-16) :** elle dépend du mode de jeu. Pour le mode actuel, c'est le **mat** (7.1), décidé le 2026-11-16 ; d'autres modes pourront en avoir une autre.
+- **Portées resserrées pour le mat (2026-11-16) :** roi 1 pas, pion 1 pas, éclaireur 3 pas, visions inchangées (ruleset `provisional-3`). Chiffres provisoires, comme le roster ; ils existent pour qu'un mat soit constructible, pas pour équilibrer.
 
-### 7.1 Mise en échec et mat — « échecs strict », **suspendue**
+### 7.1 Mise en échec et mat — « échecs strict »
 
-> **État actuel : la règle est retirée du moteur.** À l'usage elle n'était pas jouable : combinée aux portées volontairement démesurées du roster provisoire (implementation-notes #14), elle mettait le roi en échec quasi permanent, supprimait tous ses coups légaux et déclenchait un mat immédiat. Décision du porteur du projet : **la retirer entièrement plutôt que la rafistoler**, et la reconstruire une fois la géométrie du jeu (portées, blocage, vision) stabilisée. Conséquences immédiates :
->
-> - aucun coup n'est illégal au motif qu'il expose son propre roi ;
-> - il n'y a plus ni échec, ni mat, ni pat, et la vue transmise ne porte plus de drapeau `check` ;
-> - **plus aucune fin de partie automatique** : seul l'abandon termine une partie. Un joueur dont toutes les pièces seraient murées n'a plus que cette issue — cas très rare, accepté à ce stade ;
-> - `PlayerView.legalActions` reste transmis, pour la raison énoncée en fin de section : le client ne peut toujours pas savoir quelles pièces invisibles barrent la route des siennes.
->
-> Le raisonnement ci-dessous est conservé tel quel : c'est la décision de design, et le point de reprise quand la règle reviendra. Ce qui est écrit au présent décrit la règle visée, pas le moteur d'aujourd'hui.
+> **Rétablie le 2026-11-16** (ruleset `provisional-3`), confirmée telle quelle par le porteur du projet. Elle avait été retirée le 2026-09-09 : avec les portées démesurées du roster provisoire (éclaireur 6 pas, roi 3), le roi était en échec quasi permanent et le mat tombait aussitôt. Elle revient avec des portées resserrées (section 7). Les parties créées sous les rulesets antérieurs se rejouent sans elle.
 
 Décision actée : **un coup qui laisse son propre roi capturable au tour suivant est illégal, exactement comme aux échecs — y compris quand la menace est hors de la ligne de vue de son auteur.**
 
@@ -126,9 +120,9 @@ Le mat en découle sans règle supplémentaire : plus aucun coup légal **et** r
 
 Conséquence d'information, actée : **le serveur transmet à chaque joueur la liste de ses coups légaux.** Elle est calculée sur la position réelle, donc elle révèle d'un coup que des menaces invisibles le contraignent. C'est assumé pour deux raisons. D'abord, la même information s'obtient déjà en tâtonnant, puisqu'un coup refusé ne consomme pas de tour : la liste abaisse l'effort, pas le secret. Ensuite, sans elle l'interface est condamnée à mentir — un client qui ne voit qu'un camp ne peut ni deviner les menaces cachées, ni savoir qu'une pièce invisible barre la route d'un attaquant qu'il voit ; il proposerait donc des coups refusés et en cacherait d'acceptables.
 
-### 7.2 Nulles anti-blocage — les deux règles, **suspendues**
+### 7.2 Nulles anti-blocage — les deux règles
 
-> **État actuel : les deux règles sont retirées du moteur**, conséquence directe de 7.1. La nulle « coups sans capture » n'a plus de sens tant qu'aucune capture n'est possible — elle serait devenue une limite de tours déguisée, déclenchée dans toutes les parties. La triple répétition part avec elle, faute de fin de partie à laquelle se raccrocher. Elles reviendront avec la capture. Le raisonnement ci-dessous reste la décision de design.
+> **Rétablies le 2026-11-16** avec la capture et le mat (ruleset `provisional-3`) : triple répétition, et 60 actions sans prise (30 par camp). Elles avaient été retirées avec la capture, sans laquelle la seconde serait devenue une limite de tours déguisée.
 
 Le point était explicitement reporté (« éviter des parties qui tournent en rond sans jamais qu'aucun roi ne soit menacé »). Décision actée : **les deux règles des échecs modernes, et toutes deux automatiques.**
 

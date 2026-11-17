@@ -44,23 +44,32 @@ describe("selectionFor", () => {
     }
   });
 
-  it("exclut les cases occupées", () => {
+  it("exclut les cases de ses propres pièces", () => {
     const state = game();
     const selection = selectionFor(legalActions(state), pieceOf(state, "a-scout"));
 
-    for (const occupied of PIECES) {
+    for (const occupied of PIECES.filter((piece) => piece.owner === "A")) {
       expect(selection.moves.has(coordKey(occupied.coord))).toBe(false);
     }
   });
 
-  it("ne propose rien derrière une pièce qui barre la route", () => {
-    // b-scout est en (1,0) : la case au-delà, sur la même ligne, n'est plus
-    // atteignable puisqu'on ne traverse pas une pièce.
+  it("marque comme prise la case d'une pièce adverse à portée, et elle seule", () => {
+    // b-scout est en (1,0), à un pas : y aller, c'est le prendre.
+    const state = game();
+    const selection = selectionFor(
+      legalActions(state),
+      pieceOf(state, "a-scout"),
+      state.pieces.values(),
+    );
+
+    expect(selection.moves.has(coordKey({ x: 1, y: 0 }))).toBe(true);
+    expect([...selection.captures]).toEqual([coordKey({ x: 1, y: 0 })]);
+  });
+
+  it("ne marque aucune prise quand les pièces adverses ne lui sont pas données", () => {
     const state = game();
     const selection = selectionFor(legalActions(state), pieceOf(state, "a-scout"));
-
-    expect(selection.moves.has(coordKey({ x: 1, y: 0 }))).toBe(false);
-    expect(selection.moves.has(coordKey({ x: 0, y: 1 }))).toBe(true);
+    expect(selection.captures.size).toBe(0);
   });
 });
 
@@ -99,13 +108,16 @@ describe("resolveClick", () => {
     });
   });
 
-  it("ne joue rien sur un clic vers une pièce adverse adjacente", () => {
-    // Sans capture, une pièce adverse n'est ni une destination ni une cible : le
-    // clic retombe sur la règle générale et ne sélectionne rien.
+  it("joue la prise sur un clic vers une pièce adverse à portée", () => {
+    // La case adverse est une destination : le clic la joue au lieu de retomber sur la
+    // règle générale, qui ne sélectionne jamais une pièce d'en face.
     const state = game();
     const selection = selectionFor(legalActions(state), pieceOf(state, "a-scout"));
 
-    expect(resolveClick(legalActions(state), state, selection, { x: 1, y: 0 }).kind).toBe("clear");
+    expect(resolveClick(legalActions(state), state, selection, { x: 1, y: 0 })).toEqual({
+      kind: "play",
+      action: { kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } },
+    });
   });
 
   it("désélectionne quand on reclique la pièce sélectionnée", () => {
