@@ -17,7 +17,7 @@ justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ic
 | Comment installer et déployer ?                 | [docs/setup.md](../setup.md)                                                      |
 | Combien ça coûte ?                              | [docs/costs.md](../costs.md)                                                      |
 
-## Les cinq documents
+## Les six documents
 
 | Fichier                | Couvre                                                                                                                                                                                  | Paquet                             |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
@@ -26,6 +26,7 @@ justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ic
 | [ui.md](ui.md)         | La charte graphique : tokens (seule source des couleurs), feuille de style, composants React, synchronisation vers Claude Design                                                        | `packages/ui`                      |
 | [server.md](server.md) | Le serveur : Worker, Durable Objects de partie et de file (appariement et salons privés), base D1, protocole réseau                                                                     | `apps/server`, `packages/protocol` |
 | [infra.md](infra.md)   | L'outillage et la CI/CD : environnements, migrations, déploiement                                                                                                                       | `tooling/infra`, `.github`         |
+| [site.md](site.md)     | Le site vitrine : pages statiques, plateau animé du hero, inscription à la beta (double opt-in, D1 dédiée), captures                                                                    | `apps/site`, `packages/board`      |
 
 ## Carte du système
 
@@ -41,6 +42,9 @@ justification : celles-ci vivent ailleurs et ne doivent pas être dupliquées ic
         + parties en ligne       │
                                  ├── D1 (log d'actions = source de vérité)
                                  └── sert apps/web/dist via le binding ASSETS
+
+   packages/board ── rendu Canvas 2D du plateau (sans PixiJS), partagé par apps/web et apps/site
+   apps/site ────── site vitrine statique (Astro) + Worker occulis-site, D1 occulis-site
 
    tooling/infra ── TUI qui pilote wrangler, wrangler.toml et le manifeste de déploiement
    .github/workflows/ci.yml ── vérifications sur toute branche, déploiement sur les branches listées

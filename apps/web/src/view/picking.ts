@@ -7,7 +7,7 @@ import {
   compareDepth,
   depthOf,
   tileQuad,
-} from "./iso.js";
+} from "@occulis/board/iso";
 
 /**
  * Désignation de la case sous un point, en espace de projection.

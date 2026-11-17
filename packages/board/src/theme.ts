@@ -15,7 +15,7 @@
  * Le thème est **choisi par le joueur** (`setLook()`), et lu à chaque image par
  * `look()` : basculer de thème en pleine partie ne demande aucun rechargement.
  *
- * Les épaisseurs sont en **pixels du plateau** (`view/pixel.ts`), jamais en pixels CSS :
+ * Les épaisseurs sont en **pixels du plateau** (`@occulis/board/pixel`), jamais en pixels CSS :
  * un trait d'un pixel reste un pixel net à tout niveau de zoom.
  */
 import { DEFAULT_THEME, THEMES, type Palette, type ThemeName } from "@occulis/ui/tokens";

@@ -1,0 +1,4 @@
+# Copier en .dev.vars (non versionné) pour `pnpm --filter @occulis/site preview`.
+SITE_URL=http://localhost:8787
+BETA_SECRET=local-only-secret-change-me
+MAIL_TO_CONSOLE=on

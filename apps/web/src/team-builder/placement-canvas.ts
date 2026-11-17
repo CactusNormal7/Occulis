@@ -7,11 +7,11 @@ import {
   fitPixelCanvas,
   strokeQuad,
   terrainDrawables,
-} from "../render/canvas2d/paint.js";
+} from "@occulis/board/paint";
 import { centerOffset, fitScale } from "../replay/replay.js";
-import { METRICS, look } from "../theme/theme.js";
+import { METRICS, look } from "@occulis/board/theme";
 import { type Camera, createCamera, pivotOf, settle, toProjection, turn } from "../view/camera.js";
-import { compareDepth, depthOf, project, tileQuad } from "../view/iso.js";
+import { compareDepth, depthOf, project, tileQuad } from "@occulis/board/iso";
 import { tileAt } from "../view/picking.js";
 
 /**

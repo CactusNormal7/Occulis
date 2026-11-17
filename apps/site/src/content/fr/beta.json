@@ -1,0 +1,25 @@
+{
+  "label": "Beta",
+  "titleLines": ["Rejoignez", "la beta."],
+  "text": "Laissez votre adresse et nous vous préviendrons quand des places s'ouvriront.",
+  "emailLabel": "Adresse email",
+  "emailHint": "Nous ne l'utiliserons que pour la beta.",
+  "consent": "J'accepte qu'Occulis m'écrive au sujet de la beta. Chaque message permet de se désinscrire en un clic.",
+  "submit": "Rejoindre la beta",
+  "sending": "Envoi en cours…",
+  "privacy": "Nous conservons votre adresse nous-mêmes, sans la vendre ni la partager. Voir la",
+  "privacyLink": "politique de confidentialité",
+  "honeypotLabel": "Laissez ce champ vide",
+  "messages": {
+    "sent": "Presque fini : ouvrez le lien que nous venons de vous envoyer pour confirmer votre inscription.",
+    "invalid-email": "Cette adresse ne semble pas valide. Vérifiez-la, puis réessayez.",
+    "consent-required": "Cochez la case pour accepter de recevoir nos messages.",
+    "too-many": "Trop de tentatives depuis votre connexion. Réessayez dans une minute.",
+    "failed": "L'inscription n'a pas abouti. Réessayez dans un instant."
+  },
+  "steam": {
+    "enabled": false,
+    "url": "",
+    "label": "Ajouter Occulis à votre liste de souhaits Steam"
+  }
+}

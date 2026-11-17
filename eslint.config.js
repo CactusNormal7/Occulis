@@ -17,6 +17,8 @@ export default [
       "**/node_modules/**",
       "**/.wrangler/**",
       "**/coverage/**",
+      // Les types qu'Astro régénère à chaque `astro sync` (apps/site) : du code généré.
+      "**/.astro/**",
       "ds-bundle/**",
       ".ds-sync/**",
       // Doublons de la synchronisation iCloud (voir .gitignore) : jamais des sources.
@@ -104,6 +106,7 @@ export default [
   },
   {
     files: [
+      "packages/board/src/**/*.ts",
       "apps/web/src/view/**/*.ts",
       "apps/web/src/game/**/*.ts",
       "apps/web/src/net/session.ts",
@@ -137,6 +140,8 @@ export default [
       "apps/web/src/**/*.{ts,tsx}",
       "apps/web/lab/**/*.{ts,tsx}",
       "apps/server/src/**/*.ts",
+      "apps/site/src/**/*.ts",
+      "packages/board/src/**/*.ts",
       "packages/ui/src/**/*.{ts,tsx}",
       "packages/ui/previews/**/*.{ts,tsx}",
     ],

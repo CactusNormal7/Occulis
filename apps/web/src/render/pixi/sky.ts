@@ -10,8 +10,8 @@ import {
   shootingStarAt,
   starAlpha,
 } from "../../view/ambient.js";
-import { snap } from "../../view/pixel.js";
-import { type Look, look } from "../../theme/theme.js";
+import { snap } from "@occulis/board/pixel";
+import { type Look, look } from "@occulis/board/theme";
 
 /**
  * Le ciel du plateau, en coordonnées d'écran : la voûte d'étoiles derrière le plateau

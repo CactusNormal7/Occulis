@@ -1,0 +1,25 @@
+{
+  "label": "Principes",
+  "items": [
+    {
+      "icon": "sight",
+      "word": "Vision",
+      "text": "Les murs et les autres pièces bloquent la ligne de vue."
+    },
+    {
+      "icon": "height",
+      "word": "Relief",
+      "text": "Chaque niveau prend un tour à gravir. En hauteur, on voit par-dessus les pièces plus basses."
+    },
+    {
+      "icon": "ghost",
+      "word": "Mémoire",
+      "text": "Une pièce adverse perdue de vue reste marquée à sa dernière position connue."
+    },
+    {
+      "icon": "turns",
+      "word": "Réflexion",
+      "text": "Au tour par tour, sans action en temps réel."
+    }
+  ]
+}

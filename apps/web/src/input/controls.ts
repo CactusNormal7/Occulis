@@ -9,7 +9,7 @@ import {
   turn,
   zoomAt,
 } from "../view/camera.js";
-import type { ScreenPoint } from "../view/iso.js";
+import type { ScreenPoint } from "@occulis/board/iso";
 import { sameCoord } from "../view/picking.js";
 
 /**

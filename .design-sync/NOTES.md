@@ -87,6 +87,12 @@ l'artifact » plus bas).
 
 ## Re-sync vers l'artifact
 
+Dernier envoi : 2026-10-30 (version 12), `WorkInProgress` ajouté. Le fichier `project/components/bundle.css`
+n'est **pas** `dist/styles.css` : ses tokens viennent de `tokens.json`. Il garde son bloc `:root` de tête (polices,
+mouvement), suivi de `styles.css` avec `wip.css` intégré. Un token ajouté à `tokens.ts` s'ajoute donc aussi à
+`project/tokens.json` (ici `occ-caution`, `occ-caution-ground`). L'artifact refuse une publication sans lecture
+préalable de la version courante (`action: "read"` sur l'URL seule). `SkeletonScreen` est dans le bundle, sans fiche.
+
 Fait ainsi le 2026-10-23 (version 7 de l'artifact) :
 
 - Comparer le dépôt au dernier commit synchronisé (`lastChange.via` de `project/design-system.json`) :

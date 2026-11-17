@@ -1,6 +1,6 @@
 import type { Board, PlayerId } from "@occulis/core";
 import { cssColor } from "@occulis/ui/tokens";
-import { look } from "../../theme/theme.js";
+import { look } from "./theme.js";
 import {
   type IsoProjection,
   type Quad,
@@ -9,15 +9,15 @@ import {
   depthOf,
   project,
   tileQuad,
-} from "../../view/iso.js";
-import { topColor } from "../../view/matter.js";
-import { mixColor, pixelResolution } from "../../view/pixel.js";
+} from "./iso.js";
+import { topColor } from "./matter.js";
+import { mixColor, pixelResolution } from "./pixel.js";
 
 /**
  * Les primitives du plateau en Canvas 2D, partagées par le rejeu du back-office et du
  * profil (`replay/replay-canvas.ts`) et par le plateau de déploiement
- * (`team-builder/placement-canvas.ts`). Même géométrie que le jeu (`view/iso.ts`), mêmes tokens
- * (`theme.ts`), même grain (`view/pixel.ts`) : ce qui est dessiné ici ressemble à ce que
+ * (`team-builder/placement-canvas.ts`). Même géométrie que le jeu (`@occulis/board/iso`), mêmes tokens
+ * (`theme.ts`), même grain (`@occulis/board/pixel`) : ce qui est dessiné ici ressemble à ce que
  * PixiJS dessine en partie.
  *
  * Les épaisseurs passées ici sont en **pixels du plateau**, comme dans `render/pixi/`.

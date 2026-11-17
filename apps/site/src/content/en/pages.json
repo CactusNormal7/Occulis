@@ -1,0 +1,33 @@
+{
+  "sent": {
+    "title": "Check your inbox",
+    "text": "We just sent you a confirmation link. Open it to finish signing up for the beta. Nothing there? Look in your spam folder, or try again in a few minutes."
+  },
+  "confirmed": {
+    "title": "Sign-up confirmed",
+    "text": "You're on the list. We'll email you when the beta opens."
+  },
+  "refused": {
+    "title": "The sign-up didn't go through",
+    "text": "The address is invalid, the consent box wasn't ticked, or too many attempts came from your connection. Go back to the form to try again."
+  },
+  "invalidLink": {
+    "title": "This link is no longer valid",
+    "text": "A confirmation link works once and expires after seven days. Sign up again to get a new one."
+  },
+  "unsubscribe": {
+    "title": "Unsubscribe from the beta",
+    "text": "Your address will be deleted from our list, and we won't write to you again.",
+    "button": "Unsubscribe me"
+  },
+  "unsubscribed": {
+    "title": "You're unsubscribed",
+    "text": "Your address has been deleted. You can sign up again at any time."
+  },
+  "back": "Back to home",
+  "backToForm": "Back to the form",
+  "notFound": {
+    "title": "This page doesn't exist",
+    "text": "The address may have been mistyped. The home page introduces the game and the beta sign-up."
+  }
+}

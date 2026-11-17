@@ -2,8 +2,8 @@ import { setLocale } from "../locale/current.js";
 import { describe, expect, it } from "vitest";
 import { Board } from "@occulis/core";
 import type { AdminFrame, AdminMatchDetail } from "@occulis/protocol";
-import { METRICS } from "../theme/theme.js";
-import { QUARTER_TURN, tileQuad } from "../view/iso.js";
+import { METRICS } from "@occulis/board/theme";
+import { QUARTER_TURN, tileQuad } from "@occulis/board/iso";
 import {
   centerOffset,
   clampFrame,

@@ -1,0 +1,63 @@
+---
+/**
+ * Le plateau en boucle, pour les pages de capture. Une image fixe d'abord (le même rendu, capturé par
+ * `scripts/capture.mjs`), qui suffit sans JavaScript et sous « mouvement réduit » ;
+ * puis, quand le navigateur est libre, le vrai rendu Canvas 2D du jeu prend sa place
+ * (`src/island/board.ts`). Il ne charge jamais PixiJS.
+ */
+interface Props {
+  label: string;
+  /** Pour `scripts/capture.mjs` : une image arrêtée du scénario, sans boucle. */
+  frame?: number;
+}
+
+const { label, frame } = Astro.props;
+const poster = "summit";
+---
+
+<div class="board" data-board data-frame={frame}>
+  {
+    frame === undefined && (
+      <picture>
+        <source
+          type="image/avif"
+          srcset={`/images/board-${poster}-720.avif 720w, /images/board-${poster}-1440.avif 1440w`}
+          sizes="100vw"
+        />
+        <source
+          type="image/webp"
+          srcset={`/images/board-${poster}-720.webp 720w, /images/board-${poster}-1440.webp 1440w`}
+          sizes="100vw"
+        />
+        <img
+          class="board__poster"
+          src={`/images/board-${poster}-1440.webp`}
+          width="1440"
+          height="720"
+          alt=""
+          fetchpriority="high"
+        />
+      </picture>
+    )
+  }
+  <canvas class="board__canvas" role="img" aria-label={label}></canvas>
+</div>
+
+<script>
+  const host = document.querySelector<HTMLElement>("[data-board]");
+  const canvas = host?.querySelector("canvas");
+  if (host && canvas) {
+    const frameAttribute = host.dataset.frame;
+    const start = () => {
+      void import("../island/board").then(({ mountBoard }) => {
+        mountBoard(host, canvas, {
+          still: frameAttribute === undefined ? undefined : Number(frameAttribute),
+        });
+      });
+    };
+    // Le premier écran passe d'abord : le plateau attend que le navigateur soit libre.
+    if (frameAttribute !== undefined) start();
+    else if ("requestIdleCallback" in window) requestIdleCallback(start, { timeout: 1500 });
+    else setTimeout(start, 200);
+  }
+</script>

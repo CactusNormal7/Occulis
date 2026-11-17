@@ -1,7 +1,7 @@
 import type { FillPattern, Graphics } from "pixi.js";
-import type { IsoProjection, ScreenPoint } from "../../view/iso.js";
-import { mixColor } from "../../view/pixel.js";
-import { look } from "../../theme/theme.js";
+import type { IsoProjection, ScreenPoint } from "@occulis/board/iso";
+import { mixColor } from "@occulis/board/pixel";
+import { look } from "@occulis/board/theme";
 
 /**
  * Silhouette d'une pièce : un obélisque à deux faces surmonté d'un œil flottant, en

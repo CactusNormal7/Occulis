@@ -17,7 +17,7 @@ import {
   depthOf,
   project,
   standingDepth,
-} from "../../view/iso.js";
+} from "@occulis/board/iso";
 import { type MoveAnimation, lagging, liftOf, positionOf } from "../../view/animation.js";
 import type { Selection } from "../../game/selection.js";
 import {
@@ -30,14 +30,14 @@ import {
 } from "../../view/reveal.js";
 import { type Landing, introLength, introOf, materializeAt } from "../../view/effects.js";
 import { easeOutCubic, phase } from "../../view/easing.js";
-import { breath, snap } from "../../view/pixel.js";
+import { breath, snap } from "@occulis/board/pixel";
 import { sameCoord } from "../../view/picking.js";
 import { drawSigil } from "./ground.js";
 import { drawHover, drawLanding, drawSelection } from "./overlay.js";
 import { drawPiece } from "./pieces.js";
 import { drawMotes, drawSky } from "./sky.js";
 import { drawTile } from "./terrain.js";
-import { MOTION_FX, look } from "../../theme/theme.js";
+import { MOTION_FX, look } from "@occulis/board/theme";
 
 /**
  * Cinq couches, du fond vers l'avant, **toutes redessinées à chaque image** : presque
@@ -210,7 +210,7 @@ export class Scene {
   /** L'instant où le trait est revenu au joueur. */
   private turnAt = -Infinity;
 
-  /** `resolution` : celle du rendu (`view/pixel.ts`), un pixel du tampon par pixel du plateau. */
+  /** `resolution` : celle du rendu (`@occulis/board/pixel`), un pixel du tampon par pixel du plateau. */
   constructor(resolution: number) {
     this.resolution = resolution;
     this.px = 1 / resolution;

@@ -1,0 +1,17 @@
+{
+  "label": "Questions",
+  "items": [
+    {
+      "question": "When does the beta start?",
+      "answer": "Not yet. We'll email everyone on the list when spots open."
+    },
+    {
+      "question": "Do I need to know chess?",
+      "answer": "No. Some moves will feel familiar if you do, and the rest you pick up by playing."
+    },
+    {
+      "question": "Is the game finished?",
+      "answer": "No. The core rules work and can already be played online, but pieces and maps are still changing. We'll use the beta to test them."
+    }
+  ]
+}

@@ -45,6 +45,12 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 - Aucune partie locale (hot-seat retiré, implementation-notes 18). Un coup se joue au clic ou par saisie de coordonnées ; la sélection filtre `legalActions`, elle ne redéduit jamais la légalité.
 - Charte `@occulis/ui` portant back-office, profil, compte, préparation. Le menu, l'attente et le bandeau de partie n'y ont pas migré.
 
+## Site vitrine (`apps/site`) — 2026-10-29
+
+- Page unique (Astro statique, Worker `occulis-site`), inscription beta en double opt-in sur une D1 dédiée. Décision : [architecture.md](architecture.md) §8 ; fonctionnement : [technical/site.md](technical/site.md).
+- Rendu Canvas 2D du plateau extrait dans `packages/board`, partagé avec `apps/web`.
+- Non en ligne : domaine, identité de l'éditeur et contact à fournir ; base, secrets et Resend à provisionner ; pas de déploiement CI.
+
 ## Outil de gestion de projet — 2026-10-28
 
 Décision : Nota (base « Tâches », espace Tengram Ydays) remplace Notion comme outil de gestion de projet par défaut.

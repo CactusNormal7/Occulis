@@ -1,0 +1,45 @@
+# Le site vitrine : un Worker à part du jeu (docs/technical/site.md). Il sert les pages
+# statiques d'Astro (`dist/`) et ne garde devant elles que `/api/*` : l'inscription à la beta.
+#
+# Avant le premier déploiement :
+#   pnpm exec wrangler d1 create occulis-site     → reporter l'identifiant ci-dessous
+#   pnpm exec wrangler d1 migrations apply occulis-site --remote
+#   pnpm exec wrangler secret put BETA_SECRET     (openssl rand -base64 32)
+#   pnpm exec wrangler secret put RESEND_API_KEY
+# puis décommenter `routes` une fois le domaine arrêté.
+
+name = "occulis-site"
+main = "src/worker/index.ts"
+compatibility_date = "2026-08-27"
+
+# routes = [{ pattern = "<domaine du site>", custom_domain = true }]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+not_found_handling = "404-page"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "occulis-site"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# Cinq envois par minute et par connexion : assez pour une faute de frappe, pas pour un robot.
+[[ratelimits]]
+name = "BETA_LIMIT"
+namespace_id = "2001"
+simple = { limit = 5, period = 60 }
+
+# La purge quotidienne des inscriptions non confirmées depuis sept jours.
+[triggers]
+crons = ["17 3 * * *"]
+
+[vars]
+SITE_URL = "https://occulis-site.0kl.fr"
+MAIL_FROM = "Occulis <beta@occulis-site.0kl.fr>"
+MAIL_TO_CONSOLE = "off"
+
+[observability]
+enabled = true

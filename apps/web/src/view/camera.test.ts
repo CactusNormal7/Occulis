@@ -13,7 +13,7 @@ import {
   turn,
   zoomAt,
 } from "./camera.js";
-import { QUARTER_TURN, project, snapAngle } from "./iso.js";
+import { QUARTER_TURN, project, snapAngle } from "@occulis/board/iso";
 
 const VIEWPORT = { x: 800, y: 600 };
 

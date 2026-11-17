@@ -1,0 +1,26 @@
+{
+  "name": "@occulis/board",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Le plateau d'Occulis sans PixiJS : projection isométrique, grain, thèmes du rendu et primitives Canvas 2D, partagés par le client et le site vitrine.",
+  "exports": {
+    "./theme": "./src/theme.ts",
+    "./iso": "./src/iso.ts",
+    "./pixel": "./src/pixel.ts",
+    "./matter": "./src/matter.ts",
+    "./paint": "./src/paint.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json"
+  },
+  "dependencies": {
+    "@occulis/core": "workspace:*",
+    "@occulis/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.12"
+  }
+}

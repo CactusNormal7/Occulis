@@ -21,6 +21,7 @@
  */
 
 @import "./generated/tokens.css";
+@import "./wip.css";
 
 /* Les formes de la charte, qui ne sont pas des valeurs de couleur et ne vivent donc pas
    dans les tokens. Le cran : deux pixels coupés à chaque coin, la façon dont le pixel art
@@ -879,42 +880,6 @@ a.occ-person:hover .occ-tile-avatar:not(.occ-tile-avatar--A, .occ-tile-avatar--B
 
 .occ-banner > .occ-button {
   margin-left: auto;
-}
-
-/* Le ruban de chantier : discret, sur le bord haut, sans toucher au contenu. */
-.occ-wip {
-  position: relative;
-}
-
-.occ-wip::before {
-  position: absolute;
-  z-index: 1;
-  inset: 0 0 auto;
-  height: 4px;
-  background: repeating-linear-gradient(
-    -45deg,
-    var(--occ-caution) 0 6px,
-    var(--occ-caution-ground) 6px 12px
-  );
-  content: "";
-  opacity: 0.8;
-  pointer-events: none;
-}
-
-.occ-wip__tag {
-  position: absolute;
-  z-index: 1;
-  top: 0;
-  right: var(--occ-space-3);
-  padding: 0 var(--occ-space-1);
-  background: var(--occ-caution-ground);
-  border: 1px solid var(--occ-caution);
-  color: var(--occ-caution);
-  font-size: var(--occ-text-xs);
-  letter-spacing: var(--occ-caps);
-  line-height: 1;
-  pointer-events: none;
-  transform: translateY(-50%);
 }
 
 .occ-empty {
