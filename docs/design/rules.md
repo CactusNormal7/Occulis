@@ -227,7 +227,7 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   quel angle intermédiaire.
 - **Deux façons de jouer un coup, toutes deux provisoires.** À la souris : cliquer une de
   ses pièces la sélectionne et fait apparaître ses destinations légales, cliquer une
-  destination l'y déplace, une pièce adverse n'est qu'un obstacle (la capture est retirée, 3.1). Au
+  destination l'y déplace, cliquer une pièce adverse atteignable la prend (3.1). Au
   clavier : taper les coordonnées (`1,6 2,5` déplace, `abandon`
   abandonne) dans un champ HTML posé par-dessus le canevas. Aucune des deux n'est une décision d'interface arrêtée : ce sont des
   moyens d'exercer la logique déjà implémentée. La partie est **toujours arbitrée par le
