@@ -151,7 +151,7 @@ de 900 px, la légende passe en bas à gauche du plateau et le panneau en haut �
 les coins que le losange laisse vides ; en dessous, ils suivent le plateau.
 
 **Démonstration provisoire.** La scène est enveloppée du ruban de chantier de la charte :
-`WorkInProgress.astro` reprend le balisage du composant React `WorkInProgress` de
+`WorkInProgress.astro` reprend le balisage du composant Vue `WorkInProgress` de
 `@occulis/ui` (celui de l'écran de fin de partie) et sa feuille, `@occulis/ui/wip.css`,
 avec les textes de `board.wip`. Le panneau (tour, cases vues, hauteur) affiche des chiffres **fictifs**,
 écrits dans `board.json` et marqués « Données fictives ». La section accueillera plus tard

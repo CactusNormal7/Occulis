@@ -53,7 +53,7 @@ Monorepo pnpm, TypeScript strict partout.
 ```
 packages/core       logique de jeu pure et déterministe — plateau, LOS, déplacement, fog
 packages/protocol   messages client ↔ serveur, ni règle ni transport
-packages/ui         charte graphique en composants React (@occulis/ui)
+packages/ui         charte graphique en composants Vue (@occulis/ui)
 apps/web            client : rendu isométrique PixiJS, écrans, back-office (/admin/)
 apps/server         Worker Cloudflare : Durable Object par partie, file de matchmaking, D1, Better Auth
 tooling/infra       TUI de pilotage de l'infrastructure Cloudflare

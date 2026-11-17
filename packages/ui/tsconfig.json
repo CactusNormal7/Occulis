@@ -4,9 +4,9 @@
     "outDir": "dist",
     "rootDir": ".",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "jsx": "react-jsx",
     "noEmit": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["src", "scripts", "previews"]
+  "include": ["src", "scripts", "previews"],
+  "exclude": ["**/* 2.*", "**/node_modules", "**/dist"]
 }

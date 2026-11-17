@@ -444,7 +444,7 @@ body::after {
   pointer-events: auto;
 }
 
-/* Un écran pleine page, en React sur la charte (déploiement, équipes) : il prend toute la
+/* Un écran pleine page, en Vue sur la charte (déploiement, équipes) : il prend toute la
    place du conteneur et défile seul, la page du jeu ne défilant jamais. */
 .screen--page {
   align-self: stretch;
@@ -483,7 +483,7 @@ body::after {
   color: var(--ink-soft);
 }
 
-/* Les formulaires du menu et du bandeau de partie. L'écran de compte est en React sur
+/* Les formulaires du menu et du bandeau de partie. L'écran de compte est en Vue sur
    la charte (`@occulis/ui`), qui habille les siens : ces règles ne doivent pas l'atteindre. */
 .panel form,
 #console form {

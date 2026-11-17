@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "La charte graphique d'Occulis en composants React : tokens, briques d'interface, icônes au trait.",
+  "description": "La charte graphique d'Occulis en composants Vue : tokens, briques d'interface, icônes au trait.",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
@@ -20,25 +20,24 @@
     "*.css"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "vite build && node scripts/bundle-css.mjs",
     "tokens": "node --experimental-strip-types scripts/build-tokens.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json"
+    "typecheck": "vue-tsc --noEmit && tsc -p tsconfig.node.json"
   },
   "peerDependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.31",
-    "@types/react-dom": "^18.3.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "tsup": "^8.3.5",
-    "typescript": "^5.7.2",
-    "vitest": "^4.1.12"
+    "vue": "^3.5.45"
   },
   "dependencies": {
     "@occulis/i18n": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.11",
+    "typescript": "^5.7.2",
+    "vite": "^6.4.5",
+    "vite-plugin-dts": "^5.1.2",
+    "vitest": "^4.1.12",
+    "vue": "^3.5.45",
+    "vue-tsc": "^3.3.14"
   }
 }

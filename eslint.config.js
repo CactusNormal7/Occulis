@@ -2,6 +2,8 @@ import tseslint from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import prettier from "eslint-config-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
+import vue from "eslint-plugin-vue";
+import vueParser from "vue-eslint-parser";
 
 export default [
   {
@@ -39,7 +41,44 @@ export default [
     },
     rules: {
       ...tseslint.configs.recommended.rules,
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      // `ignoreRestSiblings` : retirer des clés d'un objet par déstructuration (`{ class: _, ...rest }`).
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", ignoreRestSiblings: true },
+      ],
+    },
+  },
+  // Les composants monofichiers (.vue) : le gabarit est lu par `vue-eslint-parser`, le script par
+  // le parseur TypeScript, et les règles recommandées de Vue s'ajoutent à celles de TypeScript.
+  // Les règles de mise en forme du gabarit sont laissées à Prettier (`prettier`, en dernier).
+  ...vue.configs["flat/recommended"],
+  {
+    files: ["**/*.vue"],
+    languageOptions: {
+      parser: vueParser,
+      parserOptions: {
+        parser: tsParser,
+        ecmaVersion: "latest",
+        sourceType: "module",
+        extraFileExtensions: [".vue"],
+      },
+    },
+    plugins: {
+      "@typescript-eslint": tseslint,
+    },
+    rules: {
+      ...tseslint.configs.recommended.rules,
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", ignoreRestSiblings: true },
+      ],
+      // Les noms de la charte (`Button`, `Card`, `Table`) sont son vocabulaire, partagé avec
+      // Claude Design ; un aperçu porte le nom de son cas (`Variants.vue`). Aucun ne se
+      // confond avec une balise HTML : ils sont toujours importés, jamais enregistrés.
+      "vue/multi-word-component-names": "off",
+      // Une propriété facultative vaut `undefined` quand elle est absente, et ses types le
+      // disent (`?: T | undefined`) : lui donner une valeur par défaut n'ajouterait rien.
+      "vue/require-default-prop": "off",
     },
   },
   {
@@ -62,12 +101,8 @@ export default [
     },
   },
   {
-    files: [
-      "**/*.tsx",
-      "apps/web/src/**/*.ts",
-      "packages/ui/src/**/*.ts",
-      "tooling/infra/src/**/*.ts",
-    ],
+    // React ne reste que dans la console d'infrastructure, écrite avec Ink.
+    files: ["tooling/infra/src/**/*.{ts,tsx}"],
     plugins: { "react-hooks": reactHooks },
     rules: {
       "react-hooks/rules-of-hooks": "error",
@@ -77,7 +112,7 @@ export default [
   {
     // Les frontières de CLAUDE.md, rendues mécaniques : `core` ne dépend de rien ; le
     // protocole ne connaît que `core` ; les modules purs du client ne touchent ni au
-    // rendu ni à React (le DOM, lui, ne se voit pas dans les imports).
+    // rendu ni à Vue (le DOM, lui, ne se voit pas dans les imports).
     files: ["packages/core/src/**/*.ts"],
     ignores: ["**/*.test.ts"],
     rules: {
@@ -116,14 +151,15 @@ export default [
       "apps/web/src/replay/replay.ts",
       "apps/web/src/admin/design/catalog.ts",
       "apps/web/src/admin/design/tweaks.ts",
+      "apps/web/src/profile/friends/thread.ts",
     ],
     rules: {
       "no-restricted-imports": [
         "error",
         {
-          paths: ["pixi.js", "react", "react-dom"].map((name) => ({
+          paths: ["pixi.js", "vue"].map((name) => ({
             name,
-            message: "Module pur : ni rendu ni React (CLAUDE.md).",
+            message: "Module pur : ni rendu ni Vue (CLAUDE.md).",
           })),
         },
       ],
@@ -136,14 +172,16 @@ export default [
     // conventionnelle ; les feuilles de style sont gardées par un test du paquet. Le serveur
     // y est soumis aussi : ses courriers HTML portent des couleurs, prises aux tokens.
     // Les aperçus de la charte et la page du labo dessinent du SVG : ils y sont soumis aussi.
+    // Dans un composant .vue, la règle lit le script ; le gabarit ne porte que des classes.
     files: [
-      "apps/web/src/**/*.{ts,tsx}",
-      "apps/web/lab/**/*.{ts,tsx}",
+      "apps/web/src/**/*.{ts,vue}",
+      "apps/web/lab/**/*.ts",
       "apps/server/src/**/*.ts",
       "apps/site/src/**/*.ts",
       "packages/board/src/**/*.ts",
-      "packages/ui/src/**/*.{ts,tsx}",
-      "packages/ui/previews/**/*.{ts,tsx}",
+      "packages/ui/src/**/*.{ts,vue}",
+      "packages/ui/previews/**/*.{ts,vue}",
+      ".design-sync/previews/**/*.vue",
     ],
     rules: {
       "no-restricted-syntax": [

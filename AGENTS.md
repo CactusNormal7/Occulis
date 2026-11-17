@@ -37,6 +37,11 @@ remplacer par des suppositions.
 
 ## Conventions de produit et de code
 
+- Le code est écrit pour être relu par des personnes : la lisibilité et la
+  qualité priment sur la concision et l'astuce. Des noms explicites, des
+  composants et fonctions courts qui font une seule chose, un flux de données
+  visible, pas de raccourci obscur. Entre une version courte et une version
+  claire, choisir la claire.
 - Identifiants, routes, paramètres et clés sont en anglais. Les commentaires et
   la documentation restent en français.
 - Tout texte affiché passe par `@occulis/i18n`, en anglais et en français. Les
@@ -44,8 +49,9 @@ remplacer par des suppositions.
 - `packages/ui/src/tokens.ts` est l'unique source des couleurs du produit.
   `src/generated/tokens.css` est généré et ne se modifie pas à la main.
 - Une page se révèle d'un seul tenant : pas de chargement en cascade ni de
-  `useEffect` + `fetch` dans une vue React. Suivre les ressources de route,
-  `useLoad` et la frontière `Suspense` documentés dans `docs/technical/engine.md`.
+  `fetch` dans `onMounted` d'une vue Vue. Suivre les ressources de route,
+  `await useLoad()` et la frontière `<Suspense>` documentés dans
+  `docs/technical/engine.md`.
 - Ne pas modifier une règle de gameplay sans décision correspondante dans
   `docs/design/rules.md`. Les commentaires expliquent le pourquoi, pas le quoi.
 

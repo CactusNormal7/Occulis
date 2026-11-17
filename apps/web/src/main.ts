@@ -272,7 +272,7 @@ function main(): void {
     const ended = matches.ended;
     if (ended === undefined) return undefined;
     return {
-      ...ended,
+      end: ended,
       onMenu: leave,
       onBoard: () => {
         matches.dismissEnd();

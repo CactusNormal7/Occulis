@@ -14,7 +14,7 @@ import {
 /**
  * Le brouillon d'une équipe, sans DOM ni réseau : des emplacements fixés par la
  * composition du ruleset (un roi, des pièces à capacité, des pions), chacun avec
- * son type et sa case. Le constructeur d'équipe (`TeamBuilder.tsx`) ne fait que
+ * son type et sa case. Le constructeur d'équipe (`TeamBuilder.vue`) ne fait que
  * l'afficher et lui transmettre les clics.
  *
  * **La validité n'est jamais redéduite ici** : elle vient de `validateTeam()` de

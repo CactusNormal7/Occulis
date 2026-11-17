@@ -14,7 +14,7 @@ import { OnlineMatch } from "../game/online-match.js";
 import { type Selection, resolveClick } from "../game/selection.js";
 import { messages } from "../locale/current.js";
 import type { MatchChannel, MatchHandlers } from "../net/match-channel.js";
-import type { DeploymentProps } from "../prepare/Deployment.js";
+import type { DeploymentAnnouncement } from "./islands.js";
 import type { FlowEvent, Stage } from "../ui/flow.js";
 import { describeRejection } from "../ui/messages.js";
 import { type MoveAnimation, advance as step, startMove } from "../view/animation.js";
@@ -103,7 +103,7 @@ export class MatchController {
   private picked: Selection | undefined;
   private moving: MoveAnimation | undefined;
   private overTile: Coord | undefined;
-  private announcement: Omit<DeploymentProps, "locale"> | undefined;
+  private announcement: DeploymentAnnouncement | undefined;
   private confirmingLeave = false;
   private resignDeadline: ReturnType<typeof setTimeout> | undefined;
   /** La partie où le joueur est assis ; absente pour un spectateur. */
@@ -159,7 +159,7 @@ export class MatchController {
   }
 
   /** L'annonce de déploiement à montrer, tant que la partie se prépare. */
-  get deploying(): Omit<DeploymentProps, "locale"> | undefined {
+  get deploying(): DeploymentAnnouncement | undefined {
     return this.announcement;
   }
 

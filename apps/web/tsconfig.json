@@ -4,10 +4,16 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "jsx": "react-jsx",
     "noEmit": true,
-    // `lab/main.ts` monte les aperçus de la charte par leur chemin `.tsx` (packages/ui).
-    "allowImportingTsExtensions": true
+    // Les aperçus de `.design-sync/previews/` vivent hors de tout paquet : ils reçoivent
+    // `@occulis/ui` et Vue de cette application, comme le fait `vite.config.ts` au build.
+    "paths": {
+      "@occulis/ui": ["../../packages/ui/src/index.ts"],
+      "@occulis/i18n": ["../../packages/i18n/src/index.ts"],
+      "vue": ["./node_modules/vue"]
+    }
   },
-  "include": ["src", "lab"]
+  // Les aperçus sont montés par le design system du back-office : ils sont vérifiés avec le client.
+  "include": ["src", "lab", "../../.design-sync/previews/**/*.vue"],
+  "exclude": ["**/* 2.*", "../../.design-sync/**/* 2.*"]
 }

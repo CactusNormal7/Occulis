@@ -4,21 +4,25 @@ Occulis is a competitive 1v1 tactical board game in 2D isometric view — "a lit
 
 ## Setup
 
-Wrap every screen in `UiRoot`. It sets the ink (`occ-ink`), the pixel font (`--occ-font-pixel`, Tiny5) and the base size (`occ-text-md`, line-height 1.5). Use `fullPage` for a whole page: it adds the void (`occ-bg`), the aura halo (`occ-aura`) and two twinkling star fields (`occ-star`, `occ-star-faint`). Without `fullPage` the root stays transparent and sits on its host's matter (a game panel). Put page content in `<main className="occ-page">` (a centred column, max 1240px) and blocks in `occ-stack`. Use `ToastProvider` above any component that calls `useToast()`. Switch theme with `data-theme="obsidian" | "reliquary" | "astral"` on the root element.
+Wrap every screen in `UiRoot`. It sets the ink (`occ-ink`), the pixel font (`--occ-font-pixel`, Tiny5) and the base size (`occ-text-md`, line-height 1.5). Use `full-page` for a whole page: it adds the void (`occ-bg`), the aura halo (`occ-aura`) and two twinkling star fields (`occ-star`, `occ-star-faint`). Without `full-page` the root stays transparent and sits on its host's matter (a game panel). Put page content in `<main class="occ-page">` (a centred column, max 1240px) and blocks in `occ-stack`. Use `ToastProvider` above any component that calls `useToast()`. Switch theme with `data-theme="obsidian" | "reliquary" | "astral"` on the root element.
 
-```jsx
-<UiRoot fullPage>
-  <TopBar section="back-office" tabs={[{ href: "#/", label: "Overview", current: true }]} />
-  <main className="occ-page">
-    <div className="occ-stack occ-enter">{/* page blocks */}</div>
+The components are Vue 3 single-file components; a screen is a Vue template:
+
+```vue
+<UiRoot full-page>
+  <TopBar section="back-office" :tabs="[{ href: '#/', label: 'Overview', current: true }]" />
+  <main class="occ-page">
+    <div class="occ-stack occ-enter"><!-- page blocks --></div>
   </main>
 </UiRoot>
 ```
 
+Fields bind with `v-model`. Content goes in slots (`<template #actions>`, `#end`, `#footer`…), never in props. A gesture whose presence changes what is drawn is a prop, not an event: a `ChoiceRow` is selectable only with `:on-select`, a `SettingRow` shows its edit button only with `:on-edit`.
+
 ## Content fundamentals
 
-- Every visible text exists in English and French; English is the default and the source. Components that show their own words ("Cancel", "Continue with Google") follow the active `LocaleProvider` / `UiRoot locale`.
-- Labels, buttons, badges, tabs and headings are short and set in uppercase with `occ-caps` letter-spacing (`className="occ-label"`). Field labels are the exception: lowercase, dimmed.
+- Every visible text exists in English and French; English is the default and the source. Components that show their own words ("Cancel", "Continue with Google") follow the active `LocaleProvider` / `UiRoot :locale`.
+- Labels, buttons, badges, tabs and headings are short and set in uppercase with `occ-caps` letter-spacing (`class="occ-label"`). Field labels are the exception: lowercase, dimmed.
 - Plain, factual, terse. Facts over adjectives: "26–50 of 132". No exclamation marks, no emoji.
 - Destructive actions name what they do ("Suspend", "Delete"), and go through a `Dialog` with a `Note` explaining the consequence — never `confirm()`.
 

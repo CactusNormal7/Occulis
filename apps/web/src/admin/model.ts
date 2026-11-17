@@ -20,6 +20,12 @@ export type Route =
 
 export type MatchStatus = "ongoing" | "finished";
 
+/** La première page de la liste des comptes, sans recherche. */
+export const ACCOUNTS_ROUTE: Route = { view: "users", search: "", offset: 0 };
+
+/** La première page de la liste des parties, sans filtre. */
+export const MATCHES_ROUTE: Route = { view: "matches", status: null, offset: 0 };
+
 /** Les pages du design system (`#/design/…`). */
 export type DesignPage = "foundations" | "components" | "motion" | "conventions";
 

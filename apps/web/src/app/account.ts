@@ -1,11 +1,23 @@
 import { arrivalNotice, cleanedSearch, routeOf } from "../account/model.js";
-import { mountAccount } from "../account/mount.js";
+import AccountApp from "../account/AccountApp.vue";
+import type { AccountRoute, Notice } from "../account/model.js";
 import { currentLocale, messages } from "../locale/current.js";
 import * as auth from "../net/auth.js";
 import type { FlowEvent, Stage } from "../ui/flow.js";
 import type { Shell } from "../ui/shell.js";
 import type { Friends } from "./friends.js";
+import { mountIsland } from "./island.js";
 import { element } from "./page.js";
+
+/** Ce que l'îlot de compte reçoit (`account/AccountApp.vue`). */
+interface AccountForm {
+  /** Le parcours lu dans l'URL au chargement, avant que ses paramètres en soient retirés. */
+  readonly initialRoute: AccountRoute;
+  readonly initialNotice: Notice | undefined;
+  readonly providers: readonly string[];
+  /** Une session vient d'être ouverte : la page relit l'identité et passe au menu. */
+  readonly onSignedIn: (message?: string) => void;
+}
 
 export interface AccountEffects {
   readonly stage: () => Stage;
@@ -30,7 +42,10 @@ export class Account {
   private readonly initialRoute: ReturnType<typeof routeOf>;
   /** Le message de retour porté par l'URL d'arrivée, montré une seule fois. */
   private arrival: ReturnType<typeof arrivalNotice>;
-  private readonly renderForm = mountAccount(element<HTMLElement>("account-root"));
+  private readonly renderForm = mountIsland<AccountForm>(
+    element<HTMLElement>("account-root"),
+    AccountApp,
+  );
 
   constructor(
     firstRequest: Promise<auth.Identity>,

@@ -2,21 +2,23 @@ import { describe, expect, it } from "vitest";
 import {
   baseName,
   categoryOf,
-  componentDocs,
+  componentDoc,
   cssAnimations,
   fieldNotes,
+  folderName,
   inline,
   isCopy,
   markdownBlocks,
   markdownSection,
-  storySources,
+  orderStories,
 } from "./catalog.js";
 
 describe("fichiers", () => {
-  it("écarte les copies d'iCloud et nomme un fichier par sa base", () => {
-    expect(isCopy("../previews/Button 2.tsx")).toBe(true);
-    expect(isCopy("../previews/Button.tsx")).toBe(false);
-    expect(baseName("../../.design-sync/previews/Button.tsx")).toBe("Button");
+  it("écarte les copies d'iCloud et nomme un fichier par sa base et son dossier", () => {
+    expect(isCopy("../previews/Button/Variants 2.vue")).toBe(true);
+    expect(isCopy("../previews/Button/Variants.vue")).toBe(false);
+    expect(baseName("../../.design-sync/previews/Button/Variants.vue")).toBe("Variants");
+    expect(folderName("../../.design-sync/previews/Button/Variants.vue")).toBe("Button");
     expect(baseName("../docs/Badge.md")).toBe("Badge");
   });
 
@@ -24,70 +26,48 @@ describe("fichiers", () => {
     expect(categoryOf("---\ncategory: Actions\n---\n")).toBe("Actions");
     expect(categoryOf("Pas d'en-tête")).toBeUndefined();
   });
-});
 
-describe("storySources", () => {
-  it("découpe un fichier d'aperçus en exemples, du nom d'export au suivant", () => {
-    const source =
-      'import { Button } from "@occulis/ui";\n\nexport const One = () => <Button />;\n\nexport const Two = () => (\n  <Button variant="primary" />\n);\n';
-    const stories = storySources(source);
-    expect([...stories.keys()]).toEqual(["One", "Two"]);
-    expect(stories.get("One")).toBe("export const One = () => <Button />;");
-    expect(stories.get("Two")).toContain('variant="primary"');
+  it("range les aperçus dans l'ordre de la fiche, puis les autres par ordre alphabétique", () => {
+    const card = "---\ncategory: Actions\nstories: Variants, WithIcon\n---\n";
+    expect(orderStories(card, ["Disabled", "WithIcon", "Variants", "Busy"])).toEqual([
+      "Variants",
+      "WithIcon",
+      "Busy",
+      "Disabled",
+    ]);
+    expect(orderStories("", ["B", "A"])).toEqual(["A", "B"]);
   });
 });
 
-describe("componentDocs", () => {
-  const source = `import type { ReactNode } from "react";
-
-export interface CardProps {
-  /** Le titre. */
-  title?: ReactNode | undefined;
-}
-
+describe("componentDoc", () => {
+  const source = `<script setup lang="ts">
 /** Un panneau : cadre fin.
  * Sur deux lignes. */
-export function Card({ title }: CardProps) {
-  return null;
-}
+import { computed } from "vue";
 
-/** Des cartes côte à côte. */
-export function CardGrid({ children }: { children: ReactNode }) {
-  return null;
-}
+defineProps<{
+  /** Le titre. */
+  title?: string | undefined;
+  onPick?: ((value: string) => void) | undefined;
+}>();
 
-export function helper() {}
+const emit = defineEmits<{ close: [] }>();
+</script>
 
-/** Un bouton qui transmet sa référence. */
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(props, ref) {
-  return null;
-});
-
-export interface ButtonProps {
-  variant?: string;
-}
-
-export const ICONS = {};
+<template><section /></template>
 `;
 
-  it("rend le commentaire et l'interface de props d'un composant", () => {
-    const card = componentDocs(source).get("Card");
-    expect(card?.doc).toBe("Un panneau : cadre fin.\nSur deux lignes.");
-    expect(card?.props).toContain("export interface CardProps {");
-    expect(card?.props).toContain("title?: ReactNode | undefined;");
+  it("rend le commentaire d'en-tête et le contrat déclaré par les macros", () => {
+    const card = componentDoc(source);
+    expect(card.doc).toBe("Un panneau : cadre fin.\nSur deux lignes.");
+    expect(card.contract).toContain("defineProps<{");
+    expect(card.contract).toContain("onPick?: ((value: string) => void) | undefined;\n}>");
+    expect(card.contract).toContain("defineEmits<{ close: [] }>");
   });
 
-  it("retombe sur le type des paramètres écrit en ligne, et ignore ce qui n'est pas un composant", () => {
-    const docs = componentDocs(source);
-    expect(docs.get("CardGrid")?.props).toBe("{ children: ReactNode }");
-    expect(docs.has("helper")).toBe(false);
-    expect(docs.has("ICONS")).toBe(false);
-  });
-
-  it("lit aussi un composant déclaré par forwardRef", () => {
-    const button = componentDocs(source).get("Button");
-    expect(button?.doc).toBe("Un bouton qui transmet sa référence.");
-    expect(button?.props).toContain("variant?: string;");
+  it("rend un commentaire vide et aucun contrat quand le composant n'en déclare pas", () => {
+    const bare = componentDoc('<script setup lang="ts">\nimport { h } from "vue";\n</script>');
+    expect(bare).toEqual({ doc: "", contract: undefined });
   });
 });
 
@@ -161,7 +141,7 @@ describe("Markdown", () => {
 
   it("découpe un document en titres, paragraphes, listes et code", () => {
     const blocks = markdownBlocks(
-      "# Title\n\nOne line\ncontinued.\n\n- first\n  wrapped\n- second\n\n1. un\n2. deux\n\n```jsx\n<UiRoot />\n```\n",
+      "# Title\n\nOne line\ncontinued.\n\n- first\n  wrapped\n- second\n\n1. un\n2. deux\n\n```vue\n<UiRoot />\n```\n",
     );
     expect(blocks.map((block) => block.kind)).toEqual([
       "heading",
@@ -180,6 +160,6 @@ describe("Markdown", () => {
       items: [[{ kind: "text", text: "first wrapped" }], [{ kind: "text", text: "second" }]],
     });
     expect(blocks[3]).toMatchObject({ kind: "list", ordered: true });
-    expect(blocks[4]).toEqual({ kind: "code", language: "jsx", text: "<UiRoot />" });
+    expect(blocks[4]).toEqual({ kind: "code", language: "vue", text: "<UiRoot />" });
   });
 });

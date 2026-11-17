@@ -13,7 +13,7 @@ import { sweepVeil } from "./veil.js";
  * connaisse les identifiants de la page avec `app/page.ts`.
  *
  * L'écran de compte n'est ici qu'un conteneur montré ou masqué : son contenu est
- * l'îlot React de `src/account/`, sur la charte.
+ * l'îlot Vue de `src/account/`, sur la charte.
  *
  * Ces écrans paraissent sans l'ouverture des fenêtres (`revealWindow`), réservée aux
  * fenêtres qu'un clic ouvre (docs/design.md 8.1). Une seule bascule s'anime : du menu vers
@@ -25,7 +25,7 @@ export interface ShellElements {
   readonly auth: HTMLElement;
   readonly menu: HTMLElement;
   readonly waiting: HTMLElement;
-  /** Le déploiement, les équipes et l'écran de fin : des îlots React, ici seulement montrés ou masqués. */
+  /** Le déploiement, les équipes et l'écran de fin : des îlots Vue, ici seulement montrés ou masqués. */
   readonly deploy: HTMLElement;
   readonly teams: HTMLElement;
   readonly debrief: HTMLElement;

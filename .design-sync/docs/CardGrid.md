@@ -1,3 +1,4 @@
 ---
 category: Layout
+stories: TwoColumns
 ---
