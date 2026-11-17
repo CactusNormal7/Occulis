@@ -18,9 +18,10 @@ relief et des pièces, fog of war et fantômes.
 **Ne fait pas** : **aucune partie locale**. Il n'existe pas de mode hot-seat ni de
 démonstration hors ligne : tant que le serveur n'a pas assis le joueur, il n'y a rien à
 jouer et le canevas reste masqué (`docs/design.md` section 2, « pas de local
-multiplayer »). **Aucune capture non plus** : la règle est retirée du moteur
-(`docs/design.md` section 3.1, suspendue), donc un tour se réduit à un déplacement et une
-pièce adverse n'est ni une cible ni une destination — juste un obstacle.
+multiplayer »). Sous `provisional-3`, **une pièce adverse à portée est une destination** : y aller, c'est
+la prendre, et la case est cernée comme une prise (`Selection.captures`). Seules les pièces
+adverses **visibles** y sont marquées ; une case tenue par une pièce cachée apparaît comme
+une case libre, comme le serveur la décrit.
 
 ## L'organisation des dossiers
 
@@ -983,7 +984,7 @@ l'exécution, et les pluriels s'écrivent dans la fonction.
 ## `team-builder/` — le constructeur d'équipe
 
 `team-builder/model.ts` est **pur** : un `TeamDraft` est la liste des emplacements fixés par la
-composition du ruleset (`emptyDraft()` : roi, trois à capacité, deux pions sous `provisional-2`, le
+composition du ruleset (`emptyDraft()` : roi, trois à capacité, deux pions sous `provisional-3`, le
 roi en main), chacun avec son type et sa case, et l'emplacement « en main ».
 
 | Fonction                                                     | Rôle                                                                                                                                                                                               |
@@ -1117,6 +1118,22 @@ l'état suivant la pièce déplacée n'est plus à sa place et la capturée n'ex
 
 ---
 
+## La fiche d'une pièce — `game/inspection.ts`, `ui/piece-info.ts`
+
+Un clic droit sur une pièce (appui droit relâché sans avoir tourné le plateau) ouvre une
+fenêtre flottante au-dessus d'elle. Trois modules :
+
+| Module                   | Rôle                                                                                                      | Dépendances |
+| ------------------------ | --------------------------------------------------------------------------------------------------------- | ----------- |
+| `game/inspection.ts`     | `inspectPiece(view, ruleset, coord)` : la `PieceSheet` de sa pièce, d'une adverse visible ou d'un fantôme | pur         |
+| `ui/piece-info-model.ts` | `describeSheet()` : les textes de la fiche ; `placeAbove()` : sa position, entière dans la fenêtre        | pur         |
+| `ui/piece-info.ts`       | Le panneau `#piece-info`, ouvert et replié par `revealWindow()` depuis la souris                          | DOM         |
+
+La fiche ne lit que la vue du joueur et le ruleset de la partie : les caractéristiques d'un
+type sont publiques (`docs/design/rules.md` § 7), donc elle ne révèle rien. `BoardView` la
+referme quand la caméra bouge, quand la pièce n'est plus là (`sameSheet()`) et à la sortie
+de la partie ; Échap et un clic ailleurs la referment aussi.
+
 ## `input/controls.ts` — les gestes du canevas
 
 Seul module du client qui écoute le canevas. Il ne dessine rien et ne détient aucun état
@@ -1128,6 +1145,7 @@ de rendu.
 | Drag bouton gauche          | `panBy()`                                                                                                             |
 | **Clic bouton gauche**      | `pickTile()` → `onPick()` : sélection, déplacement, ou lecture de case                                                |
 | Drag bouton droit ou milieu | `rotateBy()`, puis `snapRotation()` au relâchement                                                                    |
+| **Clic bouton droit**       | Un appui droit relâché sous `CLICK_SLOP` : `onInspect()`, la fiche de la pièce (`ui/piece-info.ts`)                   |
 | Mouvement de souris         | Survol. **Ne notifie que si la case change**                                                                          |
 | Sortie du curseur           | Efface le survol                                                                                                      |
 | Flèches ← →                 | `turn()` : quart de tour                                                                                              |
@@ -1791,12 +1809,9 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 - **Aucun marquage des montées.** `MoveOption.kind` distingue `walk` de `climb` — grimper
   consomme le tour entier — et `STATE.climb` est déjà un token, mais `selectionFor()`
   filtre `legalActions()`, qui ne porte pas cette distinction.
-- **Aucune capture, ni au clic ni au clavier** : la règle est retirée du moteur
-  (`docs/design.md` section 3.1). Il n'y a donc ni cible à désigner, ni animation de prise,
-  ni marquage de case frappable — le token `STATE.threat` du thème n'a plus d'emploi.
-- **Aucun affichage d'échec ni de fin de partie automatique** : la règle « échecs strict »
-  et les nulles sont retirées (`docs/design.md` 7.1 et 7.2). L'état du tour n'annonce plus
-  `ÉCHEC`, et `describeOutcome()` ne connaît que l'abandon.
+- **Aucune animation de prise** : la pièce prise disparaît de la vue suivante sans effet
+  propre. La case de prise est cernée, l'échec annoncé dans la console, mais le roi en
+  échec n'est pas encore marqué sur le plateau.
 - **Aucune silhouette propre à chaque type de pièce** : seule l'initiale du type, portée
   par la pièce, les distingue (point ouvert de design sur la silhouette par rôle).
 - **Aucun historique de saisie** dans le champ de commande.
