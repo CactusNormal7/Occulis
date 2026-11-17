@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Board } from "../board.js";
 import { type Coord, type CoordKey, coordKey } from "../coord.js";
+import type { MoveOption } from "../movement.js";
 import { definePiece } from "../testing.js";
+import { ConfigurablePieceType } from "./configurable-piece-type.js";
 import { PieceType } from "./piece-type.js";
 import { Ruleset } from "./ruleset.js";
 
@@ -73,23 +75,61 @@ describe("vision définie par la pièce", () => {
   });
 });
 
-describe("portée de mêlée définie par la pièce", () => {
-  it("suit l'adjacence déclarée par le type", () => {
-    const orthogonal = definePiece("orthogonal", { adjacency: "orthogonal" });
-    const octile = definePiece("octile", { adjacency: "octile" });
-    const board = Board.flat(3, 3);
+describe("prise définie par la pièce", () => {
+  const target = { x: 2, y: 0 };
+  const targets = new Set([coordKey(target)]);
 
-    expect(orthogonal.canStrike(board, { x: 1, y: 1 }, { x: 1, y: 0 })).toBe(true);
-    expect(orthogonal.canStrike(board, { x: 1, y: 1 }, { x: 0, y: 0 })).toBe(false);
-    expect(octile.canStrike(board, { x: 1, y: 1 }, { x: 0, y: 0 })).toBe(true);
+  it("prend par défaut là où son déplacement peut s'achever", () => {
+    const board = Board.flat(4, 1);
+    expect(
+      definePiece("near", { steps: 1 }).threatens(board, { x: 0, y: 0 }, target, targets),
+    ).toBe(false);
+    expect(definePiece("far", { steps: 2 }).threatens(board, { x: 0, y: 0 }, target, targets)).toBe(
+      true,
+    );
   });
 
-  it("frappe librement vers le bas, d'un seul niveau vers le haut", () => {
-    const cliff = Board.fromAscii(["020"]);
-    const type = definePiece("x");
+  it("ne prend pas à travers une autre pièce", () => {
+    const board = Board.flat(4, 1);
+    const occupied = new Set([coordKey({ x: 1, y: 0 }), coordKey(target)]);
+    expect(
+      definePiece("far", { steps: 3 }).threatens(board, { x: 0, y: 0 }, target, occupied),
+    ).toBe(false);
+  });
 
-    expect(type.canStrike(cliff, { x: 1, y: 0 }, { x: 0, y: 0 })).toBe(true);
-    expect(type.canStrike(cliff, { x: 0, y: 0 }, { x: 1, y: 0 })).toBe(false);
+  it("laisse une sous-classe prendre autrement qu'elle ne se déplace", () => {
+    /** Ne prend qu'à deux cases en ligne droite, par-dessus ce qui s'y trouve. */
+    class Leaper extends ConfigurablePieceType {
+      override capturesFrom(
+        _board: Board,
+        from: Coord,
+        _occupied: ReadonlySet<CoordKey>,
+        reachable: ReadonlySet<CoordKey>,
+      ): Map<CoordKey, MoveOption> {
+        const captures = new Map<CoordKey, MoveOption>();
+        for (const [dx, dy] of [
+          [2, 0],
+          [-2, 0],
+          [0, 2],
+          [0, -2],
+        ] as const) {
+          const coord = { x: from.x + dx, y: from.y + dy };
+          const key = coordKey(coord);
+          if (reachable.has(key))
+            captures.set(key, { coord, cost: 1, kind: "walk", capture: true });
+        }
+        return captures;
+      }
+    }
+    const leaper = new Leaper({
+      kind: "leaper",
+      movement: { steps: 1, adjacency: "orthogonal", canClimb: false },
+      vision: { range: 5 },
+    });
+    const occupied = new Set([coordKey({ x: 1, y: 0 }), coordKey(target)]);
+
+    expect(leaper.threatens(Board.flat(4, 1), { x: 0, y: 0 }, target, occupied)).toBe(true);
+    expect(leaper.threatens(Board.flat(4, 1), { x: 1, y: 0 }, target, occupied)).toBe(false);
   });
 });
 

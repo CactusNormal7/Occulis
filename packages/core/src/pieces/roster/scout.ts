@@ -10,14 +10,14 @@ import type { MovementProfile, VisionProfile } from "../profiles.js";
  * qu'une sous-classe puisse se spécialiser sans que TypeScript ne fige la valeur
  * de la classe de base.
  *
- * PROVISOIRE : aucun roster n'est acté (docs/design.md point ouvert 12). Les
- * portées sont volontairement généreuses — sur les cartes de démonstration, qui
- * font au plus une dizaine de cases de côté, seule l'occultation limite la vue.
- * C'est ce qui permet d'exercer la ligne de vue et le déplacement sans que des
- * portées serrées ne masquent le comportement. Ce n'est pas un équilibrage.
+ * PROVISOIRE : aucun roster n'est acté (docs/design/open-points.md, point 12). Trois
+ * pas depuis `provisional-3` (décision du 2026-11-16) : les six d'avant couvraient
+ * presque toute la carte et mettaient le roi adverse en échec permanent. La vue, elle,
+ * reste généreuse — sur les cartes de démonstration, seule l'occultation la limite. Ce
+ * n'est pas un équilibrage. Les anciens chiffres vivent dans `legacy.ts`.
  */
 export class Scout extends PieceType {
   readonly kind: PieceKind = "scout";
-  readonly movement: MovementProfile = { steps: 6, adjacency: "octile", canClimb: true };
+  readonly movement: MovementProfile = { steps: 3, adjacency: "octile", canClimb: true };
   readonly vision: VisionProfile = { range: 20 };
 }

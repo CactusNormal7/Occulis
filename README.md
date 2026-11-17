@@ -7,9 +7,8 @@ ligne de vue et fog of war.
 
 > **État** : prototype jouable en ligne. Plateau à hauteur, ligne de vue occultée par le
 > relief et les pièces, déplacement, tours alternés, fog of war avec mémoire, comptes,
-> matchmaking, salons privés et back-office. La capture et la fin de partie sont
-> temporairement retirées du moteur : **une partie ne se termine que par abandon**
-> ([design.md](docs/design.md), point ouvert 13). Le roster et les cartes sont provisoires.
+> matchmaking, salons privés et back-office. Prise à l'arrivée, échec et mat, pat et
+> nulles anti-blocage, comme aux échecs. Le roster et les cartes sont provisoires.
 
 ## Démarrage rapide
 

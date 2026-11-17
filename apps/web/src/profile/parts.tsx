@@ -65,7 +65,7 @@ export function MyResult({
   const m = useMessages().profile.results;
   if (match.result === "ongoing") return <Badge tone="dim">{m.ongoing}</Badge>;
   // La couleur du camp vainqueur : c'est une information de partie.
-  const winner = match.outcome?.winner;
+  const winner = match.outcome?.kind === "victory" ? match.outcome.winner : undefined;
   return <Badge tone={winner ?? "plain"}>{describeMyResult(match)}</Badge>;
 }
 

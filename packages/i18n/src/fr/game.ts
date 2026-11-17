@@ -74,6 +74,7 @@ export const game: Messages["game"] = {
     unknownPiece: "Pièce inconnue.",
     notYourPiece: "Cette pièce n'est pas au trait.",
     unreachable: (coord) => `${coord} est hors de portée de cette pièce ce tour-ci.`,
+    leavesKingExposed: "Ce coup laisserait votre roi en prise.",
   },
   rejection: {
     unknownSeat: "Siège inconnu : cette connexion n'appartient à aucun des deux camps.",
@@ -81,14 +82,49 @@ export const game: Messages["game"] = {
   },
   outcome: {
     victory: (winner, reason) => `Victoire de ${winner} (${reason}).`,
-    reasons: { resignation: "abandon" },
+    draw: (reason) => `Partie nulle (${reason}).`,
+    reasons: {
+      resignation: "abandon",
+      checkmate: "échec et mat",
+      stalemate: "pat",
+      repetition: "triple répétition",
+      "no-capture": "60 coups sans prise",
+    },
+    check: "Échec : votre roi peut être pris.",
+  },
+  pieceInfo: {
+    label: "Fiche de la pièce",
+    own: "À vous",
+    enemy: "Adversaire",
+    ghost: (turn) => `Adversaire, vue pour la dernière fois au tour ${turn}`,
+    inCheck: "En échec",
+    movement: "Déplacement",
+    steps: (steps) => (steps === 1 ? "1 case" : `${steps} cases`),
+    adjacency: { octile: "dans toutes les directions", orthogonal: "sans diagonale" },
+    climbs: "grimpe d'un niveau",
+    noClimb: "ne grimpe pas",
+    vision: "Vision",
+    range: (range) => (range === 1 ? "1 case" : `${range} cases`),
+    unlimited: "illimitée",
+    capture: "Prend en arrivant sur la case d'une pièce adverse.",
+    king: "S'il ne peut plus échapper à la prise, la partie est perdue.",
   },
   end: {
     friendWon: (friend) => `${friend} l'emporte`,
     friendLost: (friend) => `${friend} s'incline`,
+    friendDrew: (friend) => `${friend} fait nulle`,
     resignation: {
       friendWon: "Son adversaire a abandonné la partie.",
       friendLost: (friend) => `${friend} a abandonné la partie.`,
+    },
+    checkmate: {
+      friendWon: "Son adversaire est échec et mat.",
+      friendLost: (friend) => `${friend} est échec et mat.`,
+    },
+    draws: {
+      stalemate: "Le camp au trait n'avait plus aucun coup légal.",
+      repetition: "La même position est revenue trois fois.",
+      "no-capture": "60 coups se sont joués sans prise.",
     },
     menu: "Retour au menu",
     board: "Voir le plateau",
@@ -96,9 +132,19 @@ export const game: Messages["game"] = {
   debrief: {
     victory: "Victoire",
     defeat: "Défaite",
+    draw: "Partie nulle",
     resignation: {
       won: (move) => `Votre adversaire a abandonné au coup ${move}.`,
       lost: (move) => `Vous avez abandonné au coup ${move}.`,
+    },
+    checkmate: {
+      won: (move) => `Vous avez maté votre adversaire au coup ${move}.`,
+      lost: (move) => `Vous êtes échec et mat au coup ${move}.`,
+    },
+    draws: {
+      stalemate: (move) => `Pat au coup ${move} : plus aucun coup légal.`,
+      repetition: (move) => `La même position est revenue trois fois, au coup ${move}.`,
+      "no-capture": (move) => `60 coups sans prise, au coup ${move}.`,
     },
     you: "Vous",
     opponent: "Adversaire",

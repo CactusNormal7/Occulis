@@ -6,6 +6,7 @@ import {
   legalActions,
 } from "./actions.js";
 import type { Board } from "./board.js";
+import { isKingThreatened } from "./endgame.js";
 import { type Coord, type CoordKey, coordKey } from "./coord.js";
 import type { Piece, PieceId, PieceKind, PlayerId } from "./pieces/index.js";
 import { type Result, err, ok } from "./result.js";
@@ -106,6 +107,13 @@ export interface PlayerView {
    * et en cache qu'il accepterait.
    */
   readonly legalActions: readonly Action[];
+  /**
+   * Le roi de ce joueur est en échec. Jamais celui de l'adversaire, qui trahirait sa
+   * position ; et calculé sur la position réelle, donc vrai aussi pour une menace que
+   * le joueur ne voit pas (docs/design/rules.md 7.1). Toujours faux sous un ruleset
+   * sans règle d'échec.
+   */
+  readonly check: boolean;
   readonly visible: ReadonlySet<CoordKey>;
   readonly ownPieces: readonly Piece[];
   readonly visibleEnemies: readonly Piece[];
@@ -140,6 +148,13 @@ export function viewFor(state: GameState, knowledge: PlayerKnowledge): PlayerVie
     // Seulement pour le camp au trait : `legalActions` ne génère que pour lui, et la
     // liste de l'adversaire trahirait la position de ses pièces.
     legalActions: state.activePlayer === player ? legalActions(state) : [],
+    // Hors de son tour, un roi n'est jamais menacé : le coup qui l'aurait exposé était
+    // illégal. Ne le calculer qu'au trait évite aussi de le faire deux fois par coup.
+    check:
+      state.ruleset.rules.check &&
+      state.outcome === null &&
+      state.activePlayer === player &&
+      isKingThreatened(state, player),
     visible: knowledge.visible,
     ownPieces,
     visibleEnemies,

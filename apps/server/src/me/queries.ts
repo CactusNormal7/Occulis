@@ -415,5 +415,6 @@ export function resultFor(
 ): MeResult {
   if (finishedAt === null) return "ongoing";
   if (outcome === null) return "ended";
+  if (outcome.kind === "draw") return "drawn";
   return outcome.winner === seat ? "won" : "lost";
 }

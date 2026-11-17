@@ -1,4 +1,5 @@
 import { Badge, BadgeRow, IconButton, Table, useMessages } from "@occulis/ui";
+import { winnerOf } from "@occulis/core";
 import type { AdminMatchSummary } from "@occulis/protocol";
 import { describeResult, formatDate, isAdminRole, routeHash } from "./model.js";
 import type { QuickUser } from "./actions.js";
@@ -24,7 +25,7 @@ export function ResultBadge({ match }: { match: AdminMatchSummary }) {
   return match.outcome === null ? (
     <Badge tone="dim">{m.ongoing}</Badge>
   ) : (
-    <Badge tone={match.outcome.winner}>{describeResult(match)}</Badge>
+    <Badge tone={winnerOf(match.outcome) ?? "plain"}>{describeResult(match)}</Badge>
   );
 }
 

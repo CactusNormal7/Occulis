@@ -1,4 +1,5 @@
-import type { PlayerId } from "@occulis/core";
+import type { Outcome, PlayerId } from "@occulis/core";
+import type { Messages } from "@occulis/i18n";
 import type { MeMatchDebrief } from "@occulis/protocol";
 
 /**
@@ -22,7 +23,7 @@ export interface DebriefStats {
   readonly opponent: SideStats;
   /** De la création à la clôture, déploiement compris ; `null` pour une partie sans fin. */
   readonly durationMs: number | null;
-  /** Le numéro du dernier coup, celui qui a clos la partie (l'abandon). */
+  /** Le numéro du dernier coup, celui qui a clos la partie. */
   readonly endedOn: number;
 }
 
@@ -73,3 +74,19 @@ export const PLACEHOLDER = {
   thinkingMs: { average: 14_000, longest: 92_000 },
   feats: ["first-win", "streak-3", "rating-1400"],
 } as const;
+
+/**
+ * La phrase qui dit comment la partie s'est close. Une partie close sans issue inscrite
+ * (`null`) ne peut l'avoir été que par un abandon : c'est la seule fin que les anciens
+ * rulesets connaissent.
+ */
+export function debriefReason(
+  m: Messages["game"]["debrief"],
+  outcome: Outcome | null,
+  won: boolean,
+  endedOn: number,
+): string {
+  if (outcome?.kind === "draw") return m.draws[outcome.reason](endedOn);
+  const texts = outcome?.reason === "checkmate" ? m.checkmate : m.resignation;
+  return won ? texts.won(endedOn) : texts.lost(endedOn);
+}

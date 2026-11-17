@@ -1,5 +1,5 @@
 import type { Graphics } from "pixi.js";
-import { type Board, type Coord, chebyshevDistance } from "@occulis/core";
+import { type Board, type Coord, chebyshevDistance, coordKey } from "@occulis/core";
 import {
   type IsoProjection,
   type Quad,
@@ -103,6 +103,18 @@ export function drawSelection(
       MOTION_FX.cascadeMs,
     );
     if (open <= 0) continue;
+    if (selection.captures.has(coordKey(coord))) {
+      // Une prise : la case entière se cerne d'un trait plein, sans gemme — la pièce
+      // adverse qui s'y tient reste lisible, et la case ne se confond pas avec une case libre.
+      g.poly(scaled(quad, Math.min(1, open)))
+        .fill({ color: style.destination, alpha: lerp(style.destinationFillAlpha, glow) })
+        .stroke({
+          width: style.pieceWidth * px,
+          color: style.destination,
+          alpha: Math.min(1, open),
+        });
+      continue;
+    }
     g.poly(scaled(quad, Math.min(1, open)))
       .fill({
         color: style.destination,

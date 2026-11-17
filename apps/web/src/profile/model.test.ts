@@ -114,6 +114,12 @@ describe("parties", () => {
     expect(describeMyResult({ result: "won", outcome: resignation })).toBe("victoire par abandon");
     expect(describeMyResult({ result: "lost", outcome: resignation })).toBe("défaite par abandon");
     expect(describeMyResult({ result: "ongoing", outcome: null })).toBe("en cours");
+    const checkmate = { kind: "victory", winner: "A", reason: "checkmate" } as const;
+    expect(describeMyResult({ result: "won", outcome: checkmate })).toBe("victoire par mat");
+    expect(describeMyResult({ result: "lost", outcome: checkmate })).toBe("défaite par mat");
+    expect(
+      describeMyResult({ result: "drawn", outcome: { kind: "draw", reason: "repetition" } }),
+    ).toBe("nulle");
   });
 
   it("dit depuis quand une session n'a pas servi", () => {

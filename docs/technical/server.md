@@ -1013,7 +1013,7 @@ ajout. Le paquet ne contient que des types et la conversion de sérialisation �
 règle de jeu (elle vit dans `@occulis/core`), aucun transport (il vit dans chaque app).
 
 ```ts
-const PROTOCOL_VERSION = 7;
+const PROTOCOL_VERSION = 8;
 
 type ClientMessage =
   | { kind: "hello"; protocol: number }
@@ -1121,7 +1121,7 @@ plutôt que le laisser diverger en silence.
 
 | Fonction / constante      | Emplacement                            | Rôle                                                                                                                            |
 | ------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `CURRENT_RULESET_VERSION` | `packages/core/src/rulesets/index.ts`  | Version attribuée aux nouvelles parties — `"provisional-2"`                                                                     |
+| `CURRENT_RULESET_VERSION` | `packages/core/src/rulesets/index.ts`  | Version attribuée aux nouvelles parties — `"provisional-3"`                                                                     |
 | `rulesetFor()`            | `packages/core/src/rulesets/index.ts`  | Version → `Ruleset` ; **lève** si inconnue                                                                                      |
 | `DEFAULT_SCENARIO`        | `packages/core/src/scenarios/index.ts` | Scénario des nouvelles parties — `"ridge-1"`                                                                                    |
 | `scenarioFor()`           | `packages/core/src/scenarios/index.ts` | Nom → `Scenario` ; **lève** si inconnu. Ne sert plus qu'à figer la carte d'une nouvelle partie et à rejouer les parties d'avant |

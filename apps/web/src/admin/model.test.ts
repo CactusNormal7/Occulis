@@ -137,6 +137,12 @@ describe("mise en mots", () => {
         outcome: { kind: "victory", winner: "B", reason: "resignation" },
       }),
     ).toBe("victoire de bruno (abandon)");
+    expect(
+      describeResult({ ...match, outcome: { kind: "victory", winner: "B", reason: "checkmate" } }),
+    ).toBe("victoire de bruno (échec et mat)");
+    expect(describeResult({ ...match, outcome: { kind: "draw", reason: "stalemate" } })).toBe(
+      "nulle (pat)",
+    );
   });
 
   it("décrit un coup", () => {

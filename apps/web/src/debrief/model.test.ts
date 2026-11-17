@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { MeMatchDebrief } from "@occulis/protocol";
-import { debriefStats, eloBefore, formatDuration } from "./model.js";
+import { messagesFor } from "@occulis/i18n";
+import { debriefReason, debriefStats, eloBefore, formatDuration } from "./model.js";
 
 /** Une partie de trois coups : A déplace deux fois la même pièce, B une, puis A abandonne. */
 function debrief(): MeMatchDebrief {
@@ -58,5 +59,30 @@ describe("formatDuration", () => {
     expect(formatDuration(754_000)).toBe("12:34");
     expect(formatDuration(3_723_000)).toBe("1:02:03");
     expect(formatDuration(-5)).toBe("0:00");
+  });
+});
+
+describe("debriefReason", () => {
+  const m = messagesFor("fr").game.debrief;
+
+  it("dit comment la partie s'est close, du point de vue du joueur", () => {
+    const resigned = { kind: "victory", winner: "A", reason: "resignation" } as const;
+    const mated = { kind: "victory", winner: "A", reason: "checkmate" } as const;
+    expect(debriefReason(m, resigned, true, 12)).toBe(m.resignation.won(12));
+    expect(debriefReason(m, mated, true, 12)).toBe(m.checkmate.won(12));
+    expect(debriefReason(m, mated, false, 12)).toBe(m.checkmate.lost(12));
+  });
+
+  it("nomme la règle qui a rendu la partie nulle", () => {
+    expect(debriefReason(m, { kind: "draw", reason: "stalemate" }, false, 40)).toBe(
+      m.draws.stalemate(40),
+    );
+    expect(debriefReason(m, { kind: "draw", reason: "no-capture" }, false, 60)).toBe(
+      m.draws["no-capture"](60),
+    );
+  });
+
+  it("tient une partie close sans issue inscrite pour un abandon", () => {
+    expect(debriefReason(m, null, false, 3)).toBe(m.resignation.lost(3));
   });
 });
