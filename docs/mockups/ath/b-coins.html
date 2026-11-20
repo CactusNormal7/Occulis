@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="fr" data-theme="obsidian">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ATH B — Coins</title>
+    <link rel="stylesheet" href="./ath.css" />
+    <style>
+      /* Le plateau a tout l'écran : l'ATH ne tient que les coins. */
+      .corner {
+        position: absolute;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .corner--tl {
+        top: 16px;
+        left: 16px;
+      }
+
+      .corner--tr {
+        top: 16px;
+        right: 16px;
+        flex-direction: row;
+        gap: 4px;
+      }
+
+      .corner--bl {
+        bottom: 16px;
+        left: 16px;
+      }
+
+      .corner--br {
+        bottom: 16px;
+        right: 16px;
+        align-items: flex-end;
+        text-align: right;
+      }
+
+      /* Sans panneau : le texte flotte sur le vide, une ombre portée le détache. */
+      .bare {
+        text-shadow:
+          0 1px 0 var(--occ-bg),
+          0 0 6px var(--occ-bg);
+      }
+
+      .turn-tag {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+      }
+
+      .player {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .corner--br .player {
+        flex-direction: row-reverse;
+      }
+
+      /* Un trait sous le camp au trait, de sa couleur. */
+      .active-bar {
+        height: 2px;
+        width: 100%;
+        background: currentColor;
+        box-shadow: 0 0 8px currentColor;
+      }
+
+      /* L'annonce du tour : grande, au centre-haut, elle s'efface d'elle-même en jeu. */
+      .announce {
+        position: absolute;
+        top: 56px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        pointer-events: none;
+      }
+
+      .announce p {
+        font-size: 32px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        text-shadow: 0 0 16px currentColor;
+      }
+
+      /* La fiche flotte à côté de la pièce choisie (placée par `ath.js`). */
+      .float-sheet {
+        position: absolute;
+        width: 248px;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .float-sheet::before {
+        /* Le fil qui relie la fiche à la pièce. */
+        content: "";
+        position: absolute;
+        right: -36px;
+        top: 50%;
+        width: 36px;
+        height: 1px;
+        background: var(--occ-ink-faint);
+      }
+
+      /* Le tiroir du journal, replié sur le bord gauche. */
+      .drawer {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 232px;
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        opacity: 0.85;
+      }
+
+      .drawer .journal li {
+        grid-template-columns: 24px 12px 1fr;
+      }
+
+      /* La saisie : repliée en une invite, elle s'ouvre à Entrée. */
+      .prompt {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .prompt .command {
+        width: 360px;
+        padding: 8px 12px;
+      }
+
+      .toast {
+        position: absolute;
+        bottom: 72px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 6px 16px;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="mock-toolbar"><a href="./index.html">← ATH</a><strong>B — Coins</strong></nav>
+
+    <div class="screen-fit">
+      <main class="screen" data-state="yours" aria-label="Partie en cours">
+        <svg class="board" data-zoom="1.18" role="img" aria-label="Plateau de démonstration"></svg>
+
+        <div class="hud">
+          <!-- Haut gauche : le tour et les nulles -->
+          <div class="corner corner--tl bare">
+            <p class="turn-tag">
+              <span class="dim caps">Tour</span>
+              <span class="big glow" data-only="yours check">15</span>
+              <span class="big glow" data-except="yours check">14</span>
+            </p>
+            <p class="faint">sans prise 2 / 60</p>
+            <p class="faint" data-except="watch">1 ami vous regarde</p>
+          </div>
+
+          <!-- Haut droit : outils -->
+          <div class="corner corner--tr">
+            <button class="btn btn--icon btn--quiet" type="button" aria-label="Journal (J)">
+              <svg viewBox="0 0 8 8" aria-hidden="true">
+                <path d="M1 1h6v1h-6zM1 3h6v1h-6zM1 5h4v1h-4z" fill="currentColor" />
+              </svg>
+            </button>
+            <button class="btn btn--icon btn--quiet" type="button" aria-label="Réglages">
+              <svg viewBox="0 0 8 8" aria-hidden="true">
+                <path
+                  d="M3 0h2v1h1v1h1v1h1v2h-1v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-1v-2h1v-1h1v-1h1z M3 3h2v2h-2z"
+                  fill="currentColor"
+                  fill-rule="evenodd"
+                />
+              </svg>
+            </button>
+            <button class="btn btn--quiet" type="button" data-except="watch">Abandonner</button>
+            <button class="btn btn--quiet" type="button" data-only="watch">Quitter</button>
+          </div>
+
+          <!-- Annonce du tour -->
+          <div class="announce" aria-live="polite">
+            <p class="camp-a line-in" data-only="yours">À vous</p>
+            <p class="threat line-in" data-only="check">Échec</p>
+            <p
+              class="camp-b"
+              data-only="theirs"
+              style="font-size: 16px; text-shadow: none; opacity: 0.8"
+            >
+              Au trait : Nyx
+            </p>
+            <p data-only="watch" class="soft" style="font-size: 16px; text-shadow: none">
+              Vous regardez Mirelle
+            </p>
+          </div>
+
+          <!-- Bas gauche : vous -->
+          <div class="corner corner--bl bare camp-a">
+            <div class="player">
+              <span class="caps"
+                ><span class="pip"></span>&nbsp;<span data-except="watch">Vous</span
+                ><span data-only="watch">Mirelle</span></span
+              >
+              <span class="dim">1284</span>
+            </div>
+            <ol class="roster">
+              <li class="roster__slot">
+                <svg class="glyph" data-kind="commander" data-camp="a"></svg>
+              </li>
+              <li class="roster__slot">
+                <svg class="glyph" data-kind="scout" data-camp="a"></svg>
+              </li>
+              <li class="roster__slot">
+                <svg class="glyph" data-kind="scout" data-camp="a"></svg>
+              </li>
+              <li class="roster__slot">
+                <svg class="glyph" data-kind="scout" data-camp="a"></svg>
+              </li>
+              <li class="roster__slot"><svg class="glyph" data-kind="pawn" data-camp="a"></svg></li>
+              <li class="roster__slot" data-taken>
+                <svg class="glyph" data-kind="pawn" data-camp="a" data-taken></svg>
+              </li>
+            </ol>
+            <span class="active-bar" data-only="yours check"></span>
+          </div>
+
+          <!-- Bas droit : l'adversaire -->
+          <div class="corner corner--br bare camp-b">
+            <div class="player">
+              <span class="caps"><span class="pip"></span>&nbsp;Nyx</span>
+              <span class="dim" data-except="away">1311</span>
+              <span class="caps" style="color: var(--occ-caution)" data-only="away"
+                >hors ligne · 23 s</span
+              >
+            </div>
+            <ol class="roster">
+              <li class="roster__slot" data-taken>
+                <svg class="glyph" data-kind="pawn" data-camp="b" data-taken></svg>
+              </li>
+              <li class="roster__slot"><svg class="glyph" data-kind="pawn" data-camp="b"></svg></li>
+              <li class="roster__slot" data-taken>
+                <svg class="glyph" data-kind="scout" data-camp="b" data-taken></svg>
+              </li>
+              <li class="roster__slot">
+                <svg class="glyph" data-kind="scout" data-camp="b"></svg>
+              </li>
+              <li class="roster__slot">
+                <svg class="glyph" data-kind="scout" data-camp="b"></svg>
+              </li>
+              <li class="roster__slot">
+                <svg class="glyph" data-kind="commander" data-camp="b"></svg>
+              </li>
+            </ol>
+            <span class="active-bar" data-only="theirs away watch"></span>
+          </div>
+
+          <!-- Fiche flottante, accrochée à la pièce choisie -->
+          <section
+            class="float-sheet panel"
+            data-anchor="left"
+            data-only="yours"
+            aria-label="Pièce sélectionnée"
+          >
+            <p><span class="caps glow">Éclaireur</span> <span class="dim">· 2,6 · h1</span></p>
+            <p class="soft">3 cases, toutes directions · vue 4 · grimpe</p>
+            <p>
+              <span style="color: var(--occ-legal)">12</span><span class="dim"> cases · </span>
+              <span style="color: var(--occ-climb)">1</span><span class="dim"> montée · </span>
+              <span class="threat">1</span><span class="dim"> prise</span>
+            </p>
+          </section>
+          <section
+            class="float-sheet panel alert"
+            data-anchor="left"
+            data-only="check"
+            aria-label="Pièce sélectionnée"
+          >
+            <p><span class="caps glow">Roi</span> <span class="threat caps">· en échec</span></p>
+            <p class="soft">3 coups légaux. La menace peut être hors de vue.</p>
+          </section>
+
+          <!-- Tiroir du journal, ouvert ici pour la maquette -->
+          <section class="drawer panel" data-only="theirs away watch" aria-label="Journal">
+            <p class="dim caps">Journal <span class="kbd" style="float: right">J</span></p>
+            <ol class="journal">
+              <li>
+                <span>11</span><span class="pip camp-a"></span><span>Éclaireur 3,7 → 2,6</span>
+              </li>
+              <li><span>12</span><span class="pip camp-b"></span><span>Pion prend 3,5</span></li>
+              <li>
+                <span>13</span><span class="pip camp-a"></span><span>Éclaireur 6,7 → 6,5</span>
+              </li>
+              <li data-last data-only="yours check">
+                <span>14</span><span class="pip camp-b"></span><span>Éclaireur ? → 1,3</span>
+              </li>
+              <li data-only="theirs away watch" class="faint">
+                <span>14</span><span class="pip camp-b"></span><span>…</span>
+              </li>
+            </ol>
+          </section>
+
+          <!-- Comptes rendus éphémères -->
+          <p
+            class="toast panel caps"
+            data-only="away"
+            style="border-color: var(--occ-caution); color: var(--occ-caution)"
+          >
+            Nyx s'est déconnecté — forfait dans 23 s
+          </p>
+          <p class="toast panel threat" data-only="check">Ce coup laisserait votre roi en prise.</p>
+
+          <!-- Invite de saisie -->
+          <div class="prompt">
+            <form
+              class="command panel"
+              autocomplete="off"
+              onsubmit="return false;"
+              data-only="yours"
+            >
+              <span class="kbd">↵</span>
+              <input class="command__input" value="2,6 5,3" aria-label="Coup" />
+            </form>
+            <p class="bare faint" data-only="check theirs away">
+              <span class="kbd">↵</span> saisir un coup · <span class="kbd">clic droit</span> fiche
+            </p>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <p class="mock-note">
+      Lecture : rien ne couvre le plateau en permanence. Les camps tiennent les coins du bas, le
+      tour celui du haut ; la fiche de pièce s'accroche à la pièce choisie, le journal et la saisie
+      s'ouvrent au clavier.
+    </p>
+
+    <script src="./ath.js"></script>
+  </body>
+</html>

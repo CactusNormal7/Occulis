@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="fr" data-theme="obsidian">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ATH C — Registre</title>
+    <link rel="stylesheet" href="./ath.css" />
+    <style>
+      /* Une seule colonne, à droite, tient tout l'ATH ; le plateau a le reste. */
+      .board {
+        inset: 0 360px 0 0;
+        width: auto;
+        height: auto;
+      }
+
+      .ledger {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 360px;
+        display: flex;
+        flex-direction: column;
+        border-left: var(--line);
+        background: var(--occ-panel);
+      }
+
+      .ledger > section {
+        padding: 14px 20px;
+      }
+
+      /* Un ornement de séparation : un losange sur un trait, rien de plus. */
+      .ornament {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 20px;
+        color: var(--occ-ink-faint);
+      }
+
+      .ornament::before,
+      .ornament::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--occ-ink-line);
+      }
+
+      .ornament i {
+        width: 5px;
+        height: 5px;
+        border: 1px solid currentColor;
+        transform: rotate(45deg);
+      }
+
+      /* Le face-à-face : deux colonnes, vous à gauche, l'adversaire à droite. */
+      .versus {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: start;
+        gap: 8px;
+      }
+
+      .versus__side {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .versus__side--them {
+        align-items: flex-end;
+        text-align: right;
+      }
+
+      .versus__side .roster {
+        flex-wrap: wrap;
+        max-width: 132px;
+      }
+
+      .versus__side--them .roster {
+        justify-content: flex-end;
+      }
+
+      .versus__mark {
+        padding-top: 2px;
+        color: var(--occ-ink-faint);
+      }
+
+      /* Le camp au trait : un liseré de sa couleur sous son nom. */
+      .versus__name {
+        padding-bottom: 2px;
+        border-bottom: 2px solid transparent;
+      }
+
+      .screen[data-state="yours"] .versus__side--you .versus__name,
+      .screen[data-state="check"] .versus__side--you .versus__name {
+        border-color: var(--occ-camp-a);
+        box-shadow: 0 6px 8px -6px var(--occ-camp-a-glow);
+      }
+
+      .screen[data-state="theirs"] .versus__side--them .versus__name,
+      .screen[data-state="away"] .versus__side--them .versus__name,
+      .screen[data-state="watch"] .versus__side--them .versus__name {
+        border-color: var(--occ-camp-b);
+        box-shadow: 0 6px 8px -6px var(--occ-camp-b-glow);
+      }
+
+      .turn-block {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        column-gap: 16px;
+      }
+
+      .turn-block .numeral {
+        font-size: 48px;
+        line-height: 1;
+        text-shadow: 0 0 16px var(--occ-ink-glow);
+      }
+
+      .sheet-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+
+      .ledger .journal-section {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .ledger .journal {
+        flex: 1;
+        justify-content: flex-end;
+        overflow: hidden;
+      }
+
+      .ledger footer {
+        padding: 12px 20px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        border-top: var(--line);
+      }
+
+      .actions {
+        display: flex;
+        gap: 4px;
+      }
+
+      .actions .spacer {
+        flex: 1;
+      }
+
+      /* La case survolée, posée au pied du plateau. */
+      .readout {
+        position: absolute;
+        left: 20px;
+        bottom: 16px;
+      }
+
+      .notice {
+        position: absolute;
+        top: 20px;
+        left: calc((100% - 360px) / 2);
+        transform: translateX(-50%);
+        padding: 8px 20px;
+        text-align: center;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="mock-toolbar"><a href="./index.html">← ATH</a><strong>C — Registre</strong></nav>
+
+    <div class="screen-fit">
+      <main class="screen" data-state="yours" aria-label="Partie en cours">
+        <svg class="board" data-zoom="1.1" role="img" aria-label="Plateau de démonstration"></svg>
+
+        <div class="hud">
+          <p class="readout soft" data-only="yours">4,4 · hauteur 0</p>
+
+          <p class="notice panel alert caps" data-only="check">Échec : votre roi peut être pris</p>
+          <div class="notice panel" data-only="away" style="border-color: var(--occ-caution)">
+            <p class="caps" style="color: var(--occ-caution)">Nyx s'est déconnecté</p>
+            <p class="soft">Forfait dans 23 s s'il ne revient pas</p>
+          </div>
+
+          <aside class="ledger" aria-label="Registre de la partie">
+            <!-- Face-à-face -->
+            <section class="versus">
+              <div class="versus__side versus__side--you">
+                <span class="versus__name camp-a caps"
+                  ><span data-except="watch">Vous</span><span data-only="watch">Mirelle</span></span
+                >
+                <span class="dim">1284 Elo</span>
+                <ol class="roster">
+                  <li class="roster__slot">
+                    <svg class="glyph" data-kind="commander" data-camp="a"></svg>
+                  </li>
+                  <li class="roster__slot">
+                    <svg class="glyph" data-kind="scout" data-camp="a"></svg>
+                  </li>
+                  <li class="roster__slot">
+                    <svg class="glyph" data-kind="scout" data-camp="a"></svg>
+                  </li>
+                  <li class="roster__slot">
+                    <svg class="glyph" data-kind="scout" data-camp="a"></svg>
+                  </li>
+                  <li class="roster__slot">
+                    <svg class="glyph" data-kind="pawn" data-camp="a"></svg>
+                  </li>
+                  <li class="roster__slot" data-taken>
+                    <svg class="glyph" data-kind="pawn" data-camp="a" data-taken></svg>
+                  </li>
+                </ol>
+              </div>
+              <span class="versus__mark">◇</span>
+              <div class="versus__side versus__side--them">
+                <span class="versus__name camp-b caps">Nyx</span>
+                <span class="dim" data-except="away">1311 Elo</span>
+                <span class="caps" style="color: var(--occ-caution)" data-only="away"
+                  >hors ligne</span
+                >
+                <ol class="roster">
+                  <li class="roster__slot" data-taken>
+                    <svg class="glyph" data-kind="pawn" data-camp="b" data-taken></svg>
+                  </li>
+                  <li class="roster__slot">
+                    <svg class="glyph" data-kind="pawn" data-camp="b"></svg>
+                  </li>
+                  <li class="roster__slot" data-taken>
+                    <svg class="glyph" data-kind="scout" data-camp="b" data-taken></svg>
+                  </li>
+                  <li class="roster__slot">
+                    <svg class="glyph" data-kind="scout" data-camp="b"></svg>
+                  </li>
+                  <li class="roster__slot">
+                    <svg class="glyph" data-kind="scout" data-camp="b"></svg>
+                  </li>
+                  <li class="roster__slot">
+                    <svg class="glyph" data-kind="commander" data-camp="b"></svg>
+                  </li>
+                </ol>
+              </div>
+            </section>
+
+            <div class="ornament"><i></i></div>
+
+            <!-- Le tour -->
+            <section class="turn-block" aria-live="polite">
+              <span class="numeral" data-only="yours check">15</span>
+              <span class="numeral" data-except="yours check">14</span>
+              <div>
+                <p class="dim caps">Tour</p>
+                <p class="caps camp-a line-in" data-only="yours">À vous de jouer</p>
+                <p class="caps threat line-in" data-only="check">Échec — à vous</p>
+                <p class="caps camp-b" data-only="theirs away">Au trait : Nyx</p>
+                <p class="caps soft" data-only="watch">Au trait : Nyx</p>
+              </div>
+            </section>
+
+            <div class="ornament"><i></i></div>
+
+            <!-- La pièce en main -->
+            <section aria-label="Pièce sélectionnée" style="min-height: 132px">
+              <div data-only="yours">
+                <div class="sheet-head">
+                  <svg class="glyph glyph--lg" data-kind="scout" data-camp="a"></svg>
+                  <div>
+                    <p class="caps glow">Éclaireur</p>
+                    <p class="dim">2,6 · hauteur 1</p>
+                  </div>
+                </div>
+                <dl class="facts">
+                  <dt>Pas</dt>
+                  <dd>3, toutes directions</dd>
+                  <dt>Vue</dt>
+                  <dd>4 cases · grimpe</dd>
+                  <dt>Coups</dt>
+                  <dd>
+                    <span style="color: var(--occ-legal)">12</span> ·
+                    <span style="color: var(--occ-climb)">1 montée</span> ·
+                    <span class="threat">1 prise</span>
+                  </dd>
+                </dl>
+              </div>
+              <div data-only="check">
+                <div class="sheet-head">
+                  <svg class="glyph glyph--lg" data-kind="commander" data-camp="a"></svg>
+                  <div>
+                    <p class="caps glow">Roi</p>
+                    <p class="threat caps">En échec</p>
+                  </div>
+                </div>
+                <p class="soft">3 coups légaux. La menace peut venir d'une pièce hors de vue.</p>
+              </div>
+              <div data-only="theirs away watch">
+                <p class="dim caps">Aucune pièce en main</p>
+                <p class="faint">Clic : sélectionner · clic droit : fiche</p>
+              </div>
+            </section>
+
+            <div class="ornament"><i></i></div>
+
+            <!-- Le journal -->
+            <section class="journal-section" aria-label="Journal">
+              <p class="dim caps">Journal</p>
+              <ol class="journal">
+                <li>
+                  <span>7</span><span class="pip camp-a"></span><span>Éclaireur prend 4,4</span>
+                </li>
+                <li data-hidden>
+                  <span>8</span><span class="pip camp-b"></span><span>coup hors de vue</span>
+                </li>
+                <li><span>9</span><span class="pip camp-a"></span><span>Pion 4,7 → 4,6</span></li>
+                <li data-hidden>
+                  <span>10</span><span class="pip camp-b"></span><span>coup hors de vue</span>
+                </li>
+                <li>
+                  <span>11</span><span class="pip camp-a"></span><span>Éclaireur 3,7 → 2,6</span>
+                </li>
+                <li><span>12</span><span class="pip camp-b"></span><span>Pion prend 3,5</span></li>
+                <li>
+                  <span>13</span><span class="pip camp-a"></span><span>Éclaireur 6,7 → 6,5</span>
+                </li>
+                <li data-last data-only="yours check">
+                  <span>14</span><span class="pip camp-b"></span><span>Éclaireur ? → 1,3</span>
+                </li>
+                <li data-only="theirs away watch" class="faint">
+                  <span>14</span><span class="pip camp-b"></span><span>…</span>
+                </li>
+              </ol>
+              <p class="faint">sans prise 2 / 60</p>
+            </section>
+
+            <!-- Saisie et actions -->
+            <footer>
+              <form class="command" autocomplete="off" onsubmit="return false;" data-except="watch">
+                <label class="dim" for="cmd">Coup</label>
+                <input id="cmd" class="command__input" value="2,6 5,3" data-only="yours" />
+                <input
+                  class="command__input"
+                  placeholder="4,8 3,8"
+                  data-only="check"
+                  aria-label="Coup"
+                />
+                <input
+                  class="command__input"
+                  disabled
+                  placeholder="pas votre tour"
+                  data-only="theirs away"
+                  aria-label="Coup"
+                />
+                <span class="kbd">↵</span>
+              </form>
+              <p class="dim" data-only="watch">Vous regardez : aucun coup à jouer.</p>
+              <div class="actions">
+                <button class="btn btn--icon btn--quiet" type="button" aria-label="Réglages">
+                  <svg viewBox="0 0 8 8" aria-hidden="true">
+                    <path
+                      d="M3 0h2v1h1v1h1v1h1v2h-1v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-1v-2h1v-1h1v-1h1z M3 3h2v2h-2z"
+                      fill="currentColor"
+                      fill-rule="evenodd"
+                    />
+                  </svg>
+                </button>
+                <span
+                  class="faint"
+                  style="align-self: center; padding-left: 8px"
+                  data-except="watch"
+                  >1 ami regarde</span
+                >
+                <span class="spacer"></span>
+                <button class="btn btn--quiet" type="button" data-except="watch">Abandonner</button>
+                <button class="btn btn--quiet" type="button" data-only="watch">Quitter</button>
+              </div>
+            </footer>
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    <p class="mock-note">
+      Lecture : un registre tenu à droite, lu de haut en bas — qui joue, quel tour, la pièce en
+      main, ce qui s'est passé, puis la saisie. Le plateau n'est jamais recouvert.
+    </p>
+
+    <script src="./ath.js"></script>
+  </body>
+</html>
