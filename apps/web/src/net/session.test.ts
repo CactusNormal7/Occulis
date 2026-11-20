@@ -159,13 +159,13 @@ describe("fromMatch", () => {
     expect(back.phase.kind === "seated" && back.phase.opponentAbsence).toBeUndefined();
   });
 
-  it("garde le refus en cours quand l'adversaire part ou revient", () => {
+  it("ne relit pas un refus passé quand l'adversaire part ou revient", () => {
     const refused = fromMatch(seated(), {
       kind: "rejected",
       error: { code: "not-your-turn", activePlayer: "B" },
     });
     const after = fromMatch(refused, { kind: "opponent-presence", present: false });
-    expect(after.rejection).toEqual(refused.rejection);
+    expect(after.rejection).toBeUndefined();
   });
 });
 

@@ -199,7 +199,7 @@ export function fromMatch(session: Session, message: ServerMessage): Session {
       const opponentAbsence = message.present
         ? undefined
         : { forfeitInMs: message.forfeitInMs ?? 0 };
-      return { phase: { ...phase, opponentAbsence }, rejection: session.rejection };
+      return { phase: { ...phase, opponentAbsence }, rejection: undefined };
     }
     case "deployment": {
       const { zone, opponentZone, defaultTeam, remainingMs, locks, self, opponent, rated } =

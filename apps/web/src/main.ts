@@ -8,21 +8,16 @@ import {
   type EndScreen,
   Islands,
   type LeaveDialog,
+  type MatchHudIsland,
   type TeamsScreen,
 } from "./app/islands.js";
 import { MatchController, type PresetSource } from "./app/match-controller.js";
 import { Matchmaking } from "./app/matchmaking.js";
 import { Navigation } from "./app/navigation.js";
-import {
-  boardElement,
-  consoleElements,
-  friendsPanelElements,
-  settingsElements,
-  shellElements,
-} from "./app/page.js";
-import { attachPieceInfo } from "./ui/piece-info.js";
+import { boardElement, friendsPanelElements, settingsElements, shellElements } from "./app/page.js";
 import { applyStoredPreferences, attachPreferences } from "./app/preferences.js";
 import * as debriefApi from "./debrief/api.js";
+import { hudModel } from "./hud/model.js";
 import { loadCache } from "./load/cache.js";
 import { translateDom } from "./locale/browser.js";
 import { messages, onLocaleChange } from "./locale/current.js";
@@ -30,7 +25,6 @@ import { stillSeated, whoAmI } from "./net/auth.js";
 import { connectToMatch, watchMatch } from "./net/match-channel.js";
 import { currentMatch } from "./profile/api.js";
 import { friendsOverview, presets as presetsResource } from "./profile/resources.js";
-import { attachConsole } from "./ui/console.js";
 import { attachShell } from "./ui/shell.js";
 
 /** Les équipes préparées du joueur, lues dans le cache de chargement. */
@@ -62,7 +56,6 @@ function main(): void {
     elements: shellElements(boardHost),
     onSeek: (seeking, code) => matchmaking.seek(seeking, code),
     onCancel: leave,
-    onLeaveMatch: leaveMatch,
     onStopImpersonating: () => account.stopImpersonating(),
     onSignOut: () => account.signOut(),
     onResend: () => account.resendVerification(),
@@ -70,6 +63,7 @@ function main(): void {
   });
   const navigation = new Navigation(shell, settings);
   const islands = new Islands({
+    hud: matchHud,
     leave: leaveDialog,
     ended: endScreen,
     found: () => matchmaking.proposal,
@@ -99,7 +93,6 @@ function main(): void {
     ensureBoard: () => void board.ensure(),
     clearBoard: () => board.clear(),
     seated: (terrain) => board.center(terrain),
-    reports: () => gameConsole,
     notify: (message) => shell.notify(message),
     leave,
     connectionLost: async () => {
@@ -108,15 +101,7 @@ function main(): void {
     },
     finished,
   });
-  const gameConsole = attachConsole({
-    elements: consoleElements(),
-    match: () => matches.match,
-    play: (action) => matches.play(action),
-    pending: () => matches.pending,
-    watching: () => matches.watching,
-    spectators: () => matches.spectators,
-  });
-  const board = new BoardView(boardHost, matches, gameConsole, attachPieceInfo(document.body));
+  const board = new BoardView(boardHost, matches);
 
   // ── File d'attente, amis, compte ──────────────────────────────────────────────────
   const matchmaking = new Matchmaking({
@@ -254,6 +239,30 @@ function main(): void {
     leave();
   }
 
+  /** L'ATH, tant qu'une partie est sur la table : abandonner passe par `leaveMatch()`. */
+  function matchHud(): MatchHudIsland | undefined {
+    const match = matches.match;
+    if (match === undefined) return undefined;
+    const away = matches.opponentAway;
+    return {
+      model: hudModel(messages(), {
+        view: match.viewFor(match.player),
+        board: match.board,
+        watching: matches.watching,
+        players: matches.players,
+        opponentAway: away !== undefined,
+        pending: matches.pending,
+        selection: matches.selection,
+        sheet: matches.sheet,
+      }),
+      away,
+      notice: matches.notice,
+      spectators: matches.spectators,
+      onLeave: leaveMatch,
+      onCamera: (command) => board.command(command),
+    };
+  }
+
   function leaveDialog(): LeaveDialog | undefined {
     if (!matches.leaving) return undefined;
     return {
@@ -320,7 +329,6 @@ function main(): void {
     settings.refresh();
     navigation.render();
     account.render();
-    gameConsole.refresh();
     islands.render();
   }
 }

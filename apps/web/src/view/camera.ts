@@ -133,6 +133,33 @@ export function turn(camera: Camera, direction: 1 | -1): Camera {
   return { ...camera, targetRotation: snapAngle(camera.rotation) + direction * QUARTER_TURN };
 }
 
+/** Les boutons de caméra de l'ATH (`hud/CameraControls.vue`). */
+export type CameraCommand = "turn-left" | "turn-right" | "zoom-in" | "zoom-out" | "recenter";
+
+/** Un clic de bouton zoome comme deux crans de molette : un cran seul se remarque à peine. */
+export const BUTTON_ZOOM = ZOOM_STEP ** 2;
+
+/**
+ * Les gestes des boutons de caméra : ceux des flèches et de la molette, le zoom centré
+ * sur l'écran faute de curseur. Recentrer remet le plateau au milieu, à l'échelle de
+ * départ, sans toucher à l'angle choisi.
+ */
+export function commandCamera(camera: Camera, command: CameraCommand): Camera {
+  const middle = { x: camera.viewport.x / 2, y: camera.viewport.y / 2 };
+  switch (command) {
+    case "turn-left":
+      return turn(camera, -1);
+    case "turn-right":
+      return turn(camera, 1);
+    case "zoom-in":
+      return zoomAt(camera, middle, BUTTON_ZOOM);
+    case "zoom-out":
+      return zoomAt(camera, middle, 1 / BUTTON_ZOOM);
+    case "recenter":
+      return { ...camera, scale: 1, pan: { x: 0, y: 0 } };
+  }
+}
+
 export function settle(camera: Camera, deltaMS: number): Camera {
   if (camera.rotation === camera.targetRotation) return camera;
 

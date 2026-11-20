@@ -2,6 +2,8 @@ import type { PlayerId, Board, TeamEntry } from "@occulis/core";
 import type { TeamPreset } from "@occulis/protocol";
 import DebriefScreenView from "../debrief/DebriefScreen.vue";
 import EndScreenView from "../end/EndScreen.vue";
+import MatchHud from "../hud/MatchHud.vue";
+import type { HudModel } from "../hud/model.js";
 import LeaveMatch from "../leave/LeaveMatch.vue";
 import { currentLocale } from "../locale/current.js";
 import type { DeploymentState } from "../net/session.js";
@@ -9,7 +11,8 @@ import Deployment from "../prepare/Deployment.vue";
 import MatchFoundView from "../prepare/MatchFound.vue";
 import TeamsScreenView from "../presets/TeamsScreen.vue";
 import { mountIsland } from "./island.js";
-import type { MatchEnd } from "./match-controller.js";
+import type { CameraCommand } from "../view/camera.js";
+import type { MatchEnd, MatchNotice, OpponentAway } from "./match-controller.js";
 import { element } from "./page.js";
 
 /*
@@ -63,6 +66,17 @@ export interface DeploymentAnnouncement {
   readonly onDeploy: (team: readonly TeamEntry[]) => void;
 }
 
+/** L'ATH de la partie en cours (`hud/MatchHud.vue`). */
+export interface MatchHudIsland {
+  readonly model: HudModel;
+  readonly away: OpponentAway | undefined;
+  readonly notice: MatchNotice | undefined;
+  readonly spectators: number;
+  /** Abandonner (un joueur, par la fenêtre `leave/`) ou quitter (un spectateur). */
+  readonly onLeave: () => void;
+  readonly onCamera: (command: CameraCommand) => void;
+}
+
 /** Les équipes préparées, depuis le menu (`presets/TeamsScreen.vue`). */
 export interface TeamsScreen {
   readonly onBack: () => void;
@@ -73,6 +87,7 @@ export interface TeamsScreen {
  * `undefined` vide l'îlot.
  */
 export interface IslandSources {
+  readonly hud: () => MatchHudIsland | undefined;
   readonly leave: () => LeaveDialog | undefined;
   readonly ended: () => EndScreen | undefined;
   readonly found: () => MatchFound | undefined;
@@ -82,11 +97,12 @@ export interface IslandSources {
 }
 
 /**
- * Les îlots Vue de la page du jeu, hors compte : quitter la partie, fin d'une partie
- * regardée, partie trouvée, déploiement, équipes et écran de fin. Un rendu les redessine
- * tous — après un message comme après un changement de langue.
+ * Les îlots Vue de la page du jeu, hors compte : l'ATH de partie, quitter la partie, fin
+ * d'une partie regardée, partie trouvée, déploiement, équipes et écran de fin. Un rendu
+ * les redessine tous — après un message comme après un changement de langue.
  */
 export class Islands {
+  private readonly renderHud = mountIsland<MatchHudIsland>(element("hud-root"), MatchHud);
   private readonly renderLeave = mountIsland<LeaveDialog>(element("leave-root"), LeaveMatch);
   private readonly renderEnd = mountIsland<EndScreen>(element("end-root"), EndScreenView);
   private readonly renderFound = mountIsland<MatchFound>(
@@ -113,6 +129,7 @@ export class Islands {
     const locale = currentLocale();
     const withLocale = <P>(props: P | undefined) =>
       props === undefined ? undefined : { ...props, locale };
+    this.renderHud(withLocale(this.sources.hud()));
     this.renderLeave(withLocale(this.sources.leave()));
     this.renderEnd(withLocale(this.sources.ended()));
     this.renderFound(withLocale(this.sources.found()));

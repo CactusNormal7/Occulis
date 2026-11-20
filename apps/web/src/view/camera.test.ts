@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Board, type Coord } from "@occulis/core";
 import {
+  commandCamera,
   type Camera,
   ZOOM_STEP,
   createCamera,
@@ -106,5 +107,30 @@ describe("settle", () => {
   it("ne fait rien une fois l'angle atteint", () => {
     const state = camera();
     expect(settle(state, 16)).toBe(state);
+  });
+});
+
+describe("commandCamera", () => {
+  const camera = createCamera({ x: 3, y: 3 }, { x: 800, y: 600 });
+
+  it("tourne d'un quart dans chaque sens, comme les flèches", () => {
+    expect(commandCamera(camera, "turn-right").targetRotation).toBeCloseTo(QUARTER_TURN);
+    expect(commandCamera(camera, "turn-left").targetRotation).toBeCloseTo(-QUARTER_TURN);
+  });
+
+  it("zoome sur le milieu de l'écran, qui ne bouge pas", () => {
+    const zoomed = commandCamera(camera, "zoom-in");
+    expect(zoomed.scale).toBeGreaterThan(camera.scale);
+    expect(zoomed.pan).toEqual({ x: 0, y: 0 });
+    expect(commandCamera(camera, "zoom-out").scale).toBeLessThan(camera.scale);
+  });
+
+  it("recentre sans toucher à l'angle", () => {
+    const moved = { ...commandCamera(camera, "zoom-in"), pan: { x: 40, y: -12 }, rotation: 1 };
+    expect(commandCamera(moved, "recenter")).toMatchObject({
+      scale: 1,
+      pan: { x: 0, y: 0 },
+      rotation: 1,
+    });
   });
 });

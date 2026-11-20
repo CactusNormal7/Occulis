@@ -32,6 +32,7 @@ export interface ShellElements {
   readonly teamsEntry: HTMLButtonElement;
   /** Le canevas de jeu, montré seulement une fois la partie commencée. */
   readonly board: HTMLElement;
+  /** L'hôte de l'ATH (`hud/`), montré avec le plateau. */
   readonly hud: HTMLElement;
 
   readonly identity: HTMLElement;
@@ -58,7 +59,6 @@ export interface ShellElements {
   readonly waitingCode: HTMLElement;
   readonly copy: HTMLButtonElement;
   readonly cancel: HTMLButtonElement;
-  readonly leave: HTMLButtonElement;
 }
 
 export interface ShellOptions {
@@ -67,8 +67,6 @@ export interface ShellOptions {
   readonly onSeek: (seeking: QueueSeeking, code?: string) => void;
   /** Retour au menu depuis une attente. */
   readonly onCancel: () => void;
-  /** Sortie d'une partie, jouée ou regardée. */
-  readonly onLeaveMatch: () => void;
   /** L'administrateur quitte l'identité d'emprunt. */
   readonly onStopImpersonating: () => void;
   readonly onSignOut: () => void;
@@ -119,7 +117,6 @@ export function attachShell(options: ShellOptions): Shell {
   });
 
   e.cancel.addEventListener("click", () => options.onCancel());
-  e.leave.addEventListener("click", () => options.onLeaveMatch());
 
   e.copy.addEventListener("click", () => {
     void navigator.clipboard?.writeText(e.waitingCode.textContent ?? "").then(() => {
