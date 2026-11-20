@@ -3,6 +3,9 @@
 Les règles communes et normatives vivent dans [AGENTS.md](AGENTS.md). Claude Code doit les
 lire avant toute modification ; ce fichier ne les remplace pas et ne les duplique pas.
 
+Toute tâche se termine par la **check-list de livraison**
+([AGENTS.md](AGENTS.md#check-list-de-livraison)).
+
 ## Intégrations propres à Claude Code
 
 - Les synchronisations Claude Design sous `.design-sync/` appartiennent au produit. Ne pas

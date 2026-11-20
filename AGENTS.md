@@ -70,6 +70,29 @@ Mettre à jour dans le même changement le document concerné de `docs/technical
 quand une fonction, un emplacement, un comportement ou un invariant change. Le
 pourquoi d'une décision reste dans `docs/design/rules.md` ou `docs/architecture.md`.
 
+## Check-list de livraison
+
+Les étapes obligatoires de toute tâche, regroupées sous un nom pour pouvoir dire
+« fais la check-list de livraison ». Chaque ligne renvoie à la règle qui la fonde,
+sans la recopier.
+
+1. **Branche** dédiée, créée avant la première modification et nommée d'après la
+   fonctionnalité (règles dans `CLAUDE.md`, section « Branches »).
+2. **Tâche Nota** créée ou rattachée à sa tâche parente, Statut, Type, Domaine et
+   Priorité renseignés, passée en « Fait » à la fin (`CLAUDE.md`, « Tâches Nota »).
+3. **Décision consignée** : toute décision de gameplay ou de direction artistique
+   dans `docs/design/rules.md` ; un point qui se ferme dans `open-points.md`, une
+   idée écartée dans `history.md` (« Avant de modifier », plus haut).
+4. **Documentation technique** du domaine à jour (`docs/technical/`, `CLAUDE.md`
+   du paquet), et `docs/STATE.md` si l'état du projet change (« Validation et
+   documentation », plus haut).
+5. **Textes** affichés en anglais et en français par `@occulis/i18n`.
+6. **Tests** du comportement ajouté ou modifié.
+7. **Vérifications** vertes : `pnpm typecheck`, `pnpm lint`, `pnpm test`,
+   `pnpm format:check`.
+8. **Carte du code** : `graphify update .` si l'outil est disponible.
+9. **Commits** en anglais, avec les lignes d'attribution demandées.
+
 `CLAUDE.md` est conservé pour Claude Code et comme historique détaillé de ces
 conventions. Les intégrations Claude Design sous `.design-sync/` concernent le
 produit et ne doivent pas être supprimées en configurant Codex.
