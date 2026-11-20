@@ -1,9 +1,10 @@
 import type { Board as Terrain, Coord } from "@occulis/core";
 import type { Board, BoardHooks } from "../render/pixi/board.js";
 import type { SceneInput } from "../render/pixi/scene.js";
-import type { GameConsole } from "../ui/console.js";
 import {
   type Camera,
+  type CameraCommand,
+  commandCamera,
   createCamera,
   originOf,
   pivotOf,
@@ -12,14 +13,15 @@ import {
   toProjectionSpace,
   withViewport,
 } from "../view/camera.js";
-import type { ScreenPoint } from "../view/iso.js";
+import type { ScreenPoint } from "@occulis/board/iso";
+import { hudFraming } from "../hud/layout.js";
 import { tileAt } from "../view/picking.js";
 import type { MatchController } from "./match-controller.js";
 
 /** Ce que le plateau lit et change de la partie en cours. */
 export type BoardSubject = Pick<
   MatchController,
-  "match" | "hovered" | "selection" | "animation" | "hover" | "pick" | "advance"
+  "match" | "hovered" | "selection" | "animation" | "hover" | "pick" | "inspect" | "advance"
 >;
 
 /**
@@ -35,7 +37,6 @@ export class BoardView {
   constructor(
     private readonly host: HTMLElement,
     private readonly subject: BoardSubject,
-    private readonly gameConsole: Pick<GameConsole, "showTile" | "playAction">,
   ) {}
 
   /**
@@ -61,12 +62,18 @@ export class BoardView {
 
   /** Recentre la caméra sur la carte d'une partie qui commence. */
   center(terrain: Terrain): void {
-    this.camera = createCamera(pivotOf(terrain), viewport());
+    const screen = viewport();
+    this.camera = createCamera(pivotOf(terrain), screen, hudFraming(screen));
   }
 
   /** Vide la table, à la sortie d'une partie. */
   clear(): void {
     this.board?.clear();
+  }
+
+  /** Un bouton de caméra de l'ATH. */
+  command(command: CameraCommand): void {
+    this.camera = commandCamera(this.camera, command);
   }
 
   private async load(): Promise<Board | undefined> {
@@ -83,7 +90,9 @@ export class BoardView {
   private hooks(): BoardHooks {
     return {
       onResize: () => {
-        this.camera = withViewport(this.camera, viewport());
+        const screen = viewport();
+        // Sous 900 px, la colonne de l'ATH se replie en bas : le recentrage suit.
+        this.camera = { ...withViewport(this.camera, screen), home: hudFraming(screen) };
       },
       controls: {
         getCamera: () => this.camera,
@@ -92,7 +101,8 @@ export class BoardView {
         },
         pickTile: (point) => this.tileUnder(point),
         setHovered: (coord) => this.subject.hover(coord),
-        onPick: (coord) => this.pick(coord),
+        onPick: (coord) => this.subject.pick(coord),
+        onInspect: (coord) => this.subject.inspect(coord),
       },
       frame: (deltaMS) => this.frame(deltaMS),
     };
@@ -102,14 +112,6 @@ export class BoardView {
     const match = this.subject.match;
     if (match === undefined) return undefined;
     return tileAt(toProjectionSpace(this.camera, point), match.board, toProjection(this.camera));
-  }
-
-  private pick(coord: Coord | undefined): void {
-    if (this.subject.match === undefined) return;
-    this.gameConsole.showTile(coord);
-
-    const action = this.subject.pick(coord);
-    if (action !== undefined) this.gameConsole.playAction(action);
   }
 
   private frame(deltaMS: number): SceneInput | undefined {

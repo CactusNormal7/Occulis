@@ -1,0 +1,21 @@
+---
+import MessagePage from "../../components/MessagePage.astro";
+import { contentFor } from "../../i18n";
+
+const { pages } = contentFor();
+---
+
+<MessagePage title={pages.unsubscribe.title} text={pages.unsubscribe.text}>
+  {/* Un lien qu'un antivirus de messagerie ouvre ne doit pas désinscrire : la
+      désinscription demande ce clic, ou l'en-tête List-Unsubscribe des messages. */}
+  <form class="form form--inline" method="post" action="/api/beta/unsubscribe" data-unsubscribe>
+    <input type="hidden" name="token" value="" />
+    <button class="button" type="submit">{pages.unsubscribe.button}</button>
+  </form>
+</MessagePage>
+
+<script>
+  const input = document.querySelector<HTMLInputElement>("[data-unsubscribe] input[name=token]");
+  const token = new URLSearchParams(location.search).get("token");
+  if (input && token) input.value = token;
+</script>

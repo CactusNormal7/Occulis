@@ -45,7 +45,12 @@ export type Stage =
   /** En partie — assis à un siège, ou spectateur (`spectating`) du camp d'un ami. */
   | { readonly kind: "game"; readonly spectating?: true | undefined }
   /** Les équipes préparées d'avance, depuis le menu. */
-  | { readonly kind: "teams" };
+  | { readonly kind: "teams" }
+  /**
+   * L'écran de fin d'une partie qu'on a jouée : résultat, Elo, coups et replay. Il a son
+   * lien (`/debrief/:id`), que le serveur ferme quand les deux joueurs l'ont quitté.
+   */
+  | { readonly kind: "debrief"; readonly matchId: string };
 
 export type FlowEvent =
   | { readonly kind: "identity"; readonly signedIn: boolean }
@@ -57,6 +62,7 @@ export type FlowEvent =
   | { readonly kind: "deploying" }
   | { readonly kind: "seated"; readonly spectating?: boolean | undefined }
   | { readonly kind: "teams" }
+  | { readonly kind: "debrief"; readonly matchId: string }
   /** Retour au menu, à la demande du joueur ou après un refus de la file. */
   | { readonly kind: "menu" };
 
@@ -101,6 +107,13 @@ export function advance(stage: Stage, event: FlowEvent): Stage {
 
     case "teams":
       return stage.kind === "menu" ? { kind: "teams" } : stage;
+
+    case "debrief":
+      // Hors session, le serveur refuserait de toute façon l'écran : le formulaire prime,
+      // et l'amorce ne se quitte que par l'identité.
+      return stage.kind === "auth" || stage.kind === "boot"
+        ? stage
+        : { kind: "debrief", matchId: event.matchId };
 
     case "menu":
       return stage.kind === "boot" || stage.kind === "auth" ? stage : { kind: "menu" };

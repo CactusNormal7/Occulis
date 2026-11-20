@@ -3,6 +3,8 @@ dist/
 # Rapports de couverture de `vitest run --coverage`.
 coverage/
 .DS_Store
+# Réglages locaux des éditeurs JetBrains (WebStorm, IntelliJ), propres à chaque poste.
+.idea/
 *.log
 .vite/
 .env

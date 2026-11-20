@@ -1,15 +1,6 @@
-import type {
-  ActionError,
-  Coord,
-  GameState,
-  Piece,
-  PlayerId,
-  TeamError,
-  Tile,
-} from "@occulis/core";
+import type { ActionError, Coord, TeamError } from "@occulis/core";
 import type { Rejection, RoomFault } from "@occulis/protocol";
 import type { Identity } from "../net/auth.js";
-import type { CommandFault } from "./command.js";
 import type { Seeking } from "./flow.js";
 import { messages } from "../locale/current.js";
 
@@ -23,22 +14,6 @@ function formatCoord(coord: Coord): string {
   return `(${coord.x},${coord.y})`;
 }
 
-export function describeFault(fault: CommandFault): string {
-  const m = messages().game.fault;
-  switch (fault.code) {
-    case "empty":
-      return m.empty;
-    case "bad-coord":
-      return m.badCoord(fault.token);
-    case "missing-destination":
-      return m.missingDestination;
-    case "trailing":
-      return m.trailing(fault.token);
-    case "no-piece-here":
-      return m.noPieceHere(formatCoord(fault.coord));
-  }
-}
-
 export function describeActionError(error: ActionError): string {
   const m = messages().game.actionError;
   switch (error.code) {
@@ -50,6 +25,8 @@ export function describeActionError(error: ActionError): string {
       return m.notYourPiece;
     case "unreachable":
       return m.unreachable(formatCoord(error.to));
+    case "leaves-king-exposed":
+      return m.leavesKingExposed;
   }
 }
 
@@ -81,6 +58,7 @@ export function describeRejection(rejection: Rejection): string {
     case "unknown-piece":
     case "not-your-piece":
     case "unreachable":
+    case "leaves-king-exposed":
       return describeActionError(rejection);
   }
 }
@@ -129,60 +107,6 @@ export function describeWaiting(
   if (seeking === "challenge") return m.challenge(friend ?? m.someone);
   if (seeking === "watch") return m.watch(friend ?? m.someone);
   return code === undefined ? m.opening : m.hosting;
-}
-
-export function describeMove(piece: Piece, to: Coord): string {
-  return `${piece.owner} · ${piece.id} ${formatCoord(piece.coord)} → ${formatCoord(to)}`;
-}
-
-export function describeOutcome(outcome: NonNullable<GameState["outcome"]>): string {
-  const m = messages().game.outcome;
-  return m.victory(outcome.winner, m.reasons[outcome.reason]);
-}
-
-/**
- * L'état du tour. Le camp du joueur y figure toujours, et non le point de vue
- * affiché : il n'y en a qu'un — le serveur n'envoie jamais la vue d'en face.
- */
-export function describeTurn(
-  turn: number,
-  activePlayer: PlayerId,
-  seat: PlayerId,
-  spectators = 0,
-): string {
-  const m = messages().game.turn;
-  const line = m.line(turn, activePlayer === seat ? m.yours : m.theirs, seat);
-  return spectators === 0 ? line : `${line}${m.watchers(spectators)}`;
-}
-
-/** La ligne d'état d'un spectateur : il suit un camp, il n'en joue aucun. */
-export function describeWatching(
-  turn: number,
-  activePlayer: PlayerId,
-  side: PlayerId,
-  friend: string,
-): string {
-  const m = messages().game.turn;
-  return m.watching(
-    turn,
-    activePlayer === side ? m.friendToMove(friend) : m.opponentToMove,
-    friend,
-    side,
-  );
-}
-
-/**
- * Lecture d'une case désignée au clic, sous la forme exacte attendue par la
- * saisie de coups — de quoi recopier la coordonnée dans le champ.
- *
- * Ne rapporte que du terrain : le relief est public (implementation-notes #10),
- * alors qu'annoncer la pièce présente divulguerait une position hors LOS.
- */
-export function describeTile(tile: Tile | undefined): string {
-  const m = messages().game.tile;
-  if (tile === undefined) return m.offBoard;
-  const relief = m.relief(tile.coord.x, tile.coord.y, tile.height);
-  return tile.passable ? relief : `${relief} · ${m.impassable}`;
 }
 
 /** Ce que le menu affiche du compte : le pseudo, et l'état de la vérification. */

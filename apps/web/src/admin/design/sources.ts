@@ -1,18 +1,19 @@
-import type { ComponentType } from "react";
+import type { Component } from "vue";
 import conventions from "../../../../../.design-sync/conventions.md?raw";
 import designDoc from "../../../../../docs/design.md?raw";
 import charterCss from "../../../../../packages/ui/src/styles.css?raw";
 import gameCss from "../../ui/ui.css?raw";
-import themeSource from "../../theme/theme.ts?raw";
+import themeSource from "../../../../../packages/board/src/theme.ts?raw";
 import {
   baseName,
   categoryOf,
-  componentDocs,
+  componentDoc,
   cssAnimations,
   fieldNotes,
+  folderName,
   isCopy,
   markdownSection,
-  storySources,
+  orderStories,
   type ComponentDoc,
   type CssAnimation,
   type FieldNote,
@@ -25,17 +26,16 @@ import {
  * et la table des durées du plateau. Ce module ne fait que lire ; tout le découpage est dans
  * `catalog.ts`.
  *
- * Les aperçus sont **montés** (`eager`) et lus en texte (`?raw`) : le code montré est celui
- * qui rend l'aperçu d'à côté. Le tout ne part qu'avec la page du design system, chargée à
- * part par `resources.ts`.
+ * Un aperçu est un composant monofichier, `previews/<Composant>/<Aperçu>.vue`. Il est **monté**
+ * (`eager`) et lu en texte (`?raw`) : le code montré est celui qui rend l'aperçu d'à côté. Le
+ * tout ne part qu'avec la page du design system, chargée à part par `resources.ts`.
  */
 
-type StoryModule = Record<string, ComponentType>;
-
-const previewModules = import.meta.glob<StoryModule>("../../../../../.design-sync/previews/*.tsx", {
+const previewModules = import.meta.glob<Component>("../../../../../.design-sync/previews/*/*.vue", {
   eager: true,
+  import: "default",
 });
-const previewTexts = import.meta.glob<string>("../../../../../.design-sync/previews/*.tsx", {
+const previewTexts = import.meta.glob<string>("../../../../../.design-sync/previews/*/*.vue", {
   eager: true,
   query: "?raw",
   import: "default",
@@ -45,7 +45,7 @@ const cards = import.meta.glob<string>("../../../../../.design-sync/docs/*.md", 
   query: "?raw",
   import: "default",
 });
-const componentTexts = import.meta.glob<string>("../../../../../packages/ui/src/components/*.tsx", {
+const componentTexts = import.meta.glob<string>("../../../../../packages/ui/src/components/*.vue", {
   eager: true,
   query: "?raw",
   import: "default",
@@ -53,7 +53,7 @@ const componentTexts = import.meta.glob<string>("../../../../../packages/ui/src/
 
 export interface Story {
   readonly name: string;
-  readonly Render: ComponentType;
+  readonly Render: Component;
   readonly code: string;
 }
 
@@ -85,30 +85,37 @@ function byName<T>(files: Record<string, T>): Map<string, T> {
   );
 }
 
-function catalogue(): ComponentEntry[] {
-  const modules = byName(previewModules);
-  const texts = byName(previewTexts);
-  const docs = new Map<string, ComponentDoc & { file: string }>();
-  for (const [file, source] of byName(componentTexts)) {
-    for (const [name, doc] of componentDocs(source))
-      docs.set(name, { ...doc, file: `${file}.tsx` });
+/** Les aperçus de chaque composant, rangés par le nom de leur dossier. */
+function storiesByComponent(): Map<string, Map<string, Story>> {
+  const stories = new Map<string, Map<string, Story>>();
+  for (const [path, Render] of Object.entries(previewModules)) {
+    if (isCopy(path)) continue;
+    const component = folderName(path);
+    const name = baseName(path);
+    const ofComponent = stories.get(component) ?? new Map<string, Story>();
+    ofComponent.set(name, { name, Render, code: (previewTexts[path] ?? "").trim() });
+    stories.set(component, ofComponent);
   }
+  return stories;
+}
+
+function catalogue(): ComponentEntry[] {
+  const allStories = storiesByComponent();
+  const sources = byName(componentTexts);
   const entries = [...byName(cards)].map(([name, card]): ComponentEntry => {
-    const module = modules.get(name) ?? {};
-    const code = storySources(texts.get(name) ?? "");
-    // Dans l'ordre du fichier, celui que l'auteur des aperçus a choisi — pas l'alphabétique
-    // des exports d'un module.
-    const stories = [...code.keys()]
-      .map((story) => [story, module[story]] as const)
-      .filter((entry): entry is readonly [string, ComponentType] => typeof entry[1] === "function")
-      .map(([story, Render]) => ({ name: story, Render, code: code.get(story) ?? "" }));
-    const doc = docs.get(name);
+    const ofComponent = allStories.get(name) ?? new Map<string, Story>();
+    const stories = orderStories(card, [...ofComponent.keys()]).flatMap((story) => {
+      const found = ofComponent.get(story);
+      return found === undefined ? [] : [found];
+    });
+    const source = sources.get(name);
+    const doc = source === undefined ? undefined : componentDoc(source);
     return {
       name,
       category: categoryOf(card) ?? "Other",
-      file: doc?.file,
+      file: source === undefined ? undefined : `${name}.vue`,
       doc: doc?.doc ?? "",
-      props: doc?.props,
+      contract: doc?.contract,
       stories,
     };
   });

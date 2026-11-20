@@ -1,6 +1,6 @@
 import type { Board, Coord, PlayerId } from "@occulis/core";
 import type { AdminFrame, AdminMatchDetail } from "@occulis/protocol";
-import { QUARTER_TURN, type IsoProjection, tileQuad } from "../view/iso.js";
+import { QUARTER_TURN, type IsoProjection, tileQuad } from "@occulis/board/iso";
 import { messages } from "../locale/current.js";
 import { describeAction, seatHandle } from "../admin/model.js";
 

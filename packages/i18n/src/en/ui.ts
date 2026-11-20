@@ -22,6 +22,11 @@ export const ui = {
     seat: (seat: string) => `seat ${seat}`,
     against: "vs",
   },
+  wip: {
+    tag: "WIP",
+    label: "Under construction",
+    note: "Work in progress: what is shown here may be placeholder data.",
+  },
   language: "Language",
   languages: { en: "English", fr: "Français" },
   settings: { label: "Settings", title: "Settings" },

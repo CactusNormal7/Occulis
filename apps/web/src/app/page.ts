@@ -1,4 +1,3 @@
-import type { ConsoleElements } from "../ui/console.js";
 import type { FriendsPanelElements } from "../ui/friends-panel.js";
 import type { SettingsElements } from "../ui/settings.js";
 import type { ShellElements } from "../ui/shell.js";
@@ -35,9 +34,10 @@ export function shellElements(board: HTMLElement): ShellElements {
     waiting: element<HTMLElement>("screen-waiting"),
     deploy: element<HTMLElement>("screen-deploy"),
     teams: element<HTMLElement>("screen-teams"),
+    debrief: element<HTMLElement>("screen-debrief"),
     teamsEntry: element<HTMLButtonElement>("menu-teams"),
     board,
-    hud: element<HTMLElement>("console"),
+    hud: element<HTMLElement>("hud-root"),
     identity: element<HTMLElement>("menu-identity"),
     admin: element<HTMLElement>("menu-admin"),
     corner: element<HTMLElement>("account-corner"),
@@ -57,7 +57,6 @@ export function shellElements(board: HTMLElement): ShellElements {
     waitingCode: element<HTMLElement>("waiting-code"),
     copy: element<HTMLButtonElement>("waiting-copy"),
     cancel: element<HTMLButtonElement>("waiting-cancel"),
-    leave: element<HTMLButtonElement>("leave-match"),
   };
 }
 
@@ -67,16 +66,5 @@ export function friendsPanelElements(): FriendsPanelElements {
     challenges: element<HTMLElement>("friends-challenges"),
     list: element<HTMLElement>("friends-list"),
     empty: element<HTMLElement>("friends-empty"),
-  };
-}
-
-export function consoleElements(): ConsoleElements {
-  return {
-    form: element<HTMLFormElement>("command-form"),
-    input: element<HTMLInputElement>("command-input"),
-    log: element<HTMLElement>("command-log"),
-    status: element<HTMLElement>("status"),
-    readout: element<HTMLElement>("tile-readout"),
-    help: element<HTMLElement>("command-help"),
   };
 }

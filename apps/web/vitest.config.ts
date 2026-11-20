@@ -1,3 +1,4 @@
+import vue from "@vitejs/plugin-vue";
 import { defineConfig } from "vitest/config";
 
 /**
@@ -7,6 +8,7 @@ import { defineConfig } from "vitest/config";
  * autrement (remappage par l'arbre syntaxique) : ils ne peuvent que monter.
  */
 export default defineConfig({
+  plugins: [vue()],
   test: {
     coverage: {
       provider: "v8",
@@ -16,11 +18,15 @@ export default defineConfig({
         "src/game/**",
         "src/net/session.ts",
         "src/ui/flow.ts",
+        "src/end/model.ts",
+        "src/debrief/model.ts",
+        "src/app/debrief.ts",
         "src/load/cache.ts",
         "src/admin/model.ts",
         "src/replay/replay.ts",
         "src/admin/design/catalog.ts",
         "src/admin/design/tweaks.ts",
+        "src/profile/friends/thread.ts",
       ],
       // `* 2.*` : doublons qu'iCloud dépose à côté des sources (N1) ; ignorés par git, ils
       // compteraient à 0 % et feraient tomber le seuil sans qu'aucun code n'ait changé.

@@ -4,7 +4,7 @@ import { ROUTE_PATHS, redirectMessage } from "../net/auth.js";
 /**
  * Ce que l'écran de compte décide, sans DOM ni réseau : quel parcours montrer pour une
  * URL, quel message porter au retour d'une redirection, à quel champ rattacher un refus.
- * Les composants (`AccountApp.tsx`) ne font que l'afficher.
+ * Les composants (`AccountApp.vue` et ses formulaires) ne font que l'afficher.
  */
 
 export type AccountRoute =
@@ -121,6 +121,9 @@ export function fieldOf(code: string | undefined): FieldName | undefined {
 
 export const MIN_PASSWORD_LENGTH = 10;
 export const MAX_PASSWORD_LENGTH = 128;
+
+/** Les règles que Safari et 1Password lisent (`passwordrules`) pour générer un mot de passe conforme. */
+export const PASSWORD_RULES = `minlength: ${MIN_PASSWORD_LENGTH}; maxlength: ${MAX_PASSWORD_LENGTH};`;
 
 /** L'indication sous un nouveau mot de passe, mise à jour à la frappe. */
 export function passwordHint(password: string): string {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Board, type Coord } from "@occulis/core";
 import {
+  commandCamera,
   type Camera,
   ZOOM_STEP,
   createCamera,
@@ -13,7 +14,7 @@ import {
   turn,
   zoomAt,
 } from "./camera.js";
-import { QUARTER_TURN, project, snapAngle } from "./iso.js";
+import { QUARTER_TURN, project, snapAngle } from "@occulis/board/iso";
 
 const VIEWPORT = { x: 800, y: 600 };
 
@@ -106,5 +107,55 @@ describe("settle", () => {
   it("ne fait rien une fois l'angle atteint", () => {
     const state = camera();
     expect(settle(state, 16)).toBe(state);
+  });
+});
+
+/** Où le centre du plateau tombe à l'écran. */
+function pivotOnScreen(camera: Camera): { x: number; y: number } {
+  const origin = originOf(camera);
+  const pivot = project(camera.pivot, 0, toProjection(camera));
+  return { x: origin.x + pivot.x, y: origin.y + pivot.y };
+}
+
+describe("commandCamera", () => {
+  const camera = createCamera({ x: 3, y: 3 }, { x: 800, y: 600 });
+
+  it("pose le centre du plateau au milieu du canevas, sans panneau", () => {
+    expect(pivotOnScreen(camera)).toEqual({ x: 400, y: 300 });
+  });
+
+  it("tourne d'un quart dans chaque sens, comme les flèches", () => {
+    expect(commandCamera(camera, "turn-right").targetRotation).toBeCloseTo(QUARTER_TURN);
+    expect(commandCamera(camera, "turn-left").targetRotation).toBeCloseTo(-QUARTER_TURN);
+  });
+
+  it("zoome sur le milieu de l'écran, qui ne bouge pas", () => {
+    const zoomed = commandCamera(camera, "zoom-in");
+    expect(zoomed.scale).toBeGreaterThan(camera.scale);
+    expect(pivotOnScreen(zoomed).x).toBeCloseTo(400);
+    expect(pivotOnScreen(zoomed).y).toBeCloseTo(300);
+    expect(commandCamera(camera, "zoom-out").scale).toBeLessThan(camera.scale);
+  });
+
+  it("cadre le plateau au milieu de la zone que les panneaux laissent libre", () => {
+    const framed = createCamera(
+      { x: 3, y: 3 },
+      { x: 800, y: 600 },
+      { scale: 1.25, insets: { top: 88, right: 312, bottom: 56, left: 64 } },
+    );
+    expect(framed.scale).toBe(1.25);
+    // Libre : de 64 à 488 en largeur, de 88 à 544 en hauteur ; milieu (276, 316).
+    expect(pivotOnScreen(framed)).toEqual({ x: 276, y: 316 });
+    const zoomed = commandCamera(framed, "zoom-in");
+    expect(pivotOnScreen(zoomed).x).toBeCloseTo(276);
+    expect(pivotOnScreen(zoomed).y).toBeCloseTo(316);
+    const lost = { ...zoomed, pan: { x: 300, y: 300 } };
+    expect(commandCamera(lost, "recenter")).toMatchObject({ scale: 1.25, pan: framed.pan });
+  });
+
+  it("recentre sans toucher à l'angle", () => {
+    const moved = { ...commandCamera(camera, "zoom-in"), pan: { x: 40, y: -12 }, rotation: 1 };
+    const back = commandCamera(moved, "recenter");
+    expect(back).toMatchObject({ scale: 1, pan: camera.pan, rotation: 1 });
   });
 });

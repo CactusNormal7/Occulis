@@ -13,7 +13,9 @@ import {
   parseRoute,
   quickActions,
   routeHash,
+  screenOf,
   sectionOf,
+  skeletonOf,
   shortAgent,
   winRate,
   type Route,
@@ -94,6 +96,23 @@ describe("routes du back-office", () => {
     expect(sectionOf({ view: "player", id: "p" })).toBe("users");
     expect(sectionOf({ view: "match", id: "m" })).toBe("matches");
   });
+
+  it("garde l'écran pendant une recherche, une page ou un filtre", () => {
+    expect(screenOf({ view: "users", search: "", offset: 0 })).toBe(
+      screenOf({ view: "users", search: "ali", offset: 20 }),
+    );
+    expect(screenOf({ view: "matches", status: null, offset: 0 })).toBe(
+      screenOf({ view: "matches", status: "finished", offset: 0 }),
+    );
+    expect(screenOf({ view: "user", id: "a" })).not.toBe(screenOf({ view: "user", id: "b" }));
+    expect(screenOf({ view: "user", id: "a" })).not.toBe(screenOf({ view: "player", id: "a" }));
+  });
+
+  it("donne à chaque écran la forme de son squelette", () => {
+    expect(skeletonOf({ view: "user", id: "a" })).toBe("hero");
+    expect(skeletonOf({ view: "users", search: "", offset: 0 })).toBe("list");
+    expect(skeletonOf({ view: "match", id: "m" })).toBe("detail");
+  });
 });
 
 describe("mise en mots", () => {
@@ -118,6 +137,12 @@ describe("mise en mots", () => {
         outcome: { kind: "victory", winner: "B", reason: "resignation" },
       }),
     ).toBe("victoire de bruno (abandon)");
+    expect(
+      describeResult({ ...match, outcome: { kind: "victory", winner: "B", reason: "checkmate" } }),
+    ).toBe("victoire de bruno (échec et mat)");
+    expect(describeResult({ ...match, outcome: { kind: "draw", reason: "stalemate" } })).toBe(
+      "nulle (pat)",
+    );
   });
 
   it("décrit un coup", () => {

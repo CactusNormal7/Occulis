@@ -1,0 +1,23 @@
+---
+import { contentFor, type Locale } from "../i18n";
+
+interface Props {
+  locale: Locale;
+}
+
+const { footer } = contentFor(Astro.props.locale);
+---
+
+<footer class="footer">
+  <div class="frame footer__row">
+    <p class="footer__note">{footer.note}</p>
+    <nav aria-label={footer.legal}>
+      <ul class="footer__links">
+        <li><a href="/mentions-legales/">{footer.legal}</a></li>
+        <li><a href="/confidentialite/">{footer.privacy}</a></li>
+        <li><a href={`mailto:${footer.contactEmail}`}>{footer.contact}</a></li>
+        <li><a href="#contenu">{footer.top}</a></li>
+      </ul>
+    </nav>
+  </div>
+</footer>

@@ -33,7 +33,7 @@ export type SeatDenial =
  * explicitement plutôt que le laisser diverger en silence (docs/architecture.md
  * section 1).
  */
-export const PROTOCOL_VERSION = 7;
+export const PROTOCOL_VERSION = 9;
 
 /**
  * Le battement de cœur d'une page de partie. Un mobile qui perd le réseau sans fermer sa
@@ -59,10 +59,17 @@ export interface WireView {
   readonly outcome: PlayerView["outcome"];
   /** Coups légaux du destinataire, calculés par le serveur (`PlayerView`). */
   readonly legalActions: PlayerView["legalActions"];
+  /** Le roi du destinataire est en échec (`PlayerView`). */
+  readonly check: boolean;
   readonly visible: readonly string[];
   readonly ownPieces: PlayerView["ownPieces"];
   readonly visibleEnemies: PlayerView["visibleEnemies"];
   readonly ghosts: PlayerView["ghosts"];
+  /** Les coups tels que le destinataire les a vus ; un champ absent est un fait qu'il ignore. */
+  readonly journal: PlayerView["journal"];
+  readonly rosters: PlayerView["rosters"];
+  readonly sinceCapture: number;
+  readonly noCaptureLimit: number | null;
 }
 
 export function encodeView(view: PlayerView): WireView {
@@ -117,10 +124,12 @@ export interface Locks {
  * L'ordre dans lequel le client les reçoit, et sur lequel `apps/web/src/net/session.ts`
  * s'appuie :
  *
- * - un joueur : `hello` → `welcome` → `spectators`, puis, pendant le déploiement,
- *   `deployment` et des `deployment-update`, jusqu'à la première `view` ; ensuite des
- *   `view` après chaque coup ;
- * - un spectateur : `hello` → `watching`, puis des `view` — aucune pendant le déploiement.
+ * - un joueur : `hello` → `welcome` → `players` → `spectators`, puis, pendant le
+ *   déploiement, `deployment` et des `deployment-update`, jusqu'à la première `view` ;
+ *   ensuite des `view` après chaque coup, et un `opponent-presence` quand l'adversaire
+ *   s'absente ou revient (dès le `hello` si son absence est déjà en cours) ;
+ * - un spectateur : `hello` → `watching` → `players`, puis des `view` — aucune pendant le
+ *   déploiement — et les `opponent-presence` de l'adversaire de son ami.
  *
  * Chaque `hello`, reconnexion comprise, renvoie sa vue au socket qui l'a dit : c'est ce
  * qui tient lieu de protocole de reprise. Une `view` peut toutefois arriver avant le
@@ -169,6 +178,21 @@ export type ServerMessage =
       readonly self: PlayerCard;
       readonly opponent: PlayerCard;
       readonly rated: boolean;
+    }
+  /**
+   * Les plaques des deux camps, pour l'ATH : `self` est le destinataire, ou l'ami qu'un
+   * spectateur regarde ; `opponent` est le camp d'en face. Envoyé à chaque `hello`.
+   */
+  | { readonly kind: "players"; readonly self: PlayerCard; readonly opponent: PlayerCard }
+  /**
+   * L'adversaire a quitté la partie, ou y est revenu. Absent, il perd par forfait dans
+   * `forfeitInMs` s'il ne revient pas — une durée plutôt qu'une échéance, comme
+   * `deployment.remainingMs`.
+   */
+  | {
+      readonly kind: "opponent-presence";
+      readonly present: boolean;
+      readonly forfeitInMs?: number | undefined;
     }
   /** Un verrou a changé — le sien, ou celui d'en face. */
   | { readonly kind: "deployment-update"; readonly locks: Locks }

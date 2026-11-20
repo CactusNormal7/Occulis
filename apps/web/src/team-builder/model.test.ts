@@ -20,15 +20,13 @@ if (deployment === undefined) throw new Error("ridge-1 sans déploiement");
 const zone = deployment.zones.A;
 
 describe("brouillon d'équipe", () => {
-  it("ouvre les emplacements de la composition, la maîtresse en main", () => {
+  it("ouvre les emplacements de la composition, le roi en main", () => {
     const draft = emptyDraft(ruleset);
     expect(draft.slots.map((slot) => slot.role)).toEqual([
       "commander",
       "special",
       "special",
       "special",
-      "pawn",
-      "pawn",
       "pawn",
       "pawn",
     ]);
@@ -50,7 +48,7 @@ describe("brouillon d'équipe", () => {
   it("prend une pièce posée, puis l'échange avec celle de la case visée", () => {
     let draft = clickTile(emptyDraft(ruleset), { x: 0, y: 9 }, zone);
     draft = clickTile(draft, { x: 1, y: 9 }, zone);
-    // Main vide sur la maîtresse : on la reprend…
+    // Main vide sur le roi : on le reprend…
     draft = clickTile({ ...draft, selected: undefined }, { x: 0, y: 9 }, zone);
     expect(draft.selected).toBe(0);
     // … et posée sur l'éclaireur, les deux échangent leurs cases.
@@ -92,7 +90,7 @@ describe("brouillon d'équipe", () => {
     expect(full.slots[0]?.coord).toEqual({ x: 3, y: 9 });
     expect(verdict(ruleset, zone, full).ok).toBe(true);
     const lifted = remove(full, 2);
-    expect(placedCount(lifted)).toBe(7);
+    expect(placedCount(lifted)).toBe(5);
     expect(lifted.selected).toBe(2);
     expect(placedCount(clear(full))).toBe(0);
   });

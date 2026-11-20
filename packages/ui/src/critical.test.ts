@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { PIXEL_FONT_URL, THEME_STORAGE_KEY, criticalHead, withCriticalHead } from "./critical.js";
-import { BACKGROUND, THEMES, THEME_NAMES, cssColor } from "./tokens.js";
+import {
+  PIXEL_FONT_URL,
+  THEME_STORAGE_KEY,
+  criticalHead,
+  favicon,
+  withCriticalHead,
+} from "./critical.js";
+import { BACKGROUND, INK, THEMES, THEME_NAMES, cssColor, hexColor } from "./tokens.js";
 
 describe("criticalHead", () => {
   const head = criticalHead();
@@ -23,6 +29,13 @@ describe("criticalHead", () => {
       expect(head).toContain(`html[data-theme="${theme}"]`);
       expect(head).toContain(cssColor(THEMES[theme].background));
     }
+  });
+
+  it("porte une icône d'onglet aux couleurs de la charte", () => {
+    expect(head).toContain(`<link rel="icon" type="image/svg+xml" href="${favicon()}" />`);
+    const svg = decodeURIComponent(favicon().replace("data:image/svg+xml,", ""));
+    expect(svg).toContain(`fill="${hexColor(BACKGROUND)}"`);
+    expect(svg).toContain(`fill="${hexColor(INK)}"`);
   });
 
   it("enchaîne les pages par un fondu, sauf mouvement réduit", () => {

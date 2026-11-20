@@ -6,7 +6,7 @@ import { HEARTBEAT, PROTOCOL_VERSION } from "@occulis/protocol";
 import type { StartedMatch } from "./match-setup.js";
 import { startTestMatch } from "./test-helpers.js";
 import { ABSENCE_MS, DEPLOYMENT_MS, type MatchConfig } from "./match-do.js";
-import type { ScenarioSnapshot } from "@occulis/core";
+import type { Coord, ScenarioSnapshot } from "@occulis/core";
 
 /**
  * Tests d'intégration dans **workerd**, le runtime réel.
@@ -149,9 +149,9 @@ describe("MatchDO dans workerd", () => {
 
     expect((await a.awaitKind("welcome")).player).toBe("A");
     const deployment = await a.awaitKind("deployment");
-    expect(deployment.zone).toHaveLength(16);
-    expect(deployment.opponentZone).toHaveLength(16);
-    expect(deployment.defaultTeam).toHaveLength(8);
+    expect(deployment.zone).toHaveLength(18);
+    expect(deployment.opponentZone).toHaveLength(18);
+    expect(deployment.defaultTeam).toHaveLength(6);
     expect(deployment.locks).toEqual({ self: false, opponent: false });
     expect(deployment.remainingMs).toBeGreaterThan(0);
     expect(deployment.remainingMs).toBeLessThanOrEqual(DEPLOYMENT_MS);
@@ -213,8 +213,6 @@ describe("MatchDO dans workerd", () => {
       "a-3",
       "a-4",
       "a-5",
-      "a-6",
-      "a-7",
     ]);
     // Les zones de la carte n'ont pas de vue mutuelle : rien de B ne doit passer.
     expect(view.visibleEnemies).toEqual([]);
@@ -224,7 +222,7 @@ describe("MatchDO dans workerd", () => {
     const row = await env.DB.prepare("SELECT setup FROM matches WHERE id = ?")
       .bind(match.matchId)
       .first<{ setup: string | null }>();
-    expect(JSON.parse(row?.setup ?? "[]")).toHaveLength(16);
+    expect(JSON.parse(row?.setup ?? "[]")).toHaveLength(12);
 
     a.socket.close();
     b.socket.close();
@@ -252,7 +250,7 @@ describe("MatchDO dans workerd", () => {
       .bind(match.matchId)
       .first<{ setup: string }>();
     const setup = JSON.parse(row?.setup ?? "[]") as { owner: string }[];
-    expect(setup.filter((piece) => piece.owner === "B")).toHaveLength(8);
+    expect(setup.filter((piece) => piece.owner === "B")).toHaveLength(6);
 
     a.socket.close();
   });
@@ -264,7 +262,7 @@ describe("MatchDO dans workerd", () => {
 
     // `core` vérifie que la pièce est au trait, pas que l'expéditeur en est le
     // propriétaire : sans le contrôle du serveur, B jouerait les pièces de A.
-    b.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    b.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 3, y: 6 } } });
     expect((await b.awaitKind("rejected")).error).toEqual({
       code: "not-your-turn",
       activePlayer: "A",
@@ -289,14 +287,14 @@ describe("MatchDO dans workerd", () => {
     );
     a.socket.send("pas du JSON");
     a.drain();
-    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 3, y: 6 } } });
     expect((await a.awaitKind("view")).view.turn).toBe(1);
 
     const logged = await env.DB.prepare("SELECT seq, action FROM match_actions WHERE match_id = ?")
       .bind(match.matchId)
       .all<{ seq: number; action: string }>();
     expect(logged.results).toEqual([
-      { seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":1,"y":5}}' },
+      { seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":3,"y":6}}' },
     ]);
 
     a.socket.close();
@@ -311,7 +309,7 @@ describe("MatchDO dans workerd", () => {
     a.drain();
     b.drain();
 
-    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 3, y: 6 } } });
     const forA = (await a.awaitKind("view")).view;
     const forB = (await b.awaitKind("view")).view;
 
@@ -323,7 +321,7 @@ describe("MatchDO dans workerd", () => {
       .bind(match.matchId)
       .all<{ seq: number; action: string }>();
     expect(logged.results).toEqual([
-      { seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":1,"y":5}}' },
+      { seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":3,"y":6}}' },
     ]);
 
     a.socket.close();
@@ -345,7 +343,7 @@ describe("MatchDO dans workerd", () => {
       to: { x: 9, y: 9 },
     });
 
-    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 3, y: 6 } } });
     const after = (await a.awaitKind("view")).view;
     expect(after.turn).toBe(1);
     // Le trait est passé : plus aucun coup légal pour A tant que B n'a pas joué.
@@ -455,6 +453,61 @@ describe("MatchDO dans workerd", () => {
     back.socket.close();
   });
 
+  it("envoie les plaques des deux camps à chaque connexion, pour l'ATH", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    const players = await a.awaitKind("players");
+    expect(players.self.handle).toContain("anne-");
+    expect(players.opponent.handle).toContain("boris-");
+    await a.awaitKind("view");
+
+    // À la reconnexion aussi : l'ATH d'un onglet rechargé retrouve ses plaques.
+    a.socket.close();
+    const back = await seat(match.matchId, match.seats.A);
+    expect((await back.awaitKind("players")).opponent.handle).toContain("boris-");
+
+    back.socket.close();
+    b.socket.close();
+  });
+
+  it("prévient l'adversaire d'une absence, avec le temps avant forfait, puis du retour", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    await a.awaitKind("view");
+    await b.awaitKind("view");
+    a.drain();
+
+    b.socket.close();
+    const gone = await a.awaitKind("opponent-presence");
+    expect(gone.present).toBe(false);
+    expect(gone.forfeitInMs).toBeGreaterThan(0);
+    expect(gone.forfeitInMs).toBeLessThanOrEqual(ABSENCE_MS);
+
+    const back = await seat(match.matchId, match.seats.B);
+    expect((await a.awaitKind("opponent-presence")).present).toBe(true);
+
+    a.socket.close();
+    back.socket.close();
+  });
+
+  it("redit une absence en cours à qui se reconnecte", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    await a.awaitKind("view");
+    await b.awaitKind("view");
+
+    b.socket.close();
+    const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
+    await absentSince(stub, "B");
+    a.socket.close();
+    await absentSince(stub, "A");
+
+    const again = await seat(match.matchId, match.seats.A);
+    const presence = await again.awaitKind("opponent-presence");
+    expect(presence.present).toBe(false);
+    again.socket.close();
+  });
+
   it("fait varier l'Elo des deux joueurs à la fin d'une partie classée", async () => {
     const [anne, boris] = [`anne-${crypto.randomUUID()}`, `boris-${crypto.randomUUID()}`];
     const match = await startTestMatch(anne, boris, { rated: true });
@@ -479,6 +532,67 @@ describe("MatchDO dans workerd", () => {
       .bind(match.matchId)
       .first();
     expect(row).toEqual({ rated: 1, rating_change_a: -16, rating_change_b: 16 });
+
+    a.socket.close();
+    b.socket.close();
+  });
+
+  it("clôt une partie classée sur une nulle par répétition, sans vainqueur ni variation d'Elo", async () => {
+    const [anne, boris] = [`anne-${crypto.randomUUID()}`, `boris-${crypto.randomUUID()}`];
+    const match = await startTestMatch(anne, boris, { rated: true });
+    const { a, b } = await deployed(match);
+    const heights = new Map(
+      (await a.awaitKind("welcome")).board.map((tile) => [
+        `${tile.coord.x},${tile.coord.y}`,
+        tile.height,
+      ]),
+    );
+    const seats = { A: a, B: b };
+    let view = (await a.awaitKind("view")).view;
+    await b.awaitKind("view");
+
+    // Chaque camp fait l'aller-retour d'une pièce entre deux cases de même hauteur : la
+    // position de départ revient deux fois, soit trois occurrences.
+    const trips: Partial<Record<"A" | "B", { pieceId: string; from: Coord; to: Coord }>> = {};
+    for (let ply = 0; ply < 8; ply++) {
+      const side = view.activePlayer;
+      let trip = trips[side];
+      if (trip === undefined) {
+        const own = side === view.player ? view.ownPieces : [];
+        for (const action of view.legalActions) {
+          if (action.kind !== "move") continue;
+          const from = own.find((piece) => piece.id === action.pieceId)?.coord;
+          if (from === undefined) continue;
+          const flat =
+            heights.get(`${from.x},${from.y}`) === heights.get(`${action.to.x},${action.to.y}`);
+          if (flat) {
+            trip = { pieceId: action.pieceId, from, to: action.to };
+            break;
+          }
+        }
+        if (trip === undefined) throw new Error("aucun aller-retour à plat");
+        trips[side] = trip;
+      }
+      const to = ply % 4 < 2 ? trip.to : trip.from;
+      seats[side].send({ kind: "action", action: { kind: "move", pieceId: trip.pieceId, to } });
+      const forA = (await a.awaitKind("view")).view;
+      const forB = (await b.awaitKind("view")).view;
+      view = forA.activePlayer === "A" ? forA : forB;
+      if (ply < 7) expect(view.outcome).toBeNull();
+    }
+
+    expect(view.outcome).toEqual({ kind: "draw", reason: "repetition" });
+    const row = await env.DB.prepare(
+      "SELECT outcome, rating_change_a, rating_change_b, finished_at IS NOT NULL AS closed FROM matches WHERE id = ?",
+    )
+      .bind(match.matchId)
+      .first();
+    expect(row).toEqual({
+      outcome: '{"kind":"draw","reason":"repetition"}',
+      rating_change_a: 0,
+      rating_change_b: 0,
+      closed: 1,
+    });
 
     a.socket.close();
     b.socket.close();
@@ -526,7 +640,7 @@ describe("MatchDO dans workerd", () => {
     await b.awaitKind("view");
     a.drain();
     b.drain();
-    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 3, y: 6 } } });
     const before = { A: (await a.awaitKind("view")).view, B: (await b.awaitKind("view")).view };
 
     // Ce que l'hibernation fait au DO : la mémoire tombe, le stockage et D1 restent.
@@ -553,7 +667,7 @@ describe("MatchDO dans workerd", () => {
     const { defaultTeam } = await b.awaitKind("deployment");
     await b.awaitKind("deployment-update");
     const mine = defaultTeam.map((entry, index) =>
-      index === 0 ? { ...entry, coord: { x: 13, y: 1 } } : entry,
+      index === 0 ? { ...entry, coord: { x: 0, y: 0 } } : entry,
     );
 
     // L'équipe de B et l'alarme de l'échéance se croisent : l'une des deux ouvre la
@@ -612,7 +726,7 @@ describe("MatchDO dans workerd", () => {
     });
 
     // Le coup est au log : relue de D1, la position le montre joué, et le trait passe.
-    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 3, y: 6 } } });
     expect((await a.awaitKind("view")).view.activePlayer).toBe("B");
     const forB = (await b.awaitKind("view")).view;
     expect(forB.activePlayer).toBe("B");

@@ -1,6 +1,7 @@
 import { env, exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import type {
+  MeMatchDebrief,
   MeCurrentMatch,
   MeMatchDetail,
   MeMatchPage,
@@ -318,6 +319,67 @@ describe("profil : parties", () => {
     expect(theirs.seat).toBe("A");
     expect(theirs.result).toBe("lost");
     expect((await profile(cookie)).record).toEqual({ played: 1, won: 1, lost: 0, ongoing: 0 });
+  });
+});
+
+describe("profil : écran de fin de partie", () => {
+  it("n'ouvre l'écran qu'aux deux joueurs, et le ferme pour de bon quand tous deux l'ont quitté", async () => {
+    const meHandle = unique("gaspard");
+    const cookie = await signUp(meHandle);
+    const opponentHandle = unique("hortense");
+    const opponentCookie = await signUp(opponentHandle);
+    const stranger = await signUp(unique("ivan"));
+    const me = (await idsOf(meHandle)).player_id;
+    const opponent = (await idsOf(opponentHandle)).player_id;
+    const { matchId } = await startTestMatch(opponent, me);
+    const debrief = `/api/me/matches/${matchId}/debrief`;
+    const leave = `${debrief}/leave`;
+
+    // En cours : ni écran, ni départ à noter.
+    expect((await get(debrief, cookie)).status).toBe(409);
+    expect((await post(leave, {}, cookie)).status).toBe(404);
+
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO match_actions (match_id, seq, action) VALUES (?, 0, ?)").bind(
+        matchId,
+        JSON.stringify({ kind: "resign" }),
+      ),
+      env.DB.prepare(
+        `UPDATE matches SET finished_at = ?, outcome = ?, rating_change_a = -16,
+         rating_change_b = 16 WHERE id = ?`,
+      ).bind(
+        Date.now(),
+        JSON.stringify({ kind: "victory", winner: "B", reason: "resignation" }),
+        matchId,
+      ),
+    ]);
+
+    expect((await get(debrief, stranger)).status).toBe(404);
+    expect((await post(leave, {}, stranger)).status).toBe(404);
+    const mine = (await (await get(debrief, cookie)).json()) as MeMatchDebrief;
+    expect(mine).toMatchObject({
+      result: "won",
+      ratingChange: 16,
+      opponentRatingChange: -16,
+      elo: (await profile(cookie)).elo,
+      opponentElo: (await profile(opponentCookie)).elo,
+    });
+    expect(mine.frames).toHaveLength(2);
+
+    // Un seul départ laisse l'écran aux deux joueurs, celui qui est parti compris.
+    expect((await post(leave, {}, cookie)).status).toBe(200);
+    expect((await post(leave, {}, cookie)).status).toBe(200);
+    expect((await get(debrief, cookie)).status).toBe(200);
+    expect((await get(debrief, opponentCookie)).status).toBe(200);
+
+    expect((await post(leave, {}, opponentCookie)).status).toBe(200);
+    for (const viewer of [cookie, opponentCookie]) {
+      const closed = await get(debrief, viewer);
+      expect(closed.status).toBe(410);
+      expect(await closed.json()).toEqual({ code: "DEBRIEF_CLOSED" });
+    }
+    // Le replay de l'historique, lui, reste.
+    expect((await get(`/api/me/matches/${matchId}`, cookie)).status).toBe(200);
   });
 });
 

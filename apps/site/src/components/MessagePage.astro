@@ -1,0 +1,30 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { DEFAULT_LOCALE, contentFor, type Locale } from "../i18n";
+
+interface Props {
+  locale?: Locale;
+  title: string;
+  text: string;
+  /** Le lien de retour : l'accueil, ou directement le formulaire. */
+  back?: "home" | "form";
+}
+
+const { locale = DEFAULT_LOCALE, title, text, back = "home" } = Astro.props;
+const { pages } = contentFor(locale);
+---
+
+<Layout locale={locale} title={`${title} — Occulis`} description={text} noindex>
+  <section class="section message" aria-labelledby="message-title">
+    <div class="frame">
+      <h1 id="message-title" class="section__title">{title}</h1>
+      <p class="section__intro">{text}</p>
+      <slot />
+      <p>
+        <a class="button button--quiet" href={back === "form" ? "/#beta" : "/"}>
+          {back === "form" ? pages.backToForm : pages.back}
+        </a>
+      </p>
+    </div>
+  </section>
+</Layout>

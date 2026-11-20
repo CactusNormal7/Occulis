@@ -4,6 +4,7 @@ import {
   type Coord,
   type CoordKey,
   type PieceId,
+  type PieceKind,
   type PlayerView,
   type Tile,
   coordKey,
@@ -17,7 +18,7 @@ import {
   depthOf,
   project,
   standingDepth,
-} from "../../view/iso.js";
+} from "@occulis/board/iso";
 import { type MoveAnimation, lagging, liftOf, positionOf } from "../../view/animation.js";
 import type { Selection } from "../../game/selection.js";
 import {
@@ -30,14 +31,14 @@ import {
 } from "../../view/reveal.js";
 import { type Landing, introLength, introOf, materializeAt } from "../../view/effects.js";
 import { easeOutCubic, phase } from "../../view/easing.js";
-import { breath, snap } from "../../view/pixel.js";
+import { breath, snap } from "@occulis/board/pixel";
 import { sameCoord } from "../../view/picking.js";
 import { drawSigil } from "./ground.js";
-import { drawHover, drawLanding, drawSelection } from "./overlay.js";
+import { type TileMarks, drawLanding, drawTileMarks } from "./overlay.js";
 import { drawPiece } from "./pieces.js";
 import { drawMotes, drawSky } from "./sky.js";
 import { drawTile } from "./terrain.js";
-import { MOTION_FX, look } from "../../theme/theme.js";
+import { MOTION_FX, look } from "@occulis/board/theme";
 
 /**
  * Cinq couches, du fond vers l'avant, **toutes redessinées à chaque image** : presque
@@ -49,7 +50,8 @@ import { MOTION_FX, look } from "../../theme/theme.js";
  * - `ground` : le sceau gravé sous le plateau, pour les thèmes qui l'allument ;
  * - `world` : terrain et pièces, qui doivent partager un **unique ordre du peintre** pour
  *   qu'une pièce derrière un relief soit réellement masquée ;
- * - `overlay` : survol, sélection, retombées, par-dessus le monde ;
+ * - `overlay` : les retombées, par-dessus le monde. Survol, sélection et destinations
+ *   sont des marques de case : elles se peignent dans `world`, juste après leur case ;
  * - `ambient` : les particules en suspension, au-dessus de tout, en coordonnées d'écran.
  *
  * Le pan n'est qu'une translation du conteneur `board`, arrondie à la grille des pixels du
@@ -82,6 +84,7 @@ export interface SceneFrame {
 
 interface Occupant {
   readonly id: PieceId;
+  readonly kind: PieceKind;
   readonly coord: Coord;
   readonly color: number;
   readonly ghost: boolean;
@@ -144,6 +147,7 @@ function occupantsOf(view: PlayerView): Map<CoordKey, Occupant> {
   for (const ghost of view.ghosts) {
     occupants.set(coordKey(ghost.coord), {
       id: ghost.id,
+      kind: ghost.kind,
       coord: ghost.coord,
       color: players[ghost.owner],
       ghost: true,
@@ -153,6 +157,7 @@ function occupantsOf(view: PlayerView): Map<CoordKey, Occupant> {
   for (const piece of view.visibleEnemies) {
     occupants.set(coordKey(piece.coord), {
       id: piece.id,
+      kind: piece.kind,
       coord: piece.coord,
       color: players[piece.owner],
       ghost: false,
@@ -162,6 +167,7 @@ function occupantsOf(view: PlayerView): Map<CoordKey, Occupant> {
   for (const piece of view.ownPieces) {
     occupants.set(coordKey(piece.coord), {
       id: piece.id,
+      kind: piece.kind,
       coord: piece.coord,
       color: players[piece.owner],
       ghost: false,
@@ -210,7 +216,7 @@ export class Scene {
   /** L'instant où le trait est revenu au joueur. */
   private turnAt = -Infinity;
 
-  /** `resolution` : celle du rendu (`view/pixel.ts`), un pixel du tampon par pixel du plateau. */
+  /** `resolution` : celle du rendu (`@occulis/board/pixel`), un pixel du tampon par pixel du plateau. */
   constructor(resolution: number) {
     this.resolution = resolution;
     this.px = 1 / resolution;
@@ -259,7 +265,7 @@ export class Scene {
       drawSigil(this.ground, input.board, input.projection, this.px, now, drawn);
     }
     this.drawWorld(input, frame.still);
-    this.drawOverlay(input, frame.still);
+    this.drawOverlay(input);
     drawMotes(this.ambient, frame.width, frame.height, now, this.px);
   }
 
@@ -349,7 +355,7 @@ export class Scene {
   }
 
   private drawWorld(
-    { board, view, projection, animation, selection }: SceneInput,
+    { board, view, projection, animation, selection, hovered }: SceneInput,
     still: boolean,
   ): void {
     const g = this.world;
@@ -457,6 +463,14 @@ export class Scene {
     drawables.sort((a, b) => compareDepth(a.depth, b.depth));
 
     const fog = this.dither(look().geometry.fogDither);
+    const settled = still ? Infinity : 0;
+    const marks: TileMarks = {
+      selection,
+      sinceSelected: Math.max(settled, now - this.selectedAt),
+      glow: breath(now, MOTION_FX.breathMs),
+      hovered,
+      sinceHovered: Math.max(settled, now - this.hoveredAt),
+    };
     for (const drawable of drawables) {
       if (isTile(drawable)) {
         const key = coordKey(drawable.tile.coord);
@@ -476,12 +490,14 @@ export class Scene {
           },
           projection,
         );
+        drawTileMarks(g, board, drawable.tile.coord, marks, projection, this.px);
         continue;
       }
       drawPiece(
         g,
         drawable.base,
         {
+          kind: drawable.occupant.kind,
           color: drawable.occupant.color,
           ghost: drawable.occupant.ghost,
           px: this.px,
@@ -497,24 +513,10 @@ export class Scene {
     }
   }
 
-  private drawOverlay({ board, projection, hovered, selection }: SceneInput, still: boolean): void {
+  private drawOverlay({ board, projection }: SceneInput): void {
     const g = this.overlay;
     g.clear();
     const now = this.time;
-    const glow = breath(now, MOTION_FX.breathMs);
-    const settled = still ? Infinity : 0;
-    if (selection !== undefined)
-      drawSelection(
-        g,
-        board,
-        selection,
-        projection,
-        this.px,
-        glow,
-        Math.max(settled, now - this.selectedAt),
-      );
-    if (hovered !== undefined)
-      drawHover(g, board, hovered, projection, this.px, Math.max(settled, now - this.hoveredAt));
     for (const landing of this.landings) drawLanding(g, board, landing, projection, this.px, now);
   }
 }

@@ -1,0 +1,9 @@
+{
+  "subject": "Confirm your sign-up for the Occulis beta",
+  "greeting": "Hello,",
+  "body": "You asked to hear when the Occulis beta opens. To confirm your address, open this link:",
+  "button": "Confirm my sign-up",
+  "expiry": "The link is valid for seven days. Without confirmation, your address is deleted.",
+  "ignore": "Didn't request this? Ignore this message: nothing will be kept.",
+  "unsubscribe": "Unsubscribe"
+}

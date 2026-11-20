@@ -1,4 +1,4 @@
-import { BACKGROUND, THEMES, THEME_NAMES, cssColor, hexColor } from "./tokens.js";
+import { BACKGROUND, INK, THEMES, THEME_NAMES, cssColor, hexColor } from "./tokens.js";
 
 /**
  * Le bloc que chaque page HTML porte en tête de `<head>`, avant toute feuille et tout
@@ -22,6 +22,9 @@ import { BACKGROUND, THEMES, THEME_NAMES, cssColor, hexColor } from "./tokens.js
  *   doit pas annoncer le joueur sur une page qu'il n'a pas ouverte. Le jeu, lui, reste
  *   préchargé seulement — sa page ouvre bien plus qu'un canal.
  *
+ * - L'icône d'onglet (`favicon()`) : un SVG en ligne, dessiné ici pour que ses couleurs
+ *   viennent de `tokens.ts` comme le reste, et qu'aucune page ne l'oublie.
+ *
  * Injecté au build par `apps/web/vite.config.ts` : le HTML ne contient aucune couleur
  * écrite à la main, et ce fichier n'en contient aucune qui ne vienne de `tokens.ts`.
  */
@@ -30,6 +33,44 @@ export const THEME_STORAGE_KEY = "occulis.theme";
 
 /** L'adresse fixe de la police pixel, servie depuis `apps/web/public/fonts/`. */
 export const PIXEL_FONT_URL = "/fonts/tiny5-latin.woff2";
+
+/**
+ * L'œil d'Occulis, en pixels sur une grille de 16 : chaque `#` est un pixel d'os sur le
+ * vide. Lu ligne à ligne et fusionné en segments horizontaux pour garder le SVG court.
+ */
+const FAVICON_PIXELS = [
+  "................",
+  "................",
+  "................",
+  "................",
+  ".....######.....",
+  "...##......##...",
+  "..#....##....#..",
+  ".#....####....#.",
+  ".#....####....#.",
+  "..#....##....#..",
+  "...##......##...",
+  ".....######.....",
+  "................",
+  "................",
+  "................",
+  "................",
+];
+
+/** L'icône d'onglet, en `data:` SVG : aucune requête de plus, aucun fichier à servir. */
+export function favicon(): string {
+  const runs: string[] = [];
+  FAVICON_PIXELS.forEach((row, y) => {
+    for (const match of row.matchAll(/#+/g)) {
+      runs.push(`M${match.index} ${y}h${match[0].length}v1h-${match[0].length}z`);
+    }
+  });
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">` +
+    `<rect width="16" height="16" rx="3" fill="${hexColor(BACKGROUND)}"/>` +
+    `<path fill="${hexColor(INK)}" d="${runs.join("")}"/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
 
 export function criticalHead(): string {
   const background = cssColor(BACKGROUND);
@@ -60,6 +101,7 @@ export function criticalHead(): string {
   return [
     '<meta name="color-scheme" content="dark" />',
     `<meta name="theme-color" content="${hexColor(BACKGROUND)}" />`,
+    `<link rel="icon" type="image/svg+xml" href="${favicon()}" />`,
     `<link rel="preload" href="${PIXEL_FONT_URL}" as="font" type="font/woff2" crossorigin />`,
     `<script>try{var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});if(${JSON.stringify(THEME_NAMES)}.indexOf(t)>=0)document.documentElement.dataset.theme=t}catch(e){}</script>`,
     `<style>${style}</style>`,

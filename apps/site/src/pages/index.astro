@@ -1,0 +1,24 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Hero from "../components/Hero.astro";
+import Concept from "../components/Concept.astro";
+import Principles from "../components/Principles.astro";
+import BoardScrub from "../components/BoardScrub.astro";
+import Match from "../components/Match.astro";
+import BetaForm from "../components/BetaForm.astro";
+import Faq from "../components/Faq.astro";
+import { DEFAULT_LOCALE, contentFor } from "../i18n";
+
+const locale = DEFAULT_LOCALE;
+const { site } = contentFor(locale);
+---
+
+<Layout locale={locale} title={site.title} description={site.description}>
+  <Hero locale={locale} />
+  <Concept locale={locale} />
+  <Principles locale={locale} />
+  <BoardScrub locale={locale} />
+  <Match locale={locale} />
+  <BetaForm locale={locale} />
+  <Faq locale={locale} />
+</Layout>

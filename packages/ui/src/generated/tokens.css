@@ -27,6 +27,8 @@
   --occ-threat: rgb(255 77 94);
   --occ-accepted: rgb(125 156 255);
   --occ-refused: rgb(255 77 94);
+  --occ-caution: rgb(245 197 24);
+  --occ-caution-ground: rgb(10 10 10);
   --occ-swatch-obsidian-bg: rgb(26 26 28);
   --occ-swatch-obsidian-ink: rgb(233 230 223);
   --occ-swatch-obsidian-a: rgb(155 231 255);
@@ -91,6 +93,8 @@
   --occ-threat: rgb(255 77 94);
   --occ-accepted: rgb(125 156 255);
   --occ-refused: rgb(255 77 94);
+  --occ-caution: rgb(245 197 24);
+  --occ-caution-ground: rgb(10 10 10);
   --occ-swatch-obsidian-bg: rgb(26 26 28);
   --occ-swatch-obsidian-ink: rgb(233 230 223);
   --occ-swatch-obsidian-a: rgb(155 231 255);
@@ -155,6 +159,8 @@
   --occ-threat: rgb(255 122 69);
   --occ-accepted: rgb(94 200 255);
   --occ-refused: rgb(255 122 69);
+  --occ-caution: rgb(245 197 24);
+  --occ-caution-ground: rgb(10 10 10);
   --occ-swatch-obsidian-bg: rgb(26 26 28);
   --occ-swatch-obsidian-ink: rgb(233 230 223);
   --occ-swatch-obsidian-a: rgb(155 231 255);
@@ -219,6 +225,8 @@
   --occ-threat: rgb(255 79 216);
   --occ-accepted: rgb(139 123 255);
   --occ-refused: rgb(255 79 216);
+  --occ-caution: rgb(245 197 24);
+  --occ-caution-ground: rgb(10 10 10);
   --occ-swatch-obsidian-bg: rgb(26 26 28);
   --occ-swatch-obsidian-ink: rgb(233 230 223);
   --occ-swatch-obsidian-a: rgb(155 231 255);

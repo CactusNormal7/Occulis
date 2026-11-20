@@ -6,8 +6,16 @@ import {
   legalActions,
 } from "./actions.js";
 import type { Board } from "./board.js";
+import { isKingThreatened } from "./endgame.js";
+import { type JournalEntry, journalEntryFor } from "./journal.js";
 import { type Coord, type CoordKey, coordKey } from "./coord.js";
-import type { Piece, PieceId, PieceKind, PlayerId } from "./pieces/index.js";
+import {
+  type Piece,
+  type PieceId,
+  type PieceKind,
+  type PlayerId,
+  opponentOf,
+} from "./pieces/index.js";
 import { type Result, err, ok } from "./result.js";
 import { type GameState, occupancy, piecesOf } from "./state.js";
 
@@ -24,10 +32,16 @@ export interface PlayerKnowledge {
   readonly player: PlayerId;
   readonly visible: ReadonlySet<CoordKey>;
   readonly remembered: ReadonlyMap<PieceId, RememberedPiece>;
+  /**
+   * Les coups de la partie tels que ce joueur les a vus (`journal.ts`), dans l'ordre.
+   * Tenu ici parce qu'il dépend de ce que le joueur voyait **à chaque coup** : comme la
+   * mémoire fantôme, il ne se recalcule pas depuis la seule position courante.
+   */
+  readonly journal: readonly JournalEntry[];
 }
 
 export function emptyKnowledge(player: PlayerId): PlayerKnowledge {
-  return { player, visible: new Set(), remembered: new Map() };
+  return { player, visible: new Set(), remembered: new Map(), journal: [] };
 }
 
 /**
@@ -82,7 +96,7 @@ export function observe(previous: PlayerKnowledge, state: GameState): PlayerKnow
     });
   }
 
-  return { player, visible, remembered };
+  return { player, visible, remembered, journal: previous.journal };
 }
 
 /**
@@ -106,11 +120,43 @@ export interface PlayerView {
    * et en cache qu'il accepterait.
    */
   readonly legalActions: readonly Action[];
+  /**
+   * Le roi de ce joueur est en échec. Jamais celui de l'adversaire, qui trahirait sa
+   * position ; et calculé sur la position réelle, donc vrai aussi pour une menace que
+   * le joueur ne voit pas (docs/design/rules.md 7.1). Toujours faux sous un ruleset
+   * sans règle d'échec.
+   */
+  readonly check: boolean;
   readonly visible: ReadonlySet<CoordKey>;
   readonly ownPieces: readonly Piece[];
   readonly visibleEnemies: readonly Piece[];
   /** Fantômes : pièces mémorisées mais actuellement hors LOS. */
   readonly ghosts: readonly RememberedPiece[];
+  /** Les coups de la partie tels que ce joueur les a vus. */
+  readonly journal: readonly JournalEntry[];
+  /**
+   * La composition de départ des deux camps et ce qui en a été pris. Seulement des
+   * types, jamais une position : la composition adverse est révélée dès le début de la
+   * partie (décision du 2026-11-20, docs/design/open-points.md 16), et ses pertes sont
+   * des prises du joueur.
+   */
+  readonly rosters: Rosters;
+  /** Coups joués depuis la dernière prise (`DrawClock.sinceCapture`). */
+  readonly sinceCapture: number;
+  /** Le seuil de la nulle sans prise, ou `null` sous un ruleset qui ne la déclare pas. */
+  readonly noCaptureLimit: number | null;
+}
+
+/** Une pièce de la composition d'un camp. */
+export interface RosterEntry {
+  readonly kind: PieceKind;
+  /** La pièce a été prise. */
+  readonly taken: boolean;
+}
+
+export interface Rosters {
+  readonly own: readonly RosterEntry[];
+  readonly opponent: readonly RosterEntry[];
 }
 
 export function viewFor(state: GameState, knowledge: PlayerKnowledge): PlayerView {
@@ -140,11 +186,39 @@ export function viewFor(state: GameState, knowledge: PlayerKnowledge): PlayerVie
     // Seulement pour le camp au trait : `legalActions` ne génère que pour lui, et la
     // liste de l'adversaire trahirait la position de ses pièces.
     legalActions: state.activePlayer === player ? legalActions(state) : [],
+    // Hors de son tour, un roi n'est jamais menacé : le coup qui l'aurait exposé était
+    // illégal. Ne le calculer qu'au trait évite aussi de le faire deux fois par coup.
+    check:
+      state.ruleset.rules.check &&
+      state.outcome === null &&
+      state.activePlayer === player &&
+      isKingThreatened(state, player),
     visible: knowledge.visible,
     ownPieces,
     visibleEnemies,
     ghosts,
+    journal: knowledge.journal,
+    rosters: { own: rosterOf(state, player), opponent: rosterOf(state, opponentOf(player)) },
+    sinceCapture: state.draw.sinceCapture,
+    noCaptureLimit: state.ruleset.rules.draws?.withoutCapture ?? null,
   };
+}
+
+/**
+ * La composition de départ d'un camp : ses pièces encore en jeu et celles que l'historique
+ * dit prises, rangées par identifiant pour garder le même ordre d'un coup à l'autre.
+ */
+function rosterOf(state: GameState, owner: PlayerId): RosterEntry[] {
+  const standing = [...state.pieces.values()]
+    .filter((piece) => piece.owner === owner)
+    .map((piece) => ({ id: piece.id, kind: piece.kind, taken: false }));
+  const taken = state.history
+    .map((record) => record.captured)
+    .filter((piece): piece is Piece => piece !== undefined && piece.owner === owner)
+    .map((piece) => ({ id: piece.id, kind: piece.kind, taken: true }));
+  return [...standing, ...taken]
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .map(({ kind, taken: isTaken }) => ({ kind, taken: isTaken }));
 }
 
 /**
@@ -182,10 +256,27 @@ export function advanceMemory(
   return ok({
     state,
     knowledge: {
-      A: observe(memory.knowledge.A, state),
-      B: observe(memory.knowledge.B, state),
+      A: advanceKnowledge(memory.knowledge.A, memory.state, state),
+      B: advanceKnowledge(memory.knowledge.B, memory.state, state),
     },
   });
+}
+
+/** La connaissance d'un joueur après un coup : ce qu'il voit, et la ligne de journal. */
+function advanceKnowledge(
+  previous: PlayerKnowledge,
+  before: GameState,
+  after: GameState,
+): PlayerKnowledge {
+  const next = observe(previous, after);
+  const entry = journalEntryFor({
+    observer: previous.player,
+    before,
+    after,
+    seenBefore: previous.visible,
+    seenAfter: next.visible,
+  });
+  return entry === undefined ? next : { ...next, journal: [...previous.journal, entry] };
 }
 
 /** Rejoue un log en faisant avancer la mémoire des deux joueurs à chaque position. */

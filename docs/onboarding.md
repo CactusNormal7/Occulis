@@ -105,9 +105,8 @@ instructions à appliquer sans vérification.
 | Accès         | Quand le demander                                                       |
 | ------------- | ----------------------------------------------------------------------- |
 | GitHub        | Toujours : dépôt, issues et pull requests.                              |
-| Notion        | Toujours : tâches, décisions et suivi.                                  |
+| Nota          | Toujours : tâches, décisions et suivi (base « Tâches », Tengram Ydays). |
 | Claude Design | Seulement pour une contribution à la charte ou aux aperçus.             |
-| Nota          | Selon l'usage convenu par l'équipe pour ce projet.                      |
 | Cloudflare    | Seulement pour une tâche d'infrastructure ou un preview distant validé. |
 
 Le développement local suffit à une première contribution. Un preview Cloudflare complet est

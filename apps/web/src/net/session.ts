@@ -1,5 +1,6 @@
 import type { PlayerId, PlayerView, Tile } from "@occulis/core";
 import {
+  type PlayerCard,
   type QueueServerMessage,
   type Rejection,
   type RoomFault,
@@ -57,9 +58,25 @@ export type Phase =
       readonly spectators: number;
       /** Présent tant que la partie se déploie ; la première vue y met fin. */
       readonly deployment: DeploymentState | undefined;
+      /** Les plaques des deux camps (`players`), pour l'ATH ; `self` est l'ami regardé d'un spectateur. */
+      readonly players: MatchPlayers | undefined;
+      /**
+       * L'adversaire a quitté la partie : il perd par forfait dans `forfeitInMs`, compté à
+       * réception du message. `undefined` tant qu'il est là.
+       */
+      readonly opponentAbsence: OpponentAbsence | undefined;
     }
   /** Le serveur parle une autre version : ce client est trop vieux ou trop neuf. */
   | { readonly kind: "outdated"; readonly expected: number };
+
+export interface MatchPlayers {
+  readonly self: PlayerCard;
+  readonly opponent: PlayerCard;
+}
+
+export interface OpponentAbsence {
+  readonly forfeitInMs: number;
+}
 
 export interface Session {
   readonly phase: Phase;
@@ -74,21 +91,25 @@ export const OFFLINE: Session = { phase: { kind: "offline" }, rejection: undefin
  * appariement une fois le canal de la file refermé et celui de la partie ouvert.
  */
 export function seatedAt(matchId: string, seat: string): Session {
+  return { phase: freshSeat(matchId, seat, undefined), rejection: undefined };
+}
+
+/** Un siège qui n'a encore rien reçu de la partie. */
+function freshSeat(matchId: string, seat: string, player: PlayerId | undefined): Phase {
   return {
-    phase: {
-      kind: "seated",
-      matchId,
-      seat,
-      player: undefined,
-      scenario: undefined,
-      board: undefined,
-      rulesetVersion: undefined,
-      view: undefined,
-      spectating: false,
-      spectators: 0,
-      deployment: undefined,
-    },
-    rejection: undefined,
+    kind: "seated",
+    matchId,
+    seat,
+    player,
+    scenario: undefined,
+    board: undefined,
+    rulesetVersion: undefined,
+    view: undefined,
+    spectating: false,
+    spectators: 0,
+    deployment: undefined,
+    players: undefined,
+    opponentAbsence: undefined,
   };
 }
 
@@ -124,19 +145,7 @@ export function fromQueue(session: Session, message: QueueServerMessage): Sessio
       return { phase: { kind: "lapsed", requeued: message.requeued }, rejection: undefined };
     case "matched":
       return {
-        phase: {
-          kind: "seated",
-          matchId: message.matchId,
-          seat: message.seat,
-          player: message.player,
-          scenario: undefined,
-          board: undefined,
-          rulesetVersion: undefined,
-          view: undefined,
-          spectating: false,
-          spectators: 0,
-          deployment: undefined,
-        },
+        phase: freshSeat(message.matchId, message.seat, message.player),
         rejection: undefined,
       };
     case "protocol-mismatch":
@@ -179,6 +188,19 @@ export function fromMatch(session: Session, message: ServerMessage): Session {
       };
     case "spectators":
       return { phase: { ...phase, spectators: message.count }, rejection: undefined };
+    case "players":
+      return {
+        phase: { ...phase, players: { self: message.self, opponent: message.opponent } },
+        rejection: undefined,
+      };
+    case "opponent-presence": {
+      // Revenu : l'absence tombe. Parti sans délai annoncé, un serveur plus ancien : rien
+      // à décompter, l'absence se dit sans chiffre.
+      const opponentAbsence = message.present
+        ? undefined
+        : { forfeitInMs: message.forfeitInMs ?? 0 };
+      return { phase: { ...phase, opponentAbsence }, rejection: undefined };
+    }
     case "deployment": {
       const { zone, opponentZone, defaultTeam, remainingMs, locks, self, opponent, rated } =
         message;

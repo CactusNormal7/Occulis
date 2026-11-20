@@ -50,13 +50,6 @@ export function neighbors(c: Coord, adjacency: Adjacency): Coord[] {
   return steps(adjacency).map((s) => ({ x: c.x + s.x, y: c.y + s.y }));
 }
 
-export function areAdjacent(a: Coord, b: Coord, adjacency: Adjacency): boolean {
-  const dx = Math.abs(a.x - b.x);
-  const dy = Math.abs(a.y - b.y);
-  if (dx === 0 && dy === 0) return false;
-  return adjacency === "orthogonal" ? dx + dy === 1 : dx <= 1 && dy <= 1;
-}
-
 export function chebyshevDistance(a: Coord, b: Coord): number {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 }

@@ -1,6 +1,6 @@
 /**
- * Le cache des lectures de l'interface. Pur — ni React ni DOM — pour porter les tests ;
- * `hooks.tsx` n'en est qu'une enveloppe.
+ * Le cache des lectures de l'interface. Pur — ni Vue ni DOM — pour porter les tests ;
+ * `use-load.ts` n'en est qu'une enveloppe.
  *
  * La convention qu'il sert (docs/technical/engine.md, « Chargement et premier rendu ») :
  * **un écran apparaît d'un seul tenant**. Tout ce qu'il lit est demandé en même temps,
@@ -53,7 +53,7 @@ export const FRESH_MS = 3000;
 /**
  * Le nombre de lectures en cours dans la page, que la barre de progression suit. Ses
  * abonnés sont prévenus après coup (microtâche) : une lecture peut démarrer pendant un
- * rendu React, qui ne doit déclencher aucune mise à jour d'un autre composant.
+ * rendu, qui ne doit déclencher aucune mise à jour d'un autre composant.
  */
 export class PendingCount {
   private count = 0;

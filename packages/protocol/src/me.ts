@@ -52,7 +52,7 @@ export interface MeSession {
   readonly impersonated: boolean;
 }
 
-export type MeResult = "won" | "lost" | "ongoing" | "ended";
+export type MeResult = "won" | "lost" | "drawn" | "ongoing" | "ended";
 
 /**
  * La partie en cours du joueur, de quoi s'y rasseoir après un rechargement : le jeton de
@@ -136,6 +136,19 @@ export interface MeMatchDetail extends MeMatchSummary {
   /** Les cases de la carte que la partie a figée ; `null` si le rejeu n'a pas pu la lire. */
   readonly board: readonly Tile[] | null;
   readonly replayError: ReplayFailure | null;
+}
+
+/**
+ * L'écran de fin d'une partie tout juste close : son replay, et l'Elo des deux joueurs.
+ * Il n'est servi qu'aux deux joueurs, et plus du tout une fois que tous deux l'ont quitté
+ * (`410 DEBRIEF_CLOSED`, lien compris) : reste alors le replay de l'historique.
+ */
+export interface MeMatchDebrief extends MeMatchDetail {
+  /** L'Elo courant du joueur, partie comprise. */
+  readonly elo: number;
+  readonly opponentElo: number;
+  /** Ce que la partie a fait gagner ou perdre à l'adversaire ; `null` si non classée. */
+  readonly opponentRatingChange: number | null;
 }
 
 /**

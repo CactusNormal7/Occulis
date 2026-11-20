@@ -1,0 +1,25 @@
+{
+  "label": "Principles",
+  "items": [
+    {
+      "icon": "sight",
+      "word": "Vision",
+      "text": "Walls and other pieces block line of sight."
+    },
+    {
+      "icon": "height",
+      "word": "Height",
+      "text": "Each level takes a turn to climb. High ground lets you see over pieces below."
+    },
+    {
+      "icon": "ghost",
+      "word": "Memory",
+      "text": "Enemies that leave your sight stay marked at their last known position."
+    },
+    {
+      "icon": "turns",
+      "word": "Thinking",
+      "text": "Turn-based, with no real-time actions."
+    }
+  ]
+}

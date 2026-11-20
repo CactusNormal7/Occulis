@@ -66,10 +66,13 @@ Ajouter des tests à un paquet suffit donc à les voir passer ici, **sans touche
 **Ce que `pnpm lint` exige** (`eslint.config.js`, **zéro avertissement** : `--max-warnings 0`) :
 les règles recommandées de typescript-eslint ; sur les sources, trois règles qui lisent les
 types — promesse ni attendue ni marquée `void`, promesse passée là où une fonction synchrone
-est attendue, `switch` non exhaustif sur une union ; les règles des hooks React
-(`rules-of-hooks`, `exhaustive-deps`, chaque exception justifiée en commentaire) ; les
-frontières des CLAUDE.md de paquet (`core` n'importe rien, le protocole que `core`, les modules purs du
-client ni Pixi ni React) ; et aucune couleur en dur hors de `tokens.ts`.
+est attendue, `switch` non exhaustif sur une union ; sur les composants `.vue`, les règles
+recommandées d'`eslint-plugin-vue` (sauf les noms en un mot, vocabulaire de la charte, et les
+valeurs par défaut des propriétés facultatives, qui valent `undefined`) ; les règles des hooks
+React sur la seule console d'infrastructure, écrite avec Ink (`rules-of-hooks`,
+`exhaustive-deps`, chaque exception justifiée en commentaire) ; les frontières des CLAUDE.md de
+paquet (`core` n'importe rien, le protocole que `core`, les modules purs du client ni Pixi ni
+Vue) ; et aucune couleur en dur hors de `tokens.ts`, script des composants `.vue` compris.
 
 **La couverture** se mesure dans `pnpm test` même (`vitest run --coverage`) pour
 `packages/core`, `packages/protocol` et les modules purs d'`apps/web` (liste dans son

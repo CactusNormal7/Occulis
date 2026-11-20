@@ -12,6 +12,7 @@ import {
   pieceAt,
   validateAction,
 } from "@occulis/core";
+import { type PieceSheet, inspectPiece } from "./inspection.js";
 import { hypothesisFrom } from "./hypothesis.js";
 import { type Movement, movementBetween } from "./movement-diff.js";
 
@@ -78,6 +79,11 @@ export class OnlineMatch {
 
   pieceAt(coord: Coord): Piece | undefined {
     return pieceAt(this.hypothesis, coord);
+  }
+
+  /** La fiche de la pièce sur `coord`, fantômes compris ; rien pour une case vide. */
+  inspect(coord: Coord): PieceSheet | undefined {
+    return inspectPiece(this.view, this.ruleset, coord);
   }
 
   /**

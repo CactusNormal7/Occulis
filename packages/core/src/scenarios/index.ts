@@ -1,4 +1,5 @@
 import { Board } from "../board.js";
+import { BREACH } from "./breach.js";
 import { DEMO } from "./demo.js";
 import { RIDGE } from "./ridge.js";
 import type { Scenario } from "./scenario.js";
@@ -16,10 +17,14 @@ export { type ScenarioSnapshot, snapshotScenario } from "./snapshot.js";
 const REGISTRY = new Map<string, Scenario>([
   [DEMO.name, DEMO],
   [RIDGE.name, RIDGE],
+  [BREACH.name, BREACH],
 ]);
 
-/** La carte des nouvelles parties. `demo-0`, sans déploiement, ne sert plus qu'aux parties déjà jouées. */
-export const DEFAULT_SCENARIO = RIDGE.name;
+/**
+ * La carte des nouvelles parties (depuis le 2026-11-20 ; avant, `ridge-1`). `demo-0`, sans
+ * déploiement, ne sert plus qu'aux parties déjà jouées.
+ */
+export const DEFAULT_SCENARIO = BREACH.name;
 
 export function scenarioFor(name: string): Scenario {
   const scenario = REGISTRY.get(name);
