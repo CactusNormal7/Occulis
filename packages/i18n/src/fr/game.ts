@@ -46,28 +46,11 @@ export const game: Messages["game"] = {
   reconnecting: "Connexion perdue, reprise en cours…",
   connectionLost: "Cette partie n'est plus joignable : elle est peut-être terminée.",
   console: {
-    label: "Partie en cours",
-    move: "Coup",
-    help: {
-      move: "déplace",
-      resign: "abandon",
-    },
-    leave: "Quitter la partie",
     leaveTitle: "Quitter la partie ?",
     leaveConfirm:
       "Quitter la partie, c'est l'abandonner : votre adversaire l'emporte, et vous passez tous deux à l'écran de fin.",
     leaveAction: "Abandonner",
     pending: "Coup déjà envoyé : réponse du serveur en attente.",
-    spectating: "Vous regardez cette partie : aucun coup à jouer.",
-    resigned: "Abandon.",
-    sent: (summary) => `${summary} — envoyé.`,
-  },
-  fault: {
-    empty: "Saisie vide.",
-    badCoord: (token) => `Coordonnée illisible : « ${token} ». Format attendu : x,y`,
-    missingDestination: "Destination manquante. Exemple : 1,6 2,5",
-    trailing: (token) => `Fin de commande inattendue : « ${token} »`,
-    noPieceHere: (coord) => `Aucune pièce en ${coord}.`,
   },
   actionError: {
     gameOver: "La partie est terminée.",
@@ -90,7 +73,6 @@ export const game: Messages["game"] = {
       repetition: "triple répétition",
       "no-capture": "60 coups sans prise",
     },
-    check: "Échec : votre roi peut être pris.",
   },
   pieceInfo: {
     label: "Fiche de la pièce",
@@ -231,21 +213,5 @@ export const game: Messages["game"] = {
       zoomOut: "Dézoomer",
       center: "Recentrer",
     },
-  },
-  turn: {
-    line: (turn, whose, seat) => `Tour ${turn} · ${whose} · vous jouez ${seat}`,
-    yours: "à vous de jouer",
-    theirs: "au trait : l'adversaire",
-    watchers: (count) =>
-      count === 1 ? " · 1 ami vous regarde" : ` · ${count} amis vous regardent`,
-    watching: (turn, whose, friend, side) =>
-      `Tour ${turn} · ${whose} · vous regardez ${friend} (${side})`,
-    friendToMove: (friend) => `au trait : ${friend}`,
-    opponentToMove: "au trait : son adversaire",
-  },
-  tile: {
-    offBoard: "Hors plateau.",
-    relief: (x, y, height) => `${x},${y} · hauteur ${height}`,
-    impassable: "infranchissable",
   },
 };

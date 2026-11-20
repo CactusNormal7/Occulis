@@ -45,28 +45,11 @@ export const game = {
   reconnecting: "Connection lost, reconnecting…",
   connectionLost: "This match is no longer reachable: it may be over.",
   console: {
-    label: "Match in progress",
-    move: "Move",
-    help: {
-      move: "moves",
-      resign: "resign",
-    },
-    leave: "Leave the match",
     leaveTitle: "Leave the match?",
     leaveConfirm:
       "Leaving the match means resigning it: your opponent wins, and you both go to the end screen.",
     leaveAction: "Resign",
     pending: "Move already sent: waiting for the server.",
-    spectating: "You are watching this match: there is no move to play.",
-    resigned: "Resignation.",
-    sent: (summary: string) => `${summary} — sent.`,
-  },
-  fault: {
-    empty: "Empty input.",
-    badCoord: (token: string) => `Unreadable coordinate: “${token}”. Expected format: x,y`,
-    missingDestination: "Missing destination. Example: 1,6 2,5",
-    trailing: (token: string) => `Unexpected end of command: “${token}”`,
-    noPieceHere: (coord: string) => `No piece at ${coord}.`,
   },
   actionError: {
     gameOver: "The match is over.",
@@ -89,7 +72,6 @@ export const game = {
       repetition: "threefold repetition",
       "no-capture": "60 moves without a capture",
     },
-    check: "Check: your king can be captured.",
   },
   /** La fiche d'une pièce, ouverte d'un clic droit. */
   pieceInfo: {
@@ -236,22 +218,5 @@ export const game = {
       zoomOut: "Zoom out",
       center: "Recenter",
     },
-  },
-  turn: {
-    line: (turn: number, whose: string, seat: string) =>
-      `Turn ${turn} · ${whose} · you play ${seat}`,
-    yours: "your move",
-    theirs: "to move: the opponent",
-    watchers: (count: number) =>
-      count === 1 ? " · 1 friend is watching you" : ` · ${count} friends are watching you`,
-    watching: (turn: number, whose: string, friend: string, side: string) =>
-      `Turn ${turn} · ${whose} · you are watching ${friend} (${side})`,
-    friendToMove: (friend: string) => `to move: ${friend}`,
-    opponentToMove: "to move: their opponent",
-  },
-  tile: {
-    offBoard: "Off the board.",
-    relief: (x: number, y: number, height: number) => `${x},${y} · height ${height}`,
-    impassable: "impassable",
   },
 };
