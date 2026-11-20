@@ -27,6 +27,12 @@ export const METRICS = {
   heightUnit: 22,
 } as const;
 
+/** Les deux silhouettes de pièce disponibles (voir `pieces.style`). */
+export type PieceStyle = "glyph" | "obelisk";
+
+/** La silhouette en vigueur ; `"obelisk"` rend les pièces d'avant l'ATH « Bandeaux ». */
+const PIECE_STYLE: PieceStyle = "glyph";
+
 /** Ce que chaque thème allume, au-delà de sa palette. */
 interface Atmosphere {
   /** Le sceau gravé sous le plateau (`render/pixi/ground.ts`). */
@@ -128,23 +134,43 @@ function lookOf(name: ThemeName) {
       destinationGem: 0.16,
     },
     pieces: {
+      /**
+       * La silhouette des pièces, partout où elles sont dessinées (partie, déploiement,
+       * rejeu, site). **C'est le seul réglage à changer pour revenir aux pièces d'avant** :
+       *
+       * - `"glyph"` : un glyphe en pixels propre à chaque type (`glyphs.ts`) ;
+       * - `"obelisk"` : l'obélisque surmonté d'un œil, commun à tous les types.
+       */
+      style: PIECE_STYLE,
       alphaVisible: 1,
       /** Fantômes : pièce mémorisée mais actuellement hors LOS (design.md 5.4). */
       alphaGhost: 0.4,
       strokeWidth: 1,
-      /** Hauteur de l'obélisque, en multiples de `heightUnit`. */
-      bodyRatio: 1.1,
-      /** Demi-largeur à la base de l'obélisque, en multiples de `tileWidth`. */
-      bodyRatioWidth: 0.095,
-      /** Demi-largeur de l'œil flottant, en multiples de `tileWidth`. */
-      headRatio: 0.12,
-      /** L'écart entre l'obélisque et l'œil, en pixels du plateau. */
-      float: 2,
-      /** Les deux faces de l'obélisque : la couleur du camp, enfoncée dans le vide. */
-      faceLight: 0.45,
-      faceShade: 0.72,
       shadow: palette.background,
       shadowAlpha: 0.6,
+      /** Les deux tons d'une pièce : la couleur du camp, enfoncée dans le vide. */
+      faceLight: 0.45,
+      faceShade: 0.72,
+      obelisk: {
+        /** Hauteur de l'obélisque, en multiples de `heightUnit`. */
+        bodyRatio: 1.1,
+        /** Demi-largeur à la base de l'obélisque, en multiples de `tileWidth`. */
+        bodyRatioWidth: 0.095,
+        /** Demi-largeur de l'œil flottant, en multiples de `tileWidth`. */
+        headRatio: 0.12,
+        /** L'écart entre l'obélisque et l'œil, en pixels du plateau. */
+        float: 2,
+      },
+      glyph: {
+        /** Côté d'un pixel du glyphe, en multiples de `tileWidth`, arrondi au pixel du plateau. */
+        cellRatio: 0.05,
+        /** Les lignes du bas qui forment le socle, dans le ton d'ombre. */
+        baseRows: 2,
+        /** Demi-largeur de l'ombre portée au sol, en multiples de `tileWidth`. */
+        shadowRatio: 0.16,
+        /** Rayon du halo, en multiples de la largeur du glyphe. */
+        haloRatio: 0.7,
+      },
     },
     sigil: {
       stroke: palette.ink,

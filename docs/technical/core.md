@@ -314,7 +314,7 @@ puisse se spécialiser sans que TypeScript ne fige la valeur de la classe de bas
 
 `Piece` ne porte pas sa hauteur : elle se dérive de `board.heightAt(piece.coord)`. Aucun
 type de `pieces/` n'a de champ visuel — toute correspondance type → forme appartient au
-rendu (`apps/web/src/render/pixi/pieces.ts`). Conformément à `docs/design.md`, la différenciation
+rendu (`packages/board/src/glyphs.ts`). Conformément à `docs/design.md`, la différenciation
 passe par la capacité et le mouvement, **jamais par des points de vie**.
 
 ---

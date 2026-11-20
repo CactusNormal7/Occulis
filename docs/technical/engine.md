@@ -280,6 +280,9 @@ l'ordre d'envoi, `friends/thread.ts`). La liste d'amis du profil (`provideSocial
 | `apps/web/src/team-builder/TeamBuilder.vue`                                                  | Le constructeur d'équipe (`v-model` du brouillon) : emplacements (`SlotRow.vue`), plateau (`PlacementBoard.vue`), actions                                                                          | non                                             |
 | `apps/web/src/team-builder/placement-canvas.ts`                                              | Le plateau de placement en Canvas 2D : zones, pièces posées, survol, clic                                                                                                                          | non                                             |
 | `packages/board/src/paint.ts`                                                                | Relief, cases et pièces en Canvas 2D, avec la géométrie du jeu                                                                                                                                     | non                                             |
+| `packages/board/src/glyphs.ts`                                                               | Les glyphes en pixels de chaque type de pièce, partagés par le plateau et l'ATH                                                                                                                    | non                                             |
+| `packages/board/src/glyph-layout.ts`                                                         | Place et taille d'un glyphe sur sa case, identiques en PixiJS et en Canvas                                                                                                                         | non                                             |
+| `packages/board/src/paint-glyph.ts`, `paint-obelisk.ts`                                      | Les deux silhouettes de pièce en Canvas 2D, choisies par `drawPiece()`                                                                                                                             | non                                             |
 | `apps/web/src/prepare/model.ts`                                                              | Temps restant, envoi automatique, presets jouables, équipe préchargée                                                                                                                              | oui                                             |
 | `apps/web/src/prepare/MatchFound.vue`                                                        | La fenêtre « partie trouvée »                                                                                                                                                                      | non                                             |
 | `apps/web/src/prepare/Deployment.vue`                                                        | L'écran de déploiement : annonce de l'adversaire, compte à rebours, constructeur, verrou                                                                                                           | non                                             |
@@ -311,7 +314,8 @@ l'ordre d'envoi, `friends/thread.ts`). La liste d'amis du profil (`provideSocial
 | `apps/web/src/render/pixi/sky.ts`                                                            | La voûte derrière le plateau et les particules devant                                                                                                                                              | non                                             |
 | `apps/web/src/theme/theme-choice.ts`                                                         | Le thème choisi : stockage, document, rendu                                                                                                                                                        | non                                             |
 | `apps/web/src/render/pixi/terrain.ts`                                                        | Faces et arêtes d'une case                                                                                                                                                                         | non                                             |
-| `apps/web/src/render/pixi/pieces.ts`                                                         | Silhouette d'une pièce                                                                                                                                                                             | non                                             |
+| `apps/web/src/render/pixi/pieces.ts`                                                         | Aiguillage vers la silhouette en vigueur (`look().pieces.style`)                                                                                                                                   | non                                             |
+| `apps/web/src/render/pixi/piece-glyph.ts`, `piece-obelisk.ts`, `piece-paint.ts`              | Le glyphe par type, l'obélisque d'avant, et ce qu'elles partagent (`PiecePaint`, colonne de lumière)                                                                                               | non                                             |
 | `apps/web/src/render/pixi/overlay.ts`                                                        | Survol et sélection                                                                                                                                                                                | non                                             |
 | `apps/web/src/input/controls.ts`                                                             | Gestes du canevas → intentions                                                                                                                                                                     | non                                             |
 | `apps/web/src/ui/command.ts`                                                                 | Grammaire de la saisie de coups                                                                                                                                                                    | oui                                             |
@@ -1056,8 +1060,9 @@ Les primitives communes au rejeu (`replay/replay-canvas.ts`) et au placement :
 `fitPixelCanvas()` (dimensionne le tampon au grain du plateau, `pixelResolution()`, et pose
 `image-rendering: pixelated`), `terrainDrawables()` (faces pleines, trame du fog et
 atténuation en profondeur du jeu, avec un crochet pour peindre une zone ou un survol **dans
-l'ordre du peintre**), `drawPiece()` (la silhouette de `render/pixi/pieces.ts` ; une pièce sous
-`PIECES.alphaVisible` y est un fantôme, contour seul), `strokeQuad()` (épaisseur en pixels
+l'ordre du peintre**), `drawPiece()` (la silhouette en vigueur, glyphe du type ou obélisque,
+comme `render/pixi/pieces.ts` ; une pièce sous `look().pieces.alphaVisible` y est un fantôme),
+`strokeQuad()` (épaisseur en pixels
 du plateau), `fillQuad()`. La trame du fog est un `CanvasPattern` de deux pixels sur deux,
 mis à l'échelle d'un pixel du tampon et gardé par contexte.
 
@@ -1266,20 +1271,22 @@ pièce présente l'emporte sur un souvenir situé sur la même case.
 Ce sont des **fonctions**, pas des classes : elles écrivent dans un `Graphics` qu'on leur
 passe. Toutes lisent le thème en vigueur par `look()`.
 
-| Fonction                 | Emplacement              | Rôle                                                                                                                                                                                                 |
-| ------------------------ | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `drawTile()`             | `render/pixi/terrain.ts` | Falaises **tournées vers la caméra** (face éclairée à gauche, d'ombre à droite), dessus plein, trame selon l'éclairage, arête qui luit au passage de la vague ; décalée et estompée pendant l'entrée |
-| `facesCamera()` (privée) | `render/pixi/terrain.ts` | Une falaise dont l'arête haute est dans la moitié basse du dessus ; une face arrière, pleine, déborderait sous le relief                                                                             |
-| `depthAlpha()` (privée)  | `render/pixi/terrain.ts` | Proximité normalisée → opacité des arêtes                                                                                                                                                            |
-| `drawPiece()`            | `render/pixi/pieces.ts`  | Colonne de lumière (sélection), ombre, obélisque à deux faces, halo et œil (qui s'élève et s'illumine) ; fantôme : contour et trame                                                                  |
-| `drawBeam()` (privée)    | `render/pixi/pieces.ts`  | La colonne de lumière, en bandes d'un pixel qui s'effacent vers le haut                                                                                                                              |
-| `drawHover()`            | `render/pixi/overlay.ts` | Voile et réticule qui se referme sur la case survolée, falaises soulignées                                                                                                                           |
-| `drawSelection()`        | `render/pixi/overlay.ts` | Destinations en cascade (aplat qui respire, gemme qui jaillit), puis la case de la pièce                                                                                                             |
-| `drawLanding()`          | `render/pixi/overlay.ts` | Deux ondes au sol et une couronne d'étincelles                                                                                                                                                       |
-| `drawSigil()`            | `render/pixi/ground.ts`  | Trois cercles tracés progressivement (`drawn`), graduations et glyphes, projetés dans le plan du sol                                                                                                 |
-| `boardRadius()`          | `render/pixi/ground.ts`  | Rayon du plateau autour du pivot, en cases                                                                                                                                                           |
-| `drawSky()`              | `render/pixi/sky.ts`     | Nuées tramées, constellations, étoiles qui scintillent, étoile filante — selon l'atmosphère du thème                                                                                                 |
-| `drawMotes()`            | `render/pixi/sky.ts`     | Poussière d'os qui monte, ou lucioles qui errent et luisent                                                                                                                                          |
+| Fonction                 | Emplacement                    | Rôle                                                                                                                                                                                                 |
+| ------------------------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `drawTile()`             | `render/pixi/terrain.ts`       | Falaises **tournées vers la caméra** (face éclairée à gauche, d'ombre à droite), dessus plein, trame selon l'éclairage, arête qui luit au passage de la vague ; décalée et estompée pendant l'entrée |
+| `facesCamera()` (privée) | `render/pixi/terrain.ts`       | Une falaise dont l'arête haute est dans la moitié basse du dessus ; une face arrière, pleine, déborderait sous le relief                                                                             |
+| `depthAlpha()` (privée)  | `render/pixi/terrain.ts`       | Proximité normalisée → opacité des arêtes                                                                                                                                                            |
+| `drawPiece()`            | `render/pixi/pieces.ts`        | Aiguille vers le glyphe ou l'obélisque selon `look().pieces.style`                                                                                                                                   |
+| `drawGlyph()`            | `render/pixi/piece-glyph.ts`   | Colonne de lumière, ombre au sol, halo, glyphe décalé dans le vide puis glyphe (corps du camp, socle d'ombre), qui s'élève et blanchit sous un éclat ; fantôme : trame du glyphe                     |
+| `drawObelisk()`          | `render/pixi/piece-obelisk.ts` | Colonne de lumière, ombre, obélisque à deux faces, halo et œil (qui s'élève et s'illumine) ; fantôme : contour et trame                                                                              |
+| `drawBeam()`             | `render/pixi/piece-paint.ts`   | La colonne de lumière, en bandes d'un pixel qui s'effacent vers le haut                                                                                                                              |
+| `drawHover()`            | `render/pixi/overlay.ts`       | Voile et réticule qui se referme sur la case survolée, falaises soulignées                                                                                                                           |
+| `drawSelection()`        | `render/pixi/overlay.ts`       | Destinations en cascade (aplat qui respire, gemme qui jaillit), puis la case de la pièce                                                                                                             |
+| `drawLanding()`          | `render/pixi/overlay.ts`       | Deux ondes au sol et une couronne d'étincelles                                                                                                                                                       |
+| `drawSigil()`            | `render/pixi/ground.ts`        | Trois cercles tracés progressivement (`drawn`), graduations et glyphes, projetés dans le plan du sol                                                                                                 |
+| `boardRadius()`          | `render/pixi/ground.ts`        | Rayon du plateau autour du pivot, en cases                                                                                                                                                           |
+| `drawSky()`              | `render/pixi/sky.ts`           | Nuées tramées, constellations, étoiles qui scintillent, étoile filante — selon l'atmosphère du thème                                                                                                 |
+| `drawMotes()`            | `render/pixi/sky.ts`           | Poussière d'os qui monte, ou lucioles qui errent et luisent                                                                                                                                          |
 
 L'opacité des **arêtes** d'une case, dans `drawTile()` :
 
@@ -1294,8 +1301,14 @@ valeur** : le dessus s'éclaircit avec la hauteur (`topColor()`), et une case ho
 est assombrie et tramée — le relief reste lisible (implementation-notes 10).
 
 Aucun type de `packages/core/src/pieces/` ne porte de champ visuel : la correspondance
-`kind` → forme appartient à `render/pixi/pieces.ts`. Le roster n'étant pas acté, **toutes les
-pièces partagent aujourd'hui la même silhouette**.
+`kind` → forme appartient au rendu, dans `@occulis/board/glyphs` — une grille de pixels par
+type, avec un glyphe de repli pour un type qui n'en a pas. Les pixels d'un même ton sont
+tracés **en un seul chemin** : posés un par un, deux carrés voisins laisseraient un liseré
+d'anticrénelage.
+
+**Revenir à l'obélisque** commun à tous les types, la silhouette d'avant l'ATH « Bandeaux » :
+passer `PIECE_STYLE` à `"obelisk"` dans `packages/board/src/theme.ts`. C'est le seul
+changement à faire ; la partie, le déploiement, le rejeu et le site suivent.
 
 ## `view/` — les modules purs du rendu animé
 

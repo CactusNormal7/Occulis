@@ -4,6 +4,7 @@ import {
   type Coord,
   type CoordKey,
   type PieceId,
+  type PieceKind,
   type PlayerView,
   type Tile,
   coordKey,
@@ -82,6 +83,7 @@ export interface SceneFrame {
 
 interface Occupant {
   readonly id: PieceId;
+  readonly kind: PieceKind;
   readonly coord: Coord;
   readonly color: number;
   readonly ghost: boolean;
@@ -144,6 +146,7 @@ function occupantsOf(view: PlayerView): Map<CoordKey, Occupant> {
   for (const ghost of view.ghosts) {
     occupants.set(coordKey(ghost.coord), {
       id: ghost.id,
+      kind: ghost.kind,
       coord: ghost.coord,
       color: players[ghost.owner],
       ghost: true,
@@ -153,6 +156,7 @@ function occupantsOf(view: PlayerView): Map<CoordKey, Occupant> {
   for (const piece of view.visibleEnemies) {
     occupants.set(coordKey(piece.coord), {
       id: piece.id,
+      kind: piece.kind,
       coord: piece.coord,
       color: players[piece.owner],
       ghost: false,
@@ -162,6 +166,7 @@ function occupantsOf(view: PlayerView): Map<CoordKey, Occupant> {
   for (const piece of view.ownPieces) {
     occupants.set(coordKey(piece.coord), {
       id: piece.id,
+      kind: piece.kind,
       coord: piece.coord,
       color: players[piece.owner],
       ghost: false,
@@ -482,6 +487,7 @@ export class Scene {
         g,
         drawable.base,
         {
+          kind: drawable.occupant.kind,
           color: drawable.occupant.color,
           ghost: drawable.occupant.ghost,
           px: this.px,

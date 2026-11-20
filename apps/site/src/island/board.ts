@@ -212,13 +212,7 @@ export function mountBoard(
       drawables.push({
         depth: { ...depthOf(at, height, proj), height: height + 0.5 },
         paint: () =>
-          drawPiece(
-            context,
-            project(at, height, proj),
-            piece.owner,
-            look().pieces.alphaVisible,
-            proj,
-          ),
+          drawPiece(context, project(at, height, proj), piece, look().pieces.alphaVisible, proj),
       });
     }
     // Les fantômes : la dernière position connue d'une pièce qu'on ne voit plus.
@@ -231,7 +225,7 @@ export function mountBoard(
           drawPiece(
             context,
             project(ghost.coord, height, proj),
-            ghost.owner,
+            ghost,
             look().pieces.alphaGhost,
             proj,
           ),
