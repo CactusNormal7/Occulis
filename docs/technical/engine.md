@@ -314,7 +314,7 @@ l'ordre d'envoi, `friends/thread.ts`). La liste d'amis du profil (`provideSocial
 | `apps/web/src/render/pixi/terrain.ts`                                                        | Faces et arêtes d'une case                                                                                                                                                                         | non                                             |
 | `apps/web/src/render/pixi/pieces.ts`                                                         | Aiguillage vers la silhouette en vigueur (`look().pieces.style`)                                                                                                                                   | non                                             |
 | `apps/web/src/render/pixi/piece-glyph.ts`, `piece-obelisk.ts`, `piece-paint.ts`              | Le glyphe par type, l'obélisque d'avant, et ce qu'elles partagent (`PiecePaint`, colonne de lumière)                                                                                               | non                                             |
-| `apps/web/src/render/pixi/overlay.ts`                                                        | Survol et sélection                                                                                                                                                                                | non                                             |
+| `apps/web/src/render/pixi/overlay.ts`                                                        | Marques de case (survol, sélection, destinations) et retombées                                                                                                                                     | non                                             |
 | `apps/web/src/input/controls.ts`                                                             | Gestes du canevas → intentions                                                                                                                                                                     | non                                             |
 | `apps/web/src/ui/messages.ts`                                                                | Tous les textes de l'interface                                                                                                                                                                     | oui                                             |
 | `apps/web/src/theme/palette.ts`                                                              | Passe le code couleur au CSS                                                                                                                                                                       | non                                             |
@@ -1188,9 +1188,12 @@ plateau de quelques dizaines de cases se redessine en une fraction de millisecon
 
 - **`sky`** (coordonnées d'écran) : la voûte du thème (`render/pixi/sky.ts`) ;
 - **`ground`** (dans `board`) : le sceau (`render/pixi/ground.ts`), pour les thèmes qui l'allument ;
-- **`world`** (dans `board`) : terrain et pièces, qui doivent partager un **unique ordre du
-  peintre** pour qu'une pièce derrière un relief soit réellement masquée ;
-- **`overlay`** (dans `board`) : survol, sélection, retombées ;
+- **`world`** (dans `board`) : terrain, pièces et **marques de case** (survol, case de la
+  pièce sélectionnée, destinations), qui partagent un **unique ordre du peintre** : une
+  pièce ou une destination derrière un relief est réellement masquée. Chaque marque se
+  peint juste après sa case (`drawTileMarks()`) ; peinte par-dessus tout le plateau, une
+  destination au pied d'un bloc semblait posée sur son sommet ;
+- **`overlay`** (dans `board`) : les retombées, des éclats par-dessus le monde ;
 - **`ambient`** (coordonnées d'écran) : les particules en suspension (`render/pixi/sky.ts`).
 
 La scène tient `px`, la taille d'un pixel du plateau en unités logiques (`1 / resolution`) :
@@ -1268,8 +1271,7 @@ passe. Toutes lisent le thème en vigueur par `look()`.
 | `drawGlyph()`            | `render/pixi/piece-glyph.ts`   | Colonne de lumière, ombre au sol, halo, glyphe décalé dans le vide puis glyphe (corps du camp, socle d'ombre), qui s'élève et blanchit sous un éclat ; fantôme : trame du glyphe                     |
 | `drawObelisk()`          | `render/pixi/piece-obelisk.ts` | Colonne de lumière, ombre, obélisque à deux faces, halo et œil (qui s'élève et s'illumine) ; fantôme : contour et trame                                                                              |
 | `drawBeam()`             | `render/pixi/piece-paint.ts`   | La colonne de lumière, en bandes d'un pixel qui s'effacent vers le haut                                                                                                                              |
-| `drawHover()`            | `render/pixi/overlay.ts`       | Voile et réticule qui se referme sur la case survolée, falaises soulignées                                                                                                                           |
-| `drawSelection()`        | `render/pixi/overlay.ts`       | Destinations en cascade (aplat qui respire, gemme qui jaillit), puis la case de la pièce                                                                                                             |
+| `drawTileMarks()`        | `render/pixi/overlay.ts`       | Les marques d'une case, peintes juste après elle dans `world` : destination ou prise (aplat qui respire, gemme qui jaillit, en cascade), case de la pièce sélectionnée, survol (voile et réticule)   |
 | `drawLanding()`          | `render/pixi/overlay.ts`       | Deux ondes au sol et une couronne d'étincelles                                                                                                                                                       |
 | `drawSigil()`            | `render/pixi/ground.ts`        | Trois cercles tracés progressivement (`drawn`), graduations et glyphes, projetés dans le plan du sol                                                                                                 |
 | `boardRadius()`          | `render/pixi/ground.ts`        | Rayon du plateau autour du pivot, en cases                                                                                                                                                           |

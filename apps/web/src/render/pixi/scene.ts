@@ -34,7 +34,7 @@ import { easeOutCubic, phase } from "../../view/easing.js";
 import { breath, snap } from "@occulis/board/pixel";
 import { sameCoord } from "../../view/picking.js";
 import { drawSigil } from "./ground.js";
-import { drawHover, drawLanding, drawSelection } from "./overlay.js";
+import { type TileMarks, drawLanding, drawTileMarks } from "./overlay.js";
 import { drawPiece } from "./pieces.js";
 import { drawMotes, drawSky } from "./sky.js";
 import { drawTile } from "./terrain.js";
@@ -50,7 +50,8 @@ import { MOTION_FX, look } from "@occulis/board/theme";
  * - `ground` : le sceau gravé sous le plateau, pour les thèmes qui l'allument ;
  * - `world` : terrain et pièces, qui doivent partager un **unique ordre du peintre** pour
  *   qu'une pièce derrière un relief soit réellement masquée ;
- * - `overlay` : survol, sélection, retombées, par-dessus le monde ;
+ * - `overlay` : les retombées, par-dessus le monde. Survol, sélection et destinations
+ *   sont des marques de case : elles se peignent dans `world`, juste après leur case ;
  * - `ambient` : les particules en suspension, au-dessus de tout, en coordonnées d'écran.
  *
  * Le pan n'est qu'une translation du conteneur `board`, arrondie à la grille des pixels du
@@ -264,7 +265,7 @@ export class Scene {
       drawSigil(this.ground, input.board, input.projection, this.px, now, drawn);
     }
     this.drawWorld(input, frame.still);
-    this.drawOverlay(input, frame.still);
+    this.drawOverlay(input);
     drawMotes(this.ambient, frame.width, frame.height, now, this.px);
   }
 
@@ -354,7 +355,7 @@ export class Scene {
   }
 
   private drawWorld(
-    { board, view, projection, animation, selection }: SceneInput,
+    { board, view, projection, animation, selection, hovered }: SceneInput,
     still: boolean,
   ): void {
     const g = this.world;
@@ -462,6 +463,14 @@ export class Scene {
     drawables.sort((a, b) => compareDepth(a.depth, b.depth));
 
     const fog = this.dither(look().geometry.fogDither);
+    const settled = still ? Infinity : 0;
+    const marks: TileMarks = {
+      selection,
+      sinceSelected: Math.max(settled, now - this.selectedAt),
+      glow: breath(now, MOTION_FX.breathMs),
+      hovered,
+      sinceHovered: Math.max(settled, now - this.hoveredAt),
+    };
     for (const drawable of drawables) {
       if (isTile(drawable)) {
         const key = coordKey(drawable.tile.coord);
@@ -481,6 +490,7 @@ export class Scene {
           },
           projection,
         );
+        drawTileMarks(g, board, drawable.tile.coord, marks, projection, this.px);
         continue;
       }
       drawPiece(
@@ -503,24 +513,10 @@ export class Scene {
     }
   }
 
-  private drawOverlay({ board, projection, hovered, selection }: SceneInput, still: boolean): void {
+  private drawOverlay({ board, projection }: SceneInput): void {
     const g = this.overlay;
     g.clear();
     const now = this.time;
-    const glow = breath(now, MOTION_FX.breathMs);
-    const settled = still ? Infinity : 0;
-    if (selection !== undefined)
-      drawSelection(
-        g,
-        board,
-        selection,
-        projection,
-        this.px,
-        glow,
-        Math.max(settled, now - this.selectedAt),
-      );
-    if (hovered !== undefined)
-      drawHover(g, board, hovered, projection, this.px, Math.max(settled, now - this.hoveredAt));
     for (const landing of this.landings) drawLanding(g, board, landing, projection, this.px, now);
   }
 }
