@@ -724,7 +724,7 @@ pièces.
 
 ## Tests
 
-153 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
+158 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
 
 | Fichier                                          | Couvre                                                                                                                                                                                                                                |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -738,6 +738,7 @@ pièces.
 | `packages/core/src/pieces/roster/roster.test.ts` | Propriétés du roster provisoire : différenciation par capacité, rôles, pion le plus myope, roi à un pas, héritage du comportement commun, portée couvrant la carte de démonstration, indexation par `kind` et par rôle, composition   |
 | `packages/core/src/team.test.ts`                 | Quotas exacts par rôle, type inconnu, case hors zone, deux pièces sur une case, ruleset sans composition, **identifiants déterministes**, lecture d'une équipe venue de l'extérieur, transposition d'une zone à l'autre               |
 | `packages/core/src/scenarios/ridge.test.ts`      | `ridge-1` : zones franchissables et assez larges, symétrie centrale, **aucune ligne de vue entre les zones**, équipes par défaut valides formant une position, transposition A → B                                                    |
+| `packages/core/src/scenarios/breach.test.ts`     | `breach-1` : carte des nouvelles parties, zones franchissables, symétrie centrale cases manquantes comprises, **aucune ligne de vue entre les zones**, équipes par défaut valides                                                     |
 | `packages/core/src/rulesets/rulesets.test.ts`    | Versions anciennes chargeables **avec leurs règles et portées**, version courante avec prise, échec et nulles, version inconnue refusée                                                                                               |
 
 `packages/core/src/testing.ts` fournit `definePiece()` (qui renvoie un
@@ -761,13 +762,14 @@ de `docs/design.md` (pistes déjà écartées) et `docs/implementation-notes.md`
 
 ## `scenarios/` — les positions de départ
 
-| Fichier                 | Rôle                                                                                                                                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `scenarios/scenario.ts` | Le type `Scenario` : un nom, une fabrique de `Board`, des pièces fixes, et un `Deployment` optionnel                                                                                             |
-| `scenarios/demo.ts`     | `demo-0`, la carte de démonstration à position fixe, **provisoire** — gardée pour les parties déjà jouées                                                                                        |
-| `scenarios/ridge.ts`    | `ridge-1`, la carte des nouvelles parties, à déploiement, **provisoire**                                                                                                                         |
-| `scenarios/index.ts`    | Le registre : `scenarioFor()`, `DEFAULT_SCENARIO` (`ridge-1`), et `frozenScenario(name, snapshot)` — la carte figée d'une partie, ou celle du registre pour une partie d'avant les cartes figées |
-| `scenarios/snapshot.ts` | `ScenarioSnapshot` (nom, cases, position fixe, déploiement — sérialisable) et `snapshotScenario()`. Une partie fige sa carte ainsi à sa création (docs/architecture.md section 1)                |
+| Fichier                 | Rôle                                                                                                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scenarios/scenario.ts` | Le type `Scenario` : un nom, une fabrique de `Board`, des pièces fixes, et un `Deployment` optionnel                                                                                              |
+| `scenarios/demo.ts`     | `demo-0`, la carte de démonstration à position fixe, **provisoire** — gardée pour les parties déjà jouées                                                                                         |
+| `scenarios/ridge.ts`    | `ridge-1`, la carte des nouvelles parties jusqu'au 2026-11-20, à déploiement, **provisoire** — gardée pour les parties déjà jouées et le site                                                     |
+| `scenarios/breach.ts`   | `breach-1`, la carte des nouvelles parties depuis le 2026-11-20, à déploiement, **provisoire**                                                                                                    |
+| `scenarios/index.ts`    | Le registre : `scenarioFor()`, `DEFAULT_SCENARIO` (`breach-1`), et `frozenScenario(name, snapshot)` — la carte figée d'une partie, ou celle du registre pour une partie d'avant les cartes figées |
+| `scenarios/snapshot.ts` | `ScenarioSnapshot` (nom, cases, position fixe, déploiement — sérialisable) et `snapshotScenario()`. Une partie fige sa carte ainsi à sa création (docs/architecture.md section 1)                 |
 
 **`ridge-1`** (14 × 10) : une arête en diagonale d'un bord à l'autre, haute de 3 avec un col
 de hauteur 1 en son milieu, sépare deux zones de 4 × 4 en coins opposés. La carte est
@@ -776,6 +778,15 @@ coupe toute ligne de vue entre les deux zones — col compris, un obstacle à ha
 regard bloquant (`implementation-notes.md` point 11) : le placement de chacun reste caché à
 l'autre jusqu'au premier contact, sans mécanique dédiée (`docs/design.md` section 7). Un
 test le vérifie case à case.
+
+**`breach-1`** (9 × 9, depuis le 2026-11-20) : un plateau dans l'esprit de la maquette de
+l'ATH (`docs/mockups/ath/`) — coins relevés en gradins, reliefs épars, deux cases manquantes
+au bord. Ses blocs de hauteur 3 dessinent au milieu une ligne brisée qui coupe toute vue
+d'une zone à l'autre (choix du porteur du projet : le placement reste caché, comme sur
+`ridge-1`) ; on la franchit par ses trouées, au niveau du sol. Les zones sont les deux
+rangées de chaque bord (18 cases). Symétrique par rapport à son centre, zones et équipes
+par défaut comprises ; `breach.test.ts` vérifie la symétrie et l'absence de vue case à
+case.
 
 Un scénario vit dans `core` pour la même raison que le roster
 (`implementation-notes.md` point 12) : **le client dessine la carte sur laquelle le serveur

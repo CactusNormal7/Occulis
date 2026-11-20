@@ -1,6 +1,5 @@
 import {
   CURRENT_RULESET_VERSION,
-  DEFAULT_SCENARIO,
   applyAction,
   createGame,
   deployTeams,
@@ -15,8 +14,10 @@ import {
 } from "@occulis/core";
 
 /**
- * Le petit scénario du hero, joué par le vrai moteur sur la carte des nouvelles parties
- * (`ridge-1`, provisoire comme toutes les cartes) avec les équipes par défaut. Module pur :
+ * Le petit scénario du hero, joué par le vrai moteur sur la carte `ridge-1` (provisoire
+ * comme toutes les cartes) avec les équipes par défaut. La carte est nommée et non lue
+ * dans `DEFAULT_SCENARIO` : l'histoire passe par le col de son arête, et les nouvelles
+ * parties se jouent ailleurs depuis le 2026-11-20. Module pur :
  * ni DOM ni canevas, pour que le test vérifie que chaque coup reste légal quand `core`
  * change.
  *
@@ -38,6 +39,9 @@ export const SCRIPT: readonly Step[] = [
   { pieceId: "a-2", to: { x: 4, y: 5 } },
 ];
 
+/** La carte du scénario : l'arête et son col, sur lesquels l'histoire est écrite. */
+const HERO_MAP = "ridge-1";
+
 /** Le camp dont on suit la vue. */
 export const VIEWER = "A" as const;
 
@@ -52,7 +56,7 @@ export interface Frame {
 export const FRAMES = { fog: 1, summit: 3, ghosts: 5 } as const;
 
 export function buildFrames(): Frame[] {
-  const scenario = scenarioFor(DEFAULT_SCENARIO);
+  const scenario = scenarioFor(HERO_MAP);
   const ruleset = rulesetFor(CURRENT_RULESET_VERSION);
   if (scenario.deployment === undefined)
     throw new Error("La carte du hero n'a pas de déploiement.");

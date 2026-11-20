@@ -116,7 +116,7 @@ net. Les couleurs sont lues dans les propriétés `--occ-ink-*` de la page.
 
 ## Le plateau
 
-`island/script.ts` (pur) joue cinq coups sur la carte des nouvelles parties (`ridge-1`)
+`island/script.ts` (pur) joue cinq coups sur la carte `ridge-1`, nommée en dur (`HERO_MAP`) : l'histoire passe par le col de son arête, et les nouvelles parties se jouent sur `breach-1` depuis le 2026-11-20,
 avec les équipes par défaut : `buildFrames()` rend chaque position et la connaissance du
 camp A (`observe()` de `core`). Un coup refusé lève une erreur ; `script.test.ts` vérifie
 que la séquence reste légale, que le camp adverse est caché au départ, entièrement vu du

@@ -149,8 +149,8 @@ describe("MatchDO dans workerd", () => {
 
     expect((await a.awaitKind("welcome")).player).toBe("A");
     const deployment = await a.awaitKind("deployment");
-    expect(deployment.zone).toHaveLength(16);
-    expect(deployment.opponentZone).toHaveLength(16);
+    expect(deployment.zone).toHaveLength(18);
+    expect(deployment.opponentZone).toHaveLength(18);
     expect(deployment.defaultTeam).toHaveLength(6);
     expect(deployment.locks).toEqual({ self: false, opponent: false });
     expect(deployment.remainingMs).toBeGreaterThan(0);
@@ -262,7 +262,7 @@ describe("MatchDO dans workerd", () => {
 
     // `core` vérifie que la pièce est au trait, pas que l'expéditeur en est le
     // propriétaire : sans le contrôle du serveur, B jouerait les pièces de A.
-    b.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    b.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 3, y: 6 } } });
     expect((await b.awaitKind("rejected")).error).toEqual({
       code: "not-your-turn",
       activePlayer: "A",
@@ -287,14 +287,14 @@ describe("MatchDO dans workerd", () => {
     );
     a.socket.send("pas du JSON");
     a.drain();
-    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 3, y: 6 } } });
     expect((await a.awaitKind("view")).view.turn).toBe(1);
 
     const logged = await env.DB.prepare("SELECT seq, action FROM match_actions WHERE match_id = ?")
       .bind(match.matchId)
       .all<{ seq: number; action: string }>();
     expect(logged.results).toEqual([
-      { seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":1,"y":5}}' },
+      { seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":3,"y":6}}' },
     ]);
 
     a.socket.close();
@@ -309,7 +309,7 @@ describe("MatchDO dans workerd", () => {
     a.drain();
     b.drain();
 
-    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 3, y: 6 } } });
     const forA = (await a.awaitKind("view")).view;
     const forB = (await b.awaitKind("view")).view;
 
@@ -321,7 +321,7 @@ describe("MatchDO dans workerd", () => {
       .bind(match.matchId)
       .all<{ seq: number; action: string }>();
     expect(logged.results).toEqual([
-      { seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":1,"y":5}}' },
+      { seq: 0, action: '{"kind":"move","pieceId":"a-4","to":{"x":3,"y":6}}' },
     ]);
 
     a.socket.close();
@@ -343,7 +343,7 @@ describe("MatchDO dans workerd", () => {
       to: { x: 9, y: 9 },
     });
 
-    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 3, y: 6 } } });
     const after = (await a.awaitKind("view")).view;
     expect(after.turn).toBe(1);
     // Le trait est passé : plus aucun coup légal pour A tant que B n'a pas joué.
@@ -640,7 +640,7 @@ describe("MatchDO dans workerd", () => {
     await b.awaitKind("view");
     a.drain();
     b.drain();
-    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 3, y: 6 } } });
     const before = { A: (await a.awaitKind("view")).view, B: (await b.awaitKind("view")).view };
 
     // Ce que l'hibernation fait au DO : la mémoire tombe, le stockage et D1 restent.
@@ -667,7 +667,7 @@ describe("MatchDO dans workerd", () => {
     const { defaultTeam } = await b.awaitKind("deployment");
     await b.awaitKind("deployment-update");
     const mine = defaultTeam.map((entry, index) =>
-      index === 0 ? { ...entry, coord: { x: 13, y: 1 } } : entry,
+      index === 0 ? { ...entry, coord: { x: 0, y: 0 } } : entry,
     );
 
     // L'équipe de B et l'alarme de l'échéance se croisent : l'une des deux ouvre la
@@ -726,7 +726,7 @@ describe("MatchDO dans workerd", () => {
     });
 
     // Le coup est au log : relue de D1, la position le montre joué, et le trait passe.
-    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 1, y: 5 } } });
+    a.send({ kind: "action", action: { kind: "move", pieceId: "a-4", to: { x: 3, y: 6 } } });
     expect((await a.awaitKind("view")).view.activePlayer).toBe("B");
     const forB = (await b.awaitKind("view")).view;
     expect(forB.activePlayer).toBe("B");

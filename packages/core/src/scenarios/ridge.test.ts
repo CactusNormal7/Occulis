@@ -4,17 +4,13 @@ import { hasLineOfSight } from "../los.js";
 import { provisionalRuleset } from "../pieces/index.js";
 import { createGame } from "../state.js";
 import { deployTeams, teamForSide, validateTeam } from "../team.js";
-import { DEFAULT_SCENARIO, scenarioFor } from "./index.js";
+import { scenarioFor } from "./index.js";
 
 const ridge = scenarioFor("ridge-1");
 const board = ridge.board();
 const deployment = ridge.deployment as NonNullable<typeof ridge.deployment>;
 
 describe("ridge-1", () => {
-  it("est la carte des nouvelles parties", () => {
-    expect(DEFAULT_SCENARIO).toBe("ridge-1");
-  });
-
   it("donne à chaque camp une zone franchissable plus large que son équipe", () => {
     for (const player of ["A", "B"] as const) {
       const zone = deployment.zones[player];

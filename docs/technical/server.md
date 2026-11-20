@@ -233,7 +233,7 @@ incompatible avec l'hibernation.
 
 ### Le déploiement
 
-Sur une carte qui en prévoit un (`Scenario.deployment`, `ridge-1`), la partie commence par
+Sur une carte qui en prévoit un (`Scenario.deployment`, `breach-1`), la partie commence par
 **poser les équipes**. `/init` fixe l'échéance (`DEPLOYMENT_MS`, 90 s) et pose une
 **alarme** deux secondes après (`DEPLOYMENT_GRACE_MS`, le temps au dernier envoi du client
 d'arriver) : une alarme et non un minuteur, parce qu'elle survit à l'hibernation.
@@ -277,7 +277,7 @@ rechargement de page le temps de reconnecter (le client se rassoit seul par
   l'adversaire n'est pas annoncée dans `fetch()` — le seul à l'apprendre est ce joueur, et
   son `hello` la lui dit.
 
-Le placement adverse reste caché par la seule LOS : les zones de `ridge-1` n'ont pas de vue
+Le placement adverse reste caché par la seule LOS : les zones de `breach-1` n'ont pas de vue
 mutuelle, donc la première vue de chacun ne contient que ses propres pièces.
 
 ### Les spectateurs
@@ -1137,7 +1137,7 @@ plutôt que le laisser diverger en silence.
 | ------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `CURRENT_RULESET_VERSION` | `packages/core/src/rulesets/index.ts`  | Version attribuée aux nouvelles parties — `"provisional-3"`                                                                     |
 | `rulesetFor()`            | `packages/core/src/rulesets/index.ts`  | Version → `Ruleset` ; **lève** si inconnue                                                                                      |
-| `DEFAULT_SCENARIO`        | `packages/core/src/scenarios/index.ts` | Scénario des nouvelles parties — `"ridge-1"`                                                                                    |
+| `DEFAULT_SCENARIO`        | `packages/core/src/scenarios/index.ts` | Scénario des nouvelles parties — `"breach-1"`                                                                                   |
 | `scenarioFor()`           | `packages/core/src/scenarios/index.ts` | Nom → `Scenario` ; **lève** si inconnu. Ne sert plus qu'à figer la carte d'une nouvelle partie et à rejouer les parties d'avant |
 | `frozenScenario()`        | `packages/core/src/scenarios/index.ts` | La carte d'une partie : `MatchConfig.map` / `matches.map`, sinon le registre                                                    |
 

@@ -7,6 +7,7 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 - En place : plateau à hauteur, LOS occultée par le relief **et par les pièces**, verticalité, déplacement avec blocage mutuel, tours alternés, fog of war avec mémoire fantôme, historique et rejeu, abandon.
 - **Fin de partie (2026-11-16)** : prise à l'arrivée, échec et mat « échecs strict », pat, triple répétition et 60 actions sans prise, sous le ruleset `provisional-3` (roi 1 pas, éclaireur 3, pion 1). Les parties `provisional-0..2` se rejouent sans. Fiche d'une pièce au clic droit.
 - Non implémenté (points ouverts) : pièges, roster définitif. Plus d'attaque à distance (décision du 2026-10-27). Seule la composition d'équipe est actée : 1 roi, 3 pièces à capacité, 2 pions (décision du 2026-10-27, ouverte à modification, `rules.md` §7) : ruleset `provisional-3` (`provisional-2` : mêmes quotas, anciennes portées, sans prise) ; `provisional-1` (1/3/4) reste chargeable.
+- Carte des nouvelles parties : `breach-1` (9 × 9, zones cachées l'une de l'autre, 2026-11-20) ; `ridge-1` reste pour les parties jouées et le site.
 - Roster et cartes **provisoires** : rien ne s'équilibre dessus. Interprétations encodées : [implementation-notes.md](implementation-notes.md).
 
 ## Règles décidées le 2026-10-27 (non implémentées sauf mention)
