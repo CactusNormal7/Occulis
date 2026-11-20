@@ -1,6 +1,6 @@
 # État du projet
 
-Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-11-17.
+Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-11-20.
 
 ## Jeu (`packages/core`)
 
@@ -42,8 +42,9 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 
 - Rendu isométrique pixel art (tampon réduit, plateau agrandi au plus proche voisin), 3 thèmes non tranchés (Obsidienne, Reliquaire, Astral), animations pures du temps.
 - **Voile tramé du changement de thème : acté, verrouillé par `veil.test.ts`, ne jamais le retoucher sans demande explicite.**
-- Aucune partie locale (hot-seat retiré, implementation-notes 18). Un coup se joue au clic ou par saisie de coordonnées ; la sélection filtre `legalActions`, elle ne redéduit jamais la légalité.
-- Charte `@occulis/ui` portant back-office, profil, compte, préparation. Le menu, l'attente et le bandeau de partie n'y ont pas migré.
+- Aucune partie locale (hot-seat retiré, implementation-notes 18). Un coup se joue à la souris seulement (saisie au clavier retirée le 2026-11-20) ; la sélection filtre `legalActions`, elle ne redéduit jamais la légalité.
+- **ATH « Bandeaux » (2026-11-20)** : plaques des deux camps avec leur composition, tour, fiche de pièce, journal tel que vu, caméra, légende, alertes d'échec et de départ adverse ; un glyphe pixel par type de pièce (obélisque gardé derrière `PIECE_STYLE`). Protocole 9 (`players`, `opponent-presence`).
+- Charte `@occulis/ui` portant back-office, profil, compte, préparation et ATH. Le menu et l'attente n'y ont pas migré.
 
 ## Site vitrine (`apps/site`) — 2026-10-29
 

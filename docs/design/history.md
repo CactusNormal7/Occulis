@@ -1,6 +1,6 @@
 # Occulis — Historique des itérations
 
-À lire seulement avant de reproposer une règle de tour ou de capture. Règles actées : [rules.md](rules.md).
+À lire seulement avant de reproposer une règle de tour ou de capture, ou une disposition de l'ATH. Règles actées : [rules.md](rules.md).
 
 ## 6. Historique des itérations sur le tour et la capture (pour ne pas revalider ce qui a été écarté)
 
@@ -21,5 +21,20 @@ Cette section documente le cheminement, volontairement, pour éviter de repropos
    Raison de l'abandon, donnée par le porteur du projet : retirer l'attaque à distance supprime la zone déclarée, sa résolution différée et ses questions de LOS et de chevauchement. Tombent avec elle les points ouverts 1, 2, 3 et 6 et les sections 3.3 et 5.3. Conséquence : la file de résolution différée n'a plus de raison d'exister pour l'attaque ; les pièges, s'ils gardent un déclenchement différé, devront l'introduire eux-mêmes ([rules.md](rules.md) § 4).
 
 Un seul déplacement/action par pièce par tour reste la règle de base actée, précisément pour éviter les parties trop rapides ou interminables (contrainte fixée dès le début de la conversation, jamais remise en cause depuis, malgré la tentation de l'itération 3). **Précisée le 2026-10-27** : à chaque tour, une seule pièce agit, et elle se déplace **ou** utilise une capacité, jamais les deux ([rules.md](rules.md) § 3).
+
+## 7. L'ATH de partie (2026-11-20)
+
+Trois dispositions ont été maquettées (`docs/mockups/ath/`) ; le porteur du projet a retenu
+« Bandeaux » (A), sans le panneau en bas à gauche, jugé inutile ([rules.md](rules.md) § 8.1).
+Écartées, gardées dans les maquettes pour ne pas les reproposer sans raison :
+
+- **B « Coins »** : le plateau prend tout l'écran, les camps dans les coins du bas, la fiche
+  accrochée à la pièce. La plus calme, mais la fiche couvre des cases.
+- **C « Registre »** : une seule colonne à droite, lue de haut en bas. Le plateau n'est
+  jamais recouvert, mais perd un quart de la largeur.
+
+Retirée en même temps : **la saisie des coups au clavier** (`1,6 2,5`, `abandon`), un champ
+posé par-dessus le canevas depuis les débuts. Elle servait à exercer la logique avant que la
+souris suffise, et ne servait plus.
 
 Document généré à partir d'une session de brainstorming critique. Objectif : servir de point de reprise fidèle pour la suite du développement (design detaillé, puis implémentation) sans perdre le fil des décisions déjà prises ni revalider des pistes déjà explorées et écartées.

@@ -188,7 +188,7 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   projet : une nuée de petits carrés blancs éclose du centre (trop chaotique), un balayage de
   carrés depuis le coin le plus proche de la souris, puis un « œil qui s'ouvre » (un trait de
   lumière qui s'écarte en deux paupières tramées) — trop chargé. **Les écrans du parcours ne
-  s'ouvrent pas ainsi** — menu principal, compte, attente, bandeau de partie, bandeau
+  s'ouvrent pas ainsi** — menu principal, compte, attente, ATH de partie, bandeau
   d'usurpation —, à sa demande : ce ne sont pas des fenêtres qu'on ouvre, et
   l'on y revient sans cesse. **Une exception : l'entrée dans la recherche ou la
   création d'une partie** passe sous le voile tramé du changement de thème (ci-dessous).
@@ -221,18 +221,40 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   seule ressource que le premier écran attend, et il paraît directement dans cette police.
 - **Rotation libre avec aimantation.** La rotation se fait au drag (bouton droit ou milieu),
   de façon continue, et s'aimante sur le quart de tour le plus proche au relâchement ; les
-  flèches gauche/droite conservent le quart de tour direct. Conformément à la section 8, la
+  flèches gauche/droite, comme les boutons de l'ATH, conservent le quart de tour direct. Conformément à la section 8, la
   rotation reste un recalcul de projection sur les coordonnées logiques : les quatre coins
   de chaque case sont projetés individuellement, ce qui garde le pavage jointif à n'importe
   quel angle intermédiaire.
-- **Deux façons de jouer un coup, toutes deux provisoires.** À la souris : cliquer une de
-  ses pièces la sélectionne et fait apparaître ses destinations légales, cliquer une
-  destination l'y déplace, cliquer une pièce adverse atteignable la prend (3.1). Au
-  clavier : taper les coordonnées (`1,6 2,5` déplace, `abandon`
-  abandonne) dans un champ HTML posé par-dessus le canevas. Aucune des deux n'est une décision d'interface arrêtée : ce sont des
-  moyens d'exercer la logique déjà implémentée. La partie est **toujours arbitrée par le
+- **Un coup se joue à la souris, et seulement à la souris** (décision du 2026-11-20).
+  Cliquer une de ses pièces la sélectionne et fait apparaître ses destinations légales,
+  cliquer une destination l'y déplace, cliquer une pièce adverse atteignable la prend
+  (3.1) ; un clic droit sur n'importe quelle pièce — la sienne, une adverse en vue, un
+  fantôme — ouvre sa fiche. La saisie des coordonnées au clavier (`1,6 2,5`) a été retirée
+  : elle ne servait pas (voir history.md). La partie est **toujours arbitrée par le
   serveur** : il n'existe aucun mode local, et le client ne voit jamais que sa propre vue —
   conformément au pilier « pas de local multiplayer » de la section 2.
+- **L'ATH de partie : la disposition « Bandeaux »** (décision du 2026-11-20, maquette
+  `docs/mockups/ath/a-bandeaux.html`, préférée à « Coins » et « Registre »). En haut, les
+  deux camps de part et d'autre du numéro de coup : pseudo, Elo et composition, le camp au
+  trait allumé de sa couleur. Sous la plaque adverse, les amis qui regardent, les réglages
+  et l'abandon. À droite, la fiche de la pièce choisie puis le journal ; à gauche, les
+  boutons de caméra ; en bas, la légende des lueurs, tant qu'une pièce est sélectionnée.
+  L'échec et le départ de l'adversaire (avec le temps avant son forfait) s'annoncent sous le
+  tour. Trois règles :
+  - **la composition adverse est montrée avec ses pertes** : elle est connue dès le début
+    de la partie (point ouvert 16) ; l'ATH ne donne que des types, jamais une position ;
+  - **le journal dit les coups tels que le joueur les a vus** : un coup adverse hors de vue
+    s'écrit « coup hors de vue », un coup à moitié vu met un « ? » à la place de ce qui a
+    échappé (« Éclaireur ? → 1,3 ») ; la perte d'une de ses pièces est toujours connue ;
+  - **le compteur de nulle sans prise (7.2) ne paraît qu'à l'approche du seuil**, vingt
+    coups avant, en ambre.
+
+  Le plateau n'allume pas de lueur propre aux montées : la légende n'en parle donc pas.
+
+- **Chaque type de pièce a son glyphe** (décision du 2026-11-20) : une petite figure en
+  pixels pleins — roi, éclaireur, pion —, la même sur le plateau, au déploiement, au rejeu,
+  sur le site et dans l'ATH. L'obélisque commun des débuts reste dans le code, derrière un
+  seul réglage (`PIECE_STYLE`, `packages/board/src/theme.ts`).
 - **Le déplacement est animé, jamais instantané.** La pièce glisse d'une case à l'autre,
   hauteur comprise, avec départ et arrivée adoucis. L'action est appliquée à l'état
   immédiatement : seule la position à l'écran est interpolée, et le compte rendu du tour
