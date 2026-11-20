@@ -56,6 +56,10 @@ describe("litTiles et awaitsMove", () => {
     ownPieces: [],
     visibleEnemies: [],
     ghosts: [],
+    journal: [],
+    rosters: { own: [], opponent: [] },
+    sinceCapture: 0,
+    noCaptureLimit: null,
   };
   const finished: PlayerView = {
     ...view,

@@ -187,11 +187,13 @@ export function mountPlacement(
           const top = drawPiece(
             context,
             project(piece.coord, height, proj),
-            current.side,
+            { kind: piece.kind, owner: current.side },
             look().pieces.alphaVisible,
             proj,
             tint,
           );
+          // Le glyphe dit déjà le type ; l'obélisque, commun à tous, a besoin de son initiale.
+          if (look().pieces.style !== "obelisk") return;
           context.fillStyle = cssColor(tint);
           // Tiny5 n'est nette qu'à 8 pixels du tampon, ou un multiple.
           context.font = `${8 / ratio}px ${FONT.pixel}`;

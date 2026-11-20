@@ -133,7 +133,7 @@ export function mountReplay(
           drawPiece(
             context,
             project(coord, height, proj),
-            piece.owner,
+            piece,
             seen ? look().pieces.alphaVisible : look().pieces.alphaGhost,
             proj,
           ),

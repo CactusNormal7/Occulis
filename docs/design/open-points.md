@@ -58,7 +58,7 @@ Section tranchée ou sans objet le 2026-10-27 ([rules.md](rules.md) § 5.3). La 
 
 14. ~~Composition d'équipe : qui choisit quelles pièces — composition imposée, ou choisie dans un pool ?~~ — tranché le 2026-10-27 : le joueur compose son équipe dans les quotas, comme le fait déjà le constructeur d'équipe ([rules.md](rules.md) § 7).
 15. Promotion : seuls les pions se promeuvent, sur une case définie par la carte (acté). Ouverts : la pièce obtenue — à décider plus tard, une des pièces de l'équipe ou une pièce spéciale plus forte encore — et ce que l'adversaire voit de la promotion.
-16. Types des pièces adverses : connus avant la partie, jamais leurs positions (acté). Ouvert : le mécanisme de révélation.
+16. ~~Types des pièces adverses : connus avant la partie, jamais leurs positions (acté). Ouvert : le mécanisme de révélation.~~ — tranché le 2026-11-20 : la composition adverse est révélée au début de la partie et reste affichée dans l'ATH, pertes comprises ; des types seulement, jamais une position ([rules.md](rules.md) § 8.1).
 17. ~~Capture d'une pièce sur une case plus haute.~~ — tranché le 2026-10-27 : la capture est un déplacement et suit ses règles de hauteur ; par une capacité, elle est bornée par la portée et la ligne de vue de celle-ci ([rules.md](rules.md) § 5.3).
 18. Condition de victoire selon le mode de jeu. **Tranché pour le mode actuel le 2026-11-16 : le mat.** Reste ouvert pour d'éventuels autres modes.
 19. Symétrie de la LOS contre portée de vision propre à chaque pièce : la LOS est symétrique par construction, mais deux pièces de portées de vision différentes ne se voient pas mutuellement à la même distance. Faut-il l'accepter, ou imposer une portée commune ?

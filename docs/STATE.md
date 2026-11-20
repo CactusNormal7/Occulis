@@ -1,12 +1,13 @@
 # État du projet
 
-Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-11-17.
+Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-11-20.
 
 ## Jeu (`packages/core`)
 
 - En place : plateau à hauteur, LOS occultée par le relief **et par les pièces**, verticalité, déplacement avec blocage mutuel, tours alternés, fog of war avec mémoire fantôme, historique et rejeu, abandon.
 - **Fin de partie (2026-11-16)** : prise à l'arrivée, échec et mat « échecs strict », pat, triple répétition et 60 actions sans prise, sous le ruleset `provisional-3` (roi 1 pas, éclaireur 3, pion 1). Les parties `provisional-0..2` se rejouent sans. Fiche d'une pièce au clic droit.
 - Non implémenté (points ouverts) : pièges, roster définitif. Plus d'attaque à distance (décision du 2026-10-27). Seule la composition d'équipe est actée : 1 roi, 3 pièces à capacité, 2 pions (décision du 2026-10-27, ouverte à modification, `rules.md` §7) : ruleset `provisional-3` (`provisional-2` : mêmes quotas, anciennes portées, sans prise) ; `provisional-1` (1/3/4) reste chargeable.
+- Carte des nouvelles parties : `breach-1` (9 × 9, zones cachées l'une de l'autre, 2026-11-20) ; `ridge-1` reste pour les parties jouées et le site.
 - Roster et cartes **provisoires** : rien ne s'équilibre dessus. Interprétations encodées : [implementation-notes.md](implementation-notes.md).
 
 ## Règles décidées le 2026-10-27 (non implémentées sauf mention)
@@ -42,8 +43,9 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 
 - Rendu isométrique pixel art (tampon réduit, plateau agrandi au plus proche voisin), 3 thèmes non tranchés (Obsidienne, Reliquaire, Astral), animations pures du temps.
 - **Voile tramé du changement de thème : acté, verrouillé par `veil.test.ts`, ne jamais le retoucher sans demande explicite.**
-- Aucune partie locale (hot-seat retiré, implementation-notes 18). Un coup se joue au clic ou par saisie de coordonnées ; la sélection filtre `legalActions`, elle ne redéduit jamais la légalité.
-- Charte `@occulis/ui` portant back-office, profil, compte, préparation. Le menu, l'attente et le bandeau de partie n'y ont pas migré.
+- Aucune partie locale (hot-seat retiré, implementation-notes 18). Un coup se joue à la souris seulement (saisie au clavier retirée le 2026-11-20) ; la sélection filtre `legalActions`, elle ne redéduit jamais la légalité.
+- **ATH « Bandeaux » (2026-11-20)** : plaques des deux camps avec leur composition, tour, fiche de pièce, journal tel que vu, caméra, légende, alertes d'échec et de départ adverse ; un glyphe pixel par type de pièce (obélisque gardé derrière `PIECE_STYLE`). Protocole 9 (`players`, `opponent-presence`).
+- Charte `@occulis/ui` portant back-office, profil, compte, préparation et ATH. Le menu et l'attente n'y ont pas migré.
 
 ## Site vitrine (`apps/site`) — 2026-10-29
 

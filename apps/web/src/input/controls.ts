@@ -28,10 +28,10 @@ export interface ControlsOptions {
   /** Case désignée par un clic ; `undefined` si le clic tombe hors du plateau. */
   readonly onPick: (coord: Coord | undefined) => void;
   /**
-   * Case désignée par un clic **droit** qui n'a pas tourné le plateau, et l'endroit de
-   * la fenêtre où il est tombé : c'est là que s'ouvre la fiche de la pièce.
+   * Case désignée par un clic **droit** qui n'a pas tourné le plateau : la fiche de sa
+   * pièce s'ouvre dans la colonne de l'ATH.
    */
-  readonly onInspect: (coord: Coord | undefined, at: ScreenPoint) => void;
+  readonly onInspect: (coord: Coord | undefined) => void;
 }
 
 type DragKind = "pan" | "rotate";
@@ -145,7 +145,7 @@ export function attachControls(options: ControlsOptions): void {
     if (drag.kind === "pan" && drag.travelled <= CLICK_SLOP) onPick(pickTile(pointOf(event)));
     // Un appui droit qui n'a pas tourné le plateau est un clic droit : il ouvre la fiche.
     if (drag.button === 2 && drag.travelled <= CLICK_SLOP) {
-      onInspect(pickTile(pointOf(event)), { x: event.clientX, y: event.clientY });
+      onInspect(pickTile(pointOf(event)));
     }
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     drag = undefined;

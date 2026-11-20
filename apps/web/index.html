@@ -268,37 +268,8 @@
     <!-- La fin d'une partie regardée, chez le spectateur (`src/end/`). -->
     <div id="end-root"></div>
 
-    <!--
-      Bandeau de partie : état du tour, lecture de case et saisie de coups. La saisie
-      (`1,6 2,5`, `abandon`) double le clic sur le plateau.
-    -->
-    <section
-      id="console"
-      aria-label="Match in progress"
-      data-i18n-label="game.console.label"
-      hidden
-    >
-      <p id="status"></p>
-      <p id="tile-readout"></p>
-      <form id="command-form" autocomplete="off">
-        <label for="command-input" data-i18n="game.console.move">Move</label>
-        <input
-          id="command-input"
-          name="command"
-          type="text"
-          placeholder="1,6 2,5"
-          aria-describedby="command-help"
-        />
-      </form>
-      <p id="command-log" data-state="ok"></p>
-      <p id="command-help">
-        <code>1,6 2,5</code> <span data-i18n="game.console.help.move">moves</span> ·
-        <code data-i18n="game.console.help.resign">resign</code>
-      </p>
-      <button id="leave-match" type="button" class="quiet" data-i18n="game.console.leave">
-        Leave the match
-      </button>
-    </section>
+    <!-- L'ATH de partie (`src/hud/`), un îlot Vue posé sur le plateau. -->
+    <div id="hud-root" hidden></div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

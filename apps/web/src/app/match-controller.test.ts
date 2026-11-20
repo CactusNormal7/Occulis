@@ -55,7 +55,7 @@ function harness(overrides: Partial<MatchEffects> = {}) {
 
   let stage: Stage["kind"] = "menu";
   const events: FlowEvent[] = [];
-  const log = { refresh: 0, reports: [] as string[], announced: 0, islands: 0, cleared: 0 };
+  const log = { islands: 0, cleared: 0 };
   const notices: string[] = [];
   let leaves = 0;
   let lost = 0;
@@ -76,11 +76,6 @@ function harness(overrides: Partial<MatchEffects> = {}) {
     ensureBoard: () => undefined,
     clearBoard: () => void (log.cleared += 1),
     seated: () => undefined,
-    reports: () => ({
-      refresh: () => void (log.refresh += 1),
-      report: (message) => void log.reports.push(message),
-      announce: () => void (log.announced += 1),
-    }),
     notify: (message) => void notices.push(message),
     leave: () => void (leaves += 1),
     connectionLost: () => Promise.resolve().then(() => void (lost += 1)),
@@ -209,7 +204,7 @@ describe("MatchController", () => {
     });
 
     it("rouvre le jeu quand le serveur refuse le coup", () => {
-      const { controller, seat, log } = harness();
+      const { controller, seat } = harness();
       controller.sit("m1", "seat-1");
       const channel = seat();
       controller.play(STEP);
@@ -217,7 +212,7 @@ describe("MatchController", () => {
       channel.handlers.onRejected({ code: "not-your-turn", activePlayer: "B" });
 
       expect(controller.pending).toBe(false);
-      expect(log.reports).toHaveLength(1);
+      expect(controller.notice?.tone).toBe("refused");
     });
 
     it("n'envoie rien en spectateur", () => {
@@ -431,55 +426,41 @@ describe("MatchController", () => {
       };
     };
 
-    it("lève le coup en attente et anime le déplacement", () => {
+    it("lève le coup en attente, anime le déplacement et redessine l'ATH", () => {
       const { controller, channels, seat, log } = harness();
       controller.sit("m1", "seat-1");
       seat();
       controller.play(STEP);
-      const refreshed = log.refresh;
+      const islands = log.islands;
 
       channels[0]!.handlers.onView(moved());
 
       expect(controller.pending).toBe(false);
       expect(controller.animation).toBeDefined();
-      expect(log.refresh).toBe(refreshed + 1);
+      expect(log.islands).toBe(islands + 1);
     });
 
-    it("rafraîchit la console à la fin de l'animation, pas avant", () => {
-      const { controller, channels, seat, log } = harness();
+    it("mène l'animation à son terme", () => {
+      const { controller, channels, seat } = harness();
       controller.sit("m1", "seat-1");
       seat();
       channels[0]!.handlers.onView(moved());
-      const refreshed = log.refresh;
 
       controller.advance(1);
       expect(controller.animation).toBeDefined();
-      expect(log.refresh).toBe(refreshed);
-
       controller.advance(60_000);
       expect(controller.animation).toBeUndefined();
-      expect(log.refresh).toBe(refreshed + 1);
     });
 
-    it("n'avance rien sans animation", () => {
-      const { controller, log } = harness();
-
-      controller.advance(16);
-
-      expect(log.refresh).toBe(0);
-    });
-
-    it("annonce la fin de partie que la vue porte", () => {
-      const { controller, channels, seat, log } = harness();
+    it("efface le message de l'ATH à la vue suivante", () => {
+      const { controller, channels, seat } = harness();
       controller.sit("m1", "seat-1");
       seat();
+      channels[0]!.handlers.onRejected({ code: "not-your-turn", activePlayer: "B" });
 
-      channels[0]!.handlers.onView({
-        ...position().view,
-        outcome: { kind: "victory", winner: "A", reason: "resignation" },
-      });
+      channels[0]!.handlers.onView(moved());
 
-      expect(log.announced).toBe(1);
+      expect(controller.notice).toBeUndefined();
     });
 
     it("passe à l'écran de fin de la partie jouée dès que la vue porte une issue", () => {
@@ -524,24 +505,24 @@ describe("MatchController", () => {
     });
 
     it("signale une version périmée et une reconnexion, sans rien quitter", () => {
-      const { controller, channels, seat, log, leaves } = harness();
+      const { controller, channels, seat, leaves } = harness();
       controller.sit("m1", "seat-1");
       seat();
 
       channels[0]!.handlers.onOutdated(7);
       channels[0]!.handlers.onStatus("reconnecting");
 
-      expect(log.reports).toHaveLength(2);
+      expect(controller.notice).toEqual({ text: expect.any(String), tone: "info" });
       expect(leaves()).toBe(0);
     });
 
     it("ne signale pas une reconnexion avant que la partie existe", () => {
-      const { controller, channels, log } = harness();
+      const { controller, channels } = harness();
       controller.sit("m1", "seat-1");
 
       channels[0]!.handlers.onStatus("reconnecting");
 
-      expect(log.reports).toEqual([]);
+      expect(controller.notice).toBeUndefined();
     });
   });
 
@@ -551,10 +532,34 @@ describe("MatchController", () => {
       controller.sit("m1", "seat-1");
       seat();
 
-      expect(controller.pick({ x: 0, y: 0 })).toBeUndefined();
+      controller.pick({ x: 0, y: 0 });
       expect(controller.selection?.piece.id).toBe("a-scout");
 
-      expect(controller.pick({ x: 1, y: 0 })).toEqual(STEP);
+      controller.pick({ x: 1, y: 0 });
+      expect(channels[0]!.submitted).toEqual([STEP]);
+      expect(controller.pending).toBe(true);
+    });
+
+    it("n'envoie pas un second coup tant que le premier attend sa réponse", () => {
+      const { controller, channels, seat } = harness();
+      controller.sit("m1", "seat-1");
+      seat();
+      controller.play(STEP);
+
+      controller.pick({ x: 0, y: 0 });
+      controller.pick({ x: 1, y: 0 });
+
+      expect(channels[0]!.submitted).toEqual([STEP]);
+    });
+
+    it("ne joue rien pour un spectateur", () => {
+      const { controller, channels, seat } = harness();
+      controller.watch("Ada", "m1", "A");
+      seat(true);
+
+      controller.pick({ x: 0, y: 0 });
+      controller.pick({ x: 1, y: 0 });
+
       expect(channels[0]!.submitted).toEqual([]);
     });
 
@@ -575,7 +580,9 @@ describe("MatchController", () => {
     it("ne fait rien sans partie", () => {
       const { controller } = harness();
 
-      expect(controller.pick({ x: 0, y: 0 })).toBeUndefined();
+      controller.pick({ x: 0, y: 0 });
+
+      expect(controller.selection).toBeUndefined();
     });
 
     it("efface la sélection quand le coup part", () => {
@@ -627,7 +634,7 @@ describe("MatchController", () => {
     });
 
     it("garde un refus du serveur pour l'écran de déploiement, sans rouvrir le jeu", () => {
-      const { controller, channels, setStage, log } = harness();
+      const { controller, channels, setStage } = harness();
       controller.sit("m1", "seat-1");
       announce(channels[0]!, 30_000);
       setStage("deploying");
@@ -635,7 +642,7 @@ describe("MatchController", () => {
       channels[0]!.handlers.onRejected({ code: "already-locked" });
 
       expect(controller.deploying?.rejection).toBeTypeOf("string");
-      expect(log.reports).toEqual([]);
+      expect(controller.notice).toBeUndefined();
     });
 
     it("ignore la relecture des équipes d'une partie refermée", async () => {
@@ -655,6 +662,60 @@ describe("MatchController", () => {
       presetReads[1]!(current);
       await vi.runAllTimersAsync();
       expect(controller.deploying?.presets).toBe(current);
+    });
+  });
+
+  describe("ATH", () => {
+    const card = (handle: string) => ({ handle, elo: 1200, played: 0, won: 0, feats: [] });
+
+    it("décrit la pièce d'un clic droit, puis la pièce cliquée à sa place", () => {
+      const { controller, seat } = harness();
+      controller.sit("m1", "seat-1");
+      seat();
+
+      controller.inspect({ x: 0, y: 13 });
+      expect(controller.sheet?.piece.id).toBe("a-cmd");
+
+      controller.pick({ x: 0, y: 0 });
+      expect(controller.sheet?.piece.id).toBe("a-scout");
+    });
+
+    it("ferme la fiche d'un clic droit dans le vide", () => {
+      const { controller, seat } = harness();
+      controller.sit("m1", "seat-1");
+      seat();
+      controller.inspect({ x: 0, y: 13 });
+
+      controller.inspect({ x: 5, y: 5 });
+
+      expect(controller.sheet).toBeUndefined();
+    });
+
+    it("retient les plaques et l'absence de l'adversaire, jusqu'à son retour", () => {
+      const { controller, channels, seat } = harness();
+      controller.sit("m1", "seat-1");
+      seat();
+      const handlers = channels[0]!.handlers;
+
+      handlers.onPlayers?.({ self: card("anne"), opponent: card("nyx") });
+      handlers.onOpponentPresence?.({ forfeitInMs: 25_000 });
+      expect(controller.players?.opponent.handle).toBe("nyx");
+      expect(controller.opponentAway?.forfeitInMs).toBe(25_000);
+
+      handlers.onOpponentPresence?.(undefined);
+      expect(controller.opponentAway).toBeUndefined();
+    });
+
+    it("oublie tout cela en quittant la partie", () => {
+      const { controller, channels, seat } = harness();
+      controller.sit("m1", "seat-1");
+      seat();
+      channels[0]!.handlers.onPlayers?.({ self: card("anne"), opponent: card("nyx") });
+
+      controller.close();
+
+      expect(controller.players).toBeUndefined();
+      expect(controller.sheet).toBeUndefined();
     });
   });
 });

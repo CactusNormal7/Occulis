@@ -63,6 +63,7 @@ pieces/ruleset.ts ──► team.ts ──► scenarios/  (zones et équipes par
 | `packages/core/src/endgame.ts`                        | Échec, mat, pat, nulles anti-blocage, projection d'un coup                                                                       |
 | `packages/core/src/actions.ts`                        | Coups légaux, validation, application                                                                                            |
 | `packages/core/src/fog.ts`                            | Mémoire du joueur et vue transmissible                                                                                           |
+| `packages/core/src/journal.ts`                        | `JournalEntry`, `journalEntryFor()` : un coup tel qu'un joueur l'a vu                                                            |
 | `packages/core/src/result.ts`                         | `Result<T, E>`                                                                                                                   |
 | `packages/core/src/testing.ts`                        | Fabriques de scénarios — **tests uniquement, non exporté** par `index.ts`                                                        |
 
@@ -314,7 +315,7 @@ puisse se spécialiser sans que TypeScript ne fige la valeur de la classe de bas
 
 `Piece` ne porte pas sa hauteur : elle se dérive de `board.heightAt(piece.coord)`. Aucun
 type de `pieces/` n'a de champ visuel — toute correspondance type → forme appartient au
-rendu (`apps/web/src/render/pixi/pieces.ts`). Conformément à `docs/design.md`, la différenciation
+rendu (`packages/board/src/glyphs.ts`). Conformément à `docs/design.md`, la différenciation
 passe par la capacité et le mouvement, **jamais par des points de vie**.
 
 ---
@@ -601,6 +602,7 @@ interface PlayerKnowledge {
   player: PlayerId;
   visible: ReadonlySet<CoordKey>;
   remembered: ReadonlyMap<PieceId, RememberedPiece>;
+  journal: readonly JournalEntry[]; // les coups tels que ce joueur les a vus
 }
 
 interface PlayerView {
@@ -613,6 +615,10 @@ interface PlayerView {
   ownPieces: readonly Piece[];
   visibleEnemies: readonly Piece[];
   ghosts: readonly RememberedPiece[]; // mémorisées mais hors LOS
+  journal: readonly JournalEntry[];
+  rosters: { own: RosterEntry[]; opponent: RosterEntry[] }; // { kind, taken }
+  sinceCapture: number; // coups depuis la dernière prise
+  noCaptureLimit: number | null; // seuil de la nulle sans prise, s'il y en a une
 }
 ```
 
@@ -623,7 +629,7 @@ interface PlayerView {
 | `observe()`         | Fait avancer la mémoire après un changement d'état              |
 | `viewFor()`         | Produit l'état transmissible à un joueur                        |
 | `startMemory()`     | `MatchMemory` initiale : une position et les deux connaissances |
-| `advanceMemory()`   | Joue une action et fait avancer les deux mémoires               |
+| `advanceMemory()`   | Joue une action, fait avancer les deux mémoires et leur journal |
 | `replayMemory()`    | Rejoue un log entier, mémoires comprises                        |
 
 ### `MatchMemory` — une partie et ce que chacun en sait
@@ -674,6 +680,28 @@ davantage encore. Ce que cela révèle est assumé et documenté en section 7.1 
 `viewFor()` retire des fantômes les pièces actuellement vues, pour qu'une même pièce
 n'apparaisse jamais deux fois.
 
+### Le journal, les compositions et le compteur sans prise
+
+Ce que l'ATH montre en partie, et que le client ne saurait pas reconstruire seul.
+
+**Le journal** (`journal.ts`, `journalEntryFor()`) décrit chaque coup **tel que le joueur
+l'a vu**. Ses propres coups sont complets. D'un coup adverse, il n'a que la case de départ
+s'il la voyait avant le coup, la case d'arrivée s'il la voit après, et le type de la pièce
+s'il a vu l'une ou l'autre ; un champ absent est un fait qu'il ignore. Une prise subie est
+toujours connue — case et type perdu —, même hors de vue. L'abandon n'y figure pas :
+l'issue le dit. Le journal vit dans `PlayerKnowledge` et avance dans `advanceMemory()`,
+parce qu'il dépend de ce que le joueur voyait **à chaque coup** : `replayMemory()` le
+reconstruit à l'identique, et il survit ainsi à l'hibernation sans stockage propre.
+`observe()` seul ne l'avance pas — il ne connaît pas le coup.
+
+**Les compositions** (`rosters`) sont celles de départ des deux camps — pièces en jeu et
+pièces que `history` dit prises —, triées par identifiant. Des types seulement, jamais une
+position : la composition adverse est révélée dès le début de la partie (décision du
+2026-11-20), et ses pertes sont des prises du joueur.
+
+**`sinceCapture` et `noCaptureLimit`** reprennent `state.draw.sinceCapture` et le seuil du
+ruleset : c'est le client qui décide quand montrer le compteur.
+
 ### Ce que `PlayerView` ne contient pas
 
 **Il ne contient pas le `Board`.** Le relief est **public** : les deux joueurs connaissent
@@ -696,7 +724,7 @@ pièces.
 
 ## Tests
 
-143 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
+158 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
 
 | Fichier                                          | Couvre                                                                                                                                                                                                                                |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -710,6 +738,7 @@ pièces.
 | `packages/core/src/pieces/roster/roster.test.ts` | Propriétés du roster provisoire : différenciation par capacité, rôles, pion le plus myope, roi à un pas, héritage du comportement commun, portée couvrant la carte de démonstration, indexation par `kind` et par rôle, composition   |
 | `packages/core/src/team.test.ts`                 | Quotas exacts par rôle, type inconnu, case hors zone, deux pièces sur une case, ruleset sans composition, **identifiants déterministes**, lecture d'une équipe venue de l'extérieur, transposition d'une zone à l'autre               |
 | `packages/core/src/scenarios/ridge.test.ts`      | `ridge-1` : zones franchissables et assez larges, symétrie centrale, **aucune ligne de vue entre les zones**, équipes par défaut valides formant une position, transposition A → B                                                    |
+| `packages/core/src/scenarios/breach.test.ts`     | `breach-1` : carte des nouvelles parties, zones franchissables, symétrie centrale cases manquantes comprises, **aucune ligne de vue entre les zones**, équipes par défaut valides                                                     |
 | `packages/core/src/rulesets/rulesets.test.ts`    | Versions anciennes chargeables **avec leurs règles et portées**, version courante avec prise, échec et nulles, version inconnue refusée                                                                                               |
 
 `packages/core/src/testing.ts` fournit `definePiece()` (qui renvoie un
@@ -733,13 +762,14 @@ de `docs/design.md` (pistes déjà écartées) et `docs/implementation-notes.md`
 
 ## `scenarios/` — les positions de départ
 
-| Fichier                 | Rôle                                                                                                                                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `scenarios/scenario.ts` | Le type `Scenario` : un nom, une fabrique de `Board`, des pièces fixes, et un `Deployment` optionnel                                                                                             |
-| `scenarios/demo.ts`     | `demo-0`, la carte de démonstration à position fixe, **provisoire** — gardée pour les parties déjà jouées                                                                                        |
-| `scenarios/ridge.ts`    | `ridge-1`, la carte des nouvelles parties, à déploiement, **provisoire**                                                                                                                         |
-| `scenarios/index.ts`    | Le registre : `scenarioFor()`, `DEFAULT_SCENARIO` (`ridge-1`), et `frozenScenario(name, snapshot)` — la carte figée d'une partie, ou celle du registre pour une partie d'avant les cartes figées |
-| `scenarios/snapshot.ts` | `ScenarioSnapshot` (nom, cases, position fixe, déploiement — sérialisable) et `snapshotScenario()`. Une partie fige sa carte ainsi à sa création (docs/architecture.md section 1)                |
+| Fichier                 | Rôle                                                                                                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scenarios/scenario.ts` | Le type `Scenario` : un nom, une fabrique de `Board`, des pièces fixes, et un `Deployment` optionnel                                                                                              |
+| `scenarios/demo.ts`     | `demo-0`, la carte de démonstration à position fixe, **provisoire** — gardée pour les parties déjà jouées                                                                                         |
+| `scenarios/ridge.ts`    | `ridge-1`, la carte des nouvelles parties jusqu'au 2026-11-20, à déploiement, **provisoire** — gardée pour les parties déjà jouées et le site                                                     |
+| `scenarios/breach.ts`   | `breach-1`, la carte des nouvelles parties depuis le 2026-11-20, à déploiement, **provisoire**                                                                                                    |
+| `scenarios/index.ts`    | Le registre : `scenarioFor()`, `DEFAULT_SCENARIO` (`breach-1`), et `frozenScenario(name, snapshot)` — la carte figée d'une partie, ou celle du registre pour une partie d'avant les cartes figées |
+| `scenarios/snapshot.ts` | `ScenarioSnapshot` (nom, cases, position fixe, déploiement — sérialisable) et `snapshotScenario()`. Une partie fige sa carte ainsi à sa création (docs/architecture.md section 1)                 |
 
 **`ridge-1`** (14 × 10) : une arête en diagonale d'un bord à l'autre, haute de 3 avec un col
 de hauteur 1 en son milieu, sépare deux zones de 4 × 4 en coins opposés. La carte est
@@ -748,6 +778,15 @@ coupe toute ligne de vue entre les deux zones — col compris, un obstacle à ha
 regard bloquant (`implementation-notes.md` point 11) : le placement de chacun reste caché à
 l'autre jusqu'au premier contact, sans mécanique dédiée (`docs/design.md` section 7). Un
 test le vérifie case à case.
+
+**`breach-1`** (9 × 9, depuis le 2026-11-20) : un plateau dans l'esprit de la maquette de
+l'ATH (`docs/mockups/ath/`) — coins relevés en gradins, reliefs épars, deux cases manquantes
+au bord. Ses blocs de hauteur 3 dessinent au milieu une ligne brisée qui coupe toute vue
+d'une zone à l'autre (choix du porteur du projet : le placement reste caché, comme sur
+`ridge-1`) ; on la franchit par ses trouées, au niveau du sol. Les zones sont les deux
+rangées de chaque bord (18 cases). Symétrique par rapport à son centre, zones et équipes
+par défaut comprises ; `breach.test.ts` vérifie la symétrie et l'absence de vue case à
+case.
 
 Un scénario vit dans `core` pour la même raison que le roster
 (`implementation-notes.md` point 12) : **le client dessine la carte sur laquelle le serveur

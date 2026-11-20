@@ -6,9 +6,10 @@ d'interface. Le back-office (`apps/web/admin/`) est entièrement construit dessu
 paquet est synchronisé vers le projet Claude Design « Occulis UI », où l'agent de design
 construit ses maquettes avec ces composants réels (`.design-sync/`).
 
-Les écrans du jeu (compte, menu, attente, bandeau de partie) sont **encore en DOM natif**
-(`apps/web/src/ui/`) et le plateau reste en PixiJS : ils partagent les tokens, pas les
-composants.
+Le menu et l'attente sont **encore en DOM natif** (`apps/web/src/ui/`) et le plateau
+reste en PixiJS : ils partagent les tokens, pas les composants. L'ATH de partie
+(`apps/web/src/hud/`) est en Vue sur les tokens de la charte, avec sa propre feuille
+(`hud.css`) : ses panneaux, plaques et glyphes ne servent qu'en partie.
 
 ## Fichiers
 
@@ -240,7 +241,7 @@ vers ce point. Le point est le **centre** de la fenêtre par défaut (une modale
 et la **souris** sur demande (`from = "pointer"`), pour une fenêtre posée à côté de ce
 qu'on a cliqué — les réglages sous l'engrenage. Même alors, si la dernière entrée vient du
 clavier ou si le pointeur n'a jamais bougé, le geste part du centre. Les écrans du parcours
-du jeu (menu, compte, attente, bandeau de partie, bandeau d'usurpation) et les pages
+du jeu (menu, compte, attente, ATH de partie, bandeau d'usurpation) et les pages
 entières n'en usent pas.
 
 | Export                                        | Rôle                                                                                                                                                                                                                                                                                                                       |

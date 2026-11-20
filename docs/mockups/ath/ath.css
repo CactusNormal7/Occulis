@@ -1,0 +1,704 @@
+/*
+ * Socle commun des maquettes de l'ATH (interface de jeu).
+ *
+ * Les couleurs recopient `packages/ui/src/generated/tokens.css`, lui-même généré depuis
+ * `packages/ui/src/tokens.ts` — seule source de vérité. Ces maquettes sont de la
+ * documentation : en cas d'écart, c'est la maquette qui se corrige.
+ *
+ * Seules les valeurs qui changent d'un thème à l'autre sont reprises ici.
+ */
+
+@font-face {
+  font-family: "Tiny5";
+  /* Servie par le client sous `pnpm dev` ; le second chemin sert l'ouverture depuis le disque. */
+  src:
+    url("/fonts/tiny5-latin.woff2") format("woff2"),
+    url("../../../apps/web/public/fonts/tiny5-latin.woff2") format("woff2");
+  font-display: block;
+}
+
+:root,
+:root[data-theme="obsidian"] {
+  --occ-bg: rgb(5 5 5);
+  --occ-surface: rgb(13 13 14);
+  --occ-panel: rgb(13 13 14 / 0.9);
+  --occ-matter: rgb(26 26 28);
+  --occ-matter-peak: rgb(61 61 66);
+  --occ-shade: rgb(9 9 10);
+  --occ-ink: rgb(233 230 223);
+  --occ-ink-soft: rgb(233 230 223 / 0.62);
+  --occ-ink-dim: rgb(233 230 223 / 0.4);
+  --occ-ink-faint: rgb(233 230 223 / 0.22);
+  --occ-ink-line: rgb(233 230 223 / 0.12);
+  --occ-ink-ghost: rgb(233 230 223 / 0.06);
+  --occ-ink-glow: rgb(233 230 223 / 0.28);
+  --occ-camp-a: rgb(155 231 255);
+  --occ-camp-b: rgb(255 77 94);
+  --occ-camp-a-glow: rgb(155 231 255 / 0.35);
+  --occ-camp-b-glow: rgb(255 77 94 / 0.35);
+  --occ-star: rgb(233 230 223 / 0.5);
+  --occ-star-faint: rgb(233 230 223 / 0.22);
+  --occ-aura: rgb(42 42 48 / 0.16);
+  --occ-selection: rgb(255 209 102);
+  --occ-selection-glow: rgb(255 209 102 / 0.35);
+  --occ-legal: rgb(125 156 255);
+  --occ-climb: rgb(196 155 255);
+  --occ-threat: rgb(255 77 94);
+  --occ-caution: rgb(245 197 24);
+}
+
+:root[data-theme="reliquary"] {
+  --occ-bg: rgb(7 5 4);
+  --occ-surface: rgb(17 12 9);
+  --occ-panel: rgb(17 12 9 / 0.9);
+  --occ-matter: rgb(30 22 16);
+  --occ-matter-peak: rgb(77 55 33);
+  --occ-shade: rgb(13 9 6);
+  --occ-ink: rgb(242 220 176);
+  --occ-ink-soft: rgb(242 220 176 / 0.62);
+  --occ-ink-dim: rgb(242 220 176 / 0.4);
+  --occ-ink-faint: rgb(242 220 176 / 0.22);
+  --occ-ink-line: rgb(242 220 176 / 0.12);
+  --occ-ink-ghost: rgb(242 220 176 / 0.06);
+  --occ-ink-glow: rgb(242 220 176 / 0.28);
+  --occ-camp-a: rgb(114 245 196);
+  --occ-camp-b: rgb(255 122 69);
+  --occ-camp-a-glow: rgb(114 245 196 / 0.35);
+  --occ-camp-b-glow: rgb(255 122 69 / 0.35);
+  --occ-star: rgb(242 220 176 / 0.5);
+  --occ-star-faint: rgb(242 220 176 / 0.22);
+  --occ-aura: rgb(143 232 160 / 0.16);
+  --occ-selection: rgb(255 240 160);
+  --occ-selection-glow: rgb(255 240 160 / 0.35);
+  --occ-legal: rgb(94 200 255);
+  --occ-climb: rgb(212 155 255);
+  --occ-threat: rgb(255 122 69);
+}
+
+:root[data-theme="astral"] {
+  --occ-bg: rgb(4 3 7);
+  --occ-surface: rgb(13 10 18);
+  --occ-panel: rgb(13 10 18 / 0.9);
+  --occ-matter: rgb(23 18 31);
+  --occ-matter-peak: rgb(62 43 84);
+  --occ-shade: rgb(10 8 16);
+  --occ-ink: rgb(236 230 255);
+  --occ-ink-soft: rgb(236 230 255 / 0.62);
+  --occ-ink-dim: rgb(236 230 255 / 0.4);
+  --occ-ink-faint: rgb(236 230 255 / 0.22);
+  --occ-ink-line: rgb(236 230 255 / 0.12);
+  --occ-ink-ghost: rgb(236 230 255 / 0.06);
+  --occ-ink-glow: rgb(236 230 255 / 0.28);
+  --occ-camp-a: rgb(94 240 255);
+  --occ-camp-b: rgb(255 79 216);
+  --occ-camp-a-glow: rgb(94 240 255 / 0.35);
+  --occ-camp-b-glow: rgb(255 79 216 / 0.35);
+  --occ-star: rgb(236 230 255 / 0.5);
+  --occ-star-faint: rgb(236 230 255 / 0.22);
+  --occ-aura: rgb(107 63 160 / 0.16);
+  --occ-selection: rgb(255 224 102);
+  --occ-selection-glow: rgb(255 224 102 / 0.35);
+  --occ-legal: rgb(139 123 255);
+  --occ-climb: rgb(185 139 255);
+  --occ-threat: rgb(255 79 216);
+}
+
+:root {
+  --line: 1px solid var(--occ-ink-faint);
+  --notch: polygon(
+    2px 0,
+    calc(100% - 2px) 0,
+    100% 2px,
+    100% calc(100% - 2px),
+    calc(100% - 2px) 100%,
+    2px 100%,
+    0 calc(100% - 2px),
+    0 2px
+  );
+  font:
+    16px/1.5 "Tiny5",
+    ui-monospace,
+    monospace;
+  font-synthesis: none;
+  -webkit-font-smoothing: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #000;
+  color: var(--occ-ink);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+p,
+h1,
+h2,
+h3,
+ol,
+ul,
+dl,
+dd {
+  margin: 0;
+}
+
+ol,
+ul {
+  padding: 0;
+  list-style: none;
+}
+
+/* ---- Barre d'outils de la maquette (hors écran de jeu) ------------------- */
+
+.mock-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  width: min(1280px, 100%);
+  color: rgb(233 230 223 / 0.6);
+}
+
+.mock-toolbar a {
+  color: inherit;
+}
+
+.mock-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mock-toolbar__group > span {
+  margin-right: 4px;
+}
+
+.mock-toolbar button {
+  padding: 2px 8px;
+  border: 1px solid rgb(233 230 223 / 0.2);
+  background: transparent;
+  color: rgb(233 230 223 / 0.6);
+  font: inherit;
+  cursor: pointer;
+}
+
+.mock-toolbar button[aria-pressed="true"] {
+  border-color: rgb(233 230 223 / 0.8);
+  color: rgb(233 230 223);
+}
+
+.mock-note {
+  width: min(1280px, 100%);
+  color: rgb(233 230 223 / 0.5);
+}
+
+/* ---- L'écran de jeu ------------------------------------------------------- */
+
+/* Un écran de portable 1280 × 800, mis à l'échelle de la fenêtre par `ath.js`. */
+.screen-fit {
+  width: min(1280px, 100%);
+}
+
+.screen {
+  position: relative;
+  width: 1280px;
+  height: 800px;
+  overflow: hidden;
+  transform-origin: top left;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% -12%, var(--occ-aura) 0%, transparent 70%), var(--occ-bg);
+  border: 1px solid rgb(233 230 223 / 0.08);
+}
+
+/* La voûte d'étoiles du client (`apps/web/src/ui/ui.css`). */
+.screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(var(--occ-star) 1px, transparent 1px) 13px 29px / 97px 89px,
+    radial-gradient(var(--occ-star-faint) 1px, transparent 1px) 51px 7px / 61px 67px,
+    radial-gradient(var(--occ-star-faint) 1px, transparent 1px) 3px 41px / 43px 53px;
+  animation: twinkle 4.7s ease-in-out infinite alternate;
+}
+
+@keyframes twinkle {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Le vignettage posé par-dessus le plateau, sous l'ATH. */
+.screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgb(0 0 0 / 0.55) 100%);
+}
+
+.board {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hud {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.hud > * {
+  pointer-events: auto;
+}
+
+/* ---- Briques d'ATH -------------------------------------------------------- */
+
+.panel {
+  border: var(--line);
+  background: var(--occ-panel);
+  box-shadow: 0 4px 0 var(--occ-shade);
+  clip-path: var(--notch);
+}
+
+.caps {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.dim {
+  color: var(--occ-ink-dim);
+}
+
+.soft {
+  color: var(--occ-ink-soft);
+}
+
+.faint {
+  color: var(--occ-ink-faint);
+}
+
+.glow {
+  text-shadow: 0 0 10px var(--occ-ink-glow);
+}
+
+.camp-a {
+  color: var(--occ-camp-a);
+}
+
+.camp-b {
+  color: var(--occ-camp-b);
+}
+
+.threat {
+  color: var(--occ-threat);
+}
+
+.big {
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.huge {
+  font-size: 32px;
+  line-height: 1.1;
+}
+
+.rule {
+  height: 1px;
+  background: var(--occ-ink-line);
+}
+
+/* Boutons biseautés de la charte. */
+.btn {
+  min-height: 32px;
+  padding: 3px 12px;
+  border: 1px solid var(--occ-ink-soft);
+  background: var(--occ-surface);
+  box-shadow: inset 0 -2px 0 var(--occ-shade);
+  clip-path: var(--notch);
+  color: var(--occ-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.btn:hover {
+  border-color: var(--occ-ink);
+  background: var(--occ-matter);
+  text-shadow: 0 0 8px var(--occ-ink-glow);
+}
+
+.btn--quiet {
+  border-color: var(--occ-ink-faint);
+  background: transparent;
+  box-shadow: none;
+  color: var(--occ-ink-soft);
+}
+
+.btn--icon {
+  width: 32px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+
+.btn--icon svg {
+  width: 16px;
+  height: 16px;
+  shape-rendering: crispEdges;
+}
+
+.kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 0 4px;
+  border: 1px solid var(--occ-ink-faint);
+  box-shadow: inset 0 -2px 0 var(--occ-ink-ghost);
+  color: var(--occ-ink-soft);
+  text-align: center;
+}
+
+/* Une pastille de camp, carrée : la police et le plateau sont en pixels. */
+.pip {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  vertical-align: 2px;
+}
+
+/* Glyphe de pièce en pixels (dessiné par `ath.js` dans un <svg class="glyph">). */
+.glyph {
+  width: 18px;
+  height: 22px;
+  shape-rendering: crispEdges;
+  overflow: visible;
+}
+
+.glyph--lg {
+  width: 36px;
+  height: 44px;
+}
+
+.glyph[data-taken] {
+  opacity: 0.28;
+}
+
+/* Le roster : les pièces d'un camp, celles qui sont tombées éteintes et barrées. */
+.roster {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.roster__slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.roster__slot[data-taken]::after {
+  content: "";
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  top: 50%;
+  height: 1px;
+  background: var(--occ-ink-dim);
+  transform: rotate(-35deg);
+}
+
+/* Le champ de saisie au clavier. */
+.command {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.command__input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  border: var(--line);
+  background: var(--occ-bg);
+  box-shadow: inset 0 2px 0 var(--occ-shade);
+  color: var(--occ-ink);
+  font: inherit;
+  caret-color: var(--occ-ink);
+}
+
+.command__input::placeholder {
+  color: var(--occ-ink-faint);
+}
+
+.command__input:disabled {
+  border-style: dashed;
+}
+
+/* Le journal des coups. */
+.journal {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.journal li {
+  display: grid;
+  grid-template-columns: 32px 12px 1fr;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--occ-ink-soft);
+}
+
+.journal li > :first-child {
+  color: var(--occ-ink-faint);
+  text-align: right;
+}
+
+.journal li[data-hidden] {
+  color: var(--occ-ink-dim);
+}
+
+.journal li[data-last] {
+  color: var(--occ-ink);
+}
+
+/* Faits d'une fiche de pièce. */
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+}
+
+.facts dt {
+  color: var(--occ-ink-dim);
+}
+
+/* Compteurs de nulle : remplissage tramé, un pixel sur deux. */
+.meter {
+  position: relative;
+  height: 6px;
+  border: 1px solid var(--occ-ink-faint);
+}
+
+.meter > i {
+  position: absolute;
+  inset: 1px auto 1px 1px;
+  background: repeating-linear-gradient(90deg, var(--occ-ink-soft) 0 1px, transparent 1px 2px);
+}
+
+/* L'alerte d'échec : un liseré qui respire, comme une lueur du plateau. */
+.alert {
+  border-color: var(--occ-threat);
+  color: var(--occ-threat);
+  animation: breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 4px 0 var(--occ-shade),
+      0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow:
+      0 4px 0 var(--occ-shade),
+      0 0 16px 0 var(--occ-camp-b-glow);
+  }
+}
+
+/* Un compte rendu neuf se trace de gauche à droite, comme `#status[data-fresh]`. */
+.line-in {
+  animation: line-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes line-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+    text-shadow: 0 0 12px currentColor;
+  }
+  60% {
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* ---- États : ce qui ne paraît que dans certains états ------------------- */
+
+/*
+ * `ath.js` pose `data-state` sur `.screen` : yours | theirs | check | away | watch | draw.
+ * Un élément `data-only="yours check"` n'est visible que dans ces états ;
+ * `data-except="watch"` est masqué dans ceux-là.
+ */
+.screen[data-state="yours"] [data-only]:not([data-only~="yours"]),
+.screen[data-state="theirs"] [data-only]:not([data-only~="theirs"]),
+.screen[data-state="check"] [data-only]:not([data-only~="check"]),
+.screen[data-state="away"] [data-only]:not([data-only~="away"]),
+.screen[data-state="watch"] [data-only]:not([data-only~="watch"]),
+.screen[data-state="draw"] [data-only]:not([data-only~="draw"]),
+.screen[data-state="yours"] [data-except~="yours"],
+.screen[data-state="theirs"] [data-except~="theirs"],
+.screen[data-state="check"] [data-except~="check"],
+.screen[data-state="away"] [data-except~="away"],
+.screen[data-state="watch"] [data-except~="watch"],
+.screen[data-state="draw"] [data-except~="draw"] {
+  display: none !important;
+}
+
+/* ---- Plateau (SVG) -------------------------------------------------------- */
+
+.board .tile-side-left {
+  fill: var(--occ-matter);
+  stroke: var(--occ-ink-faint);
+}
+
+.board .tile-side-right {
+  fill: var(--occ-shade);
+  stroke: var(--occ-ink-line);
+}
+
+.board .tile-top {
+  stroke: var(--occ-ink-soft);
+}
+
+.board .is-fog .tile-top {
+  stroke: var(--occ-ink-line);
+}
+
+.board .is-fog .tile-side-left,
+.board .is-fog .tile-side-right {
+  stroke: var(--occ-ink-ghost);
+}
+
+.board polygon,
+.board line {
+  stroke-width: 1;
+  stroke-linejoin: miter;
+  vector-effect: non-scaling-stroke;
+}
+
+.board .fog-weave {
+  fill: url(#fog-weave);
+  pointer-events: none;
+}
+
+.board .fog-dot {
+  fill: var(--occ-bg);
+}
+
+.overlay {
+  stroke-width: 1.5;
+}
+
+.overlay--legal {
+  fill: var(--occ-legal);
+  fill-opacity: 0.14;
+  stroke: var(--occ-legal);
+}
+
+.overlay--climb {
+  fill: var(--occ-climb);
+  fill-opacity: 0.14;
+  stroke: var(--occ-climb);
+  stroke-dasharray: 3 2;
+}
+
+.overlay--capture {
+  fill: var(--occ-threat);
+  fill-opacity: 0.18;
+  stroke: var(--occ-threat);
+}
+
+.overlay--selection {
+  fill: var(--occ-selection);
+  fill-opacity: 0.16;
+  stroke: var(--occ-selection);
+  stroke-width: 2;
+}
+
+.overlay--check {
+  fill: var(--occ-threat);
+  fill-opacity: 0.2;
+  stroke: var(--occ-threat);
+  stroke-width: 2;
+}
+
+.overlay--hover {
+  fill: var(--occ-ink);
+  fill-opacity: 0.06;
+  stroke: var(--occ-ink);
+  stroke-dasharray: 2 2;
+}
+
+.overlay--last {
+  fill: none;
+  stroke: var(--occ-camp-a);
+  stroke-opacity: 0.6;
+  stroke-dasharray: 2 3;
+}
+
+.overlay--breathe {
+  animation: overlay-breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes overlay-breathe {
+  0%,
+  100% {
+    fill-opacity: 0.08;
+  }
+  50% {
+    fill-opacity: 0.22;
+  }
+}
+
+.trail {
+  fill: none;
+  stroke: var(--occ-camp-a);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+
+.piece-light {
+  pointer-events: none;
+}
+
+.piece--ghost {
+  opacity: 0.45;
+}
+
+.selection-column {
+  fill: url(#selection-column);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen::before,
+  .alert,
+  .overlay--breathe,
+  .line-in {
+    animation: none;
+  }
+}

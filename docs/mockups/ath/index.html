@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="fr" data-theme="obsidian">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ATH — Maquettes</title>
+    <link rel="stylesheet" href="./ath.css" />
+    <style>
+      body {
+        align-items: stretch;
+        background: var(--occ-bg);
+      }
+
+      .page {
+        width: min(880px, 100%);
+        margin: 32px auto;
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+      }
+
+      h1 {
+        font-size: 32px;
+        font-weight: 400;
+        letter-spacing: 0.12em;
+      }
+
+      h2 {
+        font-size: 16px;
+        font-weight: 400;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--occ-ink-dim);
+        margin-bottom: 12px;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .variants {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .variants a {
+        display: grid;
+        grid-template-columns: 32px 1fr;
+        gap: 4px 16px;
+        padding: 14px 16px;
+        text-decoration: none;
+      }
+
+      .variants a:hover {
+        border-color: var(--occ-ink-soft);
+      }
+
+      .variants .letter {
+        grid-row: span 2;
+        font-size: 24px;
+        color: var(--occ-ink-dim);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 6px 12px 6px 0;
+        text-align: left;
+        vertical-align: top;
+        border-bottom: 1px solid var(--occ-ink-line);
+        font-weight: 400;
+      }
+
+      th {
+        color: var(--occ-ink-dim);
+      }
+
+      .questions li {
+        padding: 4px 0 4px 16px;
+        position: relative;
+        color: var(--occ-ink-soft);
+      }
+
+      .questions li::before {
+        content: "◇";
+        position: absolute;
+        left: 0;
+        color: var(--occ-ink-faint);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header>
+        <p class="dim caps"><a href="../index.html">Maquettes</a> / ATH</p>
+        <h1>Interface de jeu</h1>
+        <p class="soft">
+          L'ATH en partie. La disposition A « Bandeaux » est retenue et implémentée
+          (`apps/web/src/hud/`, 2026-11-20) ; B et C restent ici pour mémoire. Chaque page a une
+          barre au-dessus de l'écran pour passer d'un état à l'autre et d'un thème à l'autre.
+        </p>
+      </header>
+
+      <section>
+        <h2>Retenue</h2>
+        <div class="variants">
+          <a class="panel" href="./a-bandeaux.html">
+            <span class="letter">A</span>
+            <span class="caps">Bandeaux</span>
+            <span class="dim">
+              Les deux camps se font face en haut, le tour au centre. Fiche de pièce et journal à
+              droite, caméra à gauche, légende des lueurs en bas.
+            </span>
+          </a>
+        </div>
+      </section>
+
+      <section>
+        <h2>Décisions sur la disposition A</h2>
+        <ul class="questions">
+          <li>
+            Pas de saisie au clavier : on joue à la souris seulement. Le panneau du bas à gauche
+            (saisie et case survolée) est retiré.
+          </li>
+          <li>
+            Les pièces adverses et leurs pertes sont montrées : la composition adverse est connue
+            dès le début de la partie.
+          </li>
+          <li>
+            Le journal liste chaque coup. Un coup adverse invisible s'écrit « coup hors de vue » ;
+            une pièce qui entre en vue, « ? → 1,3 ».
+          </li>
+          <li>
+            Le compteur sans prise n'apparaît qu'à l'approche du seuil, en ambre (état « Nulle
+            proche »).
+          </li>
+          <li>
+            Restent : la légende des lueurs, les boutons de caméra, le compteur de spectateurs et
+            l'aide sous la fiche vide.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>États montrés</h2>
+        <table>
+          <tr>
+            <th>À vous</th>
+            <td>Un éclaireur choisi : déplacements, une montée, une prise.</td>
+          </tr>
+          <tr>
+            <th>Adversaire au trait</th>
+            <td>Votre dernier coup reste tracé sur le plateau.</td>
+          </tr>
+          <tr>
+            <th>Échec</th>
+            <td>Le roi seul a des coups. La menace peut être hors de vue (règles 7.1).</td>
+          </tr>
+          <tr>
+            <th>Adversaire déconnecté</th>
+            <td>Compte à rebours avant forfait (30 s, règles 2).</td>
+          </tr>
+          <tr>
+            <th>Spectateur</th>
+            <td>La vue d'un ami, sans abandon (règles 5.5).</td>
+          </tr>
+          <tr>
+            <th>Nulle proche</th>
+            <td>46 actions sans prise sur 60 : le compteur paraît (règles 7.2).</td>
+          </tr>
+        </table>
+      </section>
+
+      <section>
+        <h2>Écartées</h2>
+        <div class="variants">
+          <a class="panel" href="./b-coins.html">
+            <span class="letter">B</span>
+            <span class="caps">Coins <span class="faint">· écartée</span></span>
+            <span class="dim">
+              Le plateau prend tout l'écran, les camps dans les coins du bas, la fiche accrochée à
+              la pièce. La plus calme, mais la fiche couvre des cases.
+            </span>
+          </a>
+          <a class="panel" href="./c-registre.html">
+            <span class="letter">C</span>
+            <span class="caps">Registre <span class="faint">· écartée</span></span>
+            <span class="dim">
+              Une seule colonne à droite, lue de haut en bas. Le plateau n'est jamais recouvert,
+              mais perd un quart de la largeur.
+            </span>
+          </a>
+        </div>
+        <p class="faint" style="margin-top: 8px">
+          Elles n'ont pas suivi les décisions ci-dessus : elles gardent la saisie au clavier et le
+          compteur permanent.
+        </p>
+      </section>
+
+      <p class="faint">
+        Glyphes, positions et valeurs sont du remplissage. Couleurs recopiées de
+        <code>packages/ui/src/tokens.ts</code>.
+      </p>
+    </main>
+  </body>
+</html>

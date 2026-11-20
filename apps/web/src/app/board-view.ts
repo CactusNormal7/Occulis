@@ -1,11 +1,10 @@
 import type { Board as Terrain, Coord } from "@occulis/core";
 import type { Board, BoardHooks } from "../render/pixi/board.js";
 import type { SceneInput } from "../render/pixi/scene.js";
-import { sameSheet } from "../game/inspection.js";
-import type { GameConsole } from "../ui/console.js";
-import type { PieceInfo } from "../ui/piece-info.js";
 import {
   type Camera,
+  type CameraCommand,
+  commandCamera,
   createCamera,
   originOf,
   pivotOf,
@@ -15,13 +14,14 @@ import {
   withViewport,
 } from "../view/camera.js";
 import type { ScreenPoint } from "@occulis/board/iso";
+import { hudFraming } from "../hud/layout.js";
 import { tileAt } from "../view/picking.js";
 import type { MatchController } from "./match-controller.js";
 
 /** Ce que le plateau lit et change de la partie en cours. */
 export type BoardSubject = Pick<
   MatchController,
-  "match" | "hovered" | "selection" | "animation" | "hover" | "pick" | "advance"
+  "match" | "hovered" | "selection" | "animation" | "hover" | "pick" | "inspect" | "advance"
 >;
 
 /**
@@ -37,8 +37,6 @@ export class BoardView {
   constructor(
     private readonly host: HTMLElement,
     private readonly subject: BoardSubject,
-    private readonly gameConsole: Pick<GameConsole, "showTile" | "playAction">,
-    private readonly pieceInfo: PieceInfo,
   ) {}
 
   /**
@@ -64,13 +62,18 @@ export class BoardView {
 
   /** Recentre la caméra sur la carte d'une partie qui commence. */
   center(terrain: Terrain): void {
-    this.camera = createCamera(pivotOf(terrain), viewport());
+    const screen = viewport();
+    this.camera = createCamera(pivotOf(terrain), screen, hudFraming(screen));
   }
 
   /** Vide la table, à la sortie d'une partie. */
   clear(): void {
     this.board?.clear();
-    this.pieceInfo.close(true);
+  }
+
+  /** Un bouton de caméra de l'ATH. */
+  command(command: CameraCommand): void {
+    this.camera = commandCamera(this.camera, command);
   }
 
   private async load(): Promise<Board | undefined> {
@@ -87,20 +90,19 @@ export class BoardView {
   private hooks(): BoardHooks {
     return {
       onResize: () => {
-        this.camera = withViewport(this.camera, viewport());
+        const screen = viewport();
+        // Sous 900 px, la colonne de l'ATH se replie en bas : le recentrage suit.
+        this.camera = { ...withViewport(this.camera, screen), home: hudFraming(screen) };
       },
       controls: {
         getCamera: () => this.camera,
         setCamera: (next) => {
-          // La fiche est posée au-dessus d'une pièce : dès que le plateau bouge sous
-          // elle, elle ne désigne plus rien.
-          if (next !== this.camera) this.pieceInfo.close();
           this.camera = next;
         },
         pickTile: (point) => this.tileUnder(point),
         setHovered: (coord) => this.subject.hover(coord),
-        onPick: (coord) => this.pick(coord),
-        onInspect: (coord, at) => this.inspect(coord, at),
+        onPick: (coord) => this.subject.pick(coord),
+        onInspect: (coord) => this.subject.inspect(coord),
       },
       frame: (deltaMS) => this.frame(deltaMS),
     };
@@ -112,30 +114,9 @@ export class BoardView {
     return tileAt(toProjectionSpace(this.camera, point), match.board, toProjection(this.camera));
   }
 
-  private pick(coord: Coord | undefined): void {
-    if (this.subject.match === undefined) return;
-    this.gameConsole.showTile(coord);
-
-    const action = this.subject.pick(coord);
-    if (action !== undefined) this.gameConsole.playAction(action);
-  }
-
-  /** Un clic droit : la fiche de la pièce désignée, ou rien s'il n'y en a pas. */
-  private inspect(coord: Coord | undefined, at: ScreenPoint): void {
-    const sheet = coord === undefined ? undefined : this.subject.match?.inspect(coord);
-    if (sheet === undefined) this.pieceInfo.close();
-    else this.pieceInfo.show(sheet, at);
-  }
-
   private frame(deltaMS: number): SceneInput | undefined {
     const match = this.subject.match;
     if (match === undefined) return undefined;
-
-    // La pièce a bougé, a été prise ou est sortie de vue : la fiche ne la décrit plus.
-    const open = this.pieceInfo.current;
-    if (open !== undefined && !sameSheet(open, match.inspect(open.piece.coord))) {
-      this.pieceInfo.close();
-    }
 
     this.camera = settle(this.camera, deltaMS);
     this.subject.advance(deltaMS);

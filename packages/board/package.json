@@ -9,7 +9,9 @@
     "./iso": "./src/iso.ts",
     "./pixel": "./src/pixel.ts",
     "./matter": "./src/matter.ts",
-    "./paint": "./src/paint.ts"
+    "./paint": "./src/paint.ts",
+    "./glyphs": "./src/glyphs.ts",
+    "./glyph-layout": "./src/glyph-layout.ts"
   },
   "scripts": {
     "test": "vitest run",

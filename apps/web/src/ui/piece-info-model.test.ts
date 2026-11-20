@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { messagesFor } from "@occulis/i18n";
 import type { PieceSheet } from "../game/inspection.js";
-import { describeSheet, placeAbove } from "./piece-info-model.js";
+import { describeSheet } from "./piece-info-model.js";
 
 const m = messagesFor("fr");
 
@@ -65,23 +65,5 @@ describe("describeSheet", () => {
     const texts = describeSheet(m, { ...scout, piece: { ...scout.piece, kind: "golem" } });
     expect(texts.title).toBe("golem");
     expect(texts.description).toBeUndefined();
-  });
-});
-
-describe("placeAbove", () => {
-  const panel = { width: 200, height: 100 };
-  const viewport = { width: 1000, height: 800 };
-
-  it("centre la fiche au-dessus du point cliqué", () => {
-    expect(placeAbove({ x: 500, y: 400 }, panel, viewport)).toEqual({ left: 400, top: 272 });
-  });
-
-  it("passe dessous quand la place manque en haut", () => {
-    expect(placeAbove({ x: 500, y: 60 }, panel, viewport).top).toBe(88);
-  });
-
-  it("reste entière dans la fenêtre, près d'un bord", () => {
-    expect(placeAbove({ x: 5, y: 400 }, panel, viewport).left).toBe(12);
-    expect(placeAbove({ x: 995, y: 400 }, panel, viewport).left).toBe(788);
   });
 });

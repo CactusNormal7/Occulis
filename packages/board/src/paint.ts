@@ -1,4 +1,4 @@
-import type { Board, PlayerId } from "@occulis/core";
+import type { Board, PieceKind, PlayerId } from "@occulis/core";
 import { cssColor } from "@occulis/ui/tokens";
 import { look } from "./theme.js";
 import {
@@ -10,7 +10,11 @@ import {
   project,
   tileQuad,
 } from "./iso.js";
+import { pixelOf } from "./canvas-trace.js";
+import { glyphOf } from "./glyphs.js";
 import { topColor } from "./matter.js";
+import { paintGlyph } from "./paint-glyph.js";
+import { paintObelisk } from "./paint-obelisk.js";
 import { mixColor, pixelResolution } from "./pixel.js";
 
 /**
@@ -45,11 +49,6 @@ export function fitPixelCanvas(
   return { width, height };
 }
 
-/** Un pixel du tampon, en unités du tracé courant (la transformation est une simple échelle). */
-function pixelOf(context: CanvasRenderingContext2D): number {
-  return 1 / (context.getTransform().a || 1);
-}
-
 const patterns = new WeakMap<CanvasRenderingContext2D, Map<number, CanvasPattern | null>>();
 
 /** La trame un-sur-deux du jeu (`render/pixi/scene.ts`), dans la couleur du vide. */
@@ -82,17 +81,6 @@ export function trace(context: CanvasRenderingContext2D, quad: Quad): void {
   quad.forEach((point, i) =>
     i === 0 ? context.moveTo(point.x, point.y) : context.lineTo(point.x, point.y),
   );
-  context.closePath();
-}
-
-function tracePoints(context: CanvasRenderingContext2D, points: readonly number[]): void {
-  context.beginPath();
-  for (let i = 0; i < points.length; i += 2) {
-    const x = points[i] ?? 0;
-    const y = points[i + 1] ?? 0;
-    if (i === 0) context.moveTo(x, y);
-    else context.lineTo(x, y);
-  }
   context.closePath();
 }
 
@@ -181,107 +169,26 @@ export function terrainDrawables(
   return drawables;
 }
 
+/** Ce qu'il faut savoir d'une pièce pour la dessiner : son type et son camp. */
+export interface PieceToPaint {
+  readonly kind: PieceKind;
+  readonly owner: PlayerId;
+}
+
 /**
- * La silhouette de `render/pixi/pieces.ts` — obélisque et œil flottant — tracée en Canvas 2D.
- * Une pièce moins qu'entièrement posée (`alpha` sous `look().pieces.alphaVisible`) est un
- * fantôme : contour seul. Rend le haut de l'œil.
+ * Une pièce, dans la silhouette choisie par `look().pieces.style` : le glyphe de son type
+ * ou l'obélisque. Une pièce moins qu'entièrement posée (`alpha` sous
+ * `look().pieces.alphaVisible`) est un fantôme. `color` remplace la couleur du camp (une
+ * pièce sélectionnée). Rend le point le plus haut de la pièce, pour y poser une étiquette.
  */
 export function drawPiece(
   context: CanvasRenderingContext2D,
   base: ScreenPoint,
-  owner: PlayerId,
+  piece: PieceToPaint,
   alpha: number,
   proj: IsoProjection,
-  color: number = look().players[owner],
+  color: number = look().players[piece.owner],
 ): ScreenPoint {
-  const px = pixelOf(context);
-  const ghost = alpha < look().pieces.alphaVisible;
-  const tall = proj.heightUnit * proj.scale * look().pieces.bodyRatio;
-  const foot = proj.tileWidth * proj.scale * look().pieces.bodyRatioWidth;
-  const half = proj.tileWidth * proj.scale * look().pieces.headRatio;
-  const top = base.y - tall;
-  const eye = top - look().pieces.float * px - half * 0.75;
-  context.lineWidth = look().pieces.strokeWidth * px;
-
-  if (!ghost) {
-    context.beginPath();
-    context.ellipse(base.x, base.y, foot * 1.6, foot * 0.8, 0, 0, Math.PI * 2);
-    context.fillStyle = cssColor(look().pieces.shadow, look().pieces.shadowAlpha);
-    context.fill();
-    tracePoints(context, [
-      base.x - foot,
-      base.y,
-      base.x - foot * 0.45,
-      top,
-      base.x,
-      top - px,
-      base.x,
-      base.y + foot * 0.35,
-    ]);
-    context.fillStyle = cssColor(
-      mixColor(color, look().palette.background, look().pieces.faceLight),
-    );
-    context.fill();
-    tracePoints(context, [
-      base.x,
-      base.y + foot * 0.35,
-      base.x,
-      top - px,
-      base.x + foot * 0.45,
-      top,
-      base.x + foot,
-      base.y,
-    ]);
-    context.fillStyle = cssColor(
-      mixColor(color, look().palette.background, look().pieces.faceShade),
-    );
-    context.fill();
-  }
-  tracePoints(context, [
-    base.x - foot,
-    base.y,
-    base.x - foot * 0.45,
-    top,
-    base.x,
-    top - px,
-    base.x + foot * 0.45,
-    top,
-    base.x + foot,
-    base.y,
-    base.x,
-    base.y + foot * 0.35,
-  ]);
-  context.strokeStyle = cssColor(color, alpha);
-  context.stroke();
-
-  tracePoints(context, [
-    base.x,
-    eye - half * 0.75,
-    base.x + half,
-    eye,
-    base.x,
-    eye + half * 0.75,
-    base.x - half,
-    eye,
-  ]);
-  if (ghost) {
-    context.stroke();
-  } else {
-    context.fillStyle = cssColor(color);
-    context.fill();
-    const pupil = Math.max(px, half * 0.28);
-    tracePoints(context, [
-      base.x,
-      eye - pupil,
-      base.x + pupil,
-      eye,
-      base.x,
-      eye + pupil,
-      base.x - pupil,
-      eye,
-    ]);
-    context.fillStyle = cssColor(look().palette.background);
-    context.fill();
-  }
-  return { x: base.x, y: eye - half * 0.75 };
+  if (look().pieces.style === "obelisk") return paintObelisk(context, base, alpha, proj, color);
+  return paintGlyph(context, base, glyphOf(piece.kind), alpha, proj, color);
 }
