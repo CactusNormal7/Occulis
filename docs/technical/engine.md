@@ -125,7 +125,8 @@ d'un seul tenant. Elle vaut pour tout écran à venir ; ses règles et ce qui le
    par le greffon `occulis-critical-paint` de `vite.config.ts` : `color-scheme: dark`,
    `theme-color`, le fond en ligne (depuis `BACKGROUND`), la police pixel déclarée en
    `font-display: block` et préchargée — un écran ne paraît jamais dans la police de
-   secours pour basculer ensuite —, le fondu entre pages et les règles de spéculation. **Aucune couleur n'est écrite dans un `index.html`** ; une nouvelle page
+   secours pour basculer ensuite —, l'icône d'onglet (`favicon()`, un SVG `data:` aux couleurs
+   des tokens), le fondu entre pages et les règles de spéculation. **Aucune couleur n'est écrite dans un `index.html`** ; une nouvelle page
    Vite reçoit le bloc d'office.
 2. **Tout ce qu'un écran lit part en même temps.** Chaque page déclare, par route, les
    ressources de son écran (`profile/resources.ts`, `admin/resources.ts` : `resourcesOf(route)`)
