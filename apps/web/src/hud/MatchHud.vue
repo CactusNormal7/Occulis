@@ -8,6 +8,8 @@
  * traduit par `hud/model.ts`. Il ne lit rien lui-même et ne joue rien — il rend seulement
  * les gestes de ses boutons.
  */
+import { computed, ref, watch } from "vue";
+import { useMessages } from "@occulis/ui";
 import type { MatchNotice, OpponentAway } from "../app/match-controller.js";
 import type { CameraCommand } from "../view/camera.js";
 import CameraControls from "./CameraControls.vue";
@@ -21,13 +23,31 @@ import PlayerBand from "./PlayerBand.vue";
 import TurnPlate from "./TurnPlate.vue";
 import "./hud.css";
 
-defineProps<{
+const props = defineProps<{
   model: HudModel;
   away: OpponentAway | undefined;
   notice: MatchNotice | undefined;
   spectators: number;
+  /** La vue de dessus est active : la caméra est figée. */
+  planView: boolean;
 }>();
 const emit = defineEmits<{ leave: []; camera: [command: CameraCommand] }>();
+
+const messages = useMessages();
+/**
+ * L'annonce de la vue, sous le tour, le temps de la bascule. Chaque bascule la rejoue
+ * (`:key`) ; elle s'efface seule, par son animation.
+ */
+const switches = ref(0);
+watch(
+  () => props.planView,
+  () => {
+    switches.value += 1;
+  },
+);
+const viewName = computed(() =>
+  props.planView ? messages.value.game.hud.camera.planOn : messages.value.game.hud.camera.isoOn,
+);
 </script>
 
 <template>
@@ -54,6 +74,9 @@ const emit = defineEmits<{ leave: []; camera: [command: CameraCommand] }>();
       <MatchJournal :lines="model.journal" :draw-meter="model.drawMeter" />
     </aside>
     <GlowLegend v-if="model.showLegend" />
-    <CameraControls @command="(command) => emit('camera', command)" />
+    <p v-if="switches > 0" :key="switches" class="hud-view-chip" aria-live="polite">
+      {{ viewName }}
+    </p>
+    <CameraControls :plan-view="planView" @command="(command) => emit('camera', command)" />
   </div>
 </template>

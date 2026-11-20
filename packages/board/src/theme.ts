@@ -109,6 +109,21 @@ function lookOf(name: ThemeName) {
       /** La trame posée sur une case hors de vue : un pixel sur deux, couleur du vide. */
       fogDither: palette.background,
       fogDitherAlpha: 0.7,
+      /**
+       * La vue de dessus, où le relief n'a plus de faces : un rebord d'os sur chaque côté
+       * qui domine sa voisine, et la hauteur en points dans le coin de la case.
+       */
+      plan: {
+        /** Épaisseur du rebord, en pixels du plateau. */
+        ledgeWidth: 2,
+        ledgeAlpha: 0.85,
+        /** Côté d'un point de hauteur, en fraction du côté de la case. */
+        pipRatio: 0.05,
+        /** Le premier point, à cette fraction du coin ; les suivants, à ce pas. */
+        pipInset: 0.16,
+        pipStep: 0.14,
+        pipAlpha: 0.75,
+      },
     },
     hover: {
       stroke: palette.ink,

@@ -10,6 +10,8 @@ export const HUD_ICONS = {
   zoomOut: "M1 3h6v2h-6z",
   recenter:
     "M3 0h2v1h1v1h1v1h1v2h-1v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-1v-2h1v-1h1v-1h1zM3 2h2v1h1v2h-1v1h-2v-1h-1v-2h1z",
+  /** Le plateau vu d'en haut : un carré de quatre cases. */
+  planView: "M0 0h7v7h-7zM1 1h5v5h-5zM3 1h1v5h-1zM1 3h5v1h-5z",
   eye: "M0 4h1v-1h2v-1h2v1h2v1h1v1h-1v1h-2v1h-2v-1h-2v-1h-1zM3 4h2v1h-2z",
 } as const;
 

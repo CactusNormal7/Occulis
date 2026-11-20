@@ -21,12 +21,46 @@
   var HEIGHT_UNIT = 16;
   /** Épaisseur du socle sous une case de hauteur 0, en niveaux. */
   var BASE_DEPTH = 0.6;
+  /** Le centre du plateau de 9 × 9, autour duquel la vue de dessus tourne. */
+  var PIVOT = 4.5;
+
+  /**
+   * L'inclinaison de la caméra : 0 en isométrique, 1 vue de dessus (vue-plateau.html).
+   * Entre les deux, trois choses glissent ensemble : le plateau tourne d'un huitième de
+   * tour pour aligner ses rangées sur l'écran, les cases se déplient de losanges en carrés,
+   * et le relief s'aplatit. Les autres maquettes restent à 0.
+   */
+  var tilt = 0;
+
+  function lerp(from, to, t) {
+    return from + (to - from) * t;
+  }
+
+  /** Le point logique tourné autour du centre : un huitième de tour à pleine inclinaison. */
+  function turned(x, y) {
+    var angle = (-tilt * Math.PI) / 4;
+    var dx = x - PIVOT;
+    var dy = y - PIVOT;
+    return {
+      x: PIVOT + dx * Math.cos(angle) - dy * Math.sin(angle),
+      y: PIVOT + dx * Math.sin(angle) + dy * Math.cos(angle),
+    };
+  }
 
   function project(x, y, height) {
+    var point = turned(x, y);
     return {
-      x: ((x - y) * TILE_WIDTH) / 2,
-      y: ((x + y) * TILE_HEIGHT) / 2 - height * HEIGHT_UNIT,
+      x: ((point.x - point.y) * TILE_WIDTH) / 2,
+      y:
+        ((point.x + point.y) * lerp(TILE_HEIGHT, TILE_WIDTH, tilt)) / 2 -
+        height * lerp(HEIGHT_UNIT, 0, tilt),
     };
+  }
+
+  /** La profondeur d'une case : les cases du fond se peignent d'abord, à toute inclinaison. */
+  function depthOf(x, y) {
+    var point = turned(x + 0.5, y + 0.5);
+    return point.x + point.y;
   }
 
   // ---- La carte de démonstration ------------------------------------------------
@@ -295,6 +329,53 @@
       group,
     );
     if (!visible) element("polygon", { class: "fog-weave", points: points(top) }, group);
+    if (tilt > 0) drawFlatRelief(group, x, y, height, top);
+  }
+
+  /**
+   * Ce qui dit le relief quand il n'a plus de faces : un rebord d'os sur chaque côté qui
+   * domine sa voisine, et la hauteur en points dans le coin de la case (un point par
+   * niveau). Les deux paraissent avec l'inclinaison.
+   */
+  function drawFlatRelief(group, x, y, height, top) {
+    var style = "opacity: " + tilt;
+    var sides = [
+      [0, -1, top[0], top[1]],
+      [1, 0, top[1], top[2]],
+      [0, 1, top[2], top[3]],
+      [-1, 0, top[3], top[0]],
+    ];
+    sides.forEach(function (side) {
+      var neighbour = heightAt(x + side[0], y + side[1]);
+      if (neighbour !== null && neighbour >= height) return;
+      element(
+        "line",
+        {
+          class: "tile-ledge",
+          x1: side[2].x,
+          y1: side[2].y,
+          x2: side[3].x,
+          y2: side[3].y,
+          style: style,
+        },
+        group,
+      );
+    });
+    for (var level = 0; level < height; level++) {
+      var corner = project(x + 0.16 + level * 0.14, y + 0.16, height);
+      element(
+        "rect",
+        {
+          class: "height-pip",
+          x: corner.x - 1.5,
+          y: corner.y - 1.5,
+          width: 3,
+          height: 3,
+          style: style,
+        },
+        group,
+      );
+    }
   }
 
   function drawOverlay(layer, tile, className) {
@@ -399,7 +480,7 @@
       });
     });
     tiles.sort(function (a, b) {
-      return a.x + a.y - (b.x + b.y);
+      return depthOf(a.x, a.y) - depthOf(b.x, b.y);
     });
     tiles.forEach(function (tile) {
       drawTile(terrain, tile.x, tile.y, tile.height);
@@ -430,7 +511,7 @@
       }),
     );
     all.sort(function (a, b) {
-      return a.piece.x + a.piece.y - (b.piece.x + b.piece.y);
+      return depthOf(a.piece.x, a.piece.y) - depthOf(b.piece.x, b.piece.y);
     });
     all.forEach(function (entry) {
       var isSelected = sameTile(scene.selected, [entry.piece.x, entry.piece.y]);
@@ -442,16 +523,22 @@
 
   /** Cadre le plateau dans le SVG ; `data-shift` décale le centre, en pixels d'écran. */
   function fitViewBox(svg) {
-    var corners = [
-      project(0, 0, MAX_HEIGHT),
-      project(9, 0, 0),
-      project(0, 9, 0),
-      project(9, 9, -BASE_DEPTH),
-    ];
-    var left = corners[2].x;
-    var right = corners[1].x;
-    var top = corners[0].y - 40;
-    var bottom = corners[3].y;
+    var corners = [];
+    [0, 9].forEach(function (x) {
+      [0, 9].forEach(function (y) {
+        corners.push(project(x, y, MAX_HEIGHT), project(x, y, -BASE_DEPTH));
+      });
+    });
+    var xs = corners.map(function (point) {
+      return point.x;
+    });
+    var ys = corners.map(function (point) {
+      return point.y;
+    });
+    var left = Math.min.apply(null, xs);
+    var right = Math.max.apply(null, xs);
+    var top = Math.min.apply(null, ys) - lerp(40, 24, tilt);
+    var bottom = Math.max.apply(null, ys);
     var zoom = Number(svg.dataset.zoom || 1.08);
     var width = (right - left) * zoom;
     var height = (bottom - top) * zoom;
@@ -578,8 +665,23 @@
     window.addEventListener("resize", apply);
     document.fonts.ready.then(apply);
     apply();
+
+    redraw = function () {
+      if (!svg) return;
+      renderBoard(svg, current.state);
+      placeAnchors(screen, svg, current.state);
+    };
   }
 
-  window.Ath = { fillHudGlyphs: fillHudGlyphs };
+  /** Redessine le plateau seul, image par image pendant une bascule de vue. */
+  var redraw = function () {};
+
+  /** Incline la caméra (0 isométrique, 1 de dessus) et redessine. */
+  function setTilt(value) {
+    tilt = value;
+    redraw();
+  }
+
+  window.Ath = { fillHudGlyphs: fillHudGlyphs, setTilt: setTilt };
   document.addEventListener("DOMContentLoaded", start);
 })();

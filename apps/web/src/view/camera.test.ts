@@ -3,10 +3,15 @@ import { Board, type Coord } from "@occulis/core";
 import {
   commandCamera,
   type Camera,
+  PLAN_VIEW_MS,
   ZOOM_STEP,
   createCamera,
+  flatnessOf,
+  isLocked,
   originOf,
+  panBy,
   pivotOf,
+  spanOf,
   rotateBy,
   settle,
   snapRotation,
@@ -157,5 +162,70 @@ describe("commandCamera", () => {
     const moved = { ...commandCamera(camera, "zoom-in"), pan: { x: 40, y: -12 }, rotation: 1 };
     const back = commandCamera(moved, "recenter");
     expect(back).toMatchObject({ scale: 1, pan: camera.pan, rotation: 1 });
+  });
+});
+
+describe("la vue de dessus", () => {
+  const INSETS = { top: 88, right: 312, bottom: 56, left: 64 };
+  const free = createCamera({ x: 4, y: 4 }, { x: 800, y: 600 }, { scale: 1.25, insets: INSETS }, 9);
+  /** La bascule menée à son terme. */
+  const planned = settle(commandCamera(free, "plan-view"), PLAN_VIEW_MS);
+
+  it("mesure le côté du plateau, en cases", () => {
+    expect(spanOf(Board.fromAscii(["000", "000"]))).toBe(3);
+    expect(spanOf(new Board([]))).toBe(1);
+  });
+
+  it("bascule en une animation, à mi-chemin au milieu de sa durée", () => {
+    const halfway = settle(commandCamera(free, "plan-view"), PLAN_VIEW_MS / 2);
+    expect(flatnessOf(halfway)).toBeCloseTo(0.5);
+    expect(flatnessOf(planned)).toBe(1);
+  });
+
+  it("aplatit le relief et redresse les cases en carrés", () => {
+    const projection = toProjection(planned);
+    expect(projection.heightUnit).toBe(0);
+    expect(projection.tileHeight).toBe(projection.tileWidth);
+    // Un pas le long d'un axe logique devient horizontal ou vertical à l'écran.
+    const a = project({ x: 0, y: 0 }, 0, projection);
+    const b = project({ x: 0, y: 1 }, 0, projection);
+    expect(b.x - a.x).toBeCloseTo(0);
+    expect(b.y).toBeGreaterThan(a.y);
+  });
+
+  it("centre le plateau entier dans la zone libre", () => {
+    expect(pivotOnScreen(planned).x).toBeCloseTo(276);
+    expect(pivotOnScreen(planned).y).toBeCloseTo(316);
+    const corners = [
+      { x: -0.5, y: -0.5 },
+      { x: 8.5, y: 8.5 },
+    ].map((corner) => screenOf(planned, corner));
+    for (const corner of corners) {
+      expect(corner.x).toBeGreaterThanOrEqual(INSETS.left);
+      expect(corner.x).toBeLessThanOrEqual(800 - INSETS.right);
+      expect(corner.y).toBeGreaterThanOrEqual(INSETS.top);
+      expect(corner.y).toBeLessThanOrEqual(600 - INSETS.bottom);
+    }
+  });
+
+  it("fige la caméra : ni pan, ni zoom, ni rotation", () => {
+    expect(isLocked(planned)).toBe(true);
+    expect(panBy(planned, 30, 30)).toBe(planned);
+    expect(commandCamera(planned, "zoom-in")).toBe(planned);
+    expect(commandCamera(planned, "turn-left")).toBe(planned);
+    expect(rotateBy(planned, 0.4)).toBe(planned);
+  });
+
+  it("ramène à la vue quittée, angle, zoom et pan compris", () => {
+    const moved = turn(zoomAt(panBy(free, 40, -20), { x: 200, y: 200 }, 1.3), 1);
+    const settled = settle(moved, 1000);
+    const back = settle(settle(commandCamera(settled, "plan-view"), PLAN_VIEW_MS), PLAN_VIEW_MS);
+    const restored = settle(commandCamera(back, "plan-view"), PLAN_VIEW_MS);
+    expect(isLocked(restored)).toBe(false);
+    expect(restored).toMatchObject({
+      scale: settled.scale,
+      pan: settled.pan,
+      rotation: settled.rotation,
+    });
   });
 });
