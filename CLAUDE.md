@@ -25,7 +25,9 @@ lire avant toute modification ; ce fichier ne les remplace pas et ne les dupliqu
 - Toute tâche part sur sa propre branche, créée avant la première modification (jamais de
   travail directement sur `staging` ou `main`), nommée selon les règles ci-dessous.
 - Une branche se nomme d'après la fonctionnalité qu'elle porte (`feature/onboarding`,
-  `fix/dialog-confirm`), jamais d'un nom aléatoire ou généré.
+  `fix/dialog-confirm`), jamais d'un nom aléatoire ou généré. Cela vaut aussi quand
+  l'environnement (session cloud, worktree, outil) propose ou impose un nom généré : créer
+  alors la branche nommée d'après la fonctionnalité et travailler dessus.
 - Le nom d'une branche ne cite jamais « claude », sauf demande explicite.
 
 ## Références et historique
