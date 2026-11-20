@@ -71,6 +71,11 @@ export interface SceneInput {
   readonly selection: Selection | undefined;
   /** Déplacement en cours ; la pièce concernée est dessinée à sa position interpolée. */
   readonly animation: MoveAnimation | undefined;
+  /**
+   * 0 en vue isométrique, 1 en vue de dessus (`flatnessOf()`, `view/camera.ts`) : les
+   * pièces s'y centrent sur leur case et le relief s'y lit en rebords et en points.
+   */
+  readonly flatness: number;
 }
 
 /** Ce que la scène sait de l'écran, d'une image à l'autre. */
@@ -355,7 +360,7 @@ export class Scene {
   }
 
   private drawWorld(
-    { board, view, projection, animation, selection, hovered }: SceneInput,
+    { board, view, projection, animation, selection, hovered, flatness }: SceneInput,
     still: boolean,
   ): void {
     const g = this.world;
@@ -487,6 +492,7 @@ export class Scene {
             dither: fog,
             drop: entry.drop * level,
             alpha: entry.alpha,
+            flatness,
           },
           projection,
         );
@@ -503,9 +509,11 @@ export class Scene {
           px: this.px,
           dither: this.dither(drawable.occupant.color),
           alpha: drawable.alpha,
-          rise: drawable.rise,
+          // Vue de dessus, une pièce n'a plus où s'élever : la sélection se lit sur la case.
+          rise: drawable.rise * (1 - flatness),
+          seat: flatness,
           flash: drawable.flash,
-          beam: drawable.beam,
+          beam: drawable.beam * (1 - flatness),
           beamColor: look().selection.piece,
         },
         projection,

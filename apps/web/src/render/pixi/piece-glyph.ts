@@ -28,7 +28,7 @@ export function drawGlyph(
   paint: PiecePaint,
   proj: IsoProjection,
 ): void {
-  const layout = layoutGlyph(glyph, base, proj, paint.px, paint.rise);
+  const layout = layoutGlyph(glyph, base, proj, paint.px, paint.rise, paint.seat);
 
   if (paint.beam > 0) {
     drawBeam(g, base, layout.width * 1.4, layout.height * 3, paint.beamColor, paint.beam, paint.px);
@@ -51,7 +51,8 @@ function drawGroundShadow(
 ): void {
   const pieces = look().pieces;
   const radius = proj.tileWidth * proj.scale * pieces.glyph.shadowRatio;
-  g.ellipse(base.x, base.y, radius, radius / 2).fill({
+  // L'ombre s'écrase comme la case : un ovale de biais, un disque vue de dessus.
+  g.ellipse(base.x, base.y, radius, (radius * proj.tileHeight) / proj.tileWidth).fill({
     color: pieces.shadow,
     alpha: pieces.shadowAlpha * opacity,
   });

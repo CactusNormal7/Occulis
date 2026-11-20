@@ -217,6 +217,10 @@ export const game = {
       zoomIn: "Zoom in",
       zoomOut: "Zoom out",
       center: "Recenter",
+      plan: "Top-down view (Space)",
+      leavePlan: "Isometric view (Space)",
+      planOn: "Top-down view",
+      isoOn: "Isometric view",
     },
   },
 };

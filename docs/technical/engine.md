@@ -433,24 +433,32 @@ interface Camera {
   targetRotation: number; // angle visé par l'aimantation
   viewport: ScreenPoint;
   pivot: Coord;
+  home: Framing; // le cadrage où ramène le recentrage
+  span: number; // le côté du plateau en cases, pour cadrer la vue de dessus
+  planView: boolean; // la vue de dessus est visée
+  planProgress: number; // l'avancée de la bascule, 0 → 1, linéaire dans le temps
 }
 ```
 
-| Fonction              | Rôle                                                                                                 |
-| --------------------- | ---------------------------------------------------------------------------------------------------- |
-| `pivotOf()`           | Centre logique du plateau, par balayage de `board.allTiles()`                                        |
-| `createCamera()`      | Caméra initiale, rotation nulle, au cadrage `home` donné (par défaut : échelle 1, centre du canevas) |
-| `originOf()`          | Origine écran de la projection = centre du canevas + pan                                             |
-| `toProjectionSpace()` | Point écran → espace de projection (retire l'origine)                                                |
-| `toProjection()`      | Caméra → `IsoProjection`, en y injectant `METRICS`                                                   |
-| `withViewport()`      | Nouvelle taille de canevas (redimensionnement)                                                       |
-| `zoomAt()`            | Zoom vers un point écran, avec bornes                                                                |
-| `panBy()`             | Déplacement de la vue                                                                                |
-| `rotateBy()`          | Rotation libre ; la cible suit l'angle courant                                                       |
-| `snapRotation()`      | Vise le quart de tour le plus proche                                                                 |
-| `turn()`              | Vise le quart de tour voisin (flèches)                                                               |
-| `commandCamera()`     | Les boutons de l'ATH : quarts de tour, zoom sur le milieu de la zone libre, retour au cadrage `home` |
-| `settle()`            | Avance l'interpolation vers `targetRotation`                                                         |
+| Fonction              | Rôle                                                                                                  |
+| --------------------- | ----------------------------------------------------------------------------------------------------- |
+| `pivotOf()`           | Centre logique du plateau, par balayage de `board.allTiles()`                                         |
+| `spanOf()`            | Côté du plateau en cases (le plus grand des deux), pour cadrer la vue de dessus                       |
+| `togglePlanView()`    | Entre dans la vue de dessus ou en sort ; l'angle se cale sur un quart de tour                         |
+| `flatnessOf()`        | Aplatissement lu par la projection et la scène, 0 → 1, la courbe appliquée à `planProgress`           |
+| `isLocked()`          | Caméra figée : en vue de dessus, ou en route vers elle ou depuis elle                                 |
+| `createCamera()`      | Caméra initiale, rotation nulle, au cadrage `home` donné (par défaut : échelle 1, centre du canevas)  |
+| `originOf()`          | Origine écran de la projection = centre du canevas + pan                                              |
+| `toProjectionSpace()` | Point écran → espace de projection (retire l'origine)                                                 |
+| `toProjection()`      | Caméra → `IsoProjection`, en y injectant `METRICS`                                                    |
+| `withViewport()`      | Nouvelle taille de canevas (redimensionnement)                                                        |
+| `zoomAt()`            | Zoom vers un point écran, avec bornes                                                                 |
+| `panBy()`             | Déplacement de la vue                                                                                 |
+| `rotateBy()`          | Rotation libre ; la cible suit l'angle courant                                                        |
+| `snapRotation()`      | Vise le quart de tour le plus proche                                                                  |
+| `turn()`              | Vise le quart de tour voisin (flèches)                                                                |
+| `commandCamera()`     | Les boutons de l'ATH : vue de dessus, quarts de tour, zoom sur le milieu de la zone libre, recentrage |
+| `settle()`            | Avance la bascule de vue, puis l'interpolation vers `targetRotation`                                  |
 
 ### `zoomAt()` — pourquoi le point sous le curseur ne bouge pas
 
@@ -479,6 +487,38 @@ plateau de 9 × 9 tomberait de `(x + y) × tileHeight / 2` — plus de 150 px �
 milieu de l'écran. La rotation tourne autour du pivot, qui ne bouge donc pas d'un angle
 à l'autre.
 
+### La vue de dessus
+
+`togglePlanView()` ne change que la vue visée ; `settle()` fait avancer `planProgress`
+d'une image à l'autre, sur `PLAN_VIEW_MS` (480 ms), dans un sens ou dans l'autre — une
+bascule interrompue repart d'où elle en était. `flatnessOf()` y applique la courbe
+(`easeInOutSine`).
+
+La caméra garde `scale`, `pan` et `rotation` de la vue libre pendant toute la vue de
+dessus : c'est la **lecture** qui mélange les deux vues. `toProjection()` et `originOf()`
+interpolent selon l'aplatissement :
+
+- `tileHeight` rejoint `tileWidth` : les losanges se déplient en carrés ;
+- `heightUnit` tombe à 0 : le relief s'aplatit, et les falaises de `cliffQuads()` se
+  réduisent à leur arête haute ;
+- l'angle prend un huitième de tour de moins (`PLAN_TURN`) : la rangée qui descendait en
+  biais vers la gauche s'aligne sur le bas de l'écran ;
+- l'échelle et le pan rejoignent ceux qui cadrent le plateau entier dans la zone libre
+  (`planScale()`, `planPan()`) — une case y est un carré de `tileWidth / √2`.
+
+Quitter la vue de dessus ramène donc exactement à la vue quittée. Tant que `isLocked()`,
+`zoomAt()`, `panBy()`, `rotateBy()`, `turn()` et les boutons autres que la bascule
+renvoient la caméra **par identité**.
+
+La scène reçoit l'aplatissement (`SceneInput.flatness`). Les pièces y glissent de debout
+à centrées (`layoutGlyph(…, seat)`, `@occulis/board/glyph-layout` : la silhouette allumée,
+non la grille du glyphe, se pose sur le centre de la case) ; leur élévation et leur
+colonne de lumière s'éteignent. `drawTile()` y ajoute le relief vu d'en haut
+(`look().geometry.plan`) : un rebord épais par falaise et la hauteur en points. La barre
+d'espace est lue par `input/controls.ts`, seulement en partie et jamais quand elle
+actionne déjà un bouton ou un lien qui a le focus ; `BoardView` prévient l'ATH
+(`onViewChange`) pour qu'il allume son bouton.
+
 ### `settle()`
 
 Interpole vers `targetRotation` sur `SETTLE_MS` (120 ms), puis **cale exactement** l'angle
@@ -486,7 +526,8 @@ sous `SETTLE_EPSILON` (1e-4) — sans quoi l'interpolation, asymptotique, réém
 géométrie indéfiniment pour un écart invisible.
 
 Constantes : `MIN_SCALE` 0,35 · `MAX_SCALE` 3 · `ZOOM_STEP` 1,12 ·
-`RADIANS_PER_PIXEL` 0,008 · `SETTLE_MS` 120 · `SETTLE_EPSILON` 1e-4.
+`RADIANS_PER_PIXEL` 0,008 · `SETTLE_MS` 120 · `SETTLE_EPSILON` 1e-4 ·
+`PLAN_VIEW_MS` 480 · `PLAN_TURN` π/4 · `PLAN_FILL` 0,92.
 
 ---
 
@@ -1085,21 +1126,21 @@ rien lui-même et ne joue rien : `main.ts` (`matchHud()`) lui passe à chaque re
 `HudModel` déjà traduit, l'absence de l'adversaire, le message bref du moment et le nombre
 de spectateurs ; il rend l'abandon (`onLeave`) et les boutons de caméra (`onCamera`).
 
-| Module               | Rôle                                                                                                                   |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `model.ts`           | `hudModel(messages, input)` : plaques, tour, fiche, journal, compteur de nulle et légende, en textes prêts. Pur, testé |
-| `MatchHud.vue`       | La mise en page ; seuls les panneaux reçoivent la souris, le reste la laisse au plateau                                |
-| `PlayerBand.vue`     | Pseudo, Elo (ou « hors ligne »), composition (`PieceRoster.vue`) ; le camp au trait s'allume                           |
-| `TurnPlate.vue`      | Le numéro du coup à jouer et qui le joue                                                                               |
-| `MatchAlerts.vue`    | L'échec, le départ de l'adversaire et son compte à rebours (`useRemaining`), le message bref d'un refus                |
-| `MatchTools.vue`     | Les amis qui regardent, abandonner ou quitter ; l'engrenage des réglages est celui de la page, rangé là par `hud.css`  |
-| `PieceSheet.vue`     | La fiche de la pièce choisie (`describeSheet()`), ou ce qui se fait à la souris                                        |
-| `MatchJournal.vue`   | Le journal tel que vu (`PlayerView.journal`), dernier coup en clair, coup à venir en pointillés ; `DrawMeter.vue`      |
-| `CameraControls.vue` | Les boutons de caméra → `CameraCommand` → `commandCamera()` (`view/camera.ts`), par `BoardView.command()`              |
-| `GlowLegend.vue`     | La légende des lueurs, tant qu'une pièce est sélectionnée                                                              |
-| `PieceGlyph.vue`     | Le glyphe d'un type en SVG, tiré de `@occulis/board/glyphs` : la forme exacte du plateau                               |
-| `icons.ts`           | Les icônes en pixels pleins, sur une grille de 8 × 8                                                                   |
-| `hud.css`            | La feuille de l'ATH, **tokens `--occ-*` seulement**                                                                    |
+| Module               | Rôle                                                                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model.ts`           | `hudModel(messages, input)` : plaques, tour, fiche, journal, compteur de nulle et légende, en textes prêts. Pur, testé                                                    |
+| `MatchHud.vue`       | La mise en page ; seuls les panneaux reçoivent la souris, le reste la laisse au plateau                                                                                   |
+| `PlayerBand.vue`     | Pseudo, Elo (ou « hors ligne »), composition (`PieceRoster.vue`) ; le camp au trait s'allume                                                                              |
+| `TurnPlate.vue`      | Le numéro du coup à jouer et qui le joue                                                                                                                                  |
+| `MatchAlerts.vue`    | L'échec, le départ de l'adversaire et son compte à rebours (`useRemaining`), le message bref d'un refus                                                                   |
+| `MatchTools.vue`     | Les amis qui regardent, abandonner ou quitter ; l'engrenage des réglages est celui de la page, rangé là par `hud.css`                                                     |
+| `PieceSheet.vue`     | La fiche de la pièce choisie (`describeSheet()`), ou ce qui se fait à la souris                                                                                           |
+| `MatchJournal.vue`   | Le journal tel que vu (`PlayerView.journal`), dernier coup en clair, coup à venir en pointillés ; `DrawMeter.vue`                                                         |
+| `CameraControls.vue` | Les boutons de caméra → `CameraCommand` → `commandCamera()` (`view/camera.ts`), par `BoardView.command()` ; en tête la bascule de la vue de dessus, qui éteint les autres |
+| `GlowLegend.vue`     | La légende des lueurs, tant qu'une pièce est sélectionnée                                                                                                                 |
+| `PieceGlyph.vue`     | Le glyphe d'un type en SVG, tiré de `@occulis/board/glyphs` : la forme exacte du plateau                                                                                  |
+| `icons.ts`           | Les icônes en pixels pleins, sur une grille de 8 × 8                                                                                                                      |
+| `hud.css`            | La feuille de l'ATH, **tokens `--occ-*` seulement**                                                                                                                       |
 
 Trois règles d'affichage vivent dans `model.ts`, et ses tests les verrouillent :
 
@@ -1786,7 +1827,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 
 ## Tests
 
-333 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+339 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier                                     | Ce qui est verrouillé                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

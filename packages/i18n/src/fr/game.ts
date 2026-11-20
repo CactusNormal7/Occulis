@@ -212,6 +212,10 @@ export const game: Messages["game"] = {
       zoomIn: "Zoomer",
       zoomOut: "Dézoomer",
       center: "Recentrer",
+      plan: "Vue de dessus (Espace)",
+      leavePlan: "Vue isométrique (Espace)",
+      planOn: "Vue de dessus",
+      isoOn: "Vue isométrique",
     },
   },
 };

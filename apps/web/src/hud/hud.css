@@ -172,6 +172,25 @@ body:has(#hud-root:not([hidden]) .hud) #corner-tools {
   place-items: center;
 }
 
+/* Un bouton allumé : la vue de dessus est active. */
+.hud .hud-button[aria-pressed="true"] {
+  border-color: var(--occ-selection);
+  color: var(--occ-selection);
+  box-shadow:
+    inset 0 -2px 0 var(--occ-shade),
+    0 0 10px var(--occ-selection);
+}
+
+/* Un geste de caméra sans effet tant que la vue de dessus la fige. */
+.hud .hud-button:disabled {
+  border-color: var(--occ-ink-ghost);
+  background: transparent;
+  box-shadow: none;
+  color: var(--occ-ink-ghost);
+  text-shadow: none;
+  cursor: default;
+}
+
 /* ---- Glyphes de pièce --------------------------------------------------------------- */
 
 .hud-glyph {
@@ -528,7 +547,57 @@ body:has(#hud-root:not([hidden]) .hud) #corner-tools {
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
+}
+
+/* La touche qui bascule la vue, sous son bouton. */
+.hud-camera__key {
+  min-width: 20px;
+  padding: 0 4px;
+  border: 1px solid var(--occ-ink-faint);
+  box-shadow: inset 0 -2px 0 var(--occ-ink-ghost);
+  color: var(--occ-ink-soft);
+  font: inherit;
+  text-align: center;
+}
+
+/* L'annonce de la vue, sous le tour, qui paraît puis s'efface d'elle-même. */
+.hud-view-chip {
+  position: absolute;
+  top: 104px;
+  left: 50%;
+  margin: 0;
+  padding: 4px 16px;
+  border: 1px solid var(--occ-ink-faint);
+  background: var(--occ-panel);
+  clip-path: var(--pixel-notch);
+  color: var(--occ-ink-soft);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: hud-view-chip 1400ms ease-out both;
+}
+
+@keyframes hud-view-chip {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-view-chip {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 /* ---- Écrans étroits : la colonne se replie sous le bandeau, le journal se tait ------ */

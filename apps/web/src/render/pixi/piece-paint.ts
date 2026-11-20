@@ -19,6 +19,11 @@ export interface PiecePaint {
   readonly alpha: number;
   /** De combien la pièce s'élève quand elle est sélectionnée (l'œil de l'obélisque, le glyphe entier). */
   readonly rise: number;
+  /**
+   * 0 : debout sur le centre de sa case, vue de biais. 1 : centrée sur sa case, en vue de
+   * dessus (`flatnessOf()`, `view/camera.ts`).
+   */
+  readonly seat: number;
   /** Un éclat de la pièce, 0 → 1 : retombée, matérialisation. */
   readonly flash: number;
   /** La colonne de lumière d'une pièce sélectionnée, 0 → 1, et sa couleur. */

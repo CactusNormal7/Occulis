@@ -72,6 +72,8 @@ export interface MatchHudIsland {
   readonly away: OpponentAway | undefined;
   readonly notice: MatchNotice | undefined;
   readonly spectators: number;
+  /** La vue de dessus est active : le bouton de vue s'allume, les autres s'éteignent. */
+  readonly planView: boolean;
   /** Abandonner (un joueur, par la fenêtre `leave/`) ou quitter (un spectateur). */
   readonly onLeave: () => void;
   readonly onCamera: (command: CameraCommand) => void;

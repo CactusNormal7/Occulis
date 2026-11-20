@@ -6,6 +6,7 @@ import {
   panBy,
   rotateBy,
   snapRotation,
+  togglePlanView,
   turn,
   zoomAt,
 } from "../view/camera.js";
@@ -32,6 +33,8 @@ export interface ControlsOptions {
    * pièce s'ouvre dans la colonne de l'ATH.
    */
   readonly onInspect: (coord: Coord | undefined) => void;
+  /** Une partie est sur la table : hors partie, la barre d'espace garde son rôle habituel. */
+  readonly inMatch: () => boolean;
 }
 
 type DragKind = "pan" | "rotate";
@@ -71,8 +74,18 @@ function isTyping(target: EventTarget | null): boolean {
   return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }
 
+/**
+ * La barre d'espace actionne déjà le bouton ou le lien qui a le focus — le bouton de vue
+ * de l'ATH après un clic, par exemple. La reprendre ici le basculerait deux fois.
+ */
+function isActivating(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return isTyping(target) || target.closest("button, a, summary, [role='button']") !== null;
+}
+
 export function attachControls(options: ControlsOptions): void {
-  const { canvas, getCamera, setCamera, pickTile, setHovered, onPick, onInspect } = options;
+  const { canvas, getCamera, setCamera, pickTile, setHovered, onPick, onInspect, inMatch } =
+    options;
 
   let drag: Drag | undefined;
   let hovered: Coord | undefined;
@@ -162,6 +175,13 @@ export function attachControls(options: ControlsOptions): void {
 
   window.addEventListener("keydown", (event) => {
     if (isTyping(event.target)) return;
+    // La barre d'espace bascule la vue de dessus (docs/design/rules.md § 8.1).
+    if (event.code === "Space") {
+      if (event.repeat || !inMatch() || isActivating(event.target)) return;
+      event.preventDefault();
+      update(togglePlanView);
+      return;
+    }
     if (event.key === "ArrowLeft") update((camera) => turn(camera, -1));
     else if (event.key === "ArrowRight") update((camera) => turn(camera, 1));
     else return;

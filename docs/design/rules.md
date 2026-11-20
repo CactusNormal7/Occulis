@@ -270,6 +270,18 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   déplacer la vue. Le facteur de zoom vit dans la projection et non dans la transformation
   du conteneur de rendu, afin que l'épaisseur des traits reste constante à l'écran quel que
   soit le niveau de zoom — une arête reste large d'un seul pixel du plateau.
+- **Vue de dessus (2026-11-20).** Le premier bouton de caméra, ou la barre d'espace,
+  bascule le plateau en plan (maquette `docs/mockups/ath/vue-plateau.html`). En un seul
+  geste de 480 ms, il tourne d'un huitième de tour pour que ses rangées s'alignent sur
+  l'écran, ses cases se déplient en carrés et le relief s'aplatit. Le camp qu'on voyait
+  devant soi reste en bas.
+  - Le relief s'y lit sans faces : un rebord d'os sur chaque côté qui domine sa voisine, et
+    la hauteur en points dans le coin de la case, un par niveau.
+  - Les pièces s'y centrent sur leur case, au lieu de s'y tenir debout.
+  - La caméra est figée et centrée sur le plateau entier : ni déplacement, ni rotation, ni
+    zoom, et les autres boutons de caméra s'éteignent. On joue de la même façon.
+  - Le bouton ou la barre d'espace ramènent la vue isométrique telle qu'on l'avait
+    quittée : angle, zoom et déplacement compris.
 
 ## 9. Nom du projet
 
