@@ -453,6 +453,61 @@ describe("MatchDO dans workerd", () => {
     back.socket.close();
   });
 
+  it("envoie les plaques des deux camps à chaque connexion, pour l'ATH", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    const players = await a.awaitKind("players");
+    expect(players.self.handle).toContain("anne-");
+    expect(players.opponent.handle).toContain("boris-");
+    await a.awaitKind("view");
+
+    // À la reconnexion aussi : l'ATH d'un onglet rechargé retrouve ses plaques.
+    a.socket.close();
+    const back = await seat(match.matchId, match.seats.A);
+    expect((await back.awaitKind("players")).opponent.handle).toContain("boris-");
+
+    back.socket.close();
+    b.socket.close();
+  });
+
+  it("prévient l'adversaire d'une absence, avec le temps avant forfait, puis du retour", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    await a.awaitKind("view");
+    await b.awaitKind("view");
+    a.drain();
+
+    b.socket.close();
+    const gone = await a.awaitKind("opponent-presence");
+    expect(gone.present).toBe(false);
+    expect(gone.forfeitInMs).toBeGreaterThan(0);
+    expect(gone.forfeitInMs).toBeLessThanOrEqual(ABSENCE_MS);
+
+    const back = await seat(match.matchId, match.seats.B);
+    expect((await a.awaitKind("opponent-presence")).present).toBe(true);
+
+    a.socket.close();
+    back.socket.close();
+  });
+
+  it("redit une absence en cours à qui se reconnecte", async () => {
+    const match = await createMatch();
+    const { a, b } = await deployed(match);
+    await a.awaitKind("view");
+    await b.awaitKind("view");
+
+    b.socket.close();
+    const stub = env.MATCH.get(env.MATCH.idFromName(match.matchId));
+    await absentSince(stub, "B");
+    a.socket.close();
+    await absentSince(stub, "A");
+
+    const again = await seat(match.matchId, match.seats.A);
+    const presence = await again.awaitKind("opponent-presence");
+    expect(presence.present).toBe(false);
+    again.socket.close();
+  });
+
   it("fait varier l'Elo des deux joueurs à la fin d'une partie classée", async () => {
     const [anne, boris] = [`anne-${crypto.randomUUID()}`, `boris-${crypto.randomUUID()}`];
     const match = await startTestMatch(anne, boris, { rated: true });
