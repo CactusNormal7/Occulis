@@ -134,7 +134,10 @@ body:has(#hud-root:not([hidden]) .hud) #corner-tools {
   shape-rendering: crispEdges;
 }
 
-.hud-button {
+/* `.hud` en tête : la règle des boutons de la page (`button:not([class*="occ-"])`,
+   `ui/ui.css`) est plus précise qu'une classe seule, et imposerait sinon ses marges. */
+.hud .hud-button {
+  box-sizing: border-box;
   min-height: 32px;
   padding: 3px 12px;
   border: 1px solid var(--occ-ink-soft);
@@ -146,23 +149,24 @@ body:has(#hud-root:not([hidden]) .hud) #corner-tools {
   cursor: pointer;
 }
 
-.hud-button:hover,
-.hud-button:focus-visible {
+.hud .hud-button:hover,
+.hud .hud-button:focus-visible {
   border-color: var(--occ-ink);
   background: var(--occ-matter);
   text-shadow: 0 0 8px var(--occ-ink-glow);
   outline: none;
 }
 
-.hud-button--quiet {
+.hud .hud-button--quiet {
   border-color: var(--occ-ink-faint);
   background: var(--occ-panel);
   box-shadow: none;
   color: var(--occ-ink-soft);
 }
 
-.hud-button--icon {
+.hud .hud-button--icon {
   width: 32px;
+  height: 32px;
   padding: 0;
   display: inline-grid;
   place-items: center;
@@ -348,7 +352,9 @@ body:has(#hud-root:not([hidden]) .hud) #corner-tools {
   gap: 4px;
 }
 
-.hud-tools > * {
+/* Le bouton d'abandon a la hauteur de l'engrenage voisin : `.hud` en tête pour passer
+   devant la hauteur des boutons de l'ATH. */
+.hud .hud-tools > * {
   min-height: 40px;
 }
 

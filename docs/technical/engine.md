@@ -436,20 +436,21 @@ interface Camera {
 }
 ```
 
-| Fonction              | Rôle                                                          |
-| --------------------- | ------------------------------------------------------------- |
-| `pivotOf()`           | Centre logique du plateau, par balayage de `board.allTiles()` |
-| `createCamera()`      | Caméra initiale : échelle 1, pan nul, rotation nulle          |
-| `originOf()`          | Origine écran de la projection = centre du canevas + pan      |
-| `toProjectionSpace()` | Point écran → espace de projection (retire l'origine)         |
-| `toProjection()`      | Caméra → `IsoProjection`, en y injectant `METRICS`            |
-| `withViewport()`      | Nouvelle taille de canevas (redimensionnement)                |
-| `zoomAt()`            | Zoom vers un point écran, avec bornes                         |
-| `panBy()`             | Déplacement de la vue                                         |
-| `rotateBy()`          | Rotation libre ; la cible suit l'angle courant                |
-| `snapRotation()`      | Vise le quart de tour le plus proche                          |
-| `turn()`              | Vise le quart de tour voisin (flèches)                        |
-| `settle()`            | Avance l'interpolation vers `targetRotation`                  |
+| Fonction              | Rôle                                                                                                 |
+| --------------------- | ---------------------------------------------------------------------------------------------------- |
+| `pivotOf()`           | Centre logique du plateau, par balayage de `board.allTiles()`                                        |
+| `createCamera()`      | Caméra initiale, rotation nulle, au cadrage `home` donné (par défaut : échelle 1, centre du canevas) |
+| `originOf()`          | Origine écran de la projection = centre du canevas + pan                                             |
+| `toProjectionSpace()` | Point écran → espace de projection (retire l'origine)                                                |
+| `toProjection()`      | Caméra → `IsoProjection`, en y injectant `METRICS`                                                   |
+| `withViewport()`      | Nouvelle taille de canevas (redimensionnement)                                                       |
+| `zoomAt()`            | Zoom vers un point écran, avec bornes                                                                |
+| `panBy()`             | Déplacement de la vue                                                                                |
+| `rotateBy()`          | Rotation libre ; la cible suit l'angle courant                                                       |
+| `snapRotation()`      | Vise le quart de tour le plus proche                                                                 |
+| `turn()`              | Vise le quart de tour voisin (flèches)                                                               |
+| `commandCamera()`     | Les boutons de l'ATH : quarts de tour, zoom sur le milieu de la zone libre, retour au cadrage `home` |
+| `settle()`            | Avance l'interpolation vers `targetRotation`                                                         |
 
 ### `zoomAt()` — pourquoi le point sous le curseur ne bouge pas
 
@@ -461,6 +462,22 @@ pan' = pan + p × (1 − s'/s)
 ```
 
 `zoomAt()` renvoie **la même caméra par identité** quand la borne est atteinte.
+
+### Le cadrage de départ — `home`
+
+Une caméra garde son cadrage de départ (`Framing` : une échelle et les bords de l'écran
+couverts, `ScreenInsets`), où ramène le bouton de recentrage. En partie, c'est
+`hudFraming()` (`hud/layout.ts`) : échelle `HUD_SCALE` (1,25) et les bords que l'ATH
+couvre — la colonne de droite, les plaques en haut, les boutons à gauche, la légende en
+bas, ou la fiche repliée en bas sous 900 px. `BoardView` le recalcule à chaque
+redimensionnement. Les mesures de `hud/layout.ts` suivent `hud.css` : à changer ensemble.
+
+Le pan de départ (`homePan()`) cumule deux décalages : le milieu de la zone libre par
+rapport au centre du canevas, et **la projection du pivot**. `project()` pose la case
+logique (0, 0) sur l'origine, pas le pivot : sans cette correction, le centre d'un
+plateau de 9 × 9 tomberait de `(x + y) × tileHeight / 2` — plus de 150 px — sous le
+milieu de l'écran. La rotation tourne autour du pivot, qui ne bouge donc pas d'un angle
+à l'autre.
 
 ### `settle()`
 
@@ -1767,7 +1784,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 
 ## Tests
 
-329 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+333 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier                                     | Ce qui est verrouillé                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

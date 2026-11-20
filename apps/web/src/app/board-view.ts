@@ -14,6 +14,7 @@ import {
   withViewport,
 } from "../view/camera.js";
 import type { ScreenPoint } from "@occulis/board/iso";
+import { hudFraming } from "../hud/layout.js";
 import { tileAt } from "../view/picking.js";
 import type { MatchController } from "./match-controller.js";
 
@@ -61,7 +62,8 @@ export class BoardView {
 
   /** Recentre la caméra sur la carte d'une partie qui commence. */
   center(terrain: Terrain): void {
-    this.camera = createCamera(pivotOf(terrain), viewport());
+    const screen = viewport();
+    this.camera = createCamera(pivotOf(terrain), screen, hudFraming(screen));
   }
 
   /** Vide la table, à la sortie d'une partie. */
@@ -88,7 +90,9 @@ export class BoardView {
   private hooks(): BoardHooks {
     return {
       onResize: () => {
-        this.camera = withViewport(this.camera, viewport());
+        const screen = viewport();
+        // Sous 900 px, la colonne de l'ATH se replie en bas : le recentrage suit.
+        this.camera = { ...withViewport(this.camera, screen), home: hudFraming(screen) };
       },
       controls: {
         getCamera: () => this.camera,
