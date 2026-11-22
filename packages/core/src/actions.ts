@@ -1,4 +1,5 @@
-import { type Coord, type CoordKey, coordKey } from "./coord.js";
+import { trapSprungBy, trapTargets } from "./abilities/trap.js";
+import { type Coord, type CoordKey, coordEquals, coordKey } from "./coord.js";
 import { type Piece, type PieceId, type PlayerId, opponentOf } from "./pieces/index.js";
 import { leavesKingExposed, outcomeOf, project, tickDrawClock } from "./endgame.js";
 import { type Result, err, ok } from "./result.js";
@@ -13,21 +14,29 @@ import { type GameState, occupancy, piecesOf } from "./state.js";
  * trahit pas si une case qu'il ne voit pas est occupée. Sous les rulesets d'avant, une
  * case tenue par une pièce, alliée ou adverse, reste inatteignable.
  *
+ * Une capacité (`ability`) remplace le déplacement de la pièce pour ce tour (rules.md
+ * section 3) : la pièce reste sur sa case et agit sur `target`. Un type n'a qu'une
+ * capacité (`PieceType.ability`), l'action n'a donc pas à la nommer.
+ *
  * L'abandon, lui, se joue à tout moment, au trait ou non : sans quoi un joueur qui quitte
  * la partie pendant le tour d'en face la laisserait ouverte à jamais. `player` dit qui
  * abandonne ; absent — tous les logs d'avant —, c'est le joueur au trait.
  */
 export type Action =
   | { readonly kind: "move"; readonly pieceId: PieceId; readonly to: Coord }
+  | { readonly kind: "ability"; readonly pieceId: PieceId; readonly target: Coord }
   | { readonly kind: "resign"; readonly player?: PlayerId | undefined };
 
 export type MoveAction = Extract<Action, { readonly kind: "move" }>;
+export type AbilityAction = Extract<Action, { readonly kind: "ability" }>;
 
 export type ActionError =
   | { readonly code: "game-over" }
   | { readonly code: "unknown-piece"; readonly pieceId: PieceId }
   | { readonly code: "not-your-piece"; readonly pieceId: PieceId }
   | { readonly code: "unreachable"; readonly to: Coord }
+  /** La pièce n'a pas de capacité, ou ne peut pas l'exercer sur cette case. */
+  | { readonly code: "invalid-target"; readonly target: Coord }
   /** Le coup laisserait son propre roi prenable — menace visible ou non (rules.md 7.1). */
   | { readonly code: "leaves-king-exposed" };
 
@@ -80,12 +89,53 @@ function destinationsFor(
 }
 
 /**
+ * Les cases où la capacité d'une pièce peut s'exercer ce tour-ci, sans regarder ce que
+ * l'action fait à son roi. Vide pour une pièce sans capacité.
+ */
+function abilityTargetsFor(
+  state: GameState,
+  piece: Piece,
+  occupied: ReadonlySet<CoordKey>,
+): Coord[] {
+  switch (state.ruleset.typeOf(piece).ability) {
+    case "trap":
+      return trapTargets(state.board, state.traps, piece, occupied);
+    case null:
+      return [];
+  }
+}
+
+/**
  * Un coup qui laisse son propre roi prenable est illégal, comme aux échecs — y compris
  * quand la menace est hors de la ligne de vue de son auteur. C'est la règle qui donne
  * son sens au mat : sans elle, un joueur mat pourrait toujours jouer et se faire prendre.
+ *
+ * Une capacité laisse sa pièce en place : elle se juge comme un déplacement sur place, et
+ * ne pare donc jamais un échec.
  */
 function isForbidden(state: GameState, pieceId: PieceId, to: Coord): boolean {
   return state.ruleset.rules.check && leavesKingExposed(state, { pieceId, to });
+}
+
+/** Toutes les actions d'une pièce, légalité du roi non comprise. */
+function candidateActions(
+  state: GameState,
+  piece: Piece,
+  occupied: ReadonlySet<CoordKey>,
+): Action[] {
+  const actions: Action[] = [];
+  for (const to of destinationsFor(state, piece, occupied).values()) {
+    actions.push({ kind: "move", pieceId: piece.id, to });
+  }
+  for (const target of abilityTargetsFor(state, piece, occupied)) {
+    actions.push({ kind: "ability", pieceId: piece.id, target });
+  }
+  return actions;
+}
+
+/** Où la pièce se trouve une fois l'action jouée : sa destination, ou sa case. */
+function landingOf(piece: Piece, action: MoveAction | AbilityAction): Coord {
+  return action.kind === "move" ? action.to : piece.coord;
 }
 
 export function legalActions(state: GameState): Action[] {
@@ -95,9 +145,10 @@ export function legalActions(state: GameState): Action[] {
   const actions: Action[] = [];
 
   for (const piece of piecesOf(state, state.activePlayer)) {
-    for (const to of destinationsFor(state, piece, occupied).values()) {
-      if (isForbidden(state, piece.id, to)) continue;
-      actions.push({ kind: "move", pieceId: piece.id, to });
+    for (const action of candidateActions(state, piece, occupied)) {
+      if (action.kind === "resign") continue;
+      if (isForbidden(state, piece.id, landingOf(piece, action))) continue;
+      actions.push(action);
     }
   }
   return actions;
@@ -107,8 +158,9 @@ export function legalActions(state: GameState): Action[] {
 function hasLegalAction(state: GameState): boolean {
   const occupied = occupancy(state);
   for (const piece of piecesOf(state, state.activePlayer)) {
-    for (const to of destinationsFor(state, piece, occupied).values()) {
-      if (!isForbidden(state, piece.id, to)) return true;
+    for (const action of candidateActions(state, piece, occupied)) {
+      if (action.kind === "resign") continue;
+      if (!isForbidden(state, piece.id, landingOf(piece, action))) return true;
     }
   }
   return false;
@@ -123,10 +175,19 @@ export function validateAction(state: GameState, action: Action): Result<Action,
   if (piece.owner !== state.activePlayer) {
     return err({ code: "not-your-piece", pieceId: action.pieceId });
   }
-  if (!destinationsFor(state, piece, occupancy(state)).has(coordKey(action.to))) {
-    return err({ code: "unreachable", to: action.to });
+  if (action.kind === "move") {
+    if (!destinationsFor(state, piece, occupancy(state)).has(coordKey(action.to))) {
+      return err({ code: "unreachable", to: action.to });
+    }
+  } else {
+    const targets = abilityTargetsFor(state, piece, occupancy(state));
+    if (!targets.some((target) => coordEquals(target, action.target))) {
+      return err({ code: "invalid-target", target: action.target });
+    }
   }
-  if (isForbidden(state, piece.id, action.to)) return err({ code: "leaves-king-exposed" });
+  if (isForbidden(state, piece.id, landingOf(piece, action))) {
+    return err({ code: "leaves-king-exposed" });
+  }
   return ok(action);
 }
 
@@ -143,16 +204,52 @@ export function applyAction(state: GameState, action: Action): Result<GameState,
     });
   }
 
+  const played = action.kind === "move" ? playMove(state, action) : useAbility(state, action);
+  return ok({ ...played, outcome: outcomeOf(played, () => hasLegalAction(played)) });
+}
+
+/**
+ * Un déplacement validé : la prise à l'arrivée, puis le piège adverse qui attendait sur
+ * la case (`abilities/trap.ts`). Un roi pris par un piège donne la victoire au camp du
+ * poseur ; l'issue est alors posée ici, `outcomeOf` la gardant telle quelle.
+ */
+function playMove(state: GameState, action: MoveAction): GameState {
+  const player = state.activePlayer;
   const { pieces, captured } = project(state.pieces, action);
+  const trap = trapSprungBy(state.traps, player, action.to);
+  const trapped = trap === undefined ? undefined : pieces.get(action.pieceId);
+
+  const remaining = new Map(pieces);
+  if (trapped !== undefined) remaining.delete(trapped.id);
+
   const moved: GameState = {
     ...state,
-    pieces,
-    activePlayer: opponentOf(state.activePlayer),
+    pieces: remaining,
+    traps: state.traps.filter((laid) => laid !== trap),
+    activePlayer: opponentOf(player),
     turn: state.turn + 1,
-    history: [...state.history, { player: state.activePlayer, action, captured }],
+    history: [...state.history, { player, action, captured, trapped }],
   };
-  const played = { ...moved, draw: tickDrawClock(state.draw, moved, captured !== undefined) };
-  return ok({ ...played, outcome: outcomeOf(played, () => hasLegalAction(played)) });
+  const tookAPiece = captured !== undefined || trapped !== undefined;
+  const kingTrapped = trapped !== undefined && state.ruleset.typeOf(trapped).isCommander;
+  return {
+    ...moved,
+    draw: tickDrawClock(state.draw, moved, tookAPiece),
+    outcome: kingTrapped ? { kind: "victory", winner: opponentOf(player), reason: "trap" } : null,
+  };
+}
+
+/** Une capacité validée. La pièce ne bouge pas ; seul le piège existe aujourd'hui. */
+function useAbility(state: GameState, action: AbilityAction): GameState {
+  const player = state.activePlayer;
+  const moved: GameState = {
+    ...state,
+    traps: [...state.traps, { owner: player, layer: action.pieceId, coord: action.target }],
+    activePlayer: opponentOf(player),
+    turn: state.turn + 1,
+    history: [...state.history, { player, action }],
+  };
+  return { ...moved, draw: tickDrawClock(state.draw, moved, false) };
 }
 
 export type ReplayError = ActionError & { readonly seq: number };

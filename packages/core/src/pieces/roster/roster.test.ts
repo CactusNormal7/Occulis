@@ -9,6 +9,7 @@ import {
   provisionalRulesetV0,
   provisionalRulesetV1,
   provisionalRulesetV2,
+  provisionalRulesetV3,
 } from "./index.js";
 
 /**
@@ -67,8 +68,10 @@ describe("roster provisoire", () => {
   it("indexe chaque type par son kind", () => {
     const ruleset = provisionalRuleset();
 
-    expect(ruleset.kinds().sort()).toEqual(["commander", "pawn", "scout"]);
-    expect(ruleset.kindsOf("special")).toEqual(["scout"]);
+    expect(ruleset.kinds().sort()).toEqual(["commander", "pawn", "scout", "trapper"]);
+    expect(ruleset.kindsOf("special")).toEqual(["scout", "trapper"]);
+    expect(ruleset.get("trapper").ability).toBe("trap");
+    expect(provisionalRulesetV3().kinds().sort()).toEqual(["commander", "pawn", "scout"]);
     expect(ruleset.kindsOf("pawn")).toEqual(["pawn"]);
     expect(ruleset.team).toEqual({ commander: 1, special: 3, pawn: 2 });
     expect(provisionalRulesetV1().kinds().sort()).toEqual(["commander", "pawn", "scout"]);

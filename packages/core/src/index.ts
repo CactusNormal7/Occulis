@@ -1,5 +1,6 @@
 export * from "./coord.js";
 export * from "./board.js";
+export * from "./abilities/trap.js";
 export * from "./pieces/index.js";
 export * from "./los.js";
 export * from "./movement.js";

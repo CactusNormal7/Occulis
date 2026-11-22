@@ -47,12 +47,16 @@ const board = computed(() =>
 
 const entries = computed<MoveEntry[]>(() => [
   { number: "—", text: text.value.start },
-  ...props.match.log.map((logged) => ({
-    number: String(logged.seq + 1),
-    ...(logged.player !== null ? { seat: logged.player } : {}),
-    text: describeEntry(props.match, logged.seq),
-    disabled: logged.seq + 1 >= count.value,
-  })),
+  ...props.match.log.map((logged) => {
+    const notation = describeEntry(props.match, logged.seq);
+    return {
+      number: String(logged.seq + 1),
+      ...(logged.player !== null ? { seat: logged.player } : {}),
+      text: notation.short,
+      detail: notation.detail,
+      disabled: logged.seq + 1 >= count.value,
+    };
+  }),
 ]);
 
 const perspectives = computed(() => [
@@ -143,6 +147,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", onKey));
       <ReplayBoard
         :board="board"
         :frames="match.frames"
+        :log="match.log"
         :index="shown"
         :perspective="perspective"
         :turns="turns"

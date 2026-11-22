@@ -9,7 +9,7 @@ import {
   legalActions,
   provisionalRuleset,
 } from "@occulis/core";
-import { resolveClick, selectionFor } from "./selection.js";
+import { aimAbility, resolveClick, selectionFor } from "./selection.js";
 
 /** Assez grand pour que chaque pièce ait de la place autour d'elle. */
 const BOARD = Board.flat(14, 14);
@@ -148,5 +148,49 @@ describe("resolveClick", () => {
     expect(
       resolveClick(legalActions(resigned.value), resigned.value, undefined, { x: 0, y: 0 }).kind,
     ).toBe("clear");
+  });
+});
+
+describe("capacité : le piège", () => {
+  const TRAPPER: Piece = { id: "a-trap", kind: "trapper", owner: "A", coord: { x: 5, y: 5 } };
+
+  function withTrapper(): GameState {
+    return createGame(BOARD, provisionalRuleset(), [...PIECES, TRAPPER]);
+  }
+
+  it("relève les cibles de la capacité, sans les mêler aux déplacements", () => {
+    const state = withTrapper();
+    const selection = selectionFor(legalActions(state), pieceOf(state, "a-trap"));
+    expect(selection.abilityTargets.size).toBe(8);
+    expect(selection.aiming).toBe(false);
+    expect(selectionFor(legalActions(state), pieceOf(state, "a-scout")).abilityTargets.size).toBe(
+      0,
+    );
+  });
+
+  it("déplace la pièce tant que la capacité n'est pas armée, pose le piège une fois armée", () => {
+    const state = withTrapper();
+    const selection = selectionFor(legalActions(state), pieceOf(state, "a-trap"));
+    const target = { x: 6, y: 5 };
+
+    expect(resolveClick(legalActions(state), state, selection, target)).toEqual({
+      kind: "play",
+      action: { kind: "move", pieceId: "a-trap", to: target },
+    });
+    const aimed = aimAbility(selection, true);
+    expect(resolveClick(legalActions(state), state, aimed, target)).toEqual({
+      kind: "play",
+      action: { kind: "ability", pieceId: "a-trap", target },
+    });
+    // Armée, la capacité masque les déplacements : une case à deux pas ne joue rien.
+    expect(resolveClick(legalActions(state), state, aimed, { x: 7, y: 5 })).toEqual({
+      kind: "clear",
+    });
+  });
+
+  it("ne s'arme pas sans cible", () => {
+    const state = game();
+    const selection = selectionFor(legalActions(state), pieceOf(state, "a-scout"));
+    expect(aimAbility(selection, true).aiming).toBe(false);
   });
 });

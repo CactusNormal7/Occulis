@@ -250,6 +250,7 @@ l'ordre d'envoi, `friends/thread.ts`). La liste d'amis du profil (`provideSocial
 | `apps/web/src/game/online-match.ts`                                                          | La partie arbitrée par le serveur, vue du client                                                                                                                                                   | oui                                             |
 | `apps/web/src/game/hypothesis.ts`                                                            | `PlayerView` → position telle que le joueur peut la croire                                                                                                                                         | oui                                             |
 | `apps/web/src/game/movement-diff.ts`                                                         | Ce que deux vues successives ont fait bouger                                                                                                                                                       | oui                                             |
+| `apps/web/src/game/trap-events.ts`                                                           | Ce que deux vues successives disent des pièges : posé, aperçu, déclenché                                                                                                                           | oui                                             |
 | `apps/web/src/game/selection.ts`                                                             | Sélection d'une pièce et résolution d'un clic                                                                                                                                                      | oui                                             |
 | `apps/web/src/game/scenario.ts`                                                              | Résout la carte annoncée par le serveur                                                                                                                                                            | oui                                             |
 | `apps/web/src/net/session.ts`                                                                | Réduction des messages serveur en état de session                                                                                                                                                  | oui                                             |
@@ -314,7 +315,8 @@ l'ordre d'envoi, `friends/thread.ts`). La liste d'amis du profil (`provideSocial
 | `apps/web/src/render/pixi/terrain.ts`                                                        | Faces et arêtes d'une case                                                                                                                                                                         | non                                             |
 | `apps/web/src/render/pixi/pieces.ts`                                                         | Aiguillage vers la silhouette en vigueur (`look().pieces.style`)                                                                                                                                   | non                                             |
 | `apps/web/src/render/pixi/piece-glyph.ts`, `piece-obelisk.ts`, `piece-paint.ts`              | Le glyphe par type, l'obélisque d'avant, et ce qu'elles partagent (`PiecePaint`, colonne de lumière)                                                                                               | non                                             |
-| `apps/web/src/render/pixi/overlay.ts`                                                        | Marques de case (survol, sélection, destinations) et retombées                                                                                                                                     | non                                             |
+| `apps/web/src/render/pixi/overlay.ts`                                                        | Marques de case (survol, sélection, destinations, cibles et pièges posés) et retombées                                                                                                             | non                                             |
+| `apps/web/src/render/pixi/trap-fx.ts`                                                        | Effets du piège : sceau qui tombe à la pose, ondes du geste adverse, mâchoires qui se referment au déclenchement                                                                                   | non                                             |
 | `apps/web/src/input/controls.ts`                                                             | Gestes du canevas → intentions                                                                                                                                                                     | non                                             |
 | `apps/web/src/ui/messages.ts`                                                                | Tous les textes de l'interface                                                                                                                                                                     | oui                                             |
 | `apps/web/src/theme/palette.ts`                                                              | Passe le code couleur au CSS                                                                                                                                                                       | non                                             |
@@ -331,6 +333,8 @@ l'ordre d'envoi, `friends/thread.ts`). La liste d'amis du profil (`provideSocial
 | `apps/web/src/admin/api.ts`                                                                  | Appels `/api/admin/*` et `/api/auth/admin/*`                                                                                                                                                       | non                                             |
 | `apps/web/src/replay/replay.ts`                                                              | Rejeu : coups lus entre deux images, libellés, cadrage du plateau                                                                                                                                  | oui                                             |
 | `apps/web/src/replay/replay-canvas.ts`                                                       | Rejeu : le plateau dessiné en Canvas 2D, avec la géométrie du jeu                                                                                                                                  | non                                             |
+| `apps/web/src/replay/trap-paint.ts`                                                          | Rejeu : pièges posés, pose et déclenchement animés, en Canvas 2D                                                                                                                                   | non                                             |
+| `apps/web/src/view/trap-shapes.ts`                                                           | Géométrie du piège à l'écran (sceau, mâchoires), partagée par le jeu et le rejeu                                                                                                                   | oui                                             |
 | `apps/web/src/admin/design/DesignSystem.vue`                                                 | Le design system : sous-navigation, retouches (thème, palette, vitesse) posées sur le document (`document-effects.ts`)                                                                             | non                                             |
 | `apps/web/src/admin/design/foundations/`                                                     | Tokens : palette retouchable, os par alpha, typographie, écarts, mouvement, propriétés CSS                                                                                                         | non                                             |
 | `apps/web/src/admin/design/components/`                                                      | Catalogue des composants : aperçus montés en vrai, code, commentaire, contrat (props, modèle, événements, emplacements)                                                                            | non                                             |
@@ -683,6 +687,19 @@ Seules les pièces **présentes dans les deux vues** sont comparées. Sous fog, 
 entre ou sort de la ligne de vue n'a pas bougé pour autant : l'animer dessinerait un trajet
 qui n'a pas eu lieu, et trahirait une position que le joueur n'est pas censé connaître.
 
+## `game/trap-events.ts` — ce que la vue apprend des pièges
+
+`trapEventsBetween(before, after)` lit, de la même façon, ce que deux vues successives
+disent des pièges : `laid` (un piège du joueur est apparu dans `PlayerView.traps`),
+`glimpsed` (le journal dit que l'adversaire a exercé sa capacité sous ses yeux — la case de
+la pièce, jamais celle du piège) et `sprung` (le journal dit une pièce prise au piège). Pour
+`sprung`, la victime est retrouvée dans la vue d'avant, avec sa case de départ quand le
+joueur la voyait : la scène la fait **marcher jusqu'au piège** avant de la faire happer,
+au lieu de la faire disparaître sans raison. Rien n'y est déduit au-delà des vues.
+
+La scène en tire ses effets (`render/pixi/trap-fx.ts`) ; le contrôleur, un bandeau `info`
+dans l'ATH (`trapNotice()`, `hud/model.ts`) : « Pris au piège en 3,1 : Pion ».
+
 ---
 
 ## `game/online-match.ts` — la partie arbitrée par le serveur
@@ -985,26 +1002,35 @@ il ne voit qu'un camp — et depuis que les pièces occultent la vue, il en voit
 interface Selection {
   piece: Piece;
   moves: ReadonlyMap<CoordKey, Coord>; // cases où se rendre
+  captures: ReadonlySet<CoordKey>; // parmi elles, celles d'une pièce adverse vue
+  abilityTargets: ReadonlyMap<CoordKey, Coord>; // cibles de la capacité (piège)
+  aiming: boolean; // capacité armée : un clic sur une cible l'exerce
 }
 
 type ClickOutcome =
   { kind: "select"; selection: Selection } | { kind: "play"; action: Action } | { kind: "clear" };
 ```
 
-| Fonction         | Rôle                                                                     |
-| ---------------- | ------------------------------------------------------------------------ |
-| `selectionFor()` | Ce qu'une pièce peut faire ce tour-ci, filtré depuis la liste du serveur |
-| `resolveClick()` | Ce qu'un clic doit produire. **Fonction totale et sans effet**           |
+| Fonction         | Rôle                                                                      |
+| ---------------- | ------------------------------------------------------------------------- |
+| `selectionFor()` | Ce qu'une pièce peut faire ce tour-ci, filtré depuis la liste du serveur  |
+| `resolveClick()` | Ce qu'un clic doit produire. **Fonction totale et sans effet**            |
+| `aimAbility()`   | Arme ou désarme la capacité ; sans cible, la sélection reste telle quelle |
+
+Une case voisine peut être à la fois une destination et une cible de piège : la capacité
+s'arme donc par un bouton de la fiche (`MatchController.toggleAbility()`), et une fois
+armée elle masque les déplacements.
 
 ### La machine à états, telle que `resolveClick()` l'encode
 
-| Situation                                     | Résultat                          |
-| --------------------------------------------- | --------------------------------- |
-| Clic hors plateau, ou partie terminée         | `clear`                           |
-| Sélection active, clic sur la pièce elle-même | `clear` — recliquer désélectionne |
-| Sélection active, clic sur une destination    | `play` d'un déplacement           |
-| Clic sur une de ses pièces, à son tour        | `select`                          |
-| Tout le reste                                 | `clear`                           |
+| Situation                                     | Résultat                            |
+| --------------------------------------------- | ----------------------------------- |
+| Clic hors plateau, ou partie terminée         | `clear`                             |
+| Sélection active, clic sur la pièce elle-même | `clear` — recliquer désélectionne   |
+| Capacité armée, clic sur une de ses cibles    | `play` d'une capacité               |
+| Sélection active, clic sur une destination    | `play` d'un déplacement (non armée) |
+| Clic sur une de ses pièces, à son tour        | `select`                            |
+| Tout le reste                                 | `clear`                             |
 
 Une limite assumée : on ne sélectionne que ses propres pièces **et seulement à son tour**.
 Une pièce adverse, adjacente ou non, retombe donc sur `clear` — il n'y a plus rien à lui
@@ -1156,10 +1182,10 @@ de spectateurs ; il rend l'abandon (`onLeave`) et les boutons de caméra (`onCam
 | `TurnPlate.vue`      | Le numéro du coup à jouer et qui le joue                                                                                                                                  |
 | `MatchAlerts.vue`    | L'échec, le départ de l'adversaire et son compte à rebours (`useRemaining`), le message bref d'un refus                                                                   |
 | `MatchTools.vue`     | Les amis qui regardent, abandonner ou quitter ; l'engrenage des réglages est celui de la page, rangé là par `hud.css`                                                     |
-| `PieceSheet.vue`     | La fiche de la pièce choisie (`describeSheet()`), ou ce qui se fait à la souris                                                                                           |
+| `PieceSheet.vue`     | La fiche de la pièce choisie (`describeSheet()`), ou ce qui se fait à la souris ; pour une pièce à capacité, le bouton qui l'arme (`ability`)                             |
 | `MatchJournal.vue`   | Le journal tel que vu (`PlayerView.journal`), dernier coup en clair, coup à venir en pointillés ; `DrawMeter.vue`                                                         |
 | `CameraControls.vue` | Les boutons de caméra → `CameraCommand` → `commandCamera()` (`view/camera.ts`), par `BoardView.command()` ; en tête la bascule de la vue de dessus, qui éteint les autres |
-| `GlowLegend.vue`     | La légende des lueurs, tant qu'une pièce est sélectionnée                                                                                                                 |
+| `GlowLegend.vue`     | La légende des lueurs, tant qu'une pièce est sélectionnée : sélection, déplacement, prise, piège (`--occ-trap`)                                                           |
 | `PieceGlyph.vue`     | Le glyphe d'un type en SVG, tiré de `@occulis/board/glyphs` : la forme exacte du plateau                                                                                  |
 | `icons.ts`           | Les icônes en pixels pleins, sur une grille de 8 × 8                                                                                                                      |
 | `hud.css`            | La feuille de l'ATH, **tokens `--occ-*` seulement**                                                                                                                       |
@@ -1325,21 +1351,22 @@ pièce présente l'emporte sur un souvenir situé sur la même case.
 Ce sont des **fonctions**, pas des classes : elles écrivent dans un `Graphics` qu'on leur
 passe. Toutes lisent le thème en vigueur par `look()`.
 
-| Fonction                 | Emplacement                    | Rôle                                                                                                                                                                                                 |
-| ------------------------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `drawTile()`             | `render/pixi/terrain.ts`       | Falaises **tournées vers la caméra** (face éclairée à gauche, d'ombre à droite), dessus plein, trame selon l'éclairage, arête qui luit au passage de la vague ; décalée et estompée pendant l'entrée |
-| `facesCamera()` (privée) | `render/pixi/terrain.ts`       | Une falaise dont l'arête haute est dans la moitié basse du dessus ; une face arrière, pleine, déborderait sous le relief                                                                             |
-| `depthAlpha()` (privée)  | `render/pixi/terrain.ts`       | Proximité normalisée → opacité des arêtes                                                                                                                                                            |
-| `drawPiece()`            | `render/pixi/pieces.ts`        | Aiguille vers le glyphe ou l'obélisque selon `look().pieces.style`                                                                                                                                   |
-| `drawGlyph()`            | `render/pixi/piece-glyph.ts`   | Colonne de lumière, ombre au sol, halo, glyphe décalé dans le vide puis glyphe (corps du camp, socle d'ombre), qui s'élève et blanchit sous un éclat ; fantôme : trame du glyphe                     |
-| `drawObelisk()`          | `render/pixi/piece-obelisk.ts` | Colonne de lumière, ombre, obélisque à deux faces, halo et œil (qui s'élève et s'illumine) ; fantôme : contour et trame                                                                              |
-| `drawBeam()`             | `render/pixi/piece-paint.ts`   | La colonne de lumière, en bandes d'un pixel qui s'effacent vers le haut                                                                                                                              |
-| `drawTileMarks()`        | `render/pixi/overlay.ts`       | Les marques d'une case, peintes juste après elle dans `world` : destination ou prise (aplat qui respire, gemme qui jaillit, en cascade), case de la pièce sélectionnée, survol (voile et réticule)   |
-| `drawLanding()`          | `render/pixi/overlay.ts`       | Deux ondes au sol et une couronne d'étincelles                                                                                                                                                       |
-| `drawSigil()`            | `render/pixi/ground.ts`        | Trois cercles tracés progressivement (`drawn`), graduations et glyphes, projetés dans le plan du sol                                                                                                 |
-| `boardRadius()`          | `render/pixi/ground.ts`        | Rayon du plateau autour du pivot, en cases                                                                                                                                                           |
-| `drawSky()`              | `render/pixi/sky.ts`           | Nuées tramées, constellations, étoiles qui scintillent, étoile filante — selon l'atmosphère du thème                                                                                                 |
-| `drawMotes()`            | `render/pixi/sky.ts`           | Poussière d'os qui monte, ou lucioles qui errent et luisent                                                                                                                                          |
+| Fonction                                                                          | Emplacement                    | Rôle                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `drawTile()`                                                                      | `render/pixi/terrain.ts`       | Falaises **tournées vers la caméra** (face éclairée à gauche, d'ombre à droite), dessus plein, trame selon l'éclairage, arête qui luit au passage de la vague ; décalée et estompée pendant l'entrée                                                                                                                                 |
+| `facesCamera()` (privée)                                                          | `render/pixi/terrain.ts`       | Une falaise dont l'arête haute est dans la moitié basse du dessus ; une face arrière, pleine, déborderait sous le relief                                                                                                                                                                                                             |
+| `depthAlpha()` (privée)                                                           | `render/pixi/terrain.ts`       | Proximité normalisée → opacité des arêtes                                                                                                                                                                                                                                                                                            |
+| `drawPiece()`                                                                     | `render/pixi/pieces.ts`        | Aiguille vers le glyphe ou l'obélisque selon `look().pieces.style`                                                                                                                                                                                                                                                                   |
+| `drawGlyph()`                                                                     | `render/pixi/piece-glyph.ts`   | Colonne de lumière, ombre au sol, halo, glyphe décalé dans le vide puis glyphe (corps du camp, socle d'ombre), qui s'élève et blanchit sous un éclat ; fantôme : trame du glyphe                                                                                                                                                     |
+| `drawObelisk()`                                                                   | `render/pixi/piece-obelisk.ts` | Colonne de lumière, ombre, obélisque à deux faces, halo et œil (qui s'élève et s'illumine) ; fantôme : contour et trame                                                                                                                                                                                                              |
+| `drawBeam()`                                                                      | `render/pixi/piece-paint.ts`   | La colonne de lumière, en bandes d'un pixel qui s'effacent vers le haut                                                                                                                                                                                                                                                              |
+| `drawTileMarks()`                                                                 | `render/pixi/overlay.ts`       | Les marques d'une case, peintes juste après elle dans `world` : destination ou prise (aplat qui respire, gemme qui jaillit, en cascade), case de la pièce sélectionnée, survol (voile et réticule)                                                                                                                                   |
+| `drawLanding()`                                                                   | `render/pixi/overlay.ts`       | Deux ondes au sol et une couronne d'étincelles                                                                                                                                                                                                                                                                                       |
+| `drawTrapLaying()`, `drawTrapGlimpse()`, `drawTrapAwaiting()`, `drawTrapSpring()` | `render/pixi/trap-fx.ts`       | Pose (sceau qui tombe, éclats qui convergent), geste adverse (deux ondes autour de la pièce), son piège qui attend la pièce en marche, déclenchement (case qui s'embrase, mâchoires dentées, onde, éclats, cicatrice) ; tout est peint au sol dans `world`, juste après la case, et la pièce happée tremble et se dissout par-dessus |
+| `drawSigil()`                                                                     | `render/pixi/ground.ts`        | Trois cercles tracés progressivement (`drawn`), graduations et glyphes, projetés dans le plan du sol                                                                                                                                                                                                                                 |
+| `boardRadius()`                                                                   | `render/pixi/ground.ts`        | Rayon du plateau autour du pivot, en cases                                                                                                                                                                                                                                                                                           |
+| `drawSky()`                                                                       | `render/pixi/sky.ts`           | Nuées tramées, constellations, étoiles qui scintillent, étoile filante — selon l'atmosphère du thème                                                                                                                                                                                                                                 |
+| `drawMotes()`                                                                     | `render/pixi/sky.ts`           | Poussière d'os qui monte, ou lucioles qui errent et luisent                                                                                                                                                                                                                                                                          |
 
 L'opacité des **arêtes** d'une case, dans `drawTile()` :
 
@@ -1377,6 +1404,7 @@ changement à faire ; la partie, le déploiement, le rejeu et le site suivent.
 | `introOf()`, `introLength()`                                                 | `view/effects.ts`       | Entrée d'une case selon son rang de profondeur                                                                                                                                                                            |
 | `cascadeOf()`                                                                | `view/effects.ts`       | Ouverture d'une destination selon sa distance à la pièce sélectionnée                                                                                                                                                     |
 | `sparksOf()`, `landingAt()`                                                  | `view/effects.ts`       | Étincelles d'une retombée et état de la retombée                                                                                                                                                                          |
+| `trapLayingAt()`, `trapSpringAt()`                                           | `view/effects.ts`       | Pose d'un piège (`MOTION_FX.trapLayMs`) ; déclenchement en trois temps, mâchoires, dissolution, cicatrice (`trapSnapMs`)                                                                                                  |
 | `materializeAt()`                                                            | `view/effects.ts`       | Matérialisation : opacité, chute de quelques pixels, éclat de l'œil                                                                                                                                                       |
 | `liftOf()`, `lagging()`                                                      | `view/animation.ts`     | Arc d'un déplacement ; la même animation en retard (image rémanente)                                                                                                                                                      |
 | `standingDepth()`                                                            | `@occulis/board/iso`    | Profondeur d'une pièce : celle de la case qui la porte                                                                                                                                                                    |
@@ -1500,6 +1528,7 @@ clic droit et le message bref d'un refus (`MatchNotice`). Les autres modules ne 
 | `watch(friend, matchId, side)`                        | `close()`, ouvre le canal d'un spectateur et arme l'échéance `WATCH_TIMEOUT_MS` (6 s) : sans vue, `leave()` puis l'annonce `cannotWatch`                                                                                                                                                                                                               |
 | `close()`                                             | Referme le canal et remet tout à zéro ; incrémente la génération qu'une réponse tardive (équipes préparées, `stillSeated`) compare avant d'écrire                                                                                                                                                                                                      |
 | `play(action)`                                        | Envoie le coup sans rien déplacer et lève `pending` ; sans partie, `game-over`                                                                                                                                                                                                                                                                         |
+| `toggleAbility()`                                     | Le bouton de la fiche : arme ou désarme la capacité de la pièce sélectionnée (`aimAbility`)                                                                                                                                                                                                                                                            |
 | `pick(coord)` / `inspect(coord)`                      | Un clic : sélectionne, désélectionne ou envoie le coup (`resolveClick`) ; un droit : la fiche                                                                                                                                                                                                                                                          |
 | `advance(deltaMS)`                                    | Fait avancer l'animation du dernier coup                                                                                                                                                                                                                                                                                                               |
 | `requestLeave()` / `confirmLeave()` / `cancelLeave()` | La fenêtre d'abandon : vraie pour une partie vivante, jamais pour un spectateur, une partie finie ni un abandon déjà envoyé. `confirmLeave()` envoie `resign` et garde la table jusqu'à la vue finale ; sans elle après `RESIGN_TIMEOUT_MS` (6 s), `finished()` demande l'écran de fin quand même. Un `resign` joué par `play()` arme la même échéance |
@@ -1669,11 +1698,13 @@ serveur refuse ce dernier, qui n'écrirait qu'une des deux tables portant le pse
 
 ### Le rejeu d'une partie
 
-`MatchReplay` (`parts/MatchReplay.vue`) montre la `MoveList` — numéro, camp, `2,4 → 3,4`, chaque ligne
+`MatchReplay` (`parts/MatchReplay.vue`) montre la `MoveList` — numéro, camp, coup noté `Sb3-c4`
+(`replay/notation.ts`, implementation-notes 38) et expliqué en infobulle au survol, chaque ligne
 dans la couleur du camp, comme l'historique de la maquette de partie — et sous elle une
 `Toolbar` (lecture, libellé de l'image, point de vue, rotation) puis le plateau. **Survoler** un
 coup montre la position qui le suit ; **cliquer** l'épingle, et le plateau y revient quand la
-souris quitte la liste. Les flèches du clavier parcourent la partie, la lecture la déroule. Le
+souris quitte la liste. Les flèches du clavier parcourent la partie (et `Début` / `Fin` dans le
+replay du profil), sauf dans un champ de saisie ; la lecture la déroule. Le
 point de vue **tout / vue de A / vue de B** estompe les cases hors de la ligne de vue du camp
 choisi et passe en fantôme (`PIECES.alphaGhost`) les pièces adverses qu'il ne voyait pas.
 
@@ -1685,7 +1716,18 @@ dessiné en **Canvas 2D**, pas en PixiJS, mais avec la géométrie du jeu à l'i
 liste), `view/camera.ts` pour le quart de tour amorti, `view/animation.ts` pour le glissement
 des pièces, `theme.ts` pour les métriques et les couleurs — et la carte vient du serveur
 (`board` du détail de la partie, les cases qu'elle a figées à sa création). Le dernier coup est marqué : départ en pointillé, trajet dans la
-couleur du camp, arrivée dans la teinte de la sélection. `fitScale()` (`replay.ts`) calcule une
+couleur du camp, arrivée dans la teinte de la sélection.
+
+**Les pièges** sont dessinés à chaque image (`traps` de `AdminFrame`), au sol dans l'ordre du
+peintre — sous la pièce qui s'y tient — et en fantôme quand le camp regardé ne les connaissait
+pas. `trapEventsBetween()` (`replay.ts`) lit entre deux images la pose d'un piège et la pièce qui
+s'y est arrêtée : celle-ci a disparu de l'image d'après, et c'est le log (`ReplayBoard` le reçoit
+avec les images) qui dit où elle allait. En avançant jusqu'à un tel coup, le rejeu l'anime comme
+la partie — sceau qui tombe, ou pièce qui marche jusqu'au piège, mâchoires qui se referment,
+dissolution (`replay/trap-paint.ts`, mêmes courbes que `view/effects.ts` et même géométrie que
+`view/trap-shapes.ts`, partagée avec `render/pixi/trap-fx.ts`). Figée (survol en arrière,
+mouvements réduits), l'image garde la case de la pose éclairée, ou la case du piège rougie,
+mâchoires fermées. L'historique les note `Tf3^g3` (piège posé) et `Pe4-f3^` (pièce prise au piège). `fitScale()` (`replay.ts`) calcule une
 échelle qui tient **aux quatre quarts de tour**, pour que le plateau ne change pas de taille en
 tournant. Les positions viennent du serveur (`frames`) : le client ne rejoue rien, il n'a pas
 les rulesets versionnés.

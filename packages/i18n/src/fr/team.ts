@@ -2,10 +2,11 @@ import type { Messages } from "../messages.js";
 
 export const team: Messages["team"] = {
   roles: { commander: "Roi", special: "Pièces à capacité", pawn: "Pions" },
-  kinds: { commander: "Roi", scout: "Éclaireur", pawn: "Pion" },
+  kinds: { commander: "Roi", scout: "Éclaireur", trapper: "Trappeur", pawn: "Pion" },
   kindDescriptions: {
     commander: "La pièce à protéger : la perdre, c'est perdre la partie.",
     scout: "Rapide et voyant loin.",
+    trapper: "Pose un piège caché sur une case voisine, au lieu de se déplacer.",
     pawn: "La pièce de base, sans capacité.",
   },
   unknownKind: (kind) => kind,

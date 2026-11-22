@@ -11,6 +11,9 @@ import {
   tileQuad,
 } from "./iso.js";
 import { pixelOf } from "./canvas-trace.js";
+
+/** Un pixel du tampon, en unités du tracé courant : de quoi tracer des traits nets. */
+export { pixelOf } from "./canvas-trace.js";
 import { glyphOf } from "./glyphs.js";
 import { topColor } from "./matter.js";
 import { paintGlyph } from "./paint-glyph.js";

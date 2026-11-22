@@ -5,6 +5,7 @@ import {
   applyAction,
   legalActions,
 } from "./actions.js";
+import type { Trap } from "./abilities/trap.js";
 import type { Board } from "./board.js";
 import { isKingThreatened } from "./endgame.js";
 import { type JournalEntry, journalEntryFor } from "./journal.js";
@@ -132,6 +133,12 @@ export interface PlayerView {
   readonly visibleEnemies: readonly Piece[];
   /** Fantômes : pièces mémorisées mais actuellement hors LOS. */
   readonly ghosts: readonly RememberedPiece[];
+  /**
+   * Les pièges de ce joueur, et eux seuls : un piège adverse est invisible jusqu'à son
+   * déclenchement (décision du 2026-11-20, docs/design/rules.md section 4), où le
+   * journal le révèle.
+   */
+  readonly traps: readonly Trap[];
   /** Les coups de la partie tels que ce joueur les a vus. */
   readonly journal: readonly JournalEntry[];
   /**
@@ -197,6 +204,7 @@ export function viewFor(state: GameState, knowledge: PlayerKnowledge): PlayerVie
     ownPieces,
     visibleEnemies,
     ghosts,
+    traps: state.traps.filter((trap) => trap.owner === player),
     journal: knowledge.journal,
     rosters: { own: rosterOf(state, player), opponent: rosterOf(state, opponentOf(player)) },
     sinceCapture: state.draw.sinceCapture,
@@ -213,7 +221,7 @@ function rosterOf(state: GameState, owner: PlayerId): RosterEntry[] {
     .filter((piece) => piece.owner === owner)
     .map((piece) => ({ id: piece.id, kind: piece.kind, taken: false }));
   const taken = state.history
-    .map((record) => record.captured)
+    .flatMap((record) => [record.captured, record.trapped])
     .filter((piece): piece is Piece => piece !== undefined && piece.owner === owner)
     .map((piece) => ({ id: piece.id, kind: piece.kind, taken: true }));
   return [...standing, ...taken]

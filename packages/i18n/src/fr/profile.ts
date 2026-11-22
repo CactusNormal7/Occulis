@@ -148,6 +148,8 @@ export const profile: Messages["profile"] = {
     drawn: "nulle",
     wonByCheckmate: "victoire par mat",
     lostByCheckmate: "défaite par mat",
+    wonByTrap: "victoire par piège",
+    lostByTrap: "défaite par piège",
   },
   replay: {
     title: "Replay",

@@ -19,7 +19,14 @@ import {
   project,
   standingDepth,
 } from "@occulis/board/iso";
-import { type MoveAnimation, lagging, liftOf, positionOf } from "../../view/animation.js";
+import {
+  type MoveAnimation,
+  lagging,
+  liftOf,
+  positionOf,
+  startMove,
+} from "../../view/animation.js";
+import { type TrapEvent, trapEventsBetween } from "../../game/trap-events.js";
 import type { Selection } from "../../game/selection.js";
 import {
   type LightMap,
@@ -29,7 +36,13 @@ import {
   litTiles,
   relight,
 } from "../../view/reveal.js";
-import { type Landing, introLength, introOf, materializeAt } from "../../view/effects.js";
+import {
+  type Landing,
+  introLength,
+  introOf,
+  materializeAt,
+  trapSpringAt,
+} from "../../view/effects.js";
 import { easeOutCubic, phase } from "../../view/easing.js";
 import { breath, snap } from "@occulis/board/pixel";
 import { sameCoord } from "../../view/picking.js";
@@ -38,6 +51,7 @@ import { type TileMarks, drawLanding, drawTileMarks } from "./overlay.js";
 import { drawPiece } from "./pieces.js";
 import { drawMotes, drawSky } from "./sky.js";
 import { drawTile } from "./terrain.js";
+import { drawTrapAwaiting, drawTrapGlimpse, drawTrapLaying, drawTrapSpring } from "./trap-fx.js";
 import { MOTION_FX, look } from "@occulis/board/theme";
 
 /**
@@ -141,6 +155,22 @@ type Drawable =
       readonly beam: number;
     };
 
+/**
+ * Un effet de piège en cours (`game/trap-events.ts`). Pour un déclenchement, `travel` est
+ * le trajet de la pièce jusqu'au piège : elle le parcourt avant d'être happée, au lieu de
+ * disparaître de sa case de départ.
+ */
+interface TrapEffect {
+  readonly event: TrapEvent;
+  readonly start: number;
+  readonly travel: MoveAnimation | undefined;
+}
+
+/** Quand l'effet commence sur la case du piège : après le trajet de la pièce, s'il y en a un. */
+function arrivalOf(effect: TrapEffect): number {
+  return effect.start + (effect.travel?.duration ?? 0);
+}
+
 function isTile(drawable: Drawable): drawable is Extract<Drawable, { tile: Tile }> {
   return "tile" in drawable;
 }
@@ -220,6 +250,8 @@ export class Scene {
   private vanished: { readonly occupant: Occupant; readonly start: number }[] = [];
   /** L'instant où le trait est revenu au joueur. */
   private turnAt = -Infinity;
+  /** Les pièges posés, aperçus ou déclenchés par la dernière vue, le temps de leur effet. */
+  private trapEffects: TrapEffect[] = [];
 
   /** `resolution` : celle du rendu (`@occulis/board/pixel`), un pixel du tampon par pixel du plateau. */
   constructor(resolution: number) {
@@ -247,6 +279,7 @@ export class Scene {
     this.appeared.clear();
     this.vanished = [];
     this.turnAt = -Infinity;
+    this.trapEffects = [];
   }
 
   render(input: SceneInput, frame: SceneFrame): void {
@@ -287,6 +320,7 @@ export class Scene {
       this.appeared.clear();
       this.landings = [];
       this.vanished = [];
+      this.trapEffects = [];
     }
 
     if (input.view !== this.lastView) {
@@ -297,6 +331,17 @@ export class Scene {
       const delay = first ? introLength(timing) * 0.55 : 0;
       this.light = relight(this.light, keys, litTiles(input.view), sources, now, timing, delay);
 
+      // Une pièce prise au piège a son propre effet : elle ne se dissout pas sur place.
+      const trapped = new Set<PieceId>();
+      if (this.lastView !== undefined && !first && !still) {
+        for (const event of trapEventsBetween(this.lastView, input.view)) {
+          this.trapEffects.push(this.trapEffectOf(event, input.board, now));
+          if (event.kind === "sprung" && event.victim.id !== undefined) {
+            trapped.add(event.victim.id);
+          }
+        }
+      }
+
       const occupants = occupantsOf(input.view);
       const visible = new Map(
         [...occupants.values()]
@@ -306,7 +351,7 @@ export class Scene {
       if (this.seenEnemies !== undefined && !still) {
         for (const id of visible.keys()) if (!this.seenEnemies.has(id)) this.appeared.set(id, now);
         for (const [id, occupant] of this.seenEnemies)
-          if (!visible.has(id)) this.vanished.push({ occupant, start: now });
+          if (!visible.has(id) && !trapped.has(id)) this.vanished.push({ occupant, start: now });
       }
       this.seenEnemies = visible;
 
@@ -348,6 +393,17 @@ export class Scene {
     this.lastAnimation = input.animation;
     this.landings = this.landings.filter((landing) => now - landing.start < MOTION_FX.landingMs);
     this.vanished = this.vanished.filter((gone) => now - gone.start < MOTION_FX.vanishMs);
+    const longest = Math.max(MOTION_FX.trapLayMs, MOTION_FX.trapGlimpseMs, MOTION_FX.trapSnapMs);
+    this.trapEffects = this.trapEffects.filter((effect) => now - arrivalOf(effect) < longest);
+  }
+
+  private trapEffectOf(event: TrapEvent, board: Board, now: number): TrapEffect {
+    const from = event.kind === "sprung" ? event.victim.from : undefined;
+    const travel =
+      event.kind === "sprung" && from !== undefined && !sameCoord(from, event.coord)
+        ? startMove(event.victim.id ?? "trapped", from, event.coord, board)
+        : undefined;
+    return { event, start: now, travel };
   }
 
   private dither(color: number): FillPattern {
@@ -448,6 +504,12 @@ export class Scene {
       });
     }
 
+    // Une pièce prise au piège : elle marche jusqu'à la case, puis tremble et se dissout.
+    for (const effect of this.trapEffects) {
+      const drawable = this.trapVictimDrawable(effect, board, projection, view);
+      if (drawable !== undefined) drawables.push(drawable);
+    }
+
     // Un adversaire qui sort de la vue : sa dernière image se dissout sur son fantôme.
     for (const gone of this.vanished) {
       const t = phase(now, gone.start, MOTION_FX.vanishMs);
@@ -475,6 +537,7 @@ export class Scene {
       glow: breath(now, MOTION_FX.breathMs),
       hovered,
       sinceHovered: Math.max(settled, now - this.hoveredAt),
+      traps: new Set(view.traps.map((trap) => coordKey(trap.coord))),
     };
     for (const drawable of drawables) {
       if (isTile(drawable)) {
@@ -497,6 +560,7 @@ export class Scene {
           projection,
         );
         drawTileMarks(g, board, drawable.tile.coord, marks, projection, this.px);
+        this.drawTrapEffectsOn(g, drawable.tile.coord, board, projection, view);
         continue;
       }
       drawPiece(
@@ -521,10 +585,95 @@ export class Scene {
     }
   }
 
+  /** La pièce happée, à sa place du moment : en chemin vers le piège, puis sur sa case. */
+  private trapVictimDrawable(
+    effect: TrapEffect,
+    board: Board,
+    projection: IsoProjection,
+    view: PlayerView,
+  ): Drawable | undefined {
+    if (effect.event.kind !== "sprung") return undefined;
+    const { victim, coord } = effect.event;
+    const now = this.time;
+    const occupant: Occupant = {
+      id: victim.id ?? "trapped",
+      kind: victim.kind,
+      coord,
+      color: look().players[victim.owner],
+      ghost: false,
+      enemy: victim.owner !== view.player,
+    };
+
+    const travelling = effect.travel !== undefined && now < arrivalOf(effect);
+    if (travelling && effect.travel !== undefined) {
+      const moving = { ...effect.travel, elapsed: now - effect.start };
+      const at = positionOf(moving);
+      return {
+        depth: standingDepth(at.coord, board, projection),
+        base: project(at.coord, at.height + liftOf(moving, MOTION_FX.hopHeight), projection),
+        occupant,
+        alpha: 1,
+        trail: false,
+        rise: 0,
+        flash: 0,
+        beam: 0,
+      };
+    }
+
+    const spring = trapSpringAt(now - arrivalOf(effect), MOTION_FX.trapSnapMs);
+    if (spring === undefined || spring.victimAlpha <= 0) return undefined;
+    const base = project(coord, board.heightAt(coord) ?? 0, projection);
+    return {
+      depth: standingDepth(coord, board, projection),
+      base: {
+        x: base.x + spring.shake * 2 * this.px,
+        y: base.y - spring.rise * 6 * this.px,
+      },
+      occupant,
+      alpha: spring.victimAlpha,
+      trail: false,
+      rise: 0,
+      flash: spring.flash,
+      beam: 0,
+    };
+  }
+
   private drawOverlay({ board, projection }: SceneInput): void {
     const g = this.overlay;
     g.clear();
     const now = this.time;
     for (const landing of this.landings) drawLanding(g, board, landing, projection, this.px, now);
+  }
+
+  /**
+   * Les effets de piège d'une case, peints juste après elle dans `world` comme ses
+   * marques : sous la pièce qui s'y tient (les mâchoires se referment sous la victime),
+   * et cachés par un mur placé devant.
+   */
+  private drawTrapEffectsOn(
+    g: Graphics,
+    coord: Coord,
+    board: Board,
+    projection: IsoProjection,
+    view: PlayerView,
+  ): void {
+    const now = this.time;
+    for (const effect of this.trapEffects) {
+      const { event } = effect;
+      if (!sameCoord(event.coord, coord)) continue;
+      if (event.kind === "laid") {
+        drawTrapLaying(g, board, event.coord, now - effect.start, projection, this.px);
+      } else if (event.kind === "glimpsed") {
+        const color = look().players[event.owner];
+        drawTrapGlimpse(g, board, event.coord, color, now - effect.start, projection, this.px);
+      } else if (now < arrivalOf(effect)) {
+        // Le piège du joueur attend la pièce adverse ; celui de l'adversaire reste caché.
+        if (event.victim.owner !== view.player) {
+          drawTrapAwaiting(g, board, event.coord, projection, this.px);
+        }
+      } else {
+        drawTrapSpring(g, board, event.coord, now - arrivalOf(effect), projection, this.px);
+      }
+    }
   }
 }

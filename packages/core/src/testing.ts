@@ -1,5 +1,6 @@
 import type { Adjacency } from "./coord.js";
 import {
+  type AbilityKind,
   ConfigurablePieceType,
   type Piece,
   type PieceId,
@@ -22,6 +23,7 @@ export interface DefineOptions {
   readonly canClimb?: boolean;
   readonly vision?: number;
   readonly isCommander?: boolean;
+  readonly ability?: AbilityKind;
 }
 
 export function definePiece(kind: string, options: DefineOptions = {}): PieceType {
@@ -34,6 +36,7 @@ export function definePiece(kind: string, options: DefineOptions = {}): PieceTyp
     },
     vision: { range: options.vision ?? Number.POSITIVE_INFINITY },
     isCommander: options.isCommander ?? false,
+    ability: options.ability ?? null,
   });
 }
 

@@ -1,8 +1,14 @@
-import type { Board, Coord, PlayerId } from "@occulis/core";
-import type { AdminFrame, AdminMatchDetail } from "@occulis/protocol";
+import type { Action, Board, Coord, PlayerId } from "@occulis/core";
+import type {
+  AdminFrame,
+  AdminFramePiece,
+  AdminFrameTrap,
+  AdminMatchDetail,
+} from "@occulis/protocol";
 import { QUARTER_TURN, type IsoProjection, tileQuad } from "@occulis/board/iso";
 import { messages } from "../locale/current.js";
 import { describeAction, seatHandle } from "../admin/model.js";
+import { type MoveNotation, type NotatedMatch, notationOf } from "./notation.js";
 
 /**
  * Ce que le rejeu du back-office décide sans dessiner : quels coups séparent deux
@@ -42,18 +48,73 @@ export function movesBetween(before: AdminFrame, after: AdminFrame): Move[] {
   return moves;
 }
 
-/** Le coup `seq` tel qu'on le lit dans l'historique : « 2,4 → 3,4 », ou « abandon ». */
-export function describeEntry(
+/**
+ * Ce qu'un coup a fait des pièges, lu entre deux images comme `movesBetween()` :
+ *
+ * - `laid` : un piège absent de l'image d'avant ;
+ * - `sprung` : une pièce de l'image d'avant absente de celle d'après, alors que le coup la
+ *   déplaçait — elle s'est arrêtée sur un piège. `trap` est ce piège, tel qu'il était posé.
+ *
+ * L'action ne sert qu'à savoir où la pièce happée allait : elle a disparu de l'image d'après.
+ */
+export type ReplayTrapEvent =
+  | { readonly kind: "laid"; readonly trap: AdminFrameTrap }
+  | {
+      readonly kind: "sprung";
+      readonly victim: AdminFramePiece;
+      readonly from: Coord;
+      readonly to: Coord;
+      readonly trap: AdminFrameTrap | undefined;
+    };
+
+export function trapEventsBetween(
+  before: AdminFrame,
+  after: AdminFrame,
+  action: Action | undefined,
+): ReplayTrapEvent[] {
+  const events: ReplayTrapEvent[] = [];
+  const known = new Set(before.traps.map((trap) => `${trap.x},${trap.y}`));
+  for (const trap of after.traps) {
+    if (!known.has(`${trap.x},${trap.y}`)) events.push({ kind: "laid", trap });
+  }
+
+  if (action?.kind === "move") {
+    const victim = before.pieces.find((piece) => piece.id === action.pieceId);
+    const survived = after.pieces.some((piece) => piece.id === action.pieceId);
+    if (victim !== undefined && !survived) {
+      const { to } = action;
+      events.push({
+        kind: "sprung",
+        victim,
+        from: { x: victim.x, y: victim.y },
+        to,
+        trap: before.traps.find((trap) => trap.x === to.x && trap.y === to.y),
+      });
+    }
+  }
+  return events;
+}
+
+/** Les événements de piège du coup qui mène à l'image `index` ; aucun pour la première. */
+export function trapEventsAt(
   match: Pick<AdminMatchDetail, "log" | "frames">,
-  seq: number,
-): string {
+  index: number,
+): ReplayTrapEvent[] {
+  const before = match.frames[index - 1];
+  const after = match.frames[index];
+  if (before === undefined || after === undefined) return [];
+  return trapEventsBetween(before, after, match.log[index - 1]?.action);
+}
+
+/**
+ * Le coup `seq` dans l'historique : sa notation (« Sb3-c4 ») et la phrase qui l'explique
+ * (`notation.ts`). Un coup que le rejeu n'a pas su appliquer est dit par son action brute.
+ */
+export function describeEntry(match: NotatedMatch, seq: number): MoveNotation {
   const entry = match.log[seq];
-  if (entry === undefined) return "";
-  const before = match.frames[seq];
-  const after = match.frames[seq + 1];
-  const [move] = before !== undefined && after !== undefined ? movesBetween(before, after) : [];
-  if (move !== undefined) return `${move.from.x},${move.from.y} → ${move.to.x},${move.to.y}`;
-  return describeAction(entry.action);
+  if (entry === undefined) return { short: "", detail: "" };
+  const raw = describeAction(entry.action);
+  return notationOf(match, seq) ?? { short: raw, detail: raw };
 }
 
 /**
@@ -69,7 +130,7 @@ export function frameLabel(match: AdminMatchDetail, index: number): string {
     index,
     match.log.length,
     who,
-    describeEntry(match, index - 1),
+    describeEntry(match, index - 1).detail,
   );
 }
 

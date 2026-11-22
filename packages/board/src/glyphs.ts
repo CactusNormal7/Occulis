@@ -53,6 +53,19 @@ const SCOUT = [
   ".#######.",
 ];
 
+/** Le trappeur : une mâchoire ouverte au sommet, ses dents tournées vers le haut. */
+const TRAPPER = [
+  ".#.....#.",
+  ".##...##.",
+  "..##.##..",
+  "...###...",
+  "....#....",
+  "...###...",
+  "..#####..",
+  ".#######.",
+  ".#######.",
+];
+
 /** Le pion : la forme la plus simple, sans signe. */
 const PAWN = [
   ".........",
@@ -82,6 +95,7 @@ const FALLBACK = [
 const ROWS_BY_KIND: Readonly<Record<PieceKind, readonly string[]>> = {
   commander: COMMANDER,
   scout: SCOUT,
+  trapper: TRAPPER,
   pawn: PAWN,
 };
 

@@ -147,6 +147,10 @@ function lookOf(name: ThemeName) {
       destinationFillAlpha: [0.05, 0.16] as const,
       /** La gemme au centre d'une destination, en fraction de la case. */
       destinationGem: 0.16,
+      /** Les cibles d'une capacité armée, et les pièges posés du joueur. */
+      trap: palette.state.trap,
+      /** Le losange d'un piège posé, en fraction de la case. */
+      trapMark: 0.42,
     },
     pieces: {
       /**
@@ -265,4 +269,13 @@ export const MOTION_FX = {
   /** La sélection : la pièce choisie s'élève, et une colonne de lumière la désigne. */
   liftMs: 180,
   lift: 3,
+  /** La pose d'un piège : son sceau tombe sur la case, des éclats s'y rassemblent. */
+  trapLayMs: 640,
+  /** L'adversaire a exercé sa capacité sous vos yeux : deux ondes autour de la pièce. */
+  trapGlimpseMs: 760,
+  /**
+   * Le déclenchement, une fois la pièce arrivée sur la case : les mâchoires se referment
+   * (premier tiers), la pièce tremble et se dissout, puis la cicatrice du piège s'efface.
+   */
+  trapSnapMs: 1400,
 } as const;

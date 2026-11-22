@@ -1,5 +1,5 @@
 import type { Graphics } from "pixi.js";
-import { type Board, type Coord, chebyshevDistance, coordKey } from "@occulis/core";
+import { type Board, type Coord, type CoordKey, chebyshevDistance, coordKey } from "@occulis/core";
 import {
   type IsoProjection,
   type Quad,
@@ -27,13 +27,13 @@ function lerp(range: readonly [number, number], t: number): number {
   return range[0] + (range[1] - range[0]) * t;
 }
 
-function topOf(board: Board, coord: Coord, proj: IsoProjection): Quad | undefined {
+export function topOf(board: Board, coord: Coord, proj: IsoProjection): Quad | undefined {
   const tile = board.getTile(coord);
   return tile === undefined ? undefined : tileQuad(tile.coord, tile.height, proj);
 }
 
 /** Le quadrilatère `quad` mis à l'échelle `k` autour de son centre. */
-function scaled(quad: Quad, k: number): number[] {
+export function scaled(quad: Quad, k: number): number[] {
   const cx = (quad[0].x + quad[2].x) / 2;
   const cy = (quad[0].y + quad[2].y) / 2;
   return quad.flatMap((p) => [cx + (p.x - cx) * k, cy + (p.y - cy) * k]);
@@ -48,6 +48,8 @@ export interface TileMarks {
   readonly glow: number;
   readonly hovered: Coord | undefined;
   readonly sinceHovered: number;
+  /** Les pièges posés du joueur : il est seul à les voir (`PlayerView.traps`). */
+  readonly traps: ReadonlySet<CoordKey>;
 }
 
 /**
@@ -64,8 +66,12 @@ export function drawTileMarks(
 ): void {
   const key = coordKey(coord);
   const { selection } = marks;
+  if (marks.traps.has(key)) drawTrap(g, board, coord, proj, px, marks.glow);
   if (selection !== undefined) {
-    if (selection.moves.has(key)) {
+    if (selection.aiming && selection.abilityTargets.has(key)) {
+      drawAbilityTarget(g, board, coord, selection, proj, px, marks.glow, marks.sinceSelected);
+    }
+    if (!selection.aiming && selection.moves.has(key)) {
       drawDestination(g, board, coord, selection, proj, px, marks.glow, marks.sinceSelected);
     }
     if (coordKey(selection.piece.coord) === key) {
@@ -171,6 +177,68 @@ function drawDestination(
   g.poly(scaled(quad, style.destinationGem * open)).fill({
     color: style.destination,
     alpha: 0.7 + 0.3 * glow,
+  });
+}
+
+/**
+ * Un piège posé du joueur : un losange au trait au centre de la case, barré d'une croix,
+ * qui respire à peine. Discret — il est là pour être retrouvé, pas pour attirer l'œil.
+ */
+function drawTrap(
+  g: Graphics,
+  board: Board,
+  coord: Coord,
+  proj: IsoProjection,
+  px: number,
+  glow: number,
+): void {
+  const style = look().selection;
+  const quad = topOf(board, coord, proj);
+  if (quad === undefined) return;
+  const mark = scaled(quad, style.trapMark);
+  const alpha = 0.65 + 0.25 * glow;
+  g.poly(mark).stroke({ width: px, color: style.trap, alpha });
+  g.moveTo(mark[0] ?? 0, mark[1] ?? 0)
+    .lineTo(mark[4] ?? 0, mark[5] ?? 0)
+    .moveTo(mark[2] ?? 0, mark[3] ?? 0)
+    .lineTo(mark[6] ?? 0, mark[7] ?? 0)
+    .stroke({ width: px, color: style.trap, alpha: alpha * 0.6 });
+}
+
+/**
+ * Une case où la capacité armée peut s'exercer. Elle s'ouvre comme une destination, mais
+ * dans la couleur du piège, et sans gemme : rien ne s'y rendra.
+ */
+function drawAbilityTarget(
+  g: Graphics,
+  board: Board,
+  coord: Coord,
+  selection: Selection,
+  proj: IsoProjection,
+  px: number,
+  glow: number,
+  since: number,
+): void {
+  const style = look().selection;
+  const quad = topOf(board, coord, proj);
+  if (quad === undefined) return;
+  const open = Math.min(
+    1,
+    cascadeOf(
+      chebyshevDistance(coord, selection.piece.coord),
+      since,
+      MOTION_FX.cascadePerTileMs,
+      MOTION_FX.cascadeMs,
+    ),
+  );
+  if (open <= 0) return;
+  g.poly(scaled(quad, open))
+    .fill({ color: style.trap, alpha: lerp(style.destinationFillAlpha, glow) * open })
+    .stroke({ width: style.destinationWidth * px, color: style.trap, alpha: open });
+  g.poly(scaled(quad, style.trapMark * open)).stroke({
+    width: px,
+    color: style.trap,
+    alpha: 0.5 + 0.4 * glow,
   });
 }
 

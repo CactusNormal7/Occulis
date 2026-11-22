@@ -254,6 +254,12 @@ export function frameOf(memory: MatchMemory): AdminFrame {
       x: piece.coord.x,
       y: piece.coord.y,
     })),
+    traps: memory.state.traps.map((trap) => ({
+      owner: trap.owner,
+      layer: trap.layer,
+      x: trap.coord.x,
+      y: trap.coord.y,
+    })),
     visible: { A: [...memory.knowledge.A.visible], B: [...memory.knowledge.B.visible] },
   };
 }

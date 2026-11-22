@@ -1571,7 +1571,8 @@ select.occ-input option {
 
 .occ-move {
   display: grid;
-  grid-template-columns: 30px 14px 1fr;
+  /* `minmax(0, …)` : sans lui, un coup long élargit sa colonne au lieu d'être coupé. */
+  grid-template-columns: 30px 14px minmax(0, 1fr);
   align-items: center;
   gap: var(--occ-space-2);
   padding: 5px var(--occ-space-2);
@@ -1617,8 +1618,26 @@ select.occ-input option {
   color: var(--occ-camp-b);
 }
 
+/* Un coup trop long pour sa colonne finit par « … » ; l'infobulle le donne en entier. */
 .occ-move__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* L'infobulle d'un coup : rendue dans `body`, hors de `.occ-root`, d'où sa police. */
+.occ-move-tip {
+  position: fixed;
+  z-index: 20;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: var(--occ-space-1) var(--occ-space-2);
+  border: 1px solid var(--occ-ink-faint);
+  background: var(--occ-surface);
+  box-shadow: 0 2px 0 var(--occ-shade);
+  color: var(--occ-ink);
+  font: var(--occ-text-sm) / 1.4 var(--occ-font-pixel);
+  -webkit-font-smoothing: none;
+  pointer-events: none;
 }
 
 /* ---- Fenêtre modale ---------------------------------------------------------------- */
