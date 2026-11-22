@@ -12,7 +12,7 @@
  * Un message illisible rend `undefined`, et le serveur l'ignore comme un message d'un
  * genre inconnu. La forme seulement : les règles restent l'affaire de `@occulis/core`.
  */
-import { type Action, type TeamEntry, parseTeam } from "@occulis/core";
+import { type Action, type Coord, type TeamEntry, parseTeam } from "@occulis/core";
 import type {
   ClientMessage,
   QueueClientMessage,
@@ -75,11 +75,23 @@ export function parseSocialClientMessage(raw: string): SocialClientMessage | und
 export function parseAction(value: unknown): Action | undefined {
   const action = record(value);
   if (action?.kind === "resign") return { kind: "resign" };
-  if (action?.kind !== "move" || !isId(action.pieceId)) return undefined;
-  const to = record(action.to);
-  if (to === undefined || !Number.isSafeInteger(to.x) || !Number.isSafeInteger(to.y))
+  if (!isId(action?.pieceId)) return undefined;
+  if (action.kind === "move") {
+    const to = parseCoord(action.to);
+    return to === undefined ? undefined : { kind: "move", pieceId: action.pieceId, to };
+  }
+  if (action.kind === "ability") {
+    const target = parseCoord(action.target);
+    return target === undefined ? undefined : { kind: "ability", pieceId: action.pieceId, target };
+  }
+  return undefined;
+}
+
+function parseCoord(value: unknown): Coord | undefined {
+  const coord = record(value);
+  if (coord === undefined || !Number.isSafeInteger(coord.x) || !Number.isSafeInteger(coord.y))
     return undefined;
-  return { kind: "move", pieceId: action.pieceId, to: { x: to.x as number, y: to.y as number } };
+  return { x: coord.x as number, y: coord.y as number };
 }
 
 function parseIntent(value: unknown): QueueIntent | undefined {

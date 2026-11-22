@@ -33,7 +33,7 @@ export type SeatDenial =
  * explicitement plutôt que le laisser diverger en silence (docs/architecture.md
  * section 1).
  */
-export const PROTOCOL_VERSION = 9;
+export const PROTOCOL_VERSION = 10;
 
 /**
  * Le battement de cœur d'une page de partie. Un mobile qui perd le réseau sans fermer sa
@@ -65,6 +65,8 @@ export interface WireView {
   readonly ownPieces: PlayerView["ownPieces"];
   readonly visibleEnemies: PlayerView["visibleEnemies"];
   readonly ghosts: PlayerView["ghosts"];
+  /** Les pièges du destinataire, jamais ceux de l'adversaire (`PlayerView`). */
+  readonly traps: PlayerView["traps"];
   /** Les coups tels que le destinataire les a vus ; un champ absent est un fait qu'il ignore. */
   readonly journal: PlayerView["journal"];
   readonly rosters: PlayerView["rosters"];

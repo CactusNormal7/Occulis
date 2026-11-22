@@ -13,6 +13,13 @@ import type { PieceKind } from "./piece.js";
 export type PieceRole = "commander" | "special" | "pawn";
 
 /**
+ * Une capacité de pièce : ce qu'elle peut faire **à la place** de se déplacer
+ * (docs/design/rules.md section 3 — un tour, une action). Le piège est la seule à ce
+ * jour ; ses règles vivent dans `abilities/trap.ts`, pas dans la pièce qui le pose.
+ */
+export type AbilityKind = "trap";
+
+/**
  * Un type de pièce = une classe.
  *
  * La classe de base encode les règles communes à toute pièce — déplacement au sol,
@@ -37,6 +44,14 @@ export abstract class PieceType {
   /** `special` par défaut : un type ne se déclare maîtresse ou pion qu'explicitement. */
   get role(): PieceRole {
     return "special";
+  }
+
+  /**
+   * La capacité de ce type, ou `null` pour une pièce qui ne fait que se déplacer. Une
+   * seule par type : l'action `ability` n'a donc pas à la nommer.
+   */
+  get ability(): AbilityKind | null {
+    return null;
   }
 
   /**

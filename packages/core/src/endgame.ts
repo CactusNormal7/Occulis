@@ -89,7 +89,7 @@ export function leavesKingExposed(state: GameState, move: Displacement): boolean
 
 /** Fait avancer l'horloge des nulles. La position comptée est celle d'**après** le coup. */
 export function tickDrawClock(previous: DrawClock, next: GameState, captured: boolean): DrawClock {
-  const key = positionKey(next.pieces.values(), next.activePlayer);
+  const key = positionKey(next.pieces.values(), next.activePlayer, next.traps);
   // Une prise est irréversible : aucune position d'avant ne peut revenir. Repartir
   // d'une table vide borne aussi sa taille.
   const seen = new Map(captured ? [] : previous.seen);
@@ -115,7 +115,9 @@ export function outcomeOf(state: GameState, hasLegalMove: () => boolean): Outcom
   }
 
   if (draws !== null) {
-    const occurrences = state.draw.seen.get(positionKey(state.pieces.values(), state.activePlayer));
+    const occurrences = state.draw.seen.get(
+      positionKey(state.pieces.values(), state.activePlayer, state.traps),
+    );
     if ((occurrences ?? 0) >= draws.repetition) return { kind: "draw", reason: "repetition" };
     if (state.draw.sinceCapture >= draws.withoutCapture) {
       return { kind: "draw", reason: "no-capture" };

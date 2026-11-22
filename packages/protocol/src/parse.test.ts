@@ -40,6 +40,16 @@ describe("parseAction", () => {
     }
   });
 
+  it("reconstruit une capacité et refuse une cible illisible", () => {
+    expect(
+      parseAction({ kind: "ability", pieceId: "a-2", target: { x: 3, y: 4 }, ability: "trap" }),
+    ).toEqual({ kind: "ability", pieceId: "a-2", target: { x: 3, y: 4 } });
+    expect(parseAction({ kind: "ability", pieceId: "a-2", target: { x: "3", y: 4 } })).toBe(
+      undefined,
+    );
+    expect(parseAction({ kind: "ability", pieceId: "a-2" })).toBeUndefined();
+  });
+
   it("n'écoute jamais le client sur qui abandonne", () => {
     expect(parseAction({ kind: "resign", player: "B" })).toEqual({ kind: "resign" });
   });

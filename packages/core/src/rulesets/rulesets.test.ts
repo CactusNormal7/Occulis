@@ -29,12 +29,17 @@ describe("registre des rulesets", () => {
   });
 
   it("fait de la version courante celle du déploiement", () => {
-    expect(CURRENT_RULESET_VERSION).toBe("provisional-3");
+    expect(CURRENT_RULESET_VERSION).toBe("provisional-4");
     expect(rulesetFor(CURRENT_RULESET_VERSION).team).toEqual({
       commander: 1,
       special: 3,
       pawn: 2,
     });
+  });
+
+  it("ne donne le trappeur qu'aux parties de provisional-4", () => {
+    expect(rulesetFor("provisional-3").has("trapper")).toBe(false);
+    expect(rulesetFor("provisional-4").get("trapper").ability).toBe("trap");
   });
 
   it("refuse une version inconnue", () => {
