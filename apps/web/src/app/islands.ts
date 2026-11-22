@@ -81,6 +81,8 @@ export interface MatchHudIsland {
   readonly onCamera: (command: CameraCommand) => void;
   /** Replier ou déplier la colonne de droite, pour voir le plateau en grand. */
   readonly onToggleColumn: () => void;
+  /** Arme ou désarme la capacité de la pièce sélectionnée (le bouton de la fiche). */
+  readonly onAbility: () => void;
 }
 
 /** Les équipes préparées, depuis le menu (`presets/TeamsScreen.vue`). */

@@ -1,4 +1,5 @@
 import {
+  type AbilityKind,
   type Adjacency,
   type Coord,
   type Piece,
@@ -22,6 +23,8 @@ export interface PieceSheet {
   /** `ghost` : une pièce adverse hors de vue, à sa dernière position connue. */
   readonly relation: "own" | "enemy" | "ghost";
   readonly role: PieceRole;
+  /** La capacité du type, publique comme le reste de ses caractéristiques. */
+  readonly ability: AbilityKind | null;
   readonly steps: number;
   readonly adjacency: Adjacency;
   readonly canClimb: boolean;
@@ -52,6 +55,7 @@ export function inspectPiece(
     piece: { id: piece.id, kind: piece.kind, owner: piece.owner, coord: piece.coord },
     relation: own !== undefined ? "own" : enemy !== undefined ? "enemy" : "ghost",
     role: type.role,
+    ability: type.ability,
     steps: type.movement.steps,
     adjacency: type.movement.adjacency,
     canClimb: type.movement.canClimb,

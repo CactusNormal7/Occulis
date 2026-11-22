@@ -58,6 +58,7 @@ export const game: Messages["game"] = {
     notYourPiece: "Cette pièce n'est pas au trait.",
     unreachable: (coord) => `${coord} est hors de portée de cette pièce ce tour-ci.`,
     leavesKingExposed: "Ce coup laisserait votre roi en prise.",
+    invalidTarget: (coord) => `Cette pièce ne peut pas exercer sa capacité en ${coord}.`,
   },
   rejection: {
     unknownSeat: "Siège inconnu : cette connexion n'appartient à aucun des deux camps.",
@@ -72,6 +73,7 @@ export const game: Messages["game"] = {
       stalemate: "pat",
       repetition: "triple répétition",
       "no-capture": "60 coups sans prise",
+      trap: "roi pris au piège",
     },
   },
   pieceInfo: {
@@ -90,6 +92,7 @@ export const game: Messages["game"] = {
     unlimited: "illimitée",
     capture: "Prend en arrivant sur la case d'une pièce adverse.",
     king: "S'il ne peut plus échapper à la prise, la partie est perdue.",
+    trap: "Au lieu de se déplacer, pose un piège sur une case voisine libre, pas plus haute que la sienne. Le piège est caché à l'adversaire et prend la première pièce adverse qui s'y arrête, roi compris. Un seul piège actif à la fois.",
   },
   end: {
     friendWon: (friend) => `${friend} l'emporte`,
@@ -102,6 +105,10 @@ export const game: Messages["game"] = {
     checkmate: {
       friendWon: "Son adversaire est échec et mat.",
       friendLost: (friend) => `${friend} est échec et mat.`,
+    },
+    trap: {
+      friendWon: "Le roi adverse est tombé dans un piège.",
+      friendLost: (friend) => `Le roi de ${friend} est tombé dans un piège.`,
     },
     draws: {
       stalemate: "Le camp au trait n'avait plus aucun coup légal.",
@@ -122,6 +129,10 @@ export const game: Messages["game"] = {
     checkmate: {
       won: (move) => `Vous avez maté votre adversaire au coup ${move}.`,
       lost: (move) => `Vous êtes échec et mat au coup ${move}.`,
+    },
+    trap: {
+      won: (move) => `Le roi adverse est tombé dans votre piège au coup ${move}.`,
+      lost: (move) => `Votre roi est tombé dans un piège au coup ${move}.`,
     },
     draws: {
       stalemate: (move) => `Pat au coup ${move} : plus aucun coup légal.`,
@@ -197,6 +208,14 @@ export const game: Messages["game"] = {
     move: (piece, from, to) => `${piece} ${from} → ${to}`,
     takes: (move, taken) => `${move}, prend ${taken}`,
     lost: (taken, at) => `${taken} pris en ${at}`,
+    laysTrap: (piece, at) => `${piece} pose un piège en ${at}`,
+    usesAbility: (piece, from) => `${piece} ${from} prépare quelque chose`,
+    trapped: (move, caught) => `${move}, ${caught} pris au piège`,
+    traps: (count) => (count === 1 ? "1 case de piège" : `${count} cases de piège`),
+    layTrap: "Poser un piège",
+    cancelTrap: "Revenir aux déplacements",
+    trapHint: "Cliquez une case marquée pour y poser le piège.",
+    trapActive: "Son piège est encore posé : pas d'autre avant qu'il se déclenche.",
     drawNear: "Nulle proche",
     drawCount: (count, limit) => `${count} / ${limit}`,
     drawRule: (limit) => `Nulle à ${limit} actions sans prise.`,
@@ -205,6 +224,7 @@ export const game: Messages["game"] = {
       selection: "sélection",
       move: "déplacement",
       capture: "prise",
+      trap: "piège",
     },
     camera: {
       label: "Caméra",

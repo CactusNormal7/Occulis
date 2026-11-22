@@ -10,6 +10,7 @@ import type { SheetCard } from "./model.js";
 import PieceGlyph from "./PieceGlyph.vue";
 
 defineProps<{ sheet: SheetCard | undefined }>();
+const emit = defineEmits<{ ability: [] }>();
 
 const messages = useMessages();
 const t = computed(() => messages.value.game.hud);
@@ -42,7 +43,26 @@ const t = computed(() => messages.value.game.hud);
         <template v-if="sheet.reach.captures !== undefined">
           · <span class="hud-threat">{{ sheet.reach.captures }}</span>
         </template>
+        <template v-if="sheet.reach.traps !== undefined">
+          · <span class="hud-trap">{{ sheet.reach.traps }}</span>
+        </template>
       </p>
+      <template v-if="sheet.ability !== undefined">
+        <button
+          v-if="sheet.ability.action !== undefined"
+          class="hud-button"
+          :class="{ 'hud-button--quiet': sheet.ability.aiming }"
+          type="button"
+          :aria-pressed="sheet.ability.aiming"
+          @click="emit('ability')"
+        >
+          {{ sheet.ability.action }}
+        </button>
+        <p v-if="sheet.ability.hint !== undefined" class="hud-faint">{{ sheet.ability.hint }}</p>
+        <p v-if="sheet.ability.blocked !== undefined" class="hud-faint">
+          {{ sheet.ability.blocked }}
+        </p>
+      </template>
       <p v-for="note in sheet.notes" :key="note" class="hud-faint">{{ note }}</p>
     </template>
     <template v-else>

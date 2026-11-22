@@ -25,6 +25,7 @@
   --occ-legal: rgb(125 156 255);
   --occ-climb: rgb(196 155 255);
   --occ-threat: rgb(255 77 94);
+  --occ-trap: rgb(166 227 107);
   --occ-accepted: rgb(125 156 255);
   --occ-refused: rgb(255 77 94);
   --occ-caution: rgb(245 197 24);
@@ -91,6 +92,7 @@
   --occ-legal: rgb(125 156 255);
   --occ-climb: rgb(196 155 255);
   --occ-threat: rgb(255 77 94);
+  --occ-trap: rgb(166 227 107);
   --occ-accepted: rgb(125 156 255);
   --occ-refused: rgb(255 77 94);
   --occ-caution: rgb(245 197 24);
@@ -157,6 +159,7 @@
   --occ-legal: rgb(94 200 255);
   --occ-climb: rgb(212 155 255);
   --occ-threat: rgb(255 122 69);
+  --occ-trap: rgb(214 242 107);
   --occ-accepted: rgb(94 200 255);
   --occ-refused: rgb(255 122 69);
   --occ-caution: rgb(245 197 24);
@@ -223,6 +226,7 @@
   --occ-legal: rgb(139 123 255);
   --occ-climb: rgb(185 139 255);
   --occ-threat: rgb(255 79 216);
+  --occ-trap: rgb(156 242 122);
   --occ-accepted: rgb(139 123 255);
   --occ-refused: rgb(255 79 216);
   --occ-caution: rgb(245 197 24);

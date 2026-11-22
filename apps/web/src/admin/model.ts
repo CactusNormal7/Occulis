@@ -169,6 +169,8 @@ export function describeResult(match: AdminMatchSummary): string {
 
 export function describeAction(action: Action): string {
   if (action.kind === "resign") return messages().admin.resign;
+  // Une capacité se distingue d'un déplacement par sa flèche : la pièce reste sur sa case.
+  if (action.kind === "ability") return `${action.pieceId} ⇢ ${action.target.x},${action.target.y}`;
   return `${action.pieceId} → ${action.to.x},${action.to.y}`;
 }
 

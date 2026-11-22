@@ -148,6 +148,8 @@ export const profile = {
     drawn: "draw",
     wonByCheckmate: "victory by checkmate",
     lostByCheckmate: "defeat by checkmate",
+    wonByTrap: "victory by trap",
+    lostByTrap: "defeat by trap",
   },
   replay: {
     title: "Replay",

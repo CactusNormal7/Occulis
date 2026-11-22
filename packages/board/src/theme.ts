@@ -147,6 +147,10 @@ function lookOf(name: ThemeName) {
       destinationFillAlpha: [0.05, 0.16] as const,
       /** La gemme au centre d'une destination, en fraction de la case. */
       destinationGem: 0.16,
+      /** Les cibles d'une capacité armée, et les pièges posés du joueur. */
+      trap: palette.state.trap,
+      /** Le losange d'un piège posé, en fraction de la case. */
+      trapMark: 0.42,
     },
     pieces: {
       /**

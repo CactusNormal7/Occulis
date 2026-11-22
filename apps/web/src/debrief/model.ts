@@ -41,9 +41,10 @@ function sideStats(match: MeMatchDebrief, side: PlayerId): SideStats {
   let moves = 0;
   const pieces = new Set<string>();
   for (const entry of match.log) {
-    if (entry.player !== side || entry.action.kind !== "move") continue;
+    if (entry.player !== side || entry.action.kind === "resign") continue;
     moves += 1;
-    pieces.add(entry.action.pieceId);
+    // Une capacité est un coup joué, mais sa pièce n'a pas bougé.
+    if (entry.action.kind === "move") pieces.add(entry.action.pieceId);
   }
   const seen = new Set(match.frames.flatMap((frame) => frame.visible[side]));
   return { moves, pieces: pieces.size, seen: seen.size };
@@ -87,6 +88,11 @@ export function debriefReason(
   endedOn: number,
 ): string {
   if (outcome?.kind === "draw") return m.draws[outcome.reason](endedOn);
-  const texts = outcome?.reason === "checkmate" ? m.checkmate : m.resignation;
+  const texts =
+    outcome?.reason === "checkmate"
+      ? m.checkmate
+      : outcome?.reason === "trap"
+        ? m.trap
+        : m.resignation;
   return won ? texts.won(endedOn) : texts.lost(endedOn);
 }

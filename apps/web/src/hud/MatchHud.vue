@@ -37,6 +37,7 @@ const emit = defineEmits<{
   leave: [];
   camera: [command: CameraCommand];
   toggleColumn: [];
+  ability: [];
 }>();
 
 const messages = useMessages();
@@ -78,7 +79,7 @@ const viewName = computed(() =>
       @toggle-column="emit('toggleColumn')"
     />
     <aside v-show="columnOpen" id="hud-column" class="hud-column">
-      <PieceSheet :sheet="model.sheet" />
+      <PieceSheet :sheet="model.sheet" @ability="emit('ability')" />
       <MatchJournal :lines="model.journal" :draw-meter="model.drawMeter" />
     </aside>
     <GlowLegend v-if="model.showLegend" />

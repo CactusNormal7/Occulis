@@ -12,7 +12,7 @@ import type { TeamPreset } from "@occulis/protocol";
 import { type PieceSheet, sameSheet } from "../game/inspection.js";
 import type { Movement } from "../game/movement-diff.js";
 import { OnlineMatch } from "../game/online-match.js";
-import { type Selection, resolveClick } from "../game/selection.js";
+import { type Selection, aimAbility, resolveClick } from "../game/selection.js";
 import { messages } from "../locale/current.js";
 import type { MatchChannel, MatchHandlers } from "../net/match-channel.js";
 import type { MatchPlayers } from "../net/session.js";
@@ -323,6 +323,16 @@ export class MatchController {
     if (outcome.kind === "select") this.picked = outcome.selection;
     else if (outcome.kind === "clear") this.picked = undefined;
     else this.submit(outcome.action);
+    this.effects.showIslands();
+  }
+
+  /**
+   * Le bouton de la fiche : arme la capacité de la pièce sélectionnée — le prochain clic
+   * sur une de ses cibles l'exerce —, ou revient à ses déplacements.
+   */
+  toggleAbility(): void {
+    if (this.picked === undefined) return;
+    this.picked = aimAbility(this.picked, !this.picked.aiming);
     this.effects.showIslands();
   }
 

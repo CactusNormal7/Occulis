@@ -27,6 +27,8 @@ export function describeActionError(error: ActionError): string {
       return m.unreachable(formatCoord(error.to));
     case "leaves-king-exposed":
       return m.leavesKingExposed;
+    case "invalid-target":
+      return m.invalidTarget(formatCoord(error.target));
   }
 }
 
@@ -58,6 +60,7 @@ export function describeRejection(rejection: Rejection): string {
     case "unknown-piece":
     case "not-your-piece":
     case "unreachable":
+    case "invalid-target":
     case "leaves-king-exposed":
       return describeActionError(rejection);
   }

@@ -27,6 +27,14 @@ export interface Selection {
    * la distingue pas d'une case libre, et le client n'a pas à le deviner.
    */
   readonly captures: ReadonlySet<CoordKey>;
+  /** Cases où la pièce peut exercer sa capacité (poser un piège), indexées par leur clé. */
+  readonly abilityTargets: ReadonlyMap<CoordKey, Coord>;
+  /**
+   * La capacité est armée : un clic sur une de ses cibles l'exerce, et les déplacements
+   * sont masqués. Une case voisine peut être à la fois une destination et une cible : il
+   * faut donc un mode, choisi dans la fiche de la pièce (`aimAbility`).
+   */
+  readonly aiming: boolean;
 }
 
 export type ClickOutcome =
@@ -46,10 +54,12 @@ export function selectionFor(
   enemies: Iterable<Piece> = [],
 ): Selection {
   const moves = new Map<CoordKey, Coord>();
+  const abilityTargets = new Map<CoordKey, Coord>();
 
   for (const action of legal) {
-    if (action.kind !== "move" || action.pieceId !== piece.id) continue;
-    moves.set(coordKey(action.to), action.to);
+    if (action.kind === "resign" || action.pieceId !== piece.id) continue;
+    if (action.kind === "move") moves.set(coordKey(action.to), action.to);
+    else abilityTargets.set(coordKey(action.target), action.target);
   }
 
   const captures = new Set<CoordKey>();
@@ -57,7 +67,16 @@ export function selectionFor(
     const key = coordKey(enemy.coord);
     if (enemy.owner !== piece.owner && moves.has(key)) captures.add(key);
   }
-  return { piece, moves, captures };
+  return { piece, moves, captures, abilityTargets, aiming: false };
+}
+
+/**
+ * Arme ou désarme la capacité de la pièce sélectionnée. Sans cible, elle ne s'arme pas :
+ * la sélection reste telle quelle.
+ */
+export function aimAbility(selection: Selection, aiming: boolean): Selection {
+  if (aiming && selection.abilityTargets.size === 0) return selection;
+  return { ...selection, aiming };
 }
 
 /**
@@ -76,7 +95,14 @@ export function resolveClick(
     // Recliquer la pièce sélectionnée la désélectionne.
     if (coordEquals(coord, selection.piece.coord)) return { kind: "clear" };
 
-    const destination = selection.moves.get(coordKey(coord));
+    if (selection.aiming) {
+      const target = selection.abilityTargets.get(coordKey(coord));
+      if (target !== undefined) {
+        return { kind: "play", action: { kind: "ability", pieceId: selection.piece.id, target } };
+      }
+    }
+
+    const destination = selection.aiming ? undefined : selection.moves.get(coordKey(coord));
     if (destination !== undefined) {
       return {
         kind: "play",

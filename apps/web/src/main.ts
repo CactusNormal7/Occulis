@@ -266,6 +266,7 @@ function main(): void {
         board.toggleColumn();
         islands.render();
       },
+      onAbility: () => matches.toggleAbility(),
     };
   }
 

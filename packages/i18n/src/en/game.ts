@@ -57,6 +57,7 @@ export const game = {
     notYourPiece: "This piece is not to move.",
     unreachable: (coord: string) => `${coord} is out of this piece's reach this turn.`,
     leavesKingExposed: "That move would leave your king open to capture.",
+    invalidTarget: (coord: string) => `This piece cannot use its ability on ${coord}.`,
   },
   rejection: {
     unknownSeat: "Unknown seat: this connection belongs to neither side.",
@@ -71,6 +72,7 @@ export const game = {
       stalemate: "stalemate",
       repetition: "threefold repetition",
       "no-capture": "60 moves without a capture",
+      trap: "king caught in a trap",
     },
   },
   /** La fiche d'une pièce, ouverte d'un clic droit. */
@@ -90,6 +92,7 @@ export const game = {
     unlimited: "unlimited",
     capture: "Captures by moving onto an opposing piece.",
     king: "If it cannot escape capture, the match is lost.",
+    trap: "Instead of moving, lays a trap on a free neighbouring square, no higher than its own. The trap is hidden from the opponent and takes the first opposing piece that stops on it, the king included. One active trap at a time.",
   },
   /** La fin d'une partie regardée, chez le spectateur. */
   end: {
@@ -103,6 +106,10 @@ export const game = {
     checkmate: {
       friendWon: "Their opponent was checkmated.",
       friendLost: (friend: string) => `${friend} was checkmated.`,
+    },
+    trap: {
+      friendWon: "Their opponent's king walked into a trap.",
+      friendLost: (friend: string) => `${friend}'s king walked into a trap.`,
     },
     draws: {
       stalemate: "The side to move had no legal move left.",
@@ -124,6 +131,10 @@ export const game = {
     checkmate: {
       won: (move: number) => `You checkmated your opponent on move ${move}.`,
       lost: (move: number) => `You were checkmated on move ${move}.`,
+    },
+    trap: {
+      won: (move: number) => `The opposing king walked into your trap on move ${move}.`,
+      lost: (move: number) => `Your king walked into a trap on move ${move}.`,
     },
     draws: {
       stalemate: (move: number) => `Stalemate on move ${move}: no legal move left.`,
@@ -202,6 +213,14 @@ export const game = {
     move: (piece: string, from: string, to: string) => `${piece} ${from} → ${to}`,
     takes: (move: string, taken: string) => `${move}, takes ${taken}`,
     lost: (taken: string, at: string) => `${taken} taken on ${at}`,
+    laysTrap: (piece: string, at: string) => `${piece} lays a trap on ${at}`,
+    usesAbility: (piece: string, from: string) => `${piece} ${from} sets something`,
+    trapped: (move: string, caught: string) => `${move}, ${caught} caught in a trap`,
+    traps: (count: number) => (count === 1 ? "1 trap square" : `${count} trap squares`),
+    layTrap: "Lay a trap",
+    cancelTrap: "Back to moves",
+    trapHint: "Click a highlighted square to lay the trap.",
+    trapActive: "Its trap is still set: no other one until it springs.",
     drawNear: "Draw near",
     drawCount: (count: number, limit: number) => `${count} / ${limit}`,
     drawRule: (limit: number) => `Draw after ${limit} moves without a capture.`,
@@ -210,6 +229,7 @@ export const game = {
       selection: "selection",
       move: "move",
       capture: "capture",
+      trap: "trap",
     },
     camera: {
       label: "Camera",
