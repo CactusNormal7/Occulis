@@ -1,4 +1,5 @@
 import type { Action } from "./actions.js";
+import type { Trap } from "./abilities/trap.js";
 import type { Board } from "./board.js";
 import { type Coord, type CoordKey, coordEquals, coordKey } from "./coord.js";
 import type { Piece, PieceId, PlayerId, Ruleset } from "./pieces/index.js";
@@ -15,7 +16,8 @@ export type Outcome =
   | {
       readonly kind: "victory";
       readonly winner: PlayerId;
-      readonly reason: "resignation" | "checkmate";
+      /** `trap` : le roi adverse a fini son déplacement sur un piège (rules.md section 4). */
+      readonly reason: "resignation" | "checkmate" | "trap";
     }
   | {
       readonly kind: "draw";
@@ -53,20 +55,30 @@ export type PositionKey = string;
  * Les pièces sont identifiées par leur camp et leur type, **pas par leur identifiant** :
  * deux éclaireurs d'un même camp qui échangent leurs cases rendent bien la même
  * position, comme aux échecs. Le trait en fait partie — la même disposition n'est pas la
- * même position selon qui doit jouer.
+ * même position selon qui doit jouer. Les pièges aussi : en poser un change la position.
  */
-export function positionKey(pieces: Iterable<Piece>, activePlayer: PlayerId): PositionKey {
+export function positionKey(
+  pieces: Iterable<Piece>,
+  activePlayer: PlayerId,
+  traps: readonly Trap[] = [],
+): PositionKey {
   const placed = [...pieces]
     .map((piece) => `${piece.owner}${piece.kind}@${piece.coord.x},${piece.coord.y}`)
     .sort()
     .join(";");
-  return `${placed}|${activePlayer}`;
+  const laid = traps
+    .map((trap) => `${trap.owner}trap@${trap.coord.x},${trap.coord.y}`)
+    .sort()
+    .join(";");
+  return `${placed}|${laid}|${activePlayer}`;
 }
 
 export interface GameState {
   readonly board: Board;
   readonly ruleset: Ruleset;
   readonly pieces: ReadonlyMap<PieceId, Piece>;
+  /** Les pièges en jeu, des deux camps (`abilities/trap.ts`). Jamais transmis tels quels. */
+  readonly traps: readonly Trap[];
   readonly activePlayer: PlayerId;
   /** Incrémenté à chaque action ; un tour = une action d'une seule pièce (section 6). */
   readonly turn: number;
@@ -90,6 +102,8 @@ export interface ActionRecord {
   readonly action: Action;
   /** La pièce prise par ce coup, telle qu'elle était sur sa case. */
   readonly captured?: Piece | undefined;
+  /** La pièce jouée, prise par un piège adverse sur sa case d'arrivée. */
+  readonly trapped?: Piece | undefined;
 }
 
 export function createGame(
@@ -116,6 +130,7 @@ export function createGame(
     board,
     ruleset,
     pieces: byId,
+    traps: [],
     activePlayer: firstPlayer,
     turn: 0,
     outcome: null,

@@ -3,6 +3,7 @@ import { Commander } from "./commander.js";
 import { legacyCommander, legacyPawn, legacyScout } from "./legacy.js";
 import { Pawn } from "./pawn.js";
 import { Scout } from "./scout.js";
+import { Trapper } from "./trapper.js";
 
 /**
  * Roster provisoire : une classe par fichier dans ce dossier, assemblées ici.
@@ -15,9 +16,10 @@ import { Scout } from "./scout.js";
 export { Commander } from "./commander.js";
 export { Pawn } from "./pawn.js";
 export { Scout } from "./scout.js";
+export { Trapper } from "./trapper.js";
 
 /**
- * Un roi, trois pièces à capacité (doublons permis : il n'en existe qu'un type), deux
+ * Un roi, trois pièces à capacité (doublons permis, éclaireurs et trappeurs mêlés), deux
  * pions. Décision du porteur du projet du 2026-10-27, pour des parties plus rapides ;
  * seuls les types restent provisoires (docs/design.md point ouvert 12).
  */
@@ -27,10 +29,22 @@ export const PROVISIONAL_TEAM: TeamRules = { commander: 1, special: 3, pawn: 2 }
 export const PROVISIONAL_TEAM_V1: TeamRules = { commander: 1, special: 3, pawn: 4 };
 
 /**
- * Le roster provisoire courant, celui des parties `provisional-3` : portées resserrées,
- * prise à l'arrivée, échec et mat, nulles (décisions du 2026-11-16).
+ * Le roster provisoire courant, celui des parties `provisional-4` : celui de
+ * `provisional-3`, plus le trappeur et son piège (décision du 2026-11-20).
  */
 export function provisionalRuleset(): Ruleset {
+  return new Ruleset(
+    [new Commander(), new Scout(), new Trapper(), new Pawn()],
+    PROVISIONAL_TEAM,
+    STRICT_CHESS_RULES,
+  );
+}
+
+/**
+ * Les parties `provisional-3` : portées resserrées, prise à l'arrivée, échec et mat,
+ * nulles (décisions du 2026-11-16), sans aucune capacité.
+ */
+export function provisionalRulesetV3(): Ruleset {
   return new Ruleset(
     [new Commander(), new Scout(), new Pawn()],
     PROVISIONAL_TEAM,

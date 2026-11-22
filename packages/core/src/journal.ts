@@ -1,6 +1,6 @@
 import { type Coord, type CoordKey, coordKey } from "./coord.js";
-import type { PieceKind, PlayerId } from "./pieces/index.js";
-import type { GameState } from "./state.js";
+import type { AbilityKind, PieceKind, PlayerId } from "./pieces/index.js";
+import type { ActionRecord, GameState } from "./state.js";
 
 /**
  * Un coup **tel qu'un joueur l'a vu** — une ligne du journal de partie de l'ATH.
@@ -12,7 +12,12 @@ import type { GameState } from "./state.js";
  * masquée à l'affichage : le journal suit le fog appliqué à la source.
  *
  * Exception : une prise subie est toujours connue, même hors de vue. Le joueur perd la
- * pièce, il sait donc où et laquelle (mais pas forcément ce qui l'a prise).
+ * pièce, il sait donc où et laquelle (mais pas forcément ce qui l'a prise). De même, un
+ * piège qui se déclenche est connu des deux camps : l'un y perd sa pièce, l'autre sait où
+ * était son piège.
+ *
+ * Une capacité adverse n'est connue que si le joueur voyait la pièce qui l'a exercée, et
+ * jamais sa cible : un piège posé reste invisible (docs/design/rules.md section 4).
  */
 export interface JournalEntry {
   /** Le numéro du coup, compté depuis 1 (`GameState.turn` après le coup). */
@@ -27,6 +32,12 @@ export interface JournalEntry {
   readonly to?: Coord | undefined;
   /** Le type de la pièce prise, quand le joueur sait qu'il y a eu prise. */
   readonly captured?: PieceKind | undefined;
+  /** La pièce a exercé sa capacité au lieu de se déplacer, si le joueur l'a vue faire. */
+  readonly ability?: AbilityKind | undefined;
+  /** La case visée par la capacité : connue de son seul auteur. */
+  readonly target?: Coord | undefined;
+  /** La pièce jouée a fini sur un piège, qui l'a prise. */
+  readonly trapped?: PieceKind | undefined;
 }
 
 /** Ce qu'il faut savoir pour décrire le dernier coup à un joueur. */
@@ -45,43 +56,66 @@ export interface JournalContext {
 /**
  * La ligne de journal du dernier coup de `after`, du point de vue de `observer`.
  *
- * Rend `undefined` pour une action qui n'est pas un déplacement (l'abandon) : la fin de
- * partie se dit ailleurs, par l'issue.
+ * Rend `undefined` pour l'abandon : la fin de partie se dit ailleurs, par l'issue.
  */
 export function journalEntryFor(context: JournalContext): JournalEntry | undefined {
-  const { observer, before, after, seenBefore, seenAfter } = context;
-  const record = after.history.at(-1);
-  if (record === undefined || record.action.kind !== "move") return undefined;
+  const record = context.after.history.at(-1);
+  if (record === undefined || record.action.kind === "resign") return undefined;
 
-  const mover = before.pieces.get(record.action.pieceId);
-  if (mover === undefined) return undefined;
+  const actor = context.before.pieces.get(record.action.pieceId);
+  if (actor === undefined) return undefined;
 
-  const from = mover.coord;
-  const to = record.action.to;
-  const captured = record.captured;
+  return record.action.kind === "move"
+    ? moveEntry(context, record, actor.kind, actor.coord, record.action.to)
+    : abilityEntry(context, record, actor.kind, actor.coord, record.action.target);
+}
 
-  if (record.player === observer) {
-    return {
-      turn: after.turn,
-      player: record.player,
-      kind: mover.kind,
-      from,
-      to,
-      captured: captured?.kind,
-    };
+function moveEntry(
+  context: JournalContext,
+  record: ActionRecord,
+  kind: PieceKind,
+  from: Coord,
+  to: Coord,
+): JournalEntry {
+  const { observer, after, seenBefore, seenAfter } = context;
+  const { player, captured } = record;
+  const trapped = record.trapped?.kind;
+
+  if (player === observer) {
+    return { turn: after.turn, player, kind, from, to, captured: captured?.kind, trapped };
   }
 
   const departureSeen = seenBefore.has(coordKey(from));
   const arrivalSeen = seenAfter.has(coordKey(to));
-  // Seul l'adversaire de l'observateur peut jouer ici : une prise est forcément la sienne.
+  // Seul l'adversaire de l'observateur peut jouer ici : une prise est forcément la sienne,
+  // et un piège qui se déclenche, forcément celui de l'observateur.
   const lostHere = captured !== undefined && captured.owner === observer;
+  // Le piège révèle la pièce qu'il prend ; une prise subie ne dit pas qui l'a faite.
+  const sprungHere = trapped !== undefined;
 
   return {
     turn: after.turn,
-    player: record.player,
-    kind: departureSeen || arrivalSeen ? mover.kind : undefined,
+    player,
+    kind: departureSeen || arrivalSeen || sprungHere ? kind : undefined,
     from: departureSeen ? from : undefined,
-    to: arrivalSeen || lostHere ? to : undefined,
+    to: arrivalSeen || lostHere || sprungHere ? to : undefined,
     captured: arrivalSeen || lostHere ? captured?.kind : undefined,
+    trapped,
   };
+}
+
+function abilityEntry(
+  context: JournalContext,
+  record: ActionRecord,
+  kind: PieceKind,
+  from: Coord,
+  target: Coord,
+): JournalEntry {
+  const { observer, before, after, seenBefore } = context;
+  const { player } = record;
+  const ability = before.ruleset.get(kind).ability ?? undefined;
+
+  if (player === observer) return { turn: after.turn, player, kind, from, ability, target };
+  if (!seenBefore.has(coordKey(from))) return { turn: after.turn, player };
+  return { turn: after.turn, player, kind, from, ability };
 }
