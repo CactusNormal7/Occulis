@@ -178,6 +178,8 @@ export function describeMyResult(match: Pick<MeMatchSummary, "result" | "outcome
     return match.result === "won" ? results.wonByResignation : results.lostByResignation;
   if (match.outcome?.reason === "checkmate")
     return match.result === "won" ? results.wonByCheckmate : results.lostByCheckmate;
+  if (match.outcome?.reason === "trap")
+    return match.result === "won" ? results.wonByTrap : results.lostByTrap;
   const RESULTS: Record<MeResult, string> = results;
   return RESULTS[match.result];
 }

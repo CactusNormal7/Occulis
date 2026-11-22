@@ -43,9 +43,12 @@ Sans objet depuis l'abandon de l'attaque à distance : voir [open-points.md](ope
 
 ## 4. Pièges
 
-- Zone posée en anticipation, qui se déclenche soit au contact (marcher dessus), soit automatiquement après X tours si une pièce est dedans. Ce déclenchement différé suppose une **file de résolution différée**, qui n'est pas implémentée : l'attaque à distance qui l'aurait introduite est écartée (3.2).
-- Cohérent avec le fog of war (voir section 5) — un piège caché suit la même logique que toute autre information hors LOS.
-- Points ouverts : voir [open-points.md](open-points.md) § 4 et point 11.
+- **Première capacité de pièce, décidée par le porteur du projet le 2026-11-20** (ruleset `provisional-4`) : une nouvelle pièce à capacité, le **trappeur**, pose un piège **à la place** de se déplacer (un tour, une action — section 3).
+- **Pose** : sur une case voisine (huit directions), libre, pas plus haute que la sienne. **Un seul piège actif par trappeur** : il en repose un dès que le premier s'est déclenché.
+- **Effet** : la pièce adverse qui s'arrête sur le piège est **prise**, et le piège disparaît. **Le roi aussi** : la partie est alors gagnée par le camp du poseur (« victoire par piège »).
+- **Visibilité** : **invisible pour l'adversaire jusqu'à son déclenchement**, où les deux camps l'apprennent (journal). L'adversaire qui voit le trappeur sait qu'il a exercé sa capacité, jamais où. Ferme le point ouvert 11 pour ce piège ; un futur piège volontairement visible reste possible.
+- Conséquence du fog : aucune légalité ne dépend d'un piège adverse — sinon la liste des coups trahirait sa case. On peut donc entrer sur un piège caché, et un piège ne compte pas comme une menace pour l'échec.
+- **Reste une idée** : le piège à déclenchement différé (après X tours si une pièce est dedans), qui supposerait une file de résolution différée, non implémentée. Interprétations encodées : [implementation-notes.md](../implementation-notes.md) n° 37.
 
 ## 5. Ligne de vue (LOS), hauteur, fog of war
 
@@ -97,6 +100,7 @@ Réécrite le 2026-10-27, avec les décisions du porteur du projet.
 - **Promotion (2026-10-27) :** seuls les pions se promeuvent, sur une case de promotion définie par la carte. La pièce obtenue sera décidée plus tard : une des pièces de l'équipe, ou une pièce spéciale plus forte encore. Ce que l'adversaire voit de la promotion n'est pas décidé (point ouvert 15).
 - **Types adverses (2026-10-27) :** les types des pièces adverses sont connus avant la partie, jamais leurs positions. Le mécanisme de révélation n'est pas défini (point ouvert 16).
 - **Cartes (2026-10-27) :** de taille similaire, avec moins de murs.
+- **`breach-2` (2026-11-20) :** la carte des nouvelles parties passe à 11 × 11 (deux cases de plus dans chaque sens) avec un relief plus bas et plus épars, sans plus de verticalité (demande du porteur du projet). Les zones de déploiement restent cachées l'une de l'autre.
 - Point ouvert, à noter pour le level design futur : chaque carte doit décider consciemment si les zones de déploiement des deux joueurs ont LOS mutuelle ou non — c'est un paramètre de conception de carte, pas une règle générale.
 - Roi : gardé simple pour l'instant (mouvement/règles standards, pas de spécificité), avec possibilité d'évolution plus tard.
 - Fin de partie : abandon possible, et égalité/nulle prévue "de la même manière qu'aux échecs, plus aucun coup possible sans attaque à part entière" — interprété comme un pat classique (aucun coup légal du tout, ni déplacement ni attaque). Point explicitement reporté par le porteur du projet : aucune décision prise sur une éventuelle règle anti-blocage/anti-répétition (équivalent de la règle des 50 coups aux échecs), pour éviter des parties qui tournent en rond sans jamais qu'aucun roi ne soit menacé.

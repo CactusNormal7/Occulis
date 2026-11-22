@@ -43,6 +43,10 @@ export function describeSheet(m: Pick<Messages, "game" | "team">, sheet: PieceSh
         value: Number.isFinite(sheet.visionRange) ? t.range(sheet.visionRange) : t.unlimited,
       },
     ],
-    notes: sheet.role === "commander" ? [t.capture, t.king] : [t.capture],
+    notes: [
+      t.capture,
+      ...(sheet.role === "commander" ? [t.king] : []),
+      ...(sheet.ability === "trap" ? [t.trap] : []),
+    ],
   };
 }

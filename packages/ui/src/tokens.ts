@@ -56,6 +56,8 @@ export interface Palette {
     /** Réservé : grimper consomme le tour entier et mériterait un marquage propre. */
     readonly climb: number;
     readonly threat: number;
+    /** Un piège : les siens posés, et les cases où la pose est possible. */
+    readonly trap: number;
   };
   /** Le ciel : la couleur des étoiles et de la lumière d'ambiance (nébuleuse, lucioles). */
   readonly sky: { readonly star: number; readonly aura: number };
@@ -84,7 +86,13 @@ export const THEMES = {
       sideShade: 0x09090a,
     },
     camp: { A: 0x9be7ff, B: 0xff4d5e },
-    state: { selection: 0xffd166, legalMove: 0x7d9cff, climb: 0xc49bff, threat: 0xff4d5e },
+    state: {
+      selection: 0xffd166,
+      legalMove: 0x7d9cff,
+      climb: 0xc49bff,
+      threat: 0xff4d5e,
+      trap: 0xa6e36b,
+    },
     sky: { star: 0xe9e6df, aura: 0x2a2a30 },
   },
   reliquary: {
@@ -99,7 +107,13 @@ export const THEMES = {
       sideShade: 0x0d0906,
     },
     camp: { A: 0x72f5c4, B: 0xff7a45 },
-    state: { selection: 0xfff0a0, legalMove: 0x5ec8ff, climb: 0xd49bff, threat: 0xff7a45 },
+    state: {
+      selection: 0xfff0a0,
+      legalMove: 0x5ec8ff,
+      climb: 0xd49bff,
+      threat: 0xff7a45,
+      trap: 0xd6f26b,
+    },
     sky: { star: 0xf2dcb0, aura: 0x8fe8a0 },
   },
   astral: {
@@ -114,7 +128,13 @@ export const THEMES = {
       sideShade: 0x0a0810,
     },
     camp: { A: 0x5ef0ff, B: 0xff4fd8 },
-    state: { selection: 0xffe066, legalMove: 0x8b7bff, climb: 0xb98bff, threat: 0xff4fd8 },
+    state: {
+      selection: 0xffe066,
+      legalMove: 0x8b7bff,
+      climb: 0xb98bff,
+      threat: 0xff4fd8,
+      trap: 0x9cf27a,
+    },
     sky: { star: 0xece6ff, aura: 0x6b3fa0 },
   },
 } as const satisfies Record<string, Palette>;
@@ -264,6 +284,7 @@ export function paletteVariables(palette: Palette): Record<string, string> {
     "--occ-legal": cssColor(state.legalMove),
     "--occ-climb": cssColor(state.climb),
     "--occ-threat": cssColor(state.threat),
+    "--occ-trap": cssColor(state.trap),
     // Un geste accepté ou refusé est de l'information de partie : il reprend les tokens
     // d'état, pas une couleur d'interface propre.
     "--occ-accepted": cssColor(state.legalMove),

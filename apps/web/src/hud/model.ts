@@ -100,11 +100,28 @@ export interface SheetCard {
   readonly notes: readonly string[];
   /** Ce que la pièce sélectionnée peut faire ce tour-ci ; absent pour une simple fiche. */
   readonly reach: SheetReach | undefined;
+  /** Le bouton de la capacité de la pièce sélectionnée ; absent si elle n'en a pas. */
+  readonly ability: SheetAbility | undefined;
 }
 
 export interface SheetReach {
   readonly moves: string;
   readonly captures: string | undefined;
+  /** Les cases de piège, quand la capacité est armée. */
+  readonly traps: string | undefined;
+}
+
+/**
+ * La capacité de la pièce sélectionnée. Le bouton l'arme ou la désarme ; il est absent
+ * quand la capacité n'a aucune cible ce tour-ci, et `blocked` dit alors pourquoi.
+ */
+export interface SheetAbility {
+  readonly aiming: boolean;
+  /** Le texte du bouton : armer, ou revenir aux déplacements. */
+  readonly action: string | undefined;
+  /** Ce qu'il faut faire une fois armée. */
+  readonly hint: string | undefined;
+  readonly blocked: string | undefined;
 }
 
 export interface JournalLine {
@@ -216,6 +233,7 @@ function sheetCard(m: HudMessages, input: HudInput, sheet: PieceSheet): SheetCar
   const coord = sheet.piece.coord;
   const height = input.board.getTile(coord)?.height ?? 0;
   const selected = input.selection;
+  const isSelected = selected !== undefined && selected.piece.id === sheet.piece.id;
   return {
     kind: sheet.piece.kind,
     camp: sheet.piece.owner,
@@ -226,19 +244,48 @@ function sheetCard(m: HudMessages, input: HudInput, sheet: PieceSheet): SheetCar
     description: texts.description,
     facts: texts.facts,
     notes: texts.notes,
-    reach:
-      selected !== undefined && selected.piece.id === sheet.piece.id
-        ? reachOf(m, selected)
-        : undefined,
+    reach: isSelected ? reachOf(m, selected) : undefined,
+    ability: isSelected && sheet.ability !== null ? abilityOf(m, input, selected) : undefined,
   };
 }
 
 /** Les coups de la pièce sélectionnée, par nature, dans les couleurs de leurs lueurs. */
 function reachOf(m: HudMessages, selection: Selection): SheetReach {
+  if (selection.aiming) {
+    return {
+      moves: m.game.hud.moves(0),
+      captures: undefined,
+      traps: m.game.hud.traps(selection.abilityTargets.size),
+    };
+  }
   const captures = selection.captures.size;
   return {
     moves: m.game.hud.moves(selection.moves.size - captures),
     captures: captures === 0 ? undefined : m.game.hud.captures(captures),
+    traps: undefined,
+  };
+}
+
+/**
+ * Le bouton de la capacité. Une pièce sans cible n'a pas de bouton : si c'est parce que
+ * son piège est encore posé, la fiche le dit, pour qu'elle ne semble pas en panne.
+ */
+function abilityOf(m: HudMessages, input: HudInput, selection: Selection): SheetAbility {
+  const t = m.game.hud;
+  const trapSet = input.view.traps.some((trap) => trap.layer === selection.piece.id);
+  if (selection.abilityTargets.size === 0) {
+    return {
+      aiming: false,
+      action: undefined,
+      hint: undefined,
+      blocked: trapSet ? t.trapActive : undefined,
+    };
+  }
+  return {
+    aiming: selection.aiming,
+    action: selection.aiming ? t.cancelTrap : t.layTrap,
+    hint: selection.aiming ? t.trapHint : undefined,
+    blocked: undefined,
   };
 }
 
@@ -277,6 +324,16 @@ export function describeEntry(
   const t = m.game.hud;
   if (entry.from === undefined && entry.to === undefined) return { text: t.unseen, hidden: true };
 
+  if (entry.ability !== undefined) {
+    const piece = entry.kind === undefined ? t.unknown : kindName(m, entry.kind);
+    // Sa propre pose dit où ; celle de l'adversaire, seulement qu'il s'est passé quelque chose.
+    if (entry.target !== undefined) {
+      return { text: t.laysTrap(piece, formatCoord(entry.target)), hidden: false };
+    }
+    const from = entry.from === undefined ? t.unknown : formatCoord(entry.from);
+    return { text: t.usesAbility(piece, from), hidden: false };
+  }
+
   // Une pièce perdue sans rien voir venir : seule la perte est connue.
   if (entry.kind === undefined && entry.from === undefined && entry.captured !== undefined) {
     const at = entry.to === undefined ? t.unknown : formatCoord(entry.to);
@@ -287,8 +344,9 @@ export function describeEntry(
   const from = entry.from === undefined ? t.unknown : formatCoord(entry.from);
   const to = entry.to === undefined ? t.unknown : formatCoord(entry.to);
   const move = t.move(piece, from, to);
+  const taking = entry.captured === undefined ? move : t.takes(move, kindName(m, entry.captured));
   return {
-    text: entry.captured === undefined ? move : t.takes(move, kindName(m, entry.captured)),
+    text: entry.trapped === undefined ? taking : t.trapped(taking, kindName(m, entry.trapped)),
     hidden: false,
   };
 }

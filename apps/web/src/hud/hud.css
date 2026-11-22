@@ -95,6 +95,10 @@ body:has(#hud-root:not([hidden]) .hud) #corner-tools {
   color: var(--occ-legal);
 }
 
+.hud-trap {
+  color: var(--occ-trap);
+}
+
 /* La couleur d'un camp, que ses éléments lisent par `currentColor` ou `--hud-camp`. */
 .hud-camp-A {
   --hud-camp: var(--occ-camp-a);

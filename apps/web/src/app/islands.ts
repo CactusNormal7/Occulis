@@ -77,6 +77,8 @@ export interface MatchHudIsland {
   /** Abandonner (un joueur, par la fenêtre `leave/`) ou quitter (un spectateur). */
   readonly onLeave: () => void;
   readonly onCamera: (command: CameraCommand) => void;
+  /** Arme ou désarme la capacité de la pièce sélectionnée (le bouton de la fiche). */
+  readonly onAbility: () => void;
 }
 
 /** Les équipes préparées, depuis le menu (`presets/TeamsScreen.vue`). */

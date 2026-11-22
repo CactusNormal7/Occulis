@@ -475,6 +475,7 @@ export class Scene {
       glow: breath(now, MOTION_FX.breathMs),
       hovered,
       sinceHovered: Math.max(settled, now - this.hoveredAt),
+      traps: new Set(view.traps.map((trap) => coordKey(trap.coord))),
     };
     for (const drawable of drawables) {
       if (isTile(drawable)) {

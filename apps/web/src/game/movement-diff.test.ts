@@ -19,6 +19,7 @@ function view(pieces: {
     ownPieces: make(pieces.own ?? [], "A"),
     visibleEnemies: make(pieces.enemies ?? [], "B"),
     ghosts: [],
+    traps: [],
     journal: [],
     rosters: { own: [], opponent: [] },
     sinceCapture: 0,

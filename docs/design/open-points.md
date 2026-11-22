@@ -12,8 +12,8 @@ Section sans objet depuis l'abandon de l'attaque à distance (décision du 2026-
 
 ## 4. Pièges
 
-- Point ouvert : confirmé implicitement lié au FOW général, mais jamais formalisé noir sur blanc si TOUS les pièges sont cachés par défaut ou si certains sont volontairement visibles (pièges de zone de contrôle vs pièges d'embuscade, par exemple).
-- Le déclenchement différé (au contact ou après X tours) suppose une file de résolution différée, qui n'existe pas dans le moteur ([rules.md](rules.md) § 4).
+- ~~Point ouvert : tous les pièges sont-ils cachés par défaut, ou certains volontairement visibles ?~~ — tranché le 2026-11-20 pour le piège du trappeur : invisible jusqu'à son déclenchement ([rules.md](rules.md) § 4). Un futur piège de contrôle de zone, visible, reste envisageable.
+- Le déclenchement différé (après X tours) suppose une file de résolution différée, qui n'existe pas dans le moteur ([rules.md](rules.md) § 4). Le déclenchement au contact, lui, est en place.
 
 ## ~~5.3 Hauteur~~
 
@@ -46,7 +46,7 @@ Section tranchée ou sans objet le 2026-10-27 ([rules.md](rules.md) § 5.3). La 
 8. Téléporteurs / mécaniques de déport de ligne de vue. Toujours ouvert.
 9. Capacité de pousser une pièce adverse (interaction avec pièges, bords de carte, hauteur non définie). Toujours ouvert.
 10. Objets posables bloquant la LOS (différence avec les pièges à formaliser : durée de vie, visibilité, effet). **Précisé le 2026-10-27 pour les murs créés par une capacité** (la capacité elle-même reste une idée) : traités comme des pièces ; posé hors de la LOS de l'adversaire, un mur lui reste invisible jusqu'à ce qu'il puisse l'apercevoir normalement (orientation du porteur, à confirmer à l'implémentation). Le reste (durée de vie, hauteur, cases occupées, portée de pose, nombre maximal, exceptions à la règle « une pièce bloque ») **se décidera à la création de la capacité** : inutile de le spécifier avant.
-11. Confirmation explicite que les pièges suivent bien la règle générale de FOW (cachés par défaut) ou existe-t-il des pièges volontairement visibles ? Toujours ouvert.
+11. ~~Confirmation explicite que les pièges suivent bien la règle générale de FOW (cachés par défaut) ou existe-t-il des pièges volontairement visibles ?~~ — tranché le 2026-11-20 : le piège du trappeur est invisible pour l'adversaire jusqu'à son déclenchement ([rules.md](rules.md) § 4).
 
 ### Cadre général
 

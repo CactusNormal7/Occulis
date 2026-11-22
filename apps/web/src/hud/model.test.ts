@@ -10,7 +10,7 @@ import {
 } from "@occulis/core";
 import { messagesFor } from "@occulis/i18n";
 import type { PieceSheet } from "../game/inspection.js";
-import { selectionFor } from "../game/selection.js";
+import { aimAbility, selectionFor } from "../game/selection.js";
 import { DRAW_WARNING_MARGIN, type HudInput, describeEntry, hudModel } from "./model.js";
 
 const m = messagesFor("fr");
@@ -117,6 +117,7 @@ describe("hudModel : fiche", () => {
     piece: { id: "a-scout", kind: "scout", owner: "A", coord: { x: 1, y: 2 } },
     relation: "own",
     role: "special",
+    ability: null,
     steps: 3,
     adjacency: "octile",
     canClimb: true,
@@ -220,5 +221,89 @@ describe("hudModel : nulle sans prise", () => {
   it("ne paraît jamais sous un ruleset sans cette nulle", () => {
     const view = { ...startingView(), sinceCapture: 59, noCaptureLimit: null };
     expect(hudModel(m, input({ view })).drawMeter).toBeUndefined();
+  });
+});
+
+describe("hudModel : capacité du trappeur", () => {
+  function trapperView(): PlayerView {
+    const state = createGame(BOARD, provisionalRuleset(), [
+      { id: "a-king", kind: "commander", owner: "A", coord: { x: 0, y: 0 } },
+      { id: "a-trap", kind: "trapper", owner: "A", coord: { x: 2, y: 1 } },
+      { id: "b-king", kind: "commander", owner: "B", coord: { x: 6, y: 0 } },
+    ]);
+    return viewFor(state, startMemory(state).knowledge.A);
+  }
+  const trapperSheet: PieceSheet = {
+    piece: { id: "a-trap", kind: "trapper", owner: "A", coord: { x: 2, y: 1 } },
+    relation: "own",
+    role: "special",
+    ability: "trap",
+    steps: 2,
+    adjacency: "octile",
+    canClimb: true,
+    visionRange: 8,
+    inCheck: false,
+  };
+
+  it("propose d'armer le piège, puis de revenir aux déplacements", () => {
+    const view = trapperView();
+    const trapper = view.ownPieces.find((piece) => piece.id === "a-trap");
+    if (trapper === undefined) throw new Error("trappeur absent");
+    const selection = selectionFor(view.legalActions, trapper);
+
+    const idle = hudModel(m, input({ view, selection, sheet: trapperSheet })).sheet;
+    expect(idle?.ability).toMatchObject({ aiming: false, action: m.game.hud.layTrap });
+    expect(idle?.notes).toContain(m.game.pieceInfo.trap);
+
+    const aimed = hudModel(
+      m,
+      input({ view, selection: aimAbility(selection, true), sheet: trapperSheet }),
+    ).sheet;
+    expect(aimed?.ability).toMatchObject({ aiming: true, action: m.game.hud.cancelTrap });
+    expect(aimed?.reach?.traps).toBe(m.game.hud.traps(8));
+  });
+
+  it("ne donne aucun bouton à une pièce sans capacité", () => {
+    const view = startingView();
+    const scout = view.ownPieces.find((piece) => piece.id === "a-scout");
+    if (scout === undefined) throw new Error("éclaireur absent");
+    const selection = selectionFor(view.legalActions, scout);
+    const sheet = hudModel(
+      m,
+      input({
+        view,
+        selection,
+        sheet: { ...trapperSheet, ability: null, piece: { ...trapperSheet.piece, id: "a-scout" } },
+      }),
+    ).sheet;
+    expect(sheet?.ability).toBeUndefined();
+  });
+});
+
+describe("describeEntry : piège", () => {
+  const base = { turn: 6, player: "A" as const };
+
+  it("dit où l'on a posé son piège, et seulement qu'une capacité a servi chez l'adversaire", () => {
+    const own = {
+      ...base,
+      kind: "trapper",
+      from: { x: 2, y: 1 },
+      ability: "trap" as const,
+      target: { x: 3, y: 1 },
+    };
+    expect(describeEntry(m, own).text).toBe("Trappeur pose un piège en 3,1");
+    const theirs = {
+      ...base,
+      player: "B" as const,
+      kind: "trapper",
+      from: { x: 2, y: 1 },
+      ability: "trap" as const,
+    };
+    expect(describeEntry(m, theirs).text).toBe("Trappeur 2,1 prépare quelque chose");
+  });
+
+  it("dit la pièce prise au piège", () => {
+    const entry = { ...base, kind: "pawn", to: { x: 3, y: 1 }, trapped: "pawn" };
+    expect(describeEntry(m, entry).text).toBe("Pion ? → 3,1, Pion pris au piège");
   });
 });

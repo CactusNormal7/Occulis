@@ -31,7 +31,7 @@ const props = defineProps<{
   /** La vue de dessus est active : la caméra est figée. */
   planView: boolean;
 }>();
-const emit = defineEmits<{ leave: []; camera: [command: CameraCommand] }>();
+const emit = defineEmits<{ leave: []; camera: [command: CameraCommand]; ability: [] }>();
 
 const messages = useMessages();
 /**
@@ -70,7 +70,7 @@ const viewName = computed(() =>
       @leave="emit('leave')"
     />
     <aside class="hud-column">
-      <PieceSheet :sheet="model.sheet" />
+      <PieceSheet :sheet="model.sheet" @ability="emit('ability')" />
       <MatchJournal :lines="model.journal" :draw-meter="model.drawMeter" />
     </aside>
     <GlowLegend v-if="model.showLegend" />

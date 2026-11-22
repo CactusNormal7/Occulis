@@ -963,26 +963,35 @@ il ne voit qu'un camp — et depuis que les pièces occultent la vue, il en voit
 interface Selection {
   piece: Piece;
   moves: ReadonlyMap<CoordKey, Coord>; // cases où se rendre
+  captures: ReadonlySet<CoordKey>; // parmi elles, celles d'une pièce adverse vue
+  abilityTargets: ReadonlyMap<CoordKey, Coord>; // cibles de la capacité (piège)
+  aiming: boolean; // capacité armée : un clic sur une cible l'exerce
 }
 
 type ClickOutcome =
   { kind: "select"; selection: Selection } | { kind: "play"; action: Action } | { kind: "clear" };
 ```
 
-| Fonction         | Rôle                                                                     |
-| ---------------- | ------------------------------------------------------------------------ |
-| `selectionFor()` | Ce qu'une pièce peut faire ce tour-ci, filtré depuis la liste du serveur |
-| `resolveClick()` | Ce qu'un clic doit produire. **Fonction totale et sans effet**           |
+| Fonction         | Rôle                                                                      |
+| ---------------- | ------------------------------------------------------------------------- |
+| `selectionFor()` | Ce qu'une pièce peut faire ce tour-ci, filtré depuis la liste du serveur  |
+| `resolveClick()` | Ce qu'un clic doit produire. **Fonction totale et sans effet**            |
+| `aimAbility()`   | Arme ou désarme la capacité ; sans cible, la sélection reste telle quelle |
+
+Une case voisine peut être à la fois une destination et une cible de piège : la capacité
+s'arme donc par un bouton de la fiche (`MatchController.toggleAbility()`), et une fois
+armée elle masque les déplacements.
 
 ### La machine à états, telle que `resolveClick()` l'encode
 
-| Situation                                     | Résultat                          |
-| --------------------------------------------- | --------------------------------- |
-| Clic hors plateau, ou partie terminée         | `clear`                           |
-| Sélection active, clic sur la pièce elle-même | `clear` — recliquer désélectionne |
-| Sélection active, clic sur une destination    | `play` d'un déplacement           |
-| Clic sur une de ses pièces, à son tour        | `select`                          |
-| Tout le reste                                 | `clear`                           |
+| Situation                                     | Résultat                            |
+| --------------------------------------------- | ----------------------------------- |
+| Clic hors plateau, ou partie terminée         | `clear`                             |
+| Sélection active, clic sur la pièce elle-même | `clear` — recliquer désélectionne   |
+| Capacité armée, clic sur une de ses cibles    | `play` d'une capacité               |
+| Sélection active, clic sur une destination    | `play` d'un déplacement (non armée) |
+| Clic sur une de ses pièces, à son tour        | `select`                            |
+| Tout le reste                                 | `clear`                             |
 
 Une limite assumée : on ne sélectionne que ses propres pièces **et seulement à son tour**.
 Une pièce adverse, adjacente ou non, retombe donc sur `clear` — il n'y a plus rien à lui
@@ -1134,10 +1143,10 @@ de spectateurs ; il rend l'abandon (`onLeave`) et les boutons de caméra (`onCam
 | `TurnPlate.vue`      | Le numéro du coup à jouer et qui le joue                                                                                                                                  |
 | `MatchAlerts.vue`    | L'échec, le départ de l'adversaire et son compte à rebours (`useRemaining`), le message bref d'un refus                                                                   |
 | `MatchTools.vue`     | Les amis qui regardent, abandonner ou quitter ; l'engrenage des réglages est celui de la page, rangé là par `hud.css`                                                     |
-| `PieceSheet.vue`     | La fiche de la pièce choisie (`describeSheet()`), ou ce qui se fait à la souris                                                                                           |
+| `PieceSheet.vue`     | La fiche de la pièce choisie (`describeSheet()`), ou ce qui se fait à la souris ; pour une pièce à capacité, le bouton qui l'arme (`ability`)                             |
 | `MatchJournal.vue`   | Le journal tel que vu (`PlayerView.journal`), dernier coup en clair, coup à venir en pointillés ; `DrawMeter.vue`                                                         |
 | `CameraControls.vue` | Les boutons de caméra → `CameraCommand` → `commandCamera()` (`view/camera.ts`), par `BoardView.command()` ; en tête la bascule de la vue de dessus, qui éteint les autres |
-| `GlowLegend.vue`     | La légende des lueurs, tant qu'une pièce est sélectionnée                                                                                                                 |
+| `GlowLegend.vue`     | La légende des lueurs, tant qu'une pièce est sélectionnée : sélection, déplacement, prise, piège (`--occ-trap`)                                                           |
 | `PieceGlyph.vue`     | Le glyphe d'un type en SVG, tiré de `@occulis/board/glyphs` : la forme exacte du plateau                                                                                  |
 | `icons.ts`           | Les icônes en pixels pleins, sur une grille de 8 × 8                                                                                                                      |
 | `hud.css`            | La feuille de l'ATH, **tokens `--occ-*` seulement**                                                                                                                       |
@@ -1478,6 +1487,7 @@ clic droit et le message bref d'un refus (`MatchNotice`). Les autres modules ne 
 | `watch(friend, matchId, side)`                        | `close()`, ouvre le canal d'un spectateur et arme l'échéance `WATCH_TIMEOUT_MS` (6 s) : sans vue, `leave()` puis l'annonce `cannotWatch`                                                                                                                                                                                                               |
 | `close()`                                             | Referme le canal et remet tout à zéro ; incrémente la génération qu'une réponse tardive (équipes préparées, `stillSeated`) compare avant d'écrire                                                                                                                                                                                                      |
 | `play(action)`                                        | Envoie le coup sans rien déplacer et lève `pending` ; sans partie, `game-over`                                                                                                                                                                                                                                                                         |
+| `toggleAbility()`                                     | Le bouton de la fiche : arme ou désarme la capacité de la pièce sélectionnée (`aimAbility`)                                                                                                                                                                                                                                                            |
 | `pick(coord)` / `inspect(coord)`                      | Un clic : sélectionne, désélectionne ou envoie le coup (`resolveClick`) ; un droit : la fiche                                                                                                                                                                                                                                                          |
 | `advance(deltaMS)`                                    | Fait avancer l'animation du dernier coup                                                                                                                                                                                                                                                                                                               |
 | `requestLeave()` / `confirmLeave()` / `cancelLeave()` | La fenêtre d'abandon : vraie pour une partie vivante, jamais pour un spectateur, une partie finie ni un abandon déjà envoyé. `confirmLeave()` envoie `resign` et garde la table jusqu'à la vue finale ; sans elle après `RESIGN_TIMEOUT_MS` (6 s), `finished()` demande l'écran de fin quand même. Un `resign` joué par `play()` arme la même échéance |

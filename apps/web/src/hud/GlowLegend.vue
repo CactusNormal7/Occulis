@@ -12,5 +12,6 @@ const t = computed(() => messages.value.game.hud.legend);
     <span class="hud-legend__selection"><i />{{ t.selection }}</span>
     <span class="hud-legal"><i />{{ t.move }}</span>
     <span class="hud-threat"><i />{{ t.capture }}</span>
+    <span class="hud-trap"><i />{{ t.trap }}</span>
   </p>
 </template>

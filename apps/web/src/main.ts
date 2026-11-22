@@ -261,6 +261,7 @@ function main(): void {
       planView: board.planView,
       onLeave: leaveMatch,
       onCamera: (command) => board.command(command),
+      onAbility: () => matches.toggleAbility(),
     };
   }
 

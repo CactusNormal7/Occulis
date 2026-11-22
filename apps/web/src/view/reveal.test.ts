@@ -56,6 +56,7 @@ describe("litTiles et awaitsMove", () => {
     ownPieces: [],
     visibleEnemies: [],
     ghosts: [],
+    traps: [],
     journal: [],
     rosters: { own: [], opponent: [] },
     sinceCapture: 0,

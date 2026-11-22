@@ -9,6 +9,7 @@ const scout: PieceSheet = {
   piece: { id: "a-1", kind: "scout", owner: "A", coord: { x: 1, y: 2 } },
   relation: "own",
   role: "special",
+  ability: null,
   steps: 3,
   adjacency: "octile",
   canClimb: true,

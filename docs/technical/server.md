@@ -1020,7 +1020,7 @@ ajout. Le paquet ne contient que des types et la conversion de sérialisation �
 règle de jeu (elle vit dans `@occulis/core`), aucun transport (il vit dans chaque app).
 
 ```ts
-const PROTOCOL_VERSION = 9;
+const PROTOCOL_VERSION = 10; // 10 : action `ability`, pièges du destinataire dans la vue
 
 type ClientMessage =
   | { kind: "hello"; protocol: number }

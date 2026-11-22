@@ -1,13 +1,14 @@
 # État du projet
 
-Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-11-20.
+Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-11-22.
 
 ## Jeu (`packages/core`)
 
 - En place : plateau à hauteur, LOS occultée par le relief **et par les pièces**, verticalité, déplacement avec blocage mutuel, tours alternés, fog of war avec mémoire fantôme, historique et rejeu, abandon.
-- **Fin de partie (2026-11-16)** : prise à l'arrivée, échec et mat « échecs strict », pat, triple répétition et 60 actions sans prise, sous le ruleset `provisional-3` (roi 1 pas, éclaireur 3, pion 1). Les parties `provisional-0..2` se rejouent sans. Fiche d'une pièce au clic droit.
-- Non implémenté (points ouverts) : pièges, roster définitif. Plus d'attaque à distance (décision du 2026-10-27). Seule la composition d'équipe est actée : 1 roi, 3 pièces à capacité, 2 pions (décision du 2026-10-27, ouverte à modification, `rules.md` §7) : ruleset `provisional-3` (`provisional-2` : mêmes quotas, anciennes portées, sans prise) ; `provisional-1` (1/3/4) reste chargeable.
-- Carte des nouvelles parties : `breach-1` (9 × 9, zones cachées l'une de l'autre, 2026-11-20) ; `ridge-1` reste pour les parties jouées et le site.
+- **Fin de partie (2026-11-16)** : prise à l'arrivée, échec et mat « échecs strict », pat, triple répétition et 60 actions sans prise, sous le ruleset `provisional-3` (roi 1 pas, éclaireur 3, pion 1), repris par `provisional-4`. Les parties `provisional-0..2` se rejouent sans. Fiche d'une pièce au clic droit.
+- **Capacités de pièce et piège (2026-11-20)** : une action `ability` remplace le déplacement ; le **trappeur** pose sur une case voisine un piège invisible pour l'adversaire, qui prend la pièce adverse qui s'y arrête (roi compris : victoire par piège), un actif par trappeur. Ruleset `provisional-4`, protocole 10. Rendu : bouton « Poser un piège » dans la fiche, cibles et pièges posés en `--occ-trap`.
+- Non implémenté (points ouverts) : piège à déclenchement différé, roster définitif. Plus d'attaque à distance (décision du 2026-10-27). Seule la composition d'équipe est actée : 1 roi, 3 pièces à capacité, 2 pions (décision du 2026-10-27, ouverte à modification, `rules.md` §7) : ruleset `provisional-4` (`provisional-3` : sans trappeur ; `provisional-2` : mêmes quotas, anciennes portées, sans prise) ; `provisional-1` (1/3/4) reste chargeable.
+- Carte des nouvelles parties : `breach-2` (11 × 11, relief bas, zones cachées l'une de l'autre, 2026-11-20) ; `breach-1` et `ridge-1` restent pour les parties jouées et le site.
 - Roster et cartes **provisoires** : rien ne s'équilibre dessus. Interprétations encodées : [implementation-notes.md](implementation-notes.md).
 
 ## Règles décidées le 2026-10-27 (non implémentées sauf mention)
