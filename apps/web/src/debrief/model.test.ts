@@ -5,7 +5,7 @@ import { debriefReason, debriefStats, eloBefore, formatDuration } from "./model.
 
 /** Une partie de trois coups : A déplace deux fois la même pièce, B une, puis A abandonne. */
 function debrief(): MeMatchDebrief {
-  const frame = (a: string[], b: string[]) => ({ pieces: [], visible: { A: a, B: b } });
+  const frame = (a: string[], b: string[]) => ({ pieces: [], traps: [], visible: { A: a, B: b } });
   return {
     seat: "A",
     startedAt: 1_000,

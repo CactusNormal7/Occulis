@@ -6,7 +6,7 @@
  */
 import { onBeforeUnmount, onMounted, shallowRef, useTemplateRef, watch } from "vue";
 import type { Board } from "@occulis/core";
-import type { AdminFrame } from "@occulis/protocol";
+import type { AdminFrame, AdminLogEntry } from "@occulis/protocol";
 import { useMessages } from "@occulis/ui";
 import { mountReplay, type ReplayCanvas } from "./replay-canvas.js";
 import type { Perspective } from "./replay.js";
@@ -14,6 +14,8 @@ import type { Perspective } from "./replay.js";
 const props = defineProps<{
   board: Board;
   frames: readonly AdminFrame[];
+  /** Le log rejoué : il dit où allait une pièce happée par un piège. */
+  log: readonly AdminLogEntry[];
   /** L'image montrée ; un changement fait glisser les pièces. */
   index: number;
   perspective: Perspective;
@@ -30,12 +32,12 @@ let turned = 0;
 function mount() {
   replay.value?.destroy();
   replay.value =
-    canvas.value === null ? null : mountReplay(canvas.value, props.board, props.frames);
+    canvas.value === null ? null : mountReplay(canvas.value, props.board, props.frames, props.log);
   turned = 0;
 }
 
 onMounted(mount);
-watch(() => [props.board, props.frames], mount);
+watch(() => [props.board, props.frames, props.log], mount);
 onBeforeUnmount(() => replay.value?.destroy());
 
 watch(

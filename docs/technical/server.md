@@ -812,7 +812,8 @@ Quelques points de fonctionnement :
   fonction qui tire une image d'une position, ce qui le rend partagé avec le profil. Deux usages : attribuer chaque coup à son camp
   — l'`Action` sérialisée ne nomme pas son auteur — et produire les **images** du rejeu
   (`frameOf()`) : `frames[0]` est la position de départ, `frames[n + 1]` celle qui suit le
-  coup `n`, chacune avec **toutes** les pièces et les cases que chaque camp voyait alors.
+  coup `n`, chacune avec **toutes** les pièces, les pièges posés des deux camps (`traps`) et
+  les cases que chaque camp voyait alors.
   Passer par la mémoire de brouillard plutôt que par `replay` seul est ce qui donne ces
   lignes de vue. Si le rejeu échoue — log corrompu, ruleset retiré du registre — le log est
   rendu quand même, les images s'arrêtent au coup fautif, le camp passe à `null`, et

@@ -128,6 +128,7 @@ function go(index: number) {
     <ReplayBoard
       :board="board"
       :frames="match.frames"
+      :log="match.log"
       :index="shown"
       :perspective="perspective"
       :turns="turns"

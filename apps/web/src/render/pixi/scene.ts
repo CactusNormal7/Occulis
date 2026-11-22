@@ -560,6 +560,7 @@ export class Scene {
           projection,
         );
         drawTileMarks(g, board, drawable.tile.coord, marks, projection, this.px);
+        this.drawTrapEffectsOn(g, drawable.tile.coord, board, projection, view);
         continue;
       }
       drawPiece(
@@ -637,13 +638,29 @@ export class Scene {
     };
   }
 
-  private drawOverlay({ board, projection, view }: SceneInput): void {
+  private drawOverlay({ board, projection }: SceneInput): void {
     const g = this.overlay;
     g.clear();
     const now = this.time;
     for (const landing of this.landings) drawLanding(g, board, landing, projection, this.px, now);
+  }
+
+  /**
+   * Les effets de piège d'une case, peints juste après elle dans `world` comme ses
+   * marques : sous la pièce qui s'y tient (les mâchoires se referment sous la victime),
+   * et cachés par un mur placé devant.
+   */
+  private drawTrapEffectsOn(
+    g: Graphics,
+    coord: Coord,
+    board: Board,
+    projection: IsoProjection,
+    view: PlayerView,
+  ): void {
+    const now = this.time;
     for (const effect of this.trapEffects) {
       const { event } = effect;
+      if (!sameCoord(event.coord, coord)) continue;
       if (event.kind === "laid") {
         drawTrapLaying(g, board, event.coord, now - effect.start, projection, this.px);
       } else if (event.kind === "glimpsed") {

@@ -226,6 +226,8 @@ export const admin = {
     viewOf: (handle: string) => `${handle}'s view`,
     rotate: "Rotate a quarter turn",
     frameStart: "starting position",
+    trapLaid: (at: string) => `trap laid on ${at}`,
+    trapped: (move: string) => `${move}, caught in a trap`,
     frame: (index: number, total: number, who: string, move: string) =>
       `move ${index} / ${total} — ${who} — ${move}`,
     board: "Replayed board",

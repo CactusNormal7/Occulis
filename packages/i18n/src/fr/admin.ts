@@ -232,6 +232,8 @@ export const admin: Messages["admin"] = {
     viewOf: (handle) => `vue de ${handle}`,
     rotate: "Tourner d'un quart",
     frameStart: "position de départ",
+    trapLaid: (at) => `piège posé en ${at}`,
+    trapped: (move) => `${move}, pris au piège`,
     frame: (index, total, who, move) => `coup ${index} / ${total} — ${who} — ${move}`,
     board: "Plateau rejoué",
   },

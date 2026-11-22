@@ -143,6 +143,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", onKey));
       <ReplayBoard
         :board="board"
         :frames="match.frames"
+        :log="match.log"
         :index="shown"
         :perspective="perspective"
         :turns="turns"

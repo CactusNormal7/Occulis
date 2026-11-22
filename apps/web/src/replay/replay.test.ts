@@ -11,6 +11,7 @@ import {
   fitScale,
   frameLabel,
   movesBetween,
+  trapEventsBetween,
 } from "./replay.js";
 
 // Les phrases attendues ici sont les françaises ; la forme des deux dictionnaires est
@@ -26,6 +27,7 @@ const piece = (id: string, owner: "A" | "B", x: number, y: number) => ({
 });
 const frame = (...pieces: ReturnType<typeof piece>[]): AdminFrame => ({
   pieces,
+  traps: [],
   visible: { A: [], B: [] },
 });
 
@@ -109,5 +111,35 @@ describe("rejeu : cadrage", () => {
     expect(fitScale(board, base, 1200, 800, 20)).toBeGreaterThan(
       fitScale(board, base, 600, 400, 20),
     );
+  });
+});
+
+describe("pièges rejoués", () => {
+  const trap = { owner: "A" as const, layer: "a-trapper", x: 3, y: 1 };
+  const trapper = { ...piece("a-trapper", "A", 2, 1), kind: "trapper" };
+  const pawn = { ...piece("b-pawn", "B", 4, 1), kind: "pawn" };
+  const start: AdminFrame = { ...frame(), pieces: [trapper, pawn] };
+  const laid: AdminFrame = { ...start, traps: [trap] };
+  const sprung: AdminFrame = { ...frame(), pieces: [trapper] };
+  const layAction = { kind: "ability" as const, pieceId: "a-trapper", target: { x: 3, y: 1 } };
+  const stepAction = { kind: "move" as const, pieceId: "b-pawn", to: { x: 3, y: 1 } };
+
+  it("voit la pose d'un piège, et la pièce qui s'y arrête", () => {
+    expect(trapEventsBetween(start, laid, layAction)).toEqual([{ kind: "laid", trap }]);
+    expect(trapEventsBetween(laid, sprung, stepAction)).toEqual([
+      { kind: "sprung", victim: pawn, from: { x: 4, y: 1 }, to: { x: 3, y: 1 }, trap },
+    ]);
+  });
+
+  it("nomme la pose et la prise dans l'historique", () => {
+    const trapMatch = {
+      log: [
+        { seq: 0, player: "A" as const, action: layAction },
+        { seq: 1, player: "B" as const, action: stepAction },
+      ],
+      frames: [start, laid, sprung],
+    };
+    expect(describeEntry(trapMatch, 0)).toBe("piège posé en 3,1");
+    expect(describeEntry(trapMatch, 1)).toBe("4,1 → 3,1, pris au piège");
   });
 });

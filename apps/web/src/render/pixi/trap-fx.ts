@@ -4,6 +4,7 @@ import { type IsoProjection, type Quad, project } from "@occulis/board/iso";
 import { MOTION_FX, look } from "@occulis/board/theme";
 import { phase } from "../../view/easing.js";
 import { sparksOf, trapLayingAt, trapSpringAt } from "../../view/effects.js";
+import { trapJawsOf, trapSealOf } from "../../view/trap-shapes.js";
 import { scaled, topOf } from "./overlay.js";
 
 /**
@@ -13,24 +14,12 @@ import { scaled, topOf } from "./overlay.js";
  * avec les autres pièces, dans l'ordre du peintre du monde.
  */
 
-/** Un point de la case, en coordonnées locales (`u` d'ouest en est, `v` du nord au sud). */
-function pointIn(quad: Quad, u: number, v: number): { x: number; y: number } {
-  const [nw, ne, se, sw] = quad;
-  return {
-    x: (1 - u) * (1 - v) * nw.x + u * (1 - v) * ne.x + u * v * se.x + (1 - u) * v * sw.x,
-    y: (1 - u) * (1 - v) * nw.y + u * (1 - v) * ne.y + u * v * se.y + (1 - u) * v * sw.y,
-  };
-}
-
 /** Le losange barré d'un piège, à l'échelle `k` de la case. */
 function trapSeal(g: Graphics, quad: Quad, k: number, color: number, alpha: number, px: number) {
-  const mark = scaled(quad, k);
-  g.poly(mark).stroke({ width: px, color, alpha });
-  g.moveTo(mark[0] ?? 0, mark[1] ?? 0)
-    .lineTo(mark[4] ?? 0, mark[5] ?? 0)
-    .moveTo(mark[2] ?? 0, mark[3] ?? 0)
-    .lineTo(mark[6] ?? 0, mark[7] ?? 0)
-    .stroke({ width: px, color, alpha: alpha * 0.6 });
+  const { outline, cross } = trapSealOf(quad, k);
+  g.poly(outline).stroke({ width: px, color, alpha });
+  for (const [a, b] of cross) g.moveTo(a.x, a.y).lineTo(b.x, b.y);
+  g.stroke({ width: px, color, alpha: alpha * 0.6 });
 }
 
 /** Des éclats carrés d'un pixel ou deux, comme ceux d'une retombée. */
@@ -134,20 +123,9 @@ export function drawTrapSpring(
   g.poly(scaled(quad, 1)).fill({ color: threat, alpha: 0.45 * state.flash });
 
   // Les mâchoires : une de chaque côté, leur front denté avance jusqu'au milieu de la case.
-  const reach = 0.1 + 0.4 * Math.min(1.08, state.jaws);
   const jawAlpha = state.scar > 0 ? Math.min(1, state.scar * 1.6) : 1;
-  for (const side of [0, 1] as const) {
-    const at = (depth: number, v: number) => pointIn(quad, side === 0 ? depth : 1 - depth, v);
-    const teeth = 5;
-    const points = [at(0, 0)];
-    for (let i = 0; i <= teeth * 2; i += 1) {
-      // Les dents d'un côté tombent dans les creux de l'autre : elles s'emboîtent.
-      const tooth = (i + side) % 2 === 1 ? 0.09 : 0;
-      points.push(at(reach + tooth, i / (teeth * 2)));
-    }
-    points.push(at(0, 1));
-    const flat = points.flatMap((p) => [p.x, p.y]);
-    g.poly(flat)
+  for (const jaw of trapJawsOf(quad, state.jaws)) {
+    g.poly(jaw)
       .fill({ color: threat, alpha: 0.8 * jawAlpha })
       .stroke({ width: px, color: ink, alpha: 0.7 * jawAlpha });
   }
