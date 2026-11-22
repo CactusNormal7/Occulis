@@ -1698,11 +1698,13 @@ serveur refuse ce dernier, qui n'écrirait qu'une des deux tables portant le pse
 
 ### Le rejeu d'une partie
 
-`MatchReplay` (`parts/MatchReplay.vue`) montre la `MoveList` — numéro, camp, `2,4 → 3,4`, chaque ligne
+`MatchReplay` (`parts/MatchReplay.vue`) montre la `MoveList` — numéro, camp, coup noté `Sb3-c4`
+(`replay/notation.ts`, implementation-notes 38) et expliqué en infobulle au survol, chaque ligne
 dans la couleur du camp, comme l'historique de la maquette de partie — et sous elle une
 `Toolbar` (lecture, libellé de l'image, point de vue, rotation) puis le plateau. **Survoler** un
 coup montre la position qui le suit ; **cliquer** l'épingle, et le plateau y revient quand la
-souris quitte la liste. Les flèches du clavier parcourent la partie, la lecture la déroule. Le
+souris quitte la liste. Les flèches du clavier parcourent la partie (et `Début` / `Fin` dans le
+replay du profil), sauf dans un champ de saisie ; la lecture la déroule. Le
 point de vue **tout / vue de A / vue de B** estompe les cases hors de la ligne de vue du camp
 choisi et passe en fantôme (`PIECES.alphaGhost`) les pièces adverses qu'il ne voyait pas.
 
@@ -1725,7 +1727,7 @@ la partie — sceau qui tombe, ou pièce qui marche jusqu'au piège, mâchoires 
 dissolution (`replay/trap-paint.ts`, mêmes courbes que `view/effects.ts` et même géométrie que
 `view/trap-shapes.ts`, partagée avec `render/pixi/trap-fx.ts`). Figée (survol en arrière,
 mouvements réduits), l'image garde la case de la pose éclairée, ou la case du piège rougie,
-mâchoires fermées. L'historique les nomme : « piège posé en 3,4 », « 4,1 → 3,1, pris au piège ». `fitScale()` (`replay.ts`) calcule une
+mâchoires fermées. L'historique les note `Tf3^g3` (piège posé) et `Pe4-f3^` (pièce prise au piège). `fitScale()` (`replay.ts`) calcule une
 échelle qui tient **aux quatre quarts de tour**, pour que le plateau ne change pas de taille en
 tournant. Les positions viennent du serveur (`frames`) : le client ne rejoue rien, il n'a pas
 les rulesets versionnés.

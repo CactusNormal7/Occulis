@@ -63,15 +63,16 @@ describe("rejeu : lecture des images", () => {
     expect(movesBetween(match.frames[1] as AdminFrame, match.frames[2] as AdminFrame)).toEqual([]);
   });
 
-  it("écrit un coup comme l'historique de la maquette, et l'abandon en toutes lettres", () => {
-    expect(describeEntry(match, 0)).toBe("1,1 → 2,1");
-    expect(describeEntry(match, 1)).toBe("abandon");
+  it("note chaque coup, et l'explique en toutes lettres", () => {
+    // Sans carte, les rangées se comptent d'après les pièces : cinq, de 1 au sud à 5.
+    expect(describeEntry(match, 0)).toEqual({ short: "Sb4-c4", detail: "Éclaireur de b4 à c4" });
+    expect(describeEntry(match, 1)).toEqual({ short: "1-0", detail: "B abandonne : A gagne" });
   });
 
   it("annonce chaque image avec son camp et son joueur", () => {
     expect(frameLabel(match, 0)).toBe("position de départ");
-    expect(frameLabel(match, 1)).toBe("coup 1 / 2 — A · anne — 1,1 → 2,1");
-    expect(frameLabel(match, 2)).toBe("coup 2 / 2 — B · bruno — abandon");
+    expect(frameLabel(match, 1)).toBe("coup 1 / 2 — A · anne — Éclaireur de b4 à c4");
+    expect(frameLabel(match, 2)).toBe("coup 2 / 2 — B · bruno — B abandonne : A gagne");
   });
 
   it("borne la navigation aux images existantes", () => {
@@ -129,17 +130,5 @@ describe("pièges rejoués", () => {
     expect(trapEventsBetween(laid, sprung, stepAction)).toEqual([
       { kind: "sprung", victim: pawn, from: { x: 4, y: 1 }, to: { x: 3, y: 1 }, trap },
     ]);
-  });
-
-  it("nomme la pose et la prise dans l'historique", () => {
-    const trapMatch = {
-      log: [
-        { seq: 0, player: "A" as const, action: layAction },
-        { seq: 1, player: "B" as const, action: stepAction },
-      ],
-      frames: [start, laid, sprung],
-    };
-    expect(describeEntry(trapMatch, 0)).toBe("piège posé en 3,1");
-    expect(describeEntry(trapMatch, 1)).toBe("4,1 → 3,1, pris au piège");
   });
 });

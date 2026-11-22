@@ -41,8 +41,10 @@ export interface MoveEntry {
   number: string;
   /** Le camp qui a joué ; absent pour la position de départ. */
   seat?: Camp | undefined;
-  /** Le coup, comme l'historique de la partie : « 2,4 → 3,4 », « abandon ». */
+  /** Le coup tel qu'il s'affiche, court : « Sb3-c4 ». Coupé par « … » s'il déborde. */
   text: string;
+  /** Ce que le coup veut dire, en toutes lettres, montré en infobulle au survol. */
+  detail?: string | undefined;
   /** Le coup ne peut pas être montré (rejeu interrompu avant lui). */
   disabled?: boolean | undefined;
 }

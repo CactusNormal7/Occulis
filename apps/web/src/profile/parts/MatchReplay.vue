@@ -4,7 +4,7 @@
  * camp, de l'autre, ou les deux ensemble, au départ celui qu'on tenait. Survoler un coup
  * de la liste le montre, cliquer l'épingle.
  */
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { Board, type PlayerId } from "@occulis/core";
 import type { MeMatchDetail } from "@occulis/protocol";
 import {
@@ -66,12 +66,16 @@ const frameLabel = computed(() => {
 
 const entries = computed<MoveEntry[]>(() => [
   { number: "—", text: text.value.replay.start },
-  ...props.match.log.map((logged) => ({
-    number: String(logged.seq + 1),
-    ...(logged.player !== null ? { seat: logged.player } : {}),
-    text: describeEntry(props.match, logged.seq),
-    disabled: logged.seq + 1 >= count.value,
-  })),
+  ...props.match.log.map((logged) => {
+    const notation = describeEntry(props.match, logged.seq);
+    return {
+      number: String(logged.seq + 1),
+      ...(logged.player !== null ? { seat: logged.player } : {}),
+      text: notation.short,
+      detail: notation.detail,
+      disabled: logged.seq + 1 >= count.value,
+    };
+  }),
 ]);
 
 const perspectives = computed<SegmentedOption<Perspective>[]>(() => {
@@ -95,6 +99,23 @@ function go(index: number) {
   pinned.value = frame;
   shown.value = frame;
 }
+
+/** Les flèches parcourent la partie, comme les boutons ; sauf dans un champ de saisie. */
+function onKey(event: KeyboardEvent) {
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+  const target = event.target;
+  if (target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable]"))
+    return;
+  if (event.key === "ArrowLeft") go(pinned.value - 1);
+  else if (event.key === "ArrowRight") go(pinned.value + 1);
+  else if (event.key === "Home") go(0);
+  else if (event.key === "End") go(lastFrame.value);
+  else return;
+  event.preventDefault();
+}
+
+onMounted(() => document.addEventListener("keydown", onKey));
+onBeforeUnmount(() => document.removeEventListener("keydown", onKey));
 </script>
 
 <template>

@@ -160,7 +160,9 @@ Quelques comportements à connaître :
   range en bandeau. Ces animations ne portent rien et s'éteignent sous mouvement réduit.
 - **`StatTile`** fait monter son chiffre de zéro (`animate`), sauf sous mouvement réduit.
 - **`MoveList`** sépare l'entrée montrée (`shown`, survol) de l'entrée épinglée (`pinned`,
-  marquée dans la teinte de la sélection).
+  marquée dans la teinte de la sélection). Un coup trop long pour sa colonne finit par « … » ;
+  au survol ou au focus, une infobulle (rendue dans `body`, la liste défilant) donne son
+  explication (`detail`) ou, à défaut, son texte entier s'il a été coupé.
 - **`TextField` et `PasswordField` gardent le champ dans son libellé** : c'est ce qui les
   associe pour les lecteurs d'écran comme pour les gestionnaires de mots de passe, sans
   identifiant à tenir. `error` passe le champ en `aria-invalid` et l'affiche dans la teinte

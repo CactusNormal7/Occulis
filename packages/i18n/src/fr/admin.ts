@@ -1,5 +1,14 @@
 import type { Messages } from "../messages.js";
 
+/**
+ * « le pion », « l'éclaireur ». Les pièces du roster sont toutes au masculin ; une pièce au
+ * féminin demandera de porter le genre avec son nom.
+ */
+function withArticle(noun: string): string {
+  const lower = noun.toLowerCase();
+  return /^[aeéèêiïoôuh]/.test(lower) ? `l'${lower}` : `le ${lower}`;
+}
+
 export const admin: Messages["admin"] = {
   section: "back-office",
   tabs: {
@@ -232,8 +241,14 @@ export const admin: Messages["admin"] = {
     viewOf: (handle) => `vue de ${handle}`,
     rotate: "Tourner d'un quart",
     frameStart: "position de départ",
-    trapLaid: (at) => `piège posé en ${at}`,
-    trapped: (move) => `${move}, pris au piège`,
+    notation: {
+      move: (piece, from, to) => `${piece} de ${from} à ${to}`,
+      takes: (taken) => `, prend ${withArticle(taken)}`,
+      layTrap: (piece, from, at) => `${piece} en ${from} pose un piège en ${at}`,
+      trapped: ", pris au piège",
+      checkmate: " : échec et mat",
+      resign: (seat, winner) => `${seat} abandonne : ${winner} gagne`,
+    },
     frame: (index, total, who, move) => `coup ${index} / ${total} — ${who} — ${move}`,
     board: "Plateau rejoué",
   },

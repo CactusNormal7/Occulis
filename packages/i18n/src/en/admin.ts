@@ -226,8 +226,19 @@ export const admin = {
     viewOf: (handle: string) => `${handle}'s view`,
     rotate: "Rotate a quarter turn",
     frameStart: "starting position",
-    trapLaid: (at: string) => `trap laid on ${at}`,
-    trapped: (move: string) => `${move}, caught in a trap`,
+    /**
+     * The sentence that explains a move's notation (`Sb3-c4`, `Pe4xd5`, `Tf3^g3`), shown on
+     * hover. Squares are named like the notation: column letter, then row from A's side.
+     */
+    notation: {
+      move: (piece: string, from: string, to: string) => `${piece} from ${from} to ${to}`,
+      takes: (taken: string) => `, takes the ${taken.toLowerCase()}`,
+      layTrap: (piece: string, from: string, at: string) =>
+        `${piece} on ${from} lays a trap on ${at}`,
+      trapped: ", caught in a trap",
+      checkmate: ": checkmate",
+      resign: (seat: string, winner: string) => `${seat} resigns: ${winner} wins`,
+    },
     frame: (index: number, total: number, who: string, move: string) =>
       `move ${index} / ${total} — ${who} — ${move}`,
     board: "Replayed board",

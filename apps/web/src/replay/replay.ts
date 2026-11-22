@@ -8,6 +8,7 @@ import type {
 import { QUARTER_TURN, type IsoProjection, tileQuad } from "@occulis/board/iso";
 import { messages } from "../locale/current.js";
 import { describeAction, seatHandle } from "../admin/model.js";
+import { type MoveNotation, type NotatedMatch, notationOf } from "./notation.js";
 
 /**
  * Ce que le rejeu du back-office décide sans dessiner : quels coups séparent deux
@@ -106,27 +107,14 @@ export function trapEventsAt(
 }
 
 /**
- * Le coup `seq` tel qu'on le lit dans l'historique : « 2,4 → 3,4 », « piège posé en 3,4 »,
- * « 2,4 → 3,4, pris au piège », ou « abandon ».
+ * Le coup `seq` dans l'historique : sa notation (« Sb3-c4 ») et la phrase qui l'explique
+ * (`notation.ts`). Un coup que le rejeu n'a pas su appliquer est dit par son action brute.
  */
-export function describeEntry(
-  match: Pick<AdminMatchDetail, "log" | "frames">,
-  seq: number,
-): string {
+export function describeEntry(match: NotatedMatch, seq: number): MoveNotation {
   const entry = match.log[seq];
-  if (entry === undefined) return "";
-  const m = messages().admin.match;
-  const before = match.frames[seq];
-  const after = match.frames[seq + 1];
-  const [move] = before !== undefined && after !== undefined ? movesBetween(before, after) : [];
-  if (move !== undefined) return `${move.from.x},${move.from.y} → ${move.to.x},${move.to.y}`;
-
-  for (const event of trapEventsAt(match, seq + 1)) {
-    if (event.kind === "laid") return m.trapLaid(`${event.trap.x},${event.trap.y}`);
-    const { from, to } = event;
-    return m.trapped(`${from.x},${from.y} → ${to.x},${to.y}`);
-  }
-  return describeAction(entry.action);
+  if (entry === undefined) return { short: "", detail: "" };
+  const raw = describeAction(entry.action);
+  return notationOf(match, seq) ?? { short: raw, detail: raw };
 }
 
 /**
@@ -142,7 +130,7 @@ export function frameLabel(match: AdminMatchDetail, index: number): string {
     index,
     match.log.length,
     who,
-    describeEntry(match, index - 1),
+    describeEntry(match, index - 1).detail,
   );
 }
 
