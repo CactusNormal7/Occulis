@@ -45,6 +45,8 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 - **Voile tramé du changement de thème : acté, verrouillé par `veil.test.ts`, ne jamais le retoucher sans demande explicite.**
 - Aucune partie locale (hot-seat retiré, implementation-notes 18). Un coup se joue à la souris seulement (saisie au clavier retirée le 2026-11-20) ; la sélection filtre `legalActions`, elle ne redéduit jamais la légalité.
 - **ATH « Bandeaux » (2026-11-20)** : plaques des deux camps avec leur composition, tour, fiche de pièce, journal tel que vu, caméra, légende, alertes d'échec et de départ adverse ; un glyphe pixel par type de pièce (obélisque gardé derrière `PIECE_STYLE`). Protocole 9 (`players`, `opponent-presence`).
+- **Vue de dessus (2026-11-20)** : un bouton de caméra ou la barre d'espace basculent le plateau en plan, animé ; caméra figée et centrée, pièces centrées sur leur case, relief en rebords et en points.
+- **Caméra bornée et colonne repliable (2026-11-22)** : la vue libre reste sur le plateau (dézoomé au plus loin, le plateau entier et immobile ; zoomé, on le parcourt jusqu'à ses bords) ; un bouton replie la fiche et le journal pour voir le plateau en grand.
 - Charte `@occulis/ui` portant back-office, profil, compte, préparation et ATH. Le menu et l'attente n'y ont pas migré.
 
 ## Site vitrine (`apps/site`) — 2026-10-29

@@ -188,6 +188,7 @@ export const game = {
     watching: (friend: string) => `Watching ${friend}`,
     resign: "Resign",
     leave: "Leave",
+    column: { hide: "Hide the side panel", show: "Show the side panel" },
     sheet: "Piece sheet",
     noSelection: "No piece selected",
     hint: "Click: select · right-click: a piece's sheet",
@@ -217,6 +218,10 @@ export const game = {
       zoomIn: "Zoom in",
       zoomOut: "Zoom out",
       center: "Recenter",
+      plan: "Top-down view (Space)",
+      leavePlan: "Isometric view (Space)",
+      planOn: "Top-down view",
+      isoOn: "Isometric view",
     },
   },
 };

@@ -1,7 +1,7 @@
 import type { Graphics } from "pixi.js";
 import type { IsoProjection, ScreenPoint } from "@occulis/board/iso";
 import { mixColor } from "@occulis/board/pixel";
-import { look } from "@occulis/board/theme";
+import { METRICS, look } from "@occulis/board/theme";
 import { drawBeam, type PiecePaint } from "./piece-paint.js";
 
 /**
@@ -12,7 +12,7 @@ import { drawBeam, type PiecePaint } from "./piece-paint.js";
  */
 export function drawObelisk(
   g: Graphics,
-  base: ScreenPoint,
+  standing: ScreenPoint,
   paint: PiecePaint,
   proj: IsoProjection,
 ): void {
@@ -21,7 +21,10 @@ export function drawObelisk(
   const { color, ghost, px, dither, alpha: opacity, rise, flash, beam, beamColor } = paint;
   const alpha = (ghost ? pieces.alphaGhost : pieces.alphaVisible) * opacity;
   const width = pieces.strokeWidth * px;
-  const tall = proj.heightUnit * proj.scale * pieces.obelisk.bodyRatio;
+  // La hauteur de l'obélisque suit la métrique, non la projection : en vue de dessus, où
+  // le relief s'aplatit (`heightUnit` à 0), la pièce garde sa taille et se centre.
+  const tall = METRICS.heightUnit * proj.scale * pieces.obelisk.bodyRatio;
+  const base = { x: standing.x, y: standing.y + (tall / 2) * paint.seat };
   const foot = proj.tileWidth * proj.scale * pieces.obelisk.bodyRatioWidth;
   const half = proj.tileWidth * proj.scale * pieces.obelisk.headRatio;
   const top = base.y - tall;

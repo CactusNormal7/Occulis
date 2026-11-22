@@ -236,7 +236,7 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
 - **L'ATH de partie : la disposition « Bandeaux »** (décision du 2026-11-20, maquette
   `docs/mockups/ath/a-bandeaux.html`, préférée à « Coins » et « Registre »). En haut, les
   deux camps de part et d'autre du numéro de coup : pseudo, Elo et composition, le camp au
-  trait allumé de sa couleur. Sous la plaque adverse, les amis qui regardent, les réglages
+  trait allumé de sa couleur. Sous la plaque adverse, les amis qui regardent, le repli de la colonne, les réglages
   et l'abandon. À droite, la fiche de la pièce choisie puis le journal ; à gauche, les
   boutons de caméra ; en bas, la légende des lueurs, tant qu'une pièce est sélectionnée.
   L'échec et le départ de l'adversaire (avec le temps avant son forfait) s'annoncent sous le
@@ -270,6 +270,24 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   déplacer la vue. Le facteur de zoom vit dans la projection et non dans la transformation
   du conteneur de rendu, afin que l'épaisseur des traits reste constante à l'écran quel que
   soit le niveau de zoom — une arête reste large d'un seul pixel du plateau.
+  - **La vue reste sur le plateau (2026-11-22)**, comme sur une carte de Dofus : dézoomé au
+    plus loin, le plateau entier tient dans ce que l'ATH laisse voir et ne se déplace plus ;
+    zoomé, on le parcourt, sans jamais pouvoir en écarter le bord du bord de la zone libre.
+- **La colonne de droite se replie (2026-11-22).** Un bouton à côté de l'abandon masque la
+  fiche et le journal, comme le mode plein écran d'un échiquier en ligne : le plateau
+  glisse au milieu de la place rendue. Le choix est retenu d'une partie à l'autre.
+- **Vue de dessus (2026-11-20).** Le premier bouton de caméra, ou la barre d'espace,
+  bascule le plateau en plan (maquette `docs/mockups/ath/vue-plateau.html`). En un seul
+  geste de 480 ms, il tourne d'un huitième de tour pour que ses rangées s'alignent sur
+  l'écran, ses cases se déplient en carrés et le relief s'aplatit. Le camp qu'on voyait
+  devant soi reste en bas.
+  - Le relief s'y lit sans faces : un rebord d'os sur chaque côté qui domine sa voisine, et
+    la hauteur en points dans le coin de la case, un par niveau.
+  - Les pièces s'y centrent sur leur case, au lieu de s'y tenir debout.
+  - La caméra est figée et centrée sur le plateau entier : ni déplacement, ni rotation, ni
+    zoom, et les autres boutons de caméra s'éteignent. On joue de la même façon.
+  - Le bouton ou la barre d'espace ramènent la vue isométrique telle qu'on l'avait
+    quittée : angle, zoom et déplacement compris.
 
 ## 9. Nom du projet
 

@@ -101,7 +101,7 @@ function main(): void {
     },
     finished,
   });
-  const board = new BoardView(boardHost, matches);
+  const board = new BoardView(boardHost, matches, () => islands.render());
 
   // ── File d'attente, amis, compte ──────────────────────────────────────────────────
   const matchmaking = new Matchmaking({
@@ -258,8 +258,14 @@ function main(): void {
       away,
       notice: matches.notice,
       spectators: matches.spectators,
+      planView: board.planView,
+      columnOpen: board.columnOpen,
       onLeave: leaveMatch,
       onCamera: (command) => board.command(command),
+      onToggleColumn: () => {
+        board.toggleColumn();
+        islands.render();
+      },
     };
   }
 

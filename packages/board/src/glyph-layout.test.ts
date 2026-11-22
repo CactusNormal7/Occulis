@@ -24,6 +24,16 @@ describe("layoutGlyph", () => {
     expect(layout.cell).toBeGreaterThanOrEqual(pixel);
   });
 
+  it("centre la silhouette sur la case en vue de dessus", () => {
+    const pawn = glyphOf("pawn");
+    const layout = layoutGlyph(pawn, base, PROJECTION, pixel, 0, 1);
+    const rows = litPixels(pawn).map((lit) => lit.row);
+    const litTop = layout.top + Math.min(...rows) * layout.cell;
+    const litBottom = layout.top + (Math.max(...rows) + 1) * layout.cell;
+    expect((litTop + litBottom) / 2).toBeCloseTo(base.y, 0);
+    expect(layout.center.x).toBeCloseTo(base.x, 0);
+  });
+
   it("pose le glyphe debout sur la case, centré", () => {
     const layout = layoutGlyph(glyph, base, PROJECTION, pixel);
     expect(layout.top + layout.height).toBeCloseTo(base.y, 0);
