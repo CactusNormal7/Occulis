@@ -4,18 +4,20 @@ import type { SceneInput } from "../render/pixi/scene.js";
 import {
   type Camera,
   type CameraCommand,
+  type Framing,
   commandCamera,
   createCamera,
   flatnessOf,
+  footprintOf,
   originOf,
   pivotOf,
   settle,
-  spanOf,
   toProjection,
   toProjectionSpace,
   withViewport,
 } from "../view/camera.js";
 import type { ScreenPoint } from "@occulis/board/iso";
+import { readColumnOpen, saveColumnOpen } from "../hud/column-choice.js";
 import { hudFraming } from "../hud/layout.js";
 import { tileAt } from "../view/picking.js";
 import type { MatchController } from "./match-controller.js";
@@ -35,6 +37,8 @@ export class BoardView {
   private board: Board | undefined;
   private loading: Promise<Board | undefined> | undefined;
   private camera: Camera = createCamera({ x: 0, y: 0 }, viewport());
+  /** La colonne de droite de l'ATH est dépliée : le plateau se cadre dans ce qu'elle laisse. */
+  private columnShown = readColumnOpen();
 
   /**
    * `onViewChange` prévient quand la caméra entre dans la vue de dessus ou en sort, par un
@@ -75,7 +79,29 @@ export class BoardView {
   /** Recentre la caméra sur la carte d'une partie qui commence. */
   center(terrain: Terrain): void {
     const screen = viewport();
-    this.setCamera(createCamera(pivotOf(terrain), screen, hudFraming(screen), spanOf(terrain)));
+    this.setCamera(
+      createCamera(pivotOf(terrain), screen, this.framing(screen), footprintOf(terrain)),
+    );
+  }
+
+  /** La colonne de droite de l'ATH (fiche et journal) est dépliée. */
+  get columnOpen(): boolean {
+    return this.columnShown;
+  }
+
+  /**
+   * Replie ou déplie la colonne de droite, retenu pour les parties suivantes : le plateau
+   * glisse vers le milieu de la place libérée, ou rendue.
+   */
+  toggleColumn(): void {
+    this.columnShown = !this.columnShown;
+    saveColumnOpen(this.columnShown);
+    const screen = viewport();
+    this.camera = withViewport(this.camera, screen, this.framing(screen));
+  }
+
+  private framing(screen: Coord): Framing {
+    return hudFraming(screen, this.columnShown);
   }
 
   /** Vide la table, à la sortie d'une partie. */
@@ -110,7 +136,7 @@ export class BoardView {
       onResize: () => {
         const screen = viewport();
         // Sous 900 px, la colonne de l'ATH se replie en bas : le recentrage suit.
-        this.camera = { ...withViewport(this.camera, screen), home: hudFraming(screen) };
+        this.camera = withViewport(this.camera, screen, this.framing(screen));
       },
       controls: {
         getCamera: () => this.camera,

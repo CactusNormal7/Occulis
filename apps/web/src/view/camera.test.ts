@@ -7,14 +7,15 @@ import {
   ZOOM_STEP,
   createCamera,
   flatnessOf,
+  footprintOf,
   isLocked,
   originOf,
   panBy,
   pivotOf,
-  spanOf,
   rotateBy,
   settle,
   snapRotation,
+  withViewport,
   toProjection,
   turn,
   zoomAt,
@@ -167,14 +168,14 @@ describe("commandCamera", () => {
 
 describe("la vue de dessus", () => {
   const INSETS = { top: 88, right: 312, bottom: 56, left: 64 };
-  const free = createCamera({ x: 4, y: 4 }, { x: 800, y: 600 }, { scale: 1.25, insets: INSETS }, 9);
+  const free = createCamera(
+    { x: 4, y: 4 },
+    { x: 800, y: 600 },
+    { scale: 1.25, insets: INSETS },
+    { width: 9, depth: 9, relief: 0 },
+  );
   /** La bascule menée à son terme. */
   const planned = settle(commandCamera(free, "plan-view"), PLAN_VIEW_MS);
-
-  it("mesure le côté du plateau, en cases", () => {
-    expect(spanOf(Board.fromAscii(["000", "000"]))).toBe(3);
-    expect(spanOf(new Board([]))).toBe(1);
-  });
 
   it("bascule en une animation, à mi-chemin au milieu de sa durée", () => {
     const halfway = settle(commandCamera(free, "plan-view"), PLAN_VIEW_MS / 2);
@@ -227,5 +228,83 @@ describe("la vue de dessus", () => {
       pan: settled.pan,
       rotation: settled.rotation,
     });
+  });
+});
+
+describe("les bornes de la vue libre", () => {
+  const INSETS = { top: 88, right: 312, bottom: 56, left: 64 };
+  const VIEW = { x: 1440, y: 900 };
+  const NINE = { width: 9, depth: 9, relief: 4 };
+  const framed = createCamera({ x: 4, y: 4 }, VIEW, { scale: 1.25, insets: INSETS }, NINE);
+  /** Dézoomé au plus loin : bien plus de crans qu'il n'en faut. */
+  let widest = framed;
+  for (let i = 0; i < 40; i += 1) widest = zoomAt(widest, { x: 300, y: 300 }, 1 / ZOOM_STEP);
+  let closest = framed;
+  for (let i = 0; i < 12; i += 1) closest = zoomAt(closest, { x: 700, y: 450 }, ZOOM_STEP);
+
+  /** Les bords du plateau à l'écran : ses coins, au sol et au sommet du relief. */
+  function boardOnScreen(state: Camera): {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+  } {
+    const points = [
+      { x: -0.5, y: -0.5 },
+      { x: 8.5, y: -0.5 },
+      { x: 8.5, y: 8.5 },
+      { x: -0.5, y: 8.5 },
+    ].flatMap((corner) => [screenOf(state, corner), screenOf(state, corner, NINE.relief)]);
+    const xs = points.map((point) => point.x);
+    const ys = points.map((point) => point.y);
+    return {
+      left: Math.min(...xs),
+      right: Math.max(...xs),
+      top: Math.min(...ys),
+      bottom: Math.max(...ys),
+    };
+  }
+
+  it("mesure l'emprise du plateau et son relief", () => {
+    expect(footprintOf(Board.fromAscii(["012", "000"]))).toEqual({ width: 3, depth: 2, relief: 2 });
+    expect(footprintOf(new Board([]))).toEqual({ width: 1, depth: 1, relief: 0 });
+  });
+
+  it("dézoomé au plus loin, le plateau entier tient dans la zone libre", () => {
+    expect(widest.scale).toBeLessThanOrEqual(framed.scale);
+    const board = boardOnScreen(widest);
+    expect(board.left).toBeGreaterThanOrEqual(INSETS.left - 0.5);
+    expect(board.right).toBeLessThanOrEqual(VIEW.x - INSETS.right + 0.5);
+    expect(board.top).toBeGreaterThanOrEqual(INSETS.top - 0.5);
+    expect(board.bottom).toBeLessThanOrEqual(VIEW.y - INSETS.bottom + 0.5);
+  });
+
+  it("dézoomé au plus loin, le plateau ne se déplace plus", () => {
+    expect(panBy(widest, 200, -150).pan).toEqual(widest.pan);
+  });
+
+  it("zoomé, on le parcourt, jusqu'à ce que son bord touche celui de la zone libre", () => {
+    const moved = panBy(closest, 40, 0);
+    expect(moved.pan.x).toBeCloseTo(closest.pan.x + 40);
+    const far = panBy(closest, 100_000, 100_000);
+    const board = boardOnScreen(far);
+    expect(board.left).toBeCloseTo(INSETS.left);
+    expect(board.top).toBeCloseTo(INSETS.top);
+    const other = boardOnScreen(panBy(closest, -100_000, -100_000));
+    expect(other.right).toBeCloseTo(VIEW.x - INSETS.right);
+    expect(other.bottom).toBeCloseTo(VIEW.y - INSETS.bottom);
+  });
+
+  it("dézoomer ramène le plateau dans ses bornes", () => {
+    const pushed = panBy(closest, 100_000, 0);
+    let back = pushed;
+    for (let i = 0; i < 40; i += 1) back = zoomAt(back, { x: 700, y: 450 }, 1 / ZOOM_STEP);
+    expect(back.pan.x).toBeCloseTo(widest.pan.x);
+    expect(back.pan.y).toBeCloseTo(widest.pan.y);
+  });
+
+  it("la colonne repliée, le plateau glisse vers le milieu de la place rendue", () => {
+    const wider = withViewport(framed, VIEW, { scale: 1.25, insets: { ...INSETS, right: 16 } });
+    expect(pivotOnScreen(wider).x).toBeCloseTo(pivotOnScreen(framed).x + (312 - 16) / 2);
   });
 });

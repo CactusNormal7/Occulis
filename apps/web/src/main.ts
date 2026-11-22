@@ -259,8 +259,13 @@ function main(): void {
       notice: matches.notice,
       spectators: matches.spectators,
       planView: board.planView,
+      columnOpen: board.columnOpen,
       onLeave: leaveMatch,
       onCamera: (command) => board.command(command),
+      onToggleColumn: () => {
+        board.toggleColumn();
+        islands.render();
+      },
     };
   }
 

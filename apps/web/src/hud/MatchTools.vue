@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
- * Les outils de partie, sous la plaque adverse : les amis qui regardent, et le départ —
- * abandonner pour un joueur, quitter pour un spectateur. L'engrenage des réglages est
+ * Les outils de partie, sous la plaque adverse : les amis qui regardent, le repli de la
+ * colonne de droite (pour voir le plateau en grand), et le départ — abandonner pour un
+ * joueur, quitter pour un spectateur. L'engrenage des réglages est
  * celui de la page (`#settings-toggle`), posé à côté par `hud.css`.
  */
 import { computed } from "vue";
@@ -10,12 +11,14 @@ import HudIcon from "./HudIcon.vue";
 
 defineProps<{
   spectating: boolean;
+  /** La colonne de droite (fiche et journal) est dépliée. */
+  columnOpen: boolean;
   /** Combien d'amis regardent le joueur ; sans objet pour un spectateur. */
   spectators: number;
   /** L'ami regardé, pour un spectateur. */
   watchedName: string;
 }>();
-const emit = defineEmits<{ leave: [] }>();
+const emit = defineEmits<{ leave: []; toggleColumn: [] }>();
 
 const messages = useMessages();
 const t = computed(() => messages.value.game.hud);
@@ -34,6 +37,17 @@ const t = computed(() => messages.value.game.hud);
       <HudIcon name="eye" />{{ spectators }}
       <span class="hud-visually-hidden">{{ t.watchers(spectators) }}</span>
     </span>
+    <button
+      class="hud-button hud-button--quiet hud-button--icon"
+      type="button"
+      aria-controls="hud-column"
+      :aria-expanded="columnOpen"
+      :aria-label="columnOpen ? t.column.hide : t.column.show"
+      :title="columnOpen ? t.column.hide : t.column.show"
+      @click="emit('toggleColumn')"
+    >
+      <HudIcon :name="columnOpen ? 'columnOpen' : 'columnClosed'" />
+    </button>
     <button class="hud-button hud-button--quiet" type="button" @click="emit('leave')">
       {{ spectating ? t.leave : t.resign }}
     </button>

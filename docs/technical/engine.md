@@ -434,31 +434,31 @@ interface Camera {
   viewport: ScreenPoint;
   pivot: Coord;
   home: Framing; // le cadrage où ramène le recentrage
-  span: number; // le côté du plateau en cases, pour cadrer la vue de dessus
+  footprint: Footprint | undefined; // emprise du plateau (largeur, profondeur, relief) ; absente : pas de bornes
   planView: boolean; // la vue de dessus est visée
   planProgress: number; // l'avancée de la bascule, 0 → 1, linéaire dans le temps
 }
 ```
 
-| Fonction              | Rôle                                                                                                  |
-| --------------------- | ----------------------------------------------------------------------------------------------------- |
-| `pivotOf()`           | Centre logique du plateau, par balayage de `board.allTiles()`                                         |
-| `spanOf()`            | Côté du plateau en cases (le plus grand des deux), pour cadrer la vue de dessus                       |
-| `togglePlanView()`    | Entre dans la vue de dessus ou en sort ; l'angle se cale sur un quart de tour                         |
-| `flatnessOf()`        | Aplatissement lu par la projection et la scène, 0 → 1, la courbe appliquée à `planProgress`           |
-| `isLocked()`          | Caméra figée : en vue de dessus, ou en route vers elle ou depuis elle                                 |
-| `createCamera()`      | Caméra initiale, rotation nulle, au cadrage `home` donné (par défaut : échelle 1, centre du canevas)  |
-| `originOf()`          | Origine écran de la projection = centre du canevas + pan                                              |
-| `toProjectionSpace()` | Point écran → espace de projection (retire l'origine)                                                 |
-| `toProjection()`      | Caméra → `IsoProjection`, en y injectant `METRICS`                                                    |
-| `withViewport()`      | Nouvelle taille de canevas (redimensionnement)                                                        |
-| `zoomAt()`            | Zoom vers un point écran, avec bornes                                                                 |
-| `panBy()`             | Déplacement de la vue                                                                                 |
-| `rotateBy()`          | Rotation libre ; la cible suit l'angle courant                                                        |
-| `snapRotation()`      | Vise le quart de tour le plus proche                                                                  |
-| `turn()`              | Vise le quart de tour voisin (flèches)                                                                |
-| `commandCamera()`     | Les boutons de l'ATH : vue de dessus, quarts de tour, zoom sur le milieu de la zone libre, recentrage |
-| `settle()`            | Avance la bascule de vue, puis l'interpolation vers `targetRotation`                                  |
+| Fonction              | Rôle                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `pivotOf()`           | Centre logique du plateau, par balayage de `board.allTiles()`                                                |
+| `footprintOf()`       | Emprise du plateau en cases et sa plus haute colonne : bornes de la vue libre, cadrage de la vue de dessus   |
+| `togglePlanView()`    | Entre dans la vue de dessus ou en sort ; l'angle se cale sur un quart de tour                                |
+| `flatnessOf()`        | Aplatissement lu par la projection et la scène, 0 → 1, la courbe appliquée à `planProgress`                  |
+| `isLocked()`          | Caméra figée : en vue de dessus, ou en route vers elle ou depuis elle                                        |
+| `createCamera()`      | Caméra initiale, rotation nulle, au cadrage `home` donné (par défaut : échelle 1, centre du canevas)         |
+| `originOf()`          | Origine écran de la projection = centre du canevas + pan                                                     |
+| `toProjectionSpace()` | Point écran → espace de projection (retire l'origine)                                                        |
+| `toProjection()`      | Caméra → `IsoProjection`, en y injectant `METRICS`                                                           |
+| `withViewport()`      | Nouvelle taille de canevas ou nouveau cadrage (colonne repliée) : le plateau suit le milieu de la zone libre |
+| `zoomAt()`            | Zoom vers un point écran, borné : jamais plus loin que le plateau entier dans la zone libre                  |
+| `panBy()`             | Déplacement de la vue, borné au plateau                                                                      |
+| `rotateBy()`          | Rotation libre ; la cible suit l'angle courant                                                               |
+| `snapRotation()`      | Vise le quart de tour le plus proche                                                                         |
+| `turn()`              | Vise le quart de tour voisin (flèches)                                                                       |
+| `commandCamera()`     | Les boutons de l'ATH : vue de dessus, quarts de tour, zoom sur le milieu de la zone libre, recentrage        |
+| `settle()`            | Avance la bascule de vue, puis l'interpolation vers `targetRotation`                                         |
 
 ### `zoomAt()` — pourquoi le point sous le curseur ne bouge pas
 
@@ -486,6 +486,28 @@ logique (0, 0) sur l'origine, pas le pivot : sans cette correction, le centre d'
 plateau de 9 × 9 tomberait de `(x + y) × tileHeight / 2` — plus de 150 px — sous le
 milieu de l'écran. La rotation tourne autour du pivot, qui ne bouge donc pas d'un angle
 à l'autre.
+
+### Les bornes de la vue libre
+
+La vue libre reste sur le plateau, comme une carte qu'on fait glisser sous une fenêtre
+(docs/design/rules.md § 8.1). Toute transformation — `createCamera()`, `zoomAt()`,
+`panBy()`, `rotateBy()`, la rotation qui s'aimante dans `settle()`, `withViewport()`, le
+recentrage — passe par `constrain()`, qui borne l'origine axe par axe :
+
+- `boardBounds()` mesure le plateau dans l'espace de projection, à l'angle courant : les
+  quatre coins de son emprise, au sol et au sommet du relief (`footprint.relief`) ;
+- s'il tient dans la zone libre (`freeArea()`, l'écran moins les bords de `home`), il en
+  occupe le milieu et ne bouge plus ;
+- sinon, on le parcourt jusqu'à ce qu'un de ses bords touche le bord de la zone libre.
+
+`minScaleOf()` est le plancher du zoom : l'échelle où le plateau entier tient dans la zone
+libre, sans dépasser celle du cadrage de départ. Dézoomé au plus loin, le plateau est donc
+toujours entier et immobile. Une caméra sans `footprint` (le replay, le placement des
+équipes, qui ne se déplacent pas) n'est pas bornée.
+
+`BoardView.toggleColumn()` replie ou déplie la colonne de droite de l'ATH (retenu dans le
+navigateur par `hud/column-choice.ts`) : `hudFraming(screen, columnOpen)` rend sa place au
+plateau, et `withViewport()` le fait glisser d'autant que le milieu de la zone libre.
 
 ### La vue de dessus
 

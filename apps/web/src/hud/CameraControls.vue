@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
  * Les boutons de caméra, à gauche (`view/camera.ts`). En tête, la bascule de la vue de
- * dessus, que la barre d'espace actionne aussi ; dessous, les gestes des flèches et de la
- * molette, éteints tant que la vue de dessus fige la caméra.
+ * dessus, que la barre d'espace actionne aussi (son libellé le dit) ; dessous, les gestes
+ * des flèches et de la molette, éteints tant que la vue de dessus fige la caméra.
  */
 import { computed } from "vue";
 import { useMessages } from "@occulis/ui";
@@ -41,7 +41,6 @@ const BUTTONS: readonly {
     >
       <HudIcon name="planView" />
     </button>
-    <kbd class="hud-camera__key" aria-hidden="true">␣</kbd>
     <button
       v-for="button in BUTTONS"
       :key="button.command"

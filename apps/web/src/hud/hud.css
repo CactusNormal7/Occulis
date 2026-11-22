@@ -384,7 +384,17 @@ body:has(#hud-root:not([hidden]) .hud) #corner-tools {
   padding: 0 10px;
 }
 
+/* Le repli de la colonne, carré à la hauteur de ses voisins. */
+.hud .hud-tools > .hud-button--icon {
+  width: 40px;
+}
+
 /* ---- Colonne de droite : fiche de pièce et journal ---------------------------------- */
+
+/* Repliée, la colonne rend sa place : la légende s'étend jusqu'au bord. */
+.hud--column-closed .hud-legend {
+  right: 16px;
+}
 
 .hud-column {
   position: absolute;
@@ -549,17 +559,6 @@ body:has(#hud-root:not([hidden]) .hud) #corner-tools {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-}
-
-/* La touche qui bascule la vue, sous son bouton. */
-.hud-camera__key {
-  min-width: 20px;
-  padding: 0 4px;
-  border: 1px solid var(--occ-ink-faint);
-  box-shadow: inset 0 -2px 0 var(--occ-ink-ghost);
-  color: var(--occ-ink-soft);
-  font: inherit;
-  text-align: center;
 }
 
 /* L'annonce de la vue, sous le tour, qui paraît puis s'efface d'elle-même. */

@@ -188,6 +188,7 @@ export const game = {
     watching: (friend: string) => `Watching ${friend}`,
     resign: "Resign",
     leave: "Leave",
+    column: { hide: "Hide the side panel", show: "Show the side panel" },
     sheet: "Piece sheet",
     noSelection: "No piece selected",
     hint: "Click: select · right-click: a piece's sheet",

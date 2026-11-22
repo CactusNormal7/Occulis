@@ -24,16 +24,20 @@ const FOLDED_SHEET = 180;
 /** Un peu plus près que l'échelle 1 : le plateau remplit mieux la zone libre. */
 export const HUD_SCALE = 1.25;
 
-export function hudInsets(viewport: { readonly x: number }): ScreenInsets {
+/**
+ * `columnOpen` : la colonne de droite (fiche et journal) est dépliée. Repliée, elle rend
+ * sa place au plateau.
+ */
+export function hudInsets(viewport: { readonly x: number }, columnOpen = true): ScreenInsets {
   const top = GAP + BANDS + GAP;
   const left = GAP + CAMERA_BUTTONS + GAP;
   if (viewport.x <= NARROW_WIDTH) {
-    return { top, right: 0, bottom: GAP + FOLDED_SHEET, left };
+    return { top, right: 0, bottom: columnOpen ? GAP + FOLDED_SHEET : GAP + LEGEND + GAP, left };
   }
-  return { top, right: GAP + COLUMN + GAP, bottom: GAP + LEGEND + GAP, left };
+  return { top, right: columnOpen ? GAP + COLUMN + GAP : GAP, bottom: GAP + LEGEND + GAP, left };
 }
 
 /** Le cadrage d'une partie : au milieu de ce que l'ATH laisse voir, à `HUD_SCALE`. */
-export function hudFraming(viewport: { readonly x: number }): Framing {
-  return { scale: HUD_SCALE, insets: hudInsets(viewport) };
+export function hudFraming(viewport: { readonly x: number }, columnOpen = true): Framing {
+  return { scale: HUD_SCALE, insets: hudInsets(viewport, columnOpen) };
 }

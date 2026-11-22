@@ -17,6 +17,10 @@ import { clamp01, easeInOutSine } from "./easing.js";
  * Deux vues : l'isométrique, libre (pan, zoom, rotation), et la **vue de dessus**, figée
  * et centrée (`togglePlanView()`, docs/design/rules.md § 8.1). La caméra garde l'état de
  * la vue libre pendant la vue de dessus : la quitter ramène exactement à ce qu'on avait.
+ *
+ * La vue libre reste **sur le plateau** (`constrain()`) : dézoomé au plus loin, le plateau
+ * entier tient dans la zone libre et ne se déplace plus ; zoomé, on le parcourt, sans
+ * jamais pouvoir en écarter le bord du bord de la zone libre.
  */
 
 const MIN_SCALE = 0.35;
@@ -61,6 +65,16 @@ export interface Framing {
 /** Sans panneau ni zoom : le centre du canevas, à l'échelle 1. */
 export const PLAIN_FRAMING: Framing = { scale: 1, insets: NO_INSETS };
 
+/**
+ * L'emprise du plateau, en cases : de quoi le borner en vue libre et le cadrer en vue de
+ * dessus. `relief` est la hauteur la plus haute, qui dépasse du plateau vers le haut.
+ */
+export interface Footprint {
+  readonly width: number;
+  readonly depth: number;
+  readonly relief: number;
+}
+
 export interface Camera {
   readonly scale: number;
   /** Décalage utilisateur par rapport au centre du canevas. */
@@ -72,8 +86,8 @@ export interface Camera {
   readonly pivot: Coord;
   /** Le cadrage de départ, gardé pour que le recentrage y revienne. */
   readonly home: Framing;
-  /** Le côté du plateau, en cases : de quoi le cadrer en entier en vue de dessus. */
-  readonly span: number;
+  /** L'emprise du plateau ; sans elle (aucune partie), la caméra n'est pas bornée. */
+  readonly footprint: Footprint | undefined;
   /** La vue visée : `true` en vue de dessus. */
   readonly planView: boolean;
   /**
@@ -112,23 +126,30 @@ export function pivotOf(board: Board): Coord {
   return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
 }
 
-/** Le côté du plateau en cases, le plus grand des deux : 9 pour une carte de 9 × 9. */
-export function spanOf(board: Board): number {
-  let span = 0;
+/** L'emprise d'un plateau : 9 × 9 cases pour une carte de 9 × 9, et sa plus haute colonne. */
+export function footprintOf(board: Board): Footprint {
   const tiles = [...board.allTiles()];
-  for (const axis of ["x", "y"] as const) {
+  const extentOf = (axis: "x" | "y"): number => {
     const values = tiles.map((tile) => tile.coord[axis]);
-    if (values.length > 0) span = Math.max(span, Math.max(...values) - Math.min(...values) + 1);
-  }
-  return Math.max(1, span);
+    if (values.length === 0) return 1;
+    return Math.max(...values) - Math.min(...values) + 1;
+  };
+  const relief = Math.max(0, ...tiles.map((tile) => tile.height));
+  return { width: extentOf("x"), depth: extentOf("y"), relief };
 }
 
-/** `span`, le côté du plateau en cases, ne sert qu'à cadrer la vue de dessus. */
+/** Le côté du plateau en cases, le plus grand des deux. */
+function spanOf(camera: Camera): number {
+  if (camera.footprint === undefined) return 1;
+  return Math.max(camera.footprint.width, camera.footprint.depth);
+}
+
+/** Sans `footprint`, la caméra n'est pas bornée et la vue de dessus cadre une seule case. */
 export function createCamera(
   pivot: Coord,
   viewport: ScreenPoint,
   home: Framing = PLAIN_FRAMING,
-  span = 1,
+  footprint?: Footprint,
 ): Camera {
   const camera = {
     scale: home.scale,
@@ -138,11 +159,11 @@ export function createCamera(
     viewport,
     pivot,
     home,
-    span,
+    footprint,
     planView: false,
     planProgress: 0,
   };
-  return { ...camera, pan: homePan(camera) };
+  return constrain({ ...camera, pan: homePan(camera) });
 }
 
 /**
@@ -180,7 +201,7 @@ function planScale(camera: Camera): number {
     camera.viewport.x - insets.left - insets.right,
     camera.viewport.y - insets.top - insets.bottom,
   );
-  const side = (camera.span * METRICS.tileWidth) / Math.SQRT2;
+  const side = (spanOf(camera) * METRICS.tileWidth) / Math.SQRT2;
   return clamp((free * PLAN_FILL) / side, MIN_SCALE, MAX_SCALE);
 }
 
@@ -254,8 +275,131 @@ function projectionAt(camera: Camera, flat: number, scale: number): IsoProjectio
   };
 }
 
-export function withViewport(camera: Camera, viewport: ScreenPoint): Camera {
-  return { ...camera, viewport };
+/**
+ * La fenêtre change de taille, ou l'ATH de place (la colonne repliée ou dépliée). Le
+ * plateau glisse d'autant que le milieu de la zone libre, pour y rester posé, puis
+ * reprend ses bornes.
+ */
+export function withViewport(
+  camera: Camera,
+  viewport: ScreenPoint,
+  home: Framing = camera.home,
+): Camera {
+  const before = freeArea(camera);
+  const after = freeArea({ ...camera, viewport, home });
+  const shift = {
+    x:
+      (after.left + after.right - viewport.x - (before.left + before.right - camera.viewport.x)) /
+      2,
+    y:
+      (after.top + after.bottom - viewport.y - (before.top + before.bottom - camera.viewport.y)) /
+      2,
+  };
+  return constrain({
+    ...camera,
+    viewport,
+    home,
+    pan: { x: camera.pan.x + shift.x, y: camera.pan.y + shift.y },
+  });
+}
+
+/** La zone que l'ATH laisse voir, en pixels de l'écran. */
+interface ScreenArea {
+  readonly left: number;
+  readonly right: number;
+  readonly top: number;
+  readonly bottom: number;
+}
+
+function freeArea(camera: Camera): ScreenArea {
+  const { insets } = camera.home;
+  return {
+    left: insets.left,
+    right: camera.viewport.x - insets.right,
+    top: insets.top,
+    bottom: camera.viewport.y - insets.bottom,
+  };
+}
+
+/**
+ * Les bords du plateau dans l'espace de projection, à une échelle donnée et à l'angle
+ * courant : les quatre coins de son emprise, au sol et au sommet du relief.
+ */
+function boardBounds(camera: Camera, footprint: Footprint, scale: number): ScreenArea {
+  const projection = projectionAt(camera, 0, scale);
+  const halfWidth = footprint.width / 2;
+  const halfDepth = footprint.depth / 2;
+  const points: ScreenPoint[] = [];
+  for (const dx of [-halfWidth, halfWidth]) {
+    for (const dy of [-halfDepth, halfDepth]) {
+      // Les coins de l'emprise, et non des centres de case : `project` vise un centre,
+      // d'où le demi-pas déjà compris dans `halfWidth` autour du pivot.
+      const corner = { x: camera.pivot.x + dx, y: camera.pivot.y + dy };
+      points.push(project(corner, 0, projection), project(corner, footprint.relief, projection));
+    }
+  }
+  return {
+    left: Math.min(...points.map((point) => point.x)),
+    right: Math.max(...points.map((point) => point.x)),
+    top: Math.min(...points.map((point) => point.y)),
+    bottom: Math.max(...points.map((point) => point.y)),
+  };
+}
+
+/**
+ * Le zoom le plus lointain : celui où le plateau entier tient dans la zone libre — sans
+ * descendre sous le cadrage de départ, qui reste toujours atteignable.
+ */
+function minScaleOf(camera: Camera): number {
+  if (camera.footprint === undefined) return MIN_SCALE;
+  const unit = boardBounds(camera, camera.footprint, 1);
+  const free = freeArea(camera);
+  const fit = Math.min(
+    (free.right - free.left) / (unit.right - unit.left),
+    (free.bottom - free.top) / (unit.bottom - unit.top),
+  );
+  return clamp(Math.min(fit, camera.home.scale), MIN_SCALE, MAX_SCALE);
+}
+
+/**
+ * Garde le plateau sous les yeux, axe par axe. S'il tient dans la zone libre, il en
+ * occupe le milieu et ne bouge plus : c'est le cas dézoomé au plus loin. Sinon, on le
+ * parcourt jusqu'à ce qu'un de ses bords touche le bord de la zone libre, comme une carte
+ * qu'on fait glisser sous une fenêtre.
+ */
+function constrain(camera: Camera): Camera {
+  if (camera.footprint === undefined) return camera;
+  const board = boardBounds(camera, camera.footprint, camera.scale);
+  const free = freeArea(camera);
+  const originX = clampAxis(
+    camera.viewport.x / 2 + camera.pan.x,
+    { from: board.left, to: board.right },
+    { from: free.left, to: free.right },
+  );
+  const originY = clampAxis(
+    camera.viewport.y / 2 + camera.pan.y,
+    { from: board.top, to: board.bottom },
+    { from: free.top, to: free.bottom },
+  );
+  const pan = { x: originX - camera.viewport.x / 2, y: originY - camera.viewport.y / 2 };
+  if (pan.x === camera.pan.x && pan.y === camera.pan.y) return camera;
+  return { ...camera, pan };
+}
+
+interface Span {
+  readonly from: number;
+  readonly to: number;
+}
+
+/**
+ * L'origine d'un axe, bornée : `board` est l'étendue du plateau autour de l'origine,
+ * `free` celle de la zone libre à l'écran.
+ */
+function clampAxis(origin: number, board: Span, free: Span): number {
+  const boardSize = board.to - board.from;
+  const freeSize = free.to - free.from;
+  if (boardSize <= freeSize) return (free.from + free.to) / 2 - (board.from + board.to) / 2;
+  return clamp(origin, free.to - board.to, free.from - board.from);
 }
 
 /**
@@ -265,31 +409,37 @@ export function withViewport(camera: Camera, viewport: ScreenPoint): Camera {
  */
 export function zoomAt(camera: Camera, point: ScreenPoint, factor: number): Camera {
   if (isLocked(camera)) return camera;
-  const scale = clamp(camera.scale * factor, MIN_SCALE, MAX_SCALE);
+  // Une fenêtre agrandie peut laisser l'échelle courante sous le plancher : dézoomer ne
+  // doit pas pour autant rapprocher le plateau.
+  const floor = Math.min(minScaleOf(camera), camera.scale);
+  const scale = clamp(camera.scale * factor, floor, MAX_SCALE);
   if (scale === camera.scale) return camera;
 
   const ratio = scale / camera.scale;
   const anchor = toProjectionSpace(camera, point);
-  return {
+  return constrain({
     ...camera,
     scale,
     pan: {
       x: camera.pan.x + anchor.x * (1 - ratio),
       y: camera.pan.y + anchor.y * (1 - ratio),
     },
-  };
+  });
 }
 
 export function panBy(camera: Camera, dx: number, dy: number): Camera {
   if (isLocked(camera)) return camera;
-  return { ...camera, pan: { x: camera.pan.x + dx, y: camera.pan.y + dy } };
+  return constrain({ ...camera, pan: { x: camera.pan.x + dx, y: camera.pan.y + dy } });
 }
 
-/** Rotation libre : la cible suit l'angle courant, aucune aimantation en cours. */
+/**
+ * Rotation libre : la cible suit l'angle courant, aucune aimantation en cours. Tourné, le
+ * plateau n'a plus la même étendue à l'écran : ses bornes suivent.
+ */
 export function rotateBy(camera: Camera, radians: number): Camera {
   if (isLocked(camera)) return camera;
   const rotation = camera.rotation + radians;
-  return { ...camera, rotation, targetRotation: rotation };
+  return constrain({ ...camera, rotation, targetRotation: rotation });
 }
 
 /** Aimante l'angle courant sur le quart de tour le plus proche. */
@@ -334,7 +484,7 @@ export function commandCamera(camera: Camera, command: CameraCommand): Camera {
     case "zoom-out":
       return zoomAt(camera, middle, 1 / BUTTON_ZOOM);
     case "recenter":
-      return { ...camera, scale: camera.home.scale, pan: homePan(camera) };
+      return constrain({ ...camera, scale: camera.home.scale, pan: homePan(camera) });
   }
 }
 
@@ -359,7 +509,7 @@ function settleRotation(camera: Camera, deltaMS: number): Camera {
     Math.min(1, deltaMS / SETTLE_MS),
   );
   if (Math.abs(camera.targetRotation - rotation) < SETTLE_EPSILON) {
-    return { ...camera, rotation: camera.targetRotation };
+    return constrain({ ...camera, rotation: camera.targetRotation });
   }
-  return { ...camera, rotation };
+  return constrain({ ...camera, rotation });
 }

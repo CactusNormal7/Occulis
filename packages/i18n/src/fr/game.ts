@@ -184,6 +184,7 @@ export const game: Messages["game"] = {
     watching: (friend) => `Vous regardez ${friend}`,
     resign: "Abandonner",
     leave: "Quitter",
+    column: { hide: "Masquer le panneau latéral", show: "Afficher le panneau latéral" },
     sheet: "Fiche de la pièce",
     noSelection: "Aucune pièce sélectionnée",
     hint: "Clic : sélectionner · clic droit : fiche d'une pièce",

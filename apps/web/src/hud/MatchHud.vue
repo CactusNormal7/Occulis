@@ -30,8 +30,14 @@ const props = defineProps<{
   spectators: number;
   /** La vue de dessus est active : la caméra est figée. */
   planView: boolean;
+  /** La colonne de droite (fiche et journal) est dépliée ; repliée, le plateau a la place. */
+  columnOpen: boolean;
 }>();
-const emit = defineEmits<{ leave: []; camera: [command: CameraCommand] }>();
+const emit = defineEmits<{
+  leave: [];
+  camera: [command: CameraCommand];
+  toggleColumn: [];
+}>();
 
 const messages = useMessages();
 /**
@@ -51,7 +57,7 @@ const viewName = computed(() =>
 </script>
 
 <template>
-  <div class="hud">
+  <div class="hud" :class="{ 'hud--column-closed': !columnOpen }">
     <header class="hud-duel">
       <PlayerBand :band="model.self" side="self" />
       <TurnPlate :turn="model.turn" />
@@ -67,9 +73,11 @@ const viewName = computed(() =>
       :spectating="model.spectating"
       :spectators="spectators"
       :watched-name="model.self.name"
+      :column-open="columnOpen"
       @leave="emit('leave')"
+      @toggle-column="emit('toggleColumn')"
     />
-    <aside class="hud-column">
+    <aside v-show="columnOpen" id="hud-column" class="hud-column">
       <PieceSheet :sheet="model.sheet" />
       <MatchJournal :lines="model.journal" :draw-meter="model.drawMeter" />
     </aside>
