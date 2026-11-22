@@ -6,14 +6,17 @@ import { createGame } from "../state.js";
 import { deployTeams, teamForSide, validateTeam } from "../team.js";
 import { DEFAULT_SCENARIO, scenarioFor } from "./index.js";
 
-const breach = scenarioFor("breach-1");
-const board = breach.board();
-const deployment = breach.deployment as NonNullable<typeof breach.deployment>;
+it("fait de breach-2 la carte des nouvelles parties", () => {
+  expect(DEFAULT_SCENARIO).toBe("breach-2");
+});
 
-describe("breach-1", () => {
-  it("est la carte des nouvelles parties", () => {
-    expect(DEFAULT_SCENARIO).toBe("breach-1");
-  });
+describe.each([
+  { name: "breach-1", size: 9 },
+  { name: "breach-2", size: 11 },
+])("$name", ({ name, size }) => {
+  const breach = scenarioFor(name);
+  const board = breach.board();
+  const deployment = breach.deployment as NonNullable<typeof breach.deployment>;
 
   it("donne à chaque camp une zone franchissable plus large que son équipe", () => {
     for (const player of ["A", "B"] as const) {
@@ -25,9 +28,10 @@ describe("breach-1", () => {
   });
 
   it("est symétrique par rapport à son centre, cases manquantes comprises", () => {
-    for (let y = 0; y < 9; y++) {
-      for (let x = 0; x < 9; x++) {
-        expect(board.heightAt({ x, y })).toBe(board.heightAt({ x: 8 - x, y: 8 - y }));
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const opposite = { x: size - 1 - x, y: size - 1 - y };
+        expect(board.heightAt({ x, y })).toBe(board.heightAt(opposite));
       }
     }
   });
@@ -56,5 +60,16 @@ describe("breach-1", () => {
     expect(teamForSide(deployment, deployment.defaultTeams.A, "B")).toEqual(
       deployment.defaultTeams.B,
     );
+  });
+});
+
+describe("breach-2", () => {
+  const board = scenarioFor("breach-2").board();
+
+  it("mesure deux cases de plus que breach-1 dans chaque sens, sans relief plus haut", () => {
+    const tiles = [...board.allTiles()];
+    expect(Math.max(...tiles.map((tile) => tile.coord.x)) + 1).toBe(11);
+    expect(Math.max(...tiles.map((tile) => tile.coord.y)) + 1).toBe(11);
+    expect(Math.max(...tiles.map((tile) => tile.height))).toBeLessThan(3);
   });
 });
