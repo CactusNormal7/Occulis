@@ -10,6 +10,7 @@ import type {
 import type { Messages } from "@occulis/i18n";
 import type { PieceSheet } from "../game/inspection.js";
 import type { Selection } from "../game/selection.js";
+import type { TrapEvent } from "../game/trap-events.js";
 import type { MatchPlayers } from "../net/session.js";
 import { describeSheet } from "../ui/piece-info-model.js";
 
@@ -349,6 +350,24 @@ export function describeEntry(
     text: entry.trapped === undefined ? taking : t.trapped(taking, kindName(m, entry.trapped)),
     hidden: false,
   };
+}
+
+/**
+ * Le bandeau d'un piège déclenché : sans lui, la pièce disparaît du plateau sans que le
+ * joueur sache pourquoi. `viewer` est le camp affiché ; `undefined` si rien n'a sauté.
+ */
+export function trapNotice(
+  m: HudMessages,
+  events: readonly TrapEvent[],
+  viewer: PlayerId,
+): string | undefined {
+  const sprung = events.find((event) => event.kind === "sprung");
+  if (sprung?.kind !== "sprung") return undefined;
+  const piece = kindName(m, sprung.victim.kind);
+  const at = formatCoord(sprung.coord);
+  return sprung.victim.owner === viewer
+    ? m.game.hud.caughtOwn(piece, at)
+    : m.game.hud.caughtEnemy(piece, at);
 }
 
 // ── Nulle sans prise ────────────────────────────────────────────────────────────────

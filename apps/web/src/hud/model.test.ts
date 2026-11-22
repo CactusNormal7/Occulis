@@ -11,7 +11,13 @@ import {
 import { messagesFor } from "@occulis/i18n";
 import type { PieceSheet } from "../game/inspection.js";
 import { aimAbility, selectionFor } from "../game/selection.js";
-import { DRAW_WARNING_MARGIN, type HudInput, describeEntry, hudModel } from "./model.js";
+import {
+  DRAW_WARNING_MARGIN,
+  type HudInput,
+  describeEntry,
+  hudModel,
+  trapNotice,
+} from "./model.js";
 
 const m = messagesFor("fr");
 
@@ -305,5 +311,24 @@ describe("describeEntry : piège", () => {
   it("dit la pièce prise au piège", () => {
     const entry = { ...base, kind: "pawn", to: { x: 3, y: 1 }, trapped: "pawn" };
     expect(describeEntry(m, entry).text).toBe("Pion ? → 3,1, Pion pris au piège");
+  });
+});
+
+describe("trapNotice", () => {
+  const sprung = {
+    kind: "sprung" as const,
+    coord: { x: 3, y: 1 },
+    victim: { id: "b-pawn", kind: "pawn", owner: "B" as const, from: { x: 4, y: 1 } },
+  };
+
+  it("dit au poseur ce que son piège a pris, et à l'autre ce qu'il a perdu", () => {
+    expect(trapNotice(m, [sprung], "A")).toBe("Votre piège en 3,1 a pris : Pion");
+    expect(trapNotice(m, [sprung], "B")).toBe("Pris au piège en 3,1 : Pion");
+  });
+
+  it("se tait quand aucun piège n'a sauté", () => {
+    expect(trapNotice(m, [{ kind: "laid", coord: { x: 3, y: 1 }, owner: "A" }], "A")).toBe(
+      undefined,
+    );
   });
 });

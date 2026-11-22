@@ -221,6 +221,8 @@ export const game = {
     cancelTrap: "Back to moves",
     trapHint: "Click a highlighted square to lay the trap.",
     trapActive: "Its trap is still set: no other one until it springs.",
+    caughtOwn: (piece: string, at: string) => `Caught in a trap on ${at}: ${piece}`,
+    caughtEnemy: (piece: string, at: string) => `Your trap on ${at} caught: ${piece}`,
     drawNear: "Draw near",
     drawCount: (count: number, limit: number) => `${count} / ${limit}`,
     drawRule: (limit: number) => `Draw after ${limit} moves without a capture.`,

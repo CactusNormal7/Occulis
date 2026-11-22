@@ -13,6 +13,8 @@ import { type PieceSheet, sameSheet } from "../game/inspection.js";
 import type { Movement } from "../game/movement-diff.js";
 import { OnlineMatch } from "../game/online-match.js";
 import { type Selection, aimAbility, resolveClick } from "../game/selection.js";
+import { trapEventsBetween } from "../game/trap-events.js";
+import { trapNotice } from "../hud/model.js";
 import { messages } from "../locale/current.js";
 import type { MatchChannel, MatchHandlers } from "../net/match-channel.js";
 import type { MatchPlayers } from "../net/session.js";
@@ -496,7 +498,14 @@ export class MatchController {
         this.effects.go({ kind: "deploying" });
       },
       onView: (incoming) => {
+        const before = this.matchOnTable?.viewFor(this.matchOnTable.player);
         this.adopt(this.matchOnTable?.receive(incoming));
+        // Une pièce prise au piège disparaît du plateau : le bandeau dit pourquoi.
+        const caught =
+          before === undefined
+            ? undefined
+            : trapNotice(messages(), trapEventsBetween(before, incoming), incoming.player);
+        if (caught !== undefined) this.tell({ text: caught, tone: "info" });
         // L'échec se dit dans l'ATH (`hud/model.ts`) : il peut venir d'une pièce que le
         // joueur ne voit pas, et sans alerte des coups disparaîtraient de ses choix.
         if (incoming.outcome !== null) {

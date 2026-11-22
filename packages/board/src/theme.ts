@@ -269,4 +269,13 @@ export const MOTION_FX = {
   /** La sélection : la pièce choisie s'élève, et une colonne de lumière la désigne. */
   liftMs: 180,
   lift: 3,
+  /** La pose d'un piège : son sceau tombe sur la case, des éclats s'y rassemblent. */
+  trapLayMs: 640,
+  /** L'adversaire a exercé sa capacité sous vos yeux : deux ondes autour de la pièce. */
+  trapGlimpseMs: 760,
+  /**
+   * Le déclenchement, une fois la pièce arrivée sur la case : les mâchoires se referment
+   * (premier tiers), la pièce tremble et se dissout, puis la cicatrice du piège s'efface.
+   */
+  trapSnapMs: 1400,
 } as const;

@@ -216,6 +216,8 @@ export const game: Messages["game"] = {
     cancelTrap: "Revenir aux déplacements",
     trapHint: "Cliquez une case marquée pour y poser le piège.",
     trapActive: "Son piège est encore posé : pas d'autre avant qu'il se déclenche.",
+    caughtOwn: (piece, at) => `Pris au piège en ${at} : ${piece}`,
+    caughtEnemy: (piece, at) => `Votre piège en ${at} a pris : ${piece}`,
     drawNear: "Nulle proche",
     drawCount: (count, limit) => `${count} / ${limit}`,
     drawRule: (limit) => `Nulle à ${limit} actions sans prise.`,

@@ -27,13 +27,13 @@ function lerp(range: readonly [number, number], t: number): number {
   return range[0] + (range[1] - range[0]) * t;
 }
 
-function topOf(board: Board, coord: Coord, proj: IsoProjection): Quad | undefined {
+export function topOf(board: Board, coord: Coord, proj: IsoProjection): Quad | undefined {
   const tile = board.getTile(coord);
   return tile === undefined ? undefined : tileQuad(tile.coord, tile.height, proj);
 }
 
 /** Le quadrilatère `quad` mis à l'échelle `k` autour de son centre. */
-function scaled(quad: Quad, k: number): number[] {
+export function scaled(quad: Quad, k: number): number[] {
   const cx = (quad[0].x + quad[2].x) / 2;
   const cy = (quad[0].y + quad[2].y) / 2;
   return quad.flatMap((p) => [cx + (p.x - cx) * k, cy + (p.y - cy) * k]);
