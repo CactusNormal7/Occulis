@@ -17,10 +17,12 @@ l'artifact » plus bas).
   écrit `dist/index.js` et ses déclarations (`vite-plugin-dts`, les `.d.ts` des composants `.vue`
   compris), et **`dist/occulis-ui.iife.js`**, le bundle d'une page de Claude Design : il pose
   `window.OcculisUI` et lit Vue sur `window.Vue` (Vue reste hors du bundle, `@occulis/i18n` dedans).
-- **Le convertisseur et les scripts de `.ds-sync/` ont été écrits pour React** (`@types/react`, JSX, rendu
-  par `ReactDOM`) : ils sont à refaire pour Vue avant le prochain re-sync — monter un aperçu par
-  `createApp(Story).mount()` avec `UiRoot` pour racine, sous Vue chargé par `<script>` (`vue.global.prod.js`,
-  même version que `packages/ui`). Rien n'a encore été envoyé depuis la migration.
+- **Les scripts de la conversion Vue sont dans `.design-sync/scripts/`** (versionnés, 2026-11-23) :
+  `build-previews.mjs` compile les aperçus `.vue` en `preview.html` (esbuild et `@vue/compiler-sfc`,
+  ceux de Vite ; `createApp` sous `UiRoot` et `ToastProvider`, Vue et la charte lus sur `window`),
+  `build-dts.mjs` écrit `index.d.ts`, `build-readmes.mjs` met les fiches à jour. Les anciens scripts
+  React de `.ds-sync/` (convertisseur, `package-validate.mjs`, `package-capture.mjs`) ne servent plus ;
+  les paragraphes Playwright et WSL ci-dessous ne valent que pour eux.
 - Scripts recopiés dans `.ds-sync/` avec leurs dépendances (`esbuild ts-morph playwright`).
   Depuis le 2026-10-15 : **Playwright 1.64.0**, Chromium révision 1248, installé par
   `cd .ds-sync && npx playwright install chromium` (le cache 1234 avait disparu du poste). Un autre cache
@@ -91,8 +93,7 @@ l'artifact » plus bas).
   coins crantés, trois matières, trois thèmes, composants des parcours de compte, pas d'espacement 7. Les
   deux doivent rester identiques, la section « Not synced » comprise.
 - **`conventions.md` a été passé en Vue le 2026-11-17** (gabarit au lieu de JSX, `class`, `full-page`,
-  emplacements, `v-model`) : le `README.md` de l'artifact en est resté à React. Les remettre identiques au
-  prochain envoi.
+  emplacements, `v-model`) ; le `README.md` de l'artifact l'a rejoint le 2026-11-23 (version 15).
 - Les tokens sont générés depuis `packages/ui/src/tokens.ts` ; `tokens.test.ts` garde `generated/tokens.css`
   synchrone, mais seul le build met `dist/styles.css` à jour — reconstruire avant tout re-sync.
 - Le rendu n'a été vérifié qu'en Chromium 1234 puis 1228 (headless shell). Tiny5 est servie avec la charte
@@ -101,23 +102,35 @@ l'artifact » plus bas).
 
 ## Re-sync vers l'artifact
 
-Dernier envoi : 2026-10-30 (version 12), `WorkInProgress` ajouté. Le fichier `project/components/bundle.css`
-n'est **pas** `dist/styles.css` : ses tokens viennent de `tokens.json`. Il garde son bloc `:root` de tête (polices,
-mouvement), suivi de `styles.css` avec `wip.css` intégré. Un token ajouté à `tokens.ts` s'ajoute donc aussi à
-`project/tokens.json` (ici `occ-caution`, `occ-caution-ground`). L'artifact refuse une publication sans lecture
-préalable de la version courante (`action: "read"` sur l'URL seule). `SkeletonScreen` est dans le bundle, sans fiche.
+Dernier envoi : 2026-11-23 (version 15), **passage de la charte en Vue** : `bundle.js`, Vue en
+bibliothèque, les 70 aperçus, les 70 fiches, `index.d.ts`, le README et l'index. `bundle.css` et
+`tokens.json` n'ont pas bougé (ni `styles.css` ni `tokens.ts` depuis la version 12). Le fichier
+`project/components/bundle.css` n'est **pas** `dist/styles.css` : ses tokens viennent de `tokens.json`.
+Il garde son bloc `:root` de tête (polices, mouvement), suivi de `styles.css` avec `wip.css` intégré. Un
+token ajouté à `tokens.ts` s'ajoute donc aussi à `project/tokens.json`. L'artifact refuse une
+publication sans lecture préalable de la version courante (`action: "read"`). `SkeletonScreen` est
+dans le bundle, sans fiche.
 
-Fait ainsi le 2026-10-23 (version 7 de l'artifact) :
+Fait ainsi le 2026-11-23, dans un dossier de travail `<dir>` hors du dépôt :
 
 - Comparer le dépôt au dernier commit synchronisé (`lastChange.via` de `project/design-system.json`) :
   `git diff --stat <commit> -- packages/ui/src .design-sync/previews .design-sync/docs`.
-- **`project/components/bundle.js`** : jusqu'à la version 12, un IIFE React (`window.React`) reconstruit à la
-  main avec esbuild. **Depuis la migration vers Vue, c'est `packages/ui/dist/occulis-ui.iife.js`**, tel que le
-  build l'écrit, précédé de l'en-tête `/* @ds-bundle: … */` de l'ancien bundle ; la page de l'artifact doit
-  charger Vue (`window.Vue`) avant lui, au lieu de React. Vérifier que les exports sont les mêmes que l'ancien et
-  qu'aucun `</script` n'y figure.
-- `project/components/bundle.css` : ne change que si `styles.css` ou les tokens changent.
-- `project/components/index.d.ts` part en `text/plain` (l'extension `.ts` n'est pas servie) ; les
-  `components/<Nom>/README.md` recopient les commentaires du composant, à corriger avec lui.
-- Un seul envoi avec l'index en dernier, `lastChange` mis à jour ; relire juste avant chaque fichier remplacé,
-  la page de l'artifact pouvant enregistrer elle-même une version.
+- `pnpm --filter @occulis/ui build`, puis lire sur l'artifact chaque fichier à remplacer (dans
+  `<lu>`, par `action: "read"` et `out_dir`).
+- **`project/components/bundle.js`** : `packages/ui/dist/occulis-ui.iife.js` tel quel, précédé de la
+  ligne `/* @ds-bundle: … */` de l'ancien bundle (y reporter un composant ajouté). Vérifier qu'aucun
+  `</script` ni `<!--` n'y figure.
+- **`project/components/lib/vue.global.prod.js`** : celui de `packages/ui/node_modules/vue/dist`, de
+  la version de `packages/ui`. L'index le déclare dans `libraries`
+  (`{"name":"vue","version":…,"global":"Vue","file":"components/lib/vue.global.prod.js"}`) : la page
+  le charge avant `bundle.js`. Le changer de version ici et dans l'index ensemble.
+- Aperçus : `node .design-sync/scripts/build-previews.mjs <dir> .design-sync/scripts/heights.json`. L'ordre des
+  aperçus et la catégorie viennent de `docs/<Composant>.md`. Les hauteurs (`heights.json`) ont été
+  mesurées en rendant chaque aperçu (Playwright, hauteur de `.pv` + 8) ; `Dialog` garde 580, la
+  fenêtre vivant dans la couche supérieure. Une carte trop basse grandit d'elle-même.
+- `node .design-sync/scripts/build-dts.mjs <dir>/project/components/index.d.ts`, envoyé en
+  `text/plain` (l'extension `.ts` n'est pas servie).
+- `node .design-sync/scripts/build-readmes.mjs <lu> <dir>`.
+- `project/README.md` : `conventions.md` sans sa ligne de titre.
+- Un seul envoi (`root` = `<dir>`, l'index en `file_path`, le reste en `files`), `lastChange` mis à
+  jour dans l'index relu juste avant.
