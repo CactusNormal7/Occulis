@@ -7,6 +7,8 @@ ciblent et ne sont pas de la documentation de référence.
   vérifier avant toute reprise.
 - [Revue globale — 2026-10-20](2026-10-20-review-globale.md) — historique, constats à
   rapprocher de l'état courant.
+- [Audit de performance — 2026-11-23](2026-11-23-audit-performance.md) — moteur, serveur,
+  client et site ; constats mesurés et pistes classées.
 
 Pour une décision actuelle, lire `docs/design.md` ou `docs/architecture.md`; pour le
 fonctionnement actuel, lire `docs/technical/`.
