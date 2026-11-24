@@ -183,12 +183,11 @@ export const admin: Messages["admin"] = {
     banTitle: (name) => `Suspendre ${name}`,
     ban: "Suspendre",
     banned: (name) => `${name} est suspendu.`,
-    banNote:
-      "Ses sessions sont fermées tout de suite, et il ne peut plus en ouvrir jusqu'à la levée.",
+    banNote: "Le déconnecte tout de suite, et jusqu'à la levée.",
     reason: "motif (facultatif)",
     days: "durée en jours",
     daysPlaceholder: "vide : définitive",
-    daysHint: "Un nombre de jours, ou rien pour une suspension définitive.",
+    daysHint: "Un nombre de jours, ou vide.",
     deleteTitle: (name) => `Supprimer ${name}`,
     deleteConfirm: "Supprimer définitivement",
     deleteNote:
