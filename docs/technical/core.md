@@ -31,7 +31,7 @@ pieces/profiles.ts ──────────► pieces/piece-type.ts ◄─
                                    │        ▲
 pieces/piece.ts ──────────────► state.ts    └── pieces/configurable-piece-type.ts
 pieces/ruleset.ts                  │
-                                   ├──► actions.ts
+                                   ├──► endgame.ts ──► actions.ts
                                    └──► fog.ts
 pieces/ruleset.ts ──► team.ts ──► scenarios/  (zones et équipes par défaut)
                         └──────► rulesets/   (registre des versions)
@@ -53,14 +53,17 @@ pieces/ruleset.ts ──► team.ts ──► scenarios/  (zones et équipes par
 | `packages/core/src/pieces/roster/scout.ts`            | `Scout` — **provisoire**                                                                                                         |
 | `packages/core/src/pieces/roster/commander.ts`        | `Commander` — **provisoire**                                                                                                     |
 | `packages/core/src/pieces/roster/pawn.ts`             | `Pawn` — **provisoire**                                                                                                          |
-| `packages/core/src/pieces/roster/index.ts`            | Assemble le roster : `provisionalRuleset()`, `provisionalRulesetV0()`, `PROVISIONAL_TEAM`                                        |
+| `packages/core/src/pieces/roster/legacy.ts`           | Les chiffres d'avant `provisional-3`, figés en données pour les anciennes parties                                                |
+| `packages/core/src/pieces/roster/index.ts`            | Assemble le roster : `provisionalRuleset()`, `provisionalRulesetV2()`, `V1()`, `V0()`, `PROVISIONAL_TEAM`(`_V1`)                 |
 | `packages/core/src/team.ts`                           | Le déploiement : `TeamEntry`, `Deployment`, `validateTeam()`, `deployTeams()`, `translateTeam()`, `teamForSide()`, `parseTeam()` |
 | `packages/core/src/rulesets/index.ts`                 | Le registre des rulesets par version : `rulesetFor()`, `CURRENT_RULESET_VERSION`                                                 |
 | `packages/core/src/los.ts`                            | Raycast et ligne de vue — **géométrie seule**                                                                                    |
-| `packages/core/src/movement.ts`                       | Cases atteignables, portée de mêlée                                                                                              |
+| `packages/core/src/movement.ts`                       | Cases atteignables, prise à l'arrivée comprise                                                                                   |
 | `packages/core/src/state.ts`                          | État de partie et accesseurs                                                                                                     |
-| `packages/core/src/actions.ts`                        | Coups légaux, validation, application, fin de partie                                                                             |
+| `packages/core/src/endgame.ts`                        | Échec, mat, pat, nulles anti-blocage, projection d'un coup                                                                       |
+| `packages/core/src/actions.ts`                        | Coups légaux, validation, application                                                                                            |
 | `packages/core/src/fog.ts`                            | Mémoire du joueur et vue transmissible                                                                                           |
+| `packages/core/src/journal.ts`                        | `JournalEntry`, `journalEntryFor()` : un coup tel qu'un joueur l'a vu                                                            |
 | `packages/core/src/result.ts`                         | `Result<T, E>`                                                                                                                   |
 | `packages/core/src/testing.ts`                        | Fabriques de scénarios — **tests uniquement, non exporté** par `index.ts`                                                        |
 
@@ -196,8 +199,9 @@ interface VisionProfile {
 Elles vivent dans leur propre module pour que `movement.ts` et `los.ts`, qui les
 consomment, n'aient pas à connaître la hiérarchie de classes qui les déclare.
 
-`canClimb` est déclaré par type — grimper comme capacité générique ou spécifique n'est pas
-tranché (`docs/design.md` point ouvert 7).
+`canClimb` est déclaré par type. Grimper est une capacité de toutes les pièces depuis le
+2026-10-27 (`docs/design.md` point ouvert 7, tranché) : les trois types du roster provisoire déclarent
+`canClimb: true`.
 
 ### `pieces/piece-type.ts` — le comportement
 
@@ -209,11 +213,12 @@ ruleset**, jamais une par pièce en jeu.
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `kind`, `movement`, `vision` | Abstraits : chaque type les déclare                                                                                                                           |
 | `role`                       | Accesseur : `commander`, `special` (par défaut) ou `pawn` — la place du type dans une équipe, sur laquelle portent les quotas (`TeamRules`)                   |
-| `isCommander`                | Accesseur, dérivé de `role`. La prise d'une pièce maîtresse finira la partie quand la prise reviendra (point ouvert 13)                                       |
-| `destinationsFrom()`         | Cases atteignables en un tour ; délègue à `reachableTiles()`                                                                                                  |
+| `isCommander`                | Accesseur, dérivé de `role`. C'est sur le roi que portent l'échec et le mat (`endgame.ts`)                                                                    |
+| `destinationsFrom()`         | Cases **libres** atteignables en un tour ; délègue à `reachableTiles()`                                                                                       |
+| `capturesFrom()`             | Cases adverses où la pièce prend. Par défaut : là où son déplacement peut s'achever. **Le** point d'extension d'une pièce qui prend autrement                 |
+| `threatens()`                | Menace-t-elle une case ? Dérivé de `capturesFrom()` ; c'est ce que lit la détection d'échec                                                                   |
 | `canSee()`                   | Voit-elle `to` depuis `from` ? Portée d'abord, occultation ensuite                                                                                            |
 | `fieldOfView()`              | Champ de vision complet, **dérivé de `canSee()`** via `collectVisible()`, plus la case de chaque pièce qui coupe un regard dans la portée (`blockingPiece()`) |
-| `canStrike()`                | Peut-elle frapper `to` ? Adjacence du type, puis règle de dénivelé                                                                                            |
 | `visionRangeCovers()`        | Protégée. Isolée pour qu'une redéfinition de `canSee()` puisse réutiliser la seule portée                                                                     |
 
 **C'est la pièce qui définit ce qu'elle voit**, et non un appelant qui recalculerait un
@@ -240,36 +245,52 @@ propre fichier.
 
 ### `pieces/ruleset.ts` — la table d'une partie
 
-| Méthode                  | Rôle                                                                                                        |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `Ruleset` (constructeur) | Indexe des `PieceType` par leur `kind`, avec la composition d'équipe (`TeamRules`) ou `null`                |
-| `team`                   | `TeamRules` — combien de pièces de chaque rôle, **exactement** — ou `null` pour un ruleset sans déploiement |
-| `get()`                  | Le type ; **lève** si le `kind` est inconnu                                                                 |
-| `has()`                  | Le `kind` est-il connu ?                                                                                    |
-| `typeOf()`               | Raccourci de loin le plus fréquent : d'une pièce en jeu vers ses règles                                     |
-| `kinds()`                | Les types déclarés                                                                                          |
-| `kindsOf()`              | Les types d'un rôle : ce qu'un joueur peut choisir pour un emplacement                                      |
+| Méthode                  | Rôle                                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `Ruleset` (constructeur) | Indexe des `PieceType` par leur `kind`, avec la composition d'équipe (`TeamRules`) ou `null`                  |
+| `team`                   | `TeamRules` — combien de pièces de chaque rôle, **exactement** — ou `null` pour un ruleset sans déploiement   |
+| `rules`                  | `EngineRules` — prise, échec, nulles. `MOVE_ONLY_RULES` par défaut, `STRICT_CHESS_RULES` pour `provisional-3` |
+| `get()`                  | Le type ; **lève** si le `kind` est inconnu                                                                   |
+| `has()`                  | Le `kind` est-il connu ?                                                                                      |
+| `typeOf()`               | Raccourci de loin le plus fréquent : d'une pièce en jeu vers ses règles                                       |
+| `kinds()`                | Les types déclarés                                                                                            |
+| `kindsOf()`              | Les types d'un rôle : ce qu'un joueur peut choisir pour un emplacement                                        |
 
 Les règles sont versionnées par partie ([docs/architecture.md](../architecture.md#invariants)). Un `Ruleset` est
 construit une fois au démarrage et ne change plus, ce qui suppose qu'il **ne détient aucun
 état**.
 
+**Les règles du moteur sont dans le ruleset, pas dans `actions.ts`.** `EngineRules` dit si
+une pièce prend (`capture`), si un coup qui expose son roi est illégal et si l'absence de
+coup termine la partie (`check`, qui exige `capture`), et les seuils des nulles (`draws` :
+`repetition` 3, `withoutCapture` 60, ou `null`). Une partie se rejoue depuis son log avec
+**ses** règles : les parties `provisional-0..2` se rejouent donc sans prise ni mat,
+indéfiniment, sans qu'aucun log n'ait à être vidé.
+
 ### `pieces/roster/` — le roster provisoire
 
 **Une classe par fichier**, assemblées par `roster/index.ts`.
 
-| Fichier               | Classe      | Caractéristiques, déclarées dans la classe                                                                                                                                                                                 |
-| --------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `roster/scout.ts`     | `Scout`     | 6 pas, vision 20, octile, grimpe                                                                                                                                                                                           |
-| `roster/commander.ts` | `Commander` | 3 pas, vision 14, octile, grimpe ; rôle `commander`                                                                                                                                                                        |
-| `roster/pawn.ts`      | `Pawn`      | 1 pas, vision 6, octile, grimpe ; rôle `pawn`                                                                                                                                                                              |
-| `roster/index.ts`     | —           | `provisionalRuleset()` : maîtresse, éclaireur, pion et `PROVISIONAL_TEAM` (1 maîtresse, 3 à capacité, 4 pions) ; `provisionalRulesetV0()` : éclaireur et maîtresse sans composition, le roster des parties `provisional-0` |
+| Fichier               | Classe      | Caractéristiques, déclarées dans la classe                                                                                  |
+| --------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `roster/scout.ts`     | `Scout`     | 3 pas, vision 20, octile, grimpe                                                                                            |
+| `roster/commander.ts` | `Commander` | 1 pas, vision 14, octile, grimpe ; rôle `commander`                                                                         |
+| `roster/pawn.ts`      | `Pawn`      | 1 pas, vision 6, octile, grimpe ; rôle `pawn`                                                                               |
+| `roster/trapper.ts`   | `Trapper`   | 2 pas, vision 8, octile, grimpe ; capacité `trap` (`provisional-4`)                                                         |
+| `roster/legacy.ts`    | —           | Roi 3 pas, éclaireur 6, pion 1 : les chiffres d'avant `provisional-3`, en `ConfigurablePieceType`                           |
+| `roster/index.ts`     | —           | `provisionalRuleset()` (`provisional-4` : roster courant, prise et échec), `provisionalRulesetV3()`, `V2()`, `V1()`, `V0()` |
 
-**La composition 1 + 3 + 4 et le profil du pion sont des décisions du porteur du projet** ;
-les types eux-mêmes restent provisoires. Les trois pièces à capacité peuvent être du même
-type — il n'en existe qu'un, l'éclaireur.
+**Les portées ont été resserrées le 2026-11-16** pour que le mat soit constructible : avec
+un roi à trois pas et un éclaireur à six, le roi était en échec presque en permanence et
+fuyait toute menace. Les classes portent les chiffres courants ; les anciens sont figés en
+données dans `legacy.ts`, que plus rien ne doit faire évoluer, parce que les parties
+`provisional-0..2` se rejouent avec eux.
 
-**Les portées sont volontairement généreuses.** Les cartes de démonstration font au plus
+**La composition 1 + 3 + 2 (depuis le 2026-10-27, avant 1 + 3 + 4) et le profil du pion sont des décisions du porteur du projet** ;
+les types eux-mêmes restent provisoires. Les trois pièces à capacité se choisissent parmi
+l'éclaireur et le trappeur, doublons permis.
+
+**Les visions sont volontairement généreuses.** Les cartes de démonstration font au plus
 une dizaine de cases de côté : à ces portées, **seule l'occultation limite la vue**. C'est
 délibéré — cela rend la ligne de vue et le déplacement observables sans que des portées
 serrées ne masquent le comportement qu'on cherche à vérifier. Ce n'est pas un équilibrage.
@@ -283,7 +304,7 @@ Corollaire pour les tests : une vérification de _règle_ ne doit jamais s'appuy
 valeurs, sous peine de casser au premier réglage. `piece-type.test.ts` exerce donc le
 comportement sur des types construits pour le test ; `roster/roster.test.ts` ne vérifie que
 des propriétés qui tiennent quelles que soient les valeurs (l'éclaireur voit plus loin que
-la pièce maîtresse, par exemple).
+le roi, par exemple).
 
 Le principe « aucun roster dans `core` » est donc infléchi, et l'arbitrage est consigné
 dans `docs/implementation-notes.md` (point 12) : le comportement d'une pièce est de la
@@ -295,7 +316,7 @@ puisse se spécialiser sans que TypeScript ne fige la valeur de la classe de bas
 
 `Piece` ne porte pas sa hauteur : elle se dérive de `board.heightAt(piece.coord)`. Aucun
 type de `pieces/` n'a de champ visuel — toute correspondance type → forme appartient au
-rendu (`apps/web/src/render/pixi/pieces.ts`). Conformément à `docs/design.md`, la différenciation
+rendu (`packages/board/src/glyphs.ts`). Conformément à `docs/design.md`, la différenciation
 passe par la capacité et le mouvement, **jamais par des points de vie**.
 
 ---
@@ -398,24 +419,20 @@ interface MoveOption {
   coord: Coord;
   cost: number;
   kind: MoveKind;
+  capture: boolean;
 }
 ```
 
-| Fonction           | Rôle                                                                   |
-| ------------------ | ---------------------------------------------------------------------- |
-| `reachableTiles()` | Cases atteignables depuis une case, avec coût et nature du déplacement |
-| `canMeleeReach()`  | La règle de dénivelé en mêlée. **Ne teste pas l'adjacence**            |
+`reachableTiles(board, from, profile, occupied, capturable)` rend les cases atteignables,
+avec coût et nature du déplacement. `capturable` désigne, parmi les cases occupées, celles
+où le déplacement **peut s'achever** : une prise est un déplacement (`docs/design/rules.md`
+3.1), elle suit donc exactement les mêmes règles de hauteur, et on s'y arrête — une pièce
+prise ne se traverse pas dans le même coup. `MoveOption.capture` le signale.
 
-`reachableTiles()` est appelée à travers `PieceType.destinationsFrom()`, qui y ajoute le
-profil du type. `canMeleeReach()` l'est à travers `PieceType.canStrike()` — **plus aucun
-appelant en jeu** depuis le retrait de la capture (`docs/design.md` section 3.1) : les deux
-sont conservées, avec leurs tests, parce qu'elles encodent une règle actée de la section
-5.3 qui reviendra avec la prise.
-
-`occupied` interdit à la fois la **traversée** d'une case tenue et l'**arrivée** dessus,
-sans distinction de camp. C'est ce seul mécanisme qui empêche d'aller sur la case d'une
-pièce adverse ; `actions.ts` en retire au préalable la case de la pièce qui bouge, qu'elle
-libère en partant.
+Elle est appelée à travers `PieceType.destinationsFrom()` (sans `capturable`) et
+`PieceType.capturesFrom()` (avec les cases adverses). L'ancienne mêlée par adjacence
+(`canMeleeReach()`, `canStrike()`) est supprimée : elle ne faisait plus foi depuis le
+2026-10-27.
 
 ### Les règles de verticalité (`docs/design.md` section 5.3)
 
@@ -431,9 +448,6 @@ libère en partant.
 Le paramètre `occupied` porte les cases tenues par une pièce : elles bloquent le passage,
 et pas seulement l'arrivée.
 
-`canMeleeReach()` applique la même asymétrie : on frappe librement vers le bas, d'un seul
-niveau vers le haut (`toHeight - fromHeight <= 1`).
-
 ---
 
 ## `state.ts` — l'état de partie
@@ -443,6 +457,7 @@ interface GameState {
   board: Board;
   ruleset: Ruleset;
   pieces: ReadonlyMap<PieceId, Piece>;
+  traps: readonly Trap[]; // les pièges en jeu, des deux camps (abilities/trap.ts)
   activePlayer: PlayerId;
   turn: number; // incrémenté à chaque action
   outcome: Outcome | null;
@@ -452,34 +467,42 @@ interface GameState {
 interface ActionRecord {
   player: PlayerId;
   action: Action;
+  captured?: Piece; // la pièce prise à l'arrivée
+  trapped?: Piece; // la pièce jouée, prise par un piège adverse
 }
 
-type Outcome = { kind: "victory"; winner: PlayerId; reason: "resignation" };
+type Outcome =
+  | { kind: "victory"; winner: PlayerId; reason: "resignation" | "checkmate" | "trap" }
+  | { kind: "draw"; reason: "stalemate" | "repetition" | "no-capture" };
 ```
 
-**L'abandon est la seule fin de partie.** L'échec et mat, le pat et les deux nulles
-anti-blocage sont retirés du moteur avec la capture (`docs/design.md` sections 7.1 et 7.2,
-suspendues) : plus rien ne termine une partie automatiquement. Il n'y a donc plus ni
-`DrawClock`, ni `positionKey()`, ni champ `draw` dans `GameState`. Conséquence à connaître :
-un joueur dont toutes les pièces seraient murées n'a plus aucun coup légal et **reste au
-trait** — l'abandon est sa seule issue.
+L'abandon est possible sous tous les rulesets. Le mat et le pat n'existent que sous un ruleset
+qui déclare `check`, les nulles sous un ruleset qui déclare `draws` (`endgame.ts`). Sous les
+rulesets d'avant, un joueur dont toutes les pièces seraient murées **reste au trait**, et
+l'abandon est sa seule issue. `winnerOf(outcome)` rend le vainqueur, ou `undefined` pour
+une nulle.
+
+`GameState.draw` est l'horloge des nulles (`DrawClock` : occurrences de chaque position,
+actions depuis la dernière prise), tenue de façon incrémentale et reconstruite par le rejeu.
+Elle tourne sous tous les rulesets ; seuls ceux qui déclarent `draws` la lisent.
+`positionKey(pieces, activePlayer, traps)` identifie une position par camp, type et case — **pas par
+identifiant** —, par les pièges posés et par le trait. La position de départ compte pour une occurrence.
 
 `history` est le log d'actions, tenu **dans** l'état plutôt qu'à côté pour qu'il ne puisse
 pas diverger de la position qu'il décrit. C'est ce que le serveur persiste en D1 et rejoue
 (`docs/architecture.md` section 3) ; `ActionRecord` porte le camp qui a joué, que la
-position seule ne dit plus.
+position seule ne dit plus, et la pièce prise (`captured`), que le rejeu et l'écran de
+fin lisent sans recalculer.
 
-| Fonction        | Rôle                                                                    |
-| --------------- | ----------------------------------------------------------------------- |
-| `createGame()`  | Construit l'état initial et **valide** le placement                     |
-| `pieceAt()`     | La pièce sur une case, par balayage linéaire                            |
-| `occupancy()`   | Ensemble des cases occupées                                             |
-| `piecesOf()`    | Les pièces d'un joueur                                                  |
-| `commanderOf()` | La pièce maîtresse d'un joueur, via `ruleset.typeOf(piece).isCommander` |
-
-`commanderOf()` n'a plus d'appelant dans le moteur depuis le retrait de l'échec : la pièce
-maîtresse reste un concept de design acté (`docs/design.md` section 7), seule la règle qui
-la protégeait s'en va.
+| Fonction        | Rôle                                                        |
+| --------------- | ----------------------------------------------------------- |
+| `createGame()`  | Construit l'état initial et **valide** le placement         |
+| `pieceAt()`     | La pièce sur une case, par balayage linéaire                |
+| `occupancy()`   | Ensemble des cases occupées                                 |
+| `piecesOf()`    | Les pièces d'un joueur                                      |
+| `commanderOf()` | Le roi d'un joueur, via `ruleset.typeOf(piece).isCommander` |
+| `positionKey()` | La signature d'une position, pour la répétition             |
+| `winnerOf()`    | Le vainqueur d'une issue, `undefined` pour une nulle        |
 
 `createGame()` lève sur identifiant dupliqué, sur deux pièces à la même case, ou sur une
 pièce posée sur une case infranchissable. Ce sont des erreurs de programmation, pas des
@@ -494,17 +517,24 @@ de `lastSeenTurn` pour les fantômes.
 ## `actions.ts` — coups légaux et résolution
 
 ```ts
-type Action = { kind: "move"; pieceId: PieceId; to: Coord } | { kind: "resign"; player?: PlayerId };
+type Action =
+  | { kind: "move"; pieceId: PieceId; to: Coord }
+  | { kind: "ability"; pieceId: PieceId; target: Coord }
+  | { kind: "resign"; player?: PlayerId };
 ```
 
-| Fonction                      | Rôle                                                                      |
-| ----------------------------- | ------------------------------------------------------------------------- |
-| `occupancyWithout()` (privée) | Occupation vue par une pièce donnée : sa propre case exclue               |
-| `destinationsFor()` (privée)  | Destinations légales d'une pièce, **sa case de départ exclue**            |
-| `legalActions()`              | Toutes les actions légales du joueur au trait                             |
-| `validateAction()`            | Valide une action ; `Result<Action, ActionError>`                         |
-| `applyAction()`               | Valide puis applique ; `Result<GameState, ActionError>`                   |
-| `replay()`                    | Rejoue un log depuis un état de départ ; `Result<GameState, ReplayError>` |
+| Fonction                                | Rôle                                                                        |
+| --------------------------------------- | --------------------------------------------------------------------------- |
+| `occupancyWithout()` (privée)           | Occupation vue par une pièce donnée : sa propre case exclue                 |
+| `capturableBy()` (privée)               | Cases adverses prenables, vide sous un ruleset sans prise                   |
+| `destinationsFor()` (privée)            | Cases libres et prises d'une pièce, **sa case de départ exclue**            |
+| `abilityTargetsFor()` (privée)          | Cibles de la capacité d'une pièce (`PieceType.ability`), vide sans capacité |
+| `isForbidden()` (privée)                | Le coup exposerait-il son roi ? Toujours faux sans `check`                  |
+| `playMove()` / `useAbility()` (privées) | Appliquent un déplacement (prise, puis piège adverse) ou une capacité       |
+| `legalActions()`                        | Toutes les actions légales du joueur au trait                               |
+| `validateAction()`                      | Valide une action ; `Result<Action, ActionError>`                           |
+| `applyAction()`                         | Valide puis applique ; `Result<GameState, ActionError>`                     |
+| `replay()`                              | Rejoue un log depuis un état de départ ; `Result<GameState, ReplayError>`   |
 
 `destinationsFor()` reçoit l'occupation **en paramètre** plutôt que de la recalculer :
 `legalActions()` la calcule une fois par lot et non par pièce. `occupancyWithout()` en
@@ -512,29 +542,67 @@ retire la case de la pièce examinée, qu'elle libère en partant.
 
 ### Une action = le déplacement d'une pièce
 
-Une action ne fait plus que déplacer : **la capture de mêlée est retirée** le temps de
-reconstruire la géométrie du jeu (`docs/design.md` section 3.1, suspendue). Ce qui en
-découle, et qui est la seule règle d'interaction entre pièces aujourd'hui :
+`Action.move` n'a **pas de champ « prise »** : sous un ruleset avec `capture`, une pièce prend
+en arrivant sur la case d'une pièce adverse, et c'est la position qui le dit. Le joueur ne
+déclare rien, et la liste de ses coups légaux ne distingue pas une case libre d'une case
+tenue par une pièce qu'il ne voit pas.
 
-- une case tenue par une pièce, **alliée ou adverse**, ne peut être ni traversée ni
-  atteinte — c'est `reachableTiles()` qui l'applique, pas `actions.ts` ;
-- la case de départ ne figure pas parmi les destinations, donc rester sur place n'est pas
-  un coup : la tentative retombe sur `unreachable` ;
-- `ActionError` se réduit à `game-over`, `unknown-piece`, `not-your-piece` et
-  `unreachable`.
+- une case alliée ne s'atteint jamais ; une case adverse s'atteint (et se prend) sous un
+  ruleset avec prise, jamais se traverse ;
+- la case de départ ne figure pas parmi les destinations : on ne passe pas son tour ;
+- `applyAction()` projette le coup (`project()`, `endgame.ts`), retire la pièce prise,
+  puis la pièce jouée si elle finit sur un piège adverse (victoire si c'est le roi), passe
+  le trait, fait avancer l'horloge des nulles, puis demande l'issue (`outcomeOf()`).
 
-### Plus aucune règle d'échec
+### Une capacité au lieu d'un déplacement
 
-**Un coup qui expose sa propre pièce maîtresse est légal.** La règle « échecs strict »
-(`docs/design.md` section 7.1) est retirée : elle n'était pas jouable avec les portées
-démesurées du roster provisoire, qui mettaient la maîtresse en échec quasi permanent et
-supprimaient tous ses coups légaux. Ont disparu avec elle `isCommanderThreatened()`,
-`leavesCommanderExposed()`, `project()` — qui n'existait que pour tester la légalité sur la
-position produite — et `withOutcome()`.
+`Action.ability` est la seconde façon de jouer son tour (`docs/design/rules.md` section 3) :
+la pièce reste sur sa case et agit sur `target`. Un type déclare sa capacité par
+`PieceType.ability` (`AbilityKind`, `null` par défaut) ; il n'en a qu'une, l'action n'a donc
+pas à la nommer. `actions.ts` aiguille vers le module de la capacité. Une capacité se juge
+pour l'échec comme un déplacement sur place : elle ne pare jamais un échec.
 
-`applyAction()` ne fait donc plus rien après le coup : il déplace la pièce, passe le trait,
-incrémente `turn` et consigne l'action. Seul `resign` pose une issue, et il reste valide
-même quand aucun coup n'est jouable — c'est la seule sortie d'une position bloquée.
+## `abilities/trap.ts` — le piège
+
+La seule capacité à ce jour, celle du trappeur (`roster/trapper.ts`, `provisional-4`).
+Règles : `docs/design/rules.md` section 4 ; interprétations : `implementation-notes.md` n° 37.
+
+| Fonction / type   | Rôle                                                                           |
+| ----------------- | ------------------------------------------------------------------------------ |
+| `Trap`            | `{ owner, layer, coord }` : le camp, la pièce qui l'a posé, la case            |
+| `hasActiveTrap()` | La pièce a-t-elle déjà un piège en jeu ? (un seul actif par poseur)            |
+| `trapTargets()`   | Cases voisines libres, franchissables, pas plus hautes, sans piège de son camp |
+| `trapSprungBy()`  | Le piège adverse qui attend une pièce de ce camp sur cette case                |
+
+**Aucune légalité ne dépend d'un piège adverse**, sans quoi la liste des coups le
+trahirait : on peut entrer sur un piège caché, il ne compte pas pour l'échec, et la pose
+reste permise sur une case qui porte un piège adverse. Exclure les cases occupées des
+cibles ne trahit rien : une case voisine est toujours dans la ligne de vue de la pièce.
+
+### Échec et mat — `endgame.ts`
+
+**Un coup qui laisse son propre roi prenable est illégal**, y compris quand la menace est hors
+de la ligne de vue de son auteur (« échecs strict », `docs/design/rules.md` 7.1). Le refus
+porte le code `leaves-king-exposed`.
+
+| Fonction              | Rôle                                                                                 |
+| --------------------- | ------------------------------------------------------------------------------------ |
+| `project()`           | Les pièces après un déplacement, sans validation ni changement de trait, et la prise |
+| `isKingThreatened()`  | Une pièce adverse menace-t-elle le roi (`PieceType.threatens()`) ?                   |
+| `leavesKingExposed()` | Le coup laisserait-il le roi de son auteur prenable ?                                |
+| `tickDrawClock()`     | Fait avancer l'horloge ; une prise la remet à zéro, positions comprises              |
+| `outcomeOf()`         | Mat ou pat si le camp au trait n'a plus de coup, puis répétition, puis sans prise    |
+
+`endgame.ts` ne connaît aucun type de pièce : la seule question posée à une pièce est
+« menaces-tu cette case ? ». Une pièce nouvelle, qui prendrait autrement qu'elle ne se
+déplace, entre dans l'échec et le mat en redéfinissant `capturesFrom()`, sans que ce module
+ni `actions.ts` change. `project()` existe parce que juger la légalité d'un coup exige la
+position qu'il produit : passer par `applyAction()` rappellerait `legalActions()` et
+bouclerait. `outcomeOf()` reçoit donc « reste-t-il un coup ? » sous forme de fonction, que
+`actions.ts` lui fournit et qui s'arrête au premier coup trouvé.
+
+Le mat est testé **avant** les nulles : un mat reste un mat, même atteint au coup qui aurait
+déclenché une nulle.
 
 **L'abandon se joue à tout moment, au trait ou non.** `player` nomme qui abandonne : le
 vainqueur est `opponentOf(player)`, l'historique consigne ce camp, et le trait ne bouge
@@ -544,11 +612,7 @@ tour d'en face ne pouvait pas l'abandonner, et elle restait ouverte.
 
 ### `ActionError`
 
-`game-over` · `unknown-piece` · `not-your-piece` · `unreachable`.
-
-Les codes de la capture et de l'échec (`must-do-something`, `unknown-target`,
-`target-is-friendly`, `target-out-of-melee`, `leaves-commander-exposed`) ont disparu avec
-elles (design.md, point ouvert 13).
+`game-over` · `unknown-piece` · `not-your-piece` · `unreachable` · `leaves-king-exposed`.
 
 Ces codes traversent le réseau tels quels (`ServerMessage` de type `rejected`,
 `packages/protocol/src/index.ts`) et sont mis en mots par `describeActionError()`
@@ -556,13 +620,13 @@ Ces codes traversent le réseau tels quels (`ServerMessage` de type `rejected`,
 
 ### Un piège de performance
 
-`legalActions()` n'appelle plus que `destinationsFor()` pour chaque pièce du camp au
-trait : le retrait de la règle « échecs strict » a supprimé le coût dominant, qui rejouait
-une projection et un test de menace **par coup candidat**. Ce qui reste coûteux est ailleurs :
-`visibleTilesFor()` (`fog.ts`) balaie tout le plateau pour chaque pièce d'un joueur, et
-chaque case testée déclenche un raycast. Le calcul d'occupation est mutualisé, mais rien
-n'est mémoïsé. C'est sans conséquence à l'échelle actuelle (quelques dizaines de cases, jeu
-au tour par tour), mais à garder en tête avant d'ajouter une recherche en profondeur.
+Sous `check`, `legalActions()` projette **chaque coup candidat** et teste la menace sur le
+roi : pour chaque pièce adverse, un parcours de `reachableTiles()`. C'est le coût dominant,
+et `applyAction()` le paie encore une fois pour savoir s'il reste un coup (`hasLegalAction()`
+s'arrête au premier). `visibleTilesFor()` (`fog.ts`) reste lourd de son côté : un raycast par
+case et par pièce. Rien n'est mémoïsé ; c'est sans conséquence à l'échelle actuelle
+(quelques dizaines de cases, six pièces par camp), mais à garder en tête avant d'ajouter une
+recherche en profondeur.
 
 ---
 
@@ -573,6 +637,7 @@ interface PlayerKnowledge {
   player: PlayerId;
   visible: ReadonlySet<CoordKey>;
   remembered: ReadonlyMap<PieceId, RememberedPiece>;
+  journal: readonly JournalEntry[]; // les coups tels que ce joueur les a vus
 }
 
 interface PlayerView {
@@ -585,6 +650,10 @@ interface PlayerView {
   ownPieces: readonly Piece[];
   visibleEnemies: readonly Piece[];
   ghosts: readonly RememberedPiece[]; // mémorisées mais hors LOS
+  journal: readonly JournalEntry[];
+  rosters: { own: RosterEntry[]; opponent: RosterEntry[] }; // { kind, taken }
+  sinceCapture: number; // coups depuis la dernière prise
+  noCaptureLimit: number | null; // seuil de la nulle sans prise, s'il y en a une
 }
 ```
 
@@ -595,7 +664,7 @@ interface PlayerView {
 | `observe()`         | Fait avancer la mémoire après un changement d'état              |
 | `viewFor()`         | Produit l'état transmissible à un joueur                        |
 | `startMemory()`     | `MatchMemory` initiale : une position et les deux connaissances |
-| `advanceMemory()`   | Joue une action et fait avancer les deux mémoires               |
+| `advanceMemory()`   | Joue une action, fait avancer les deux mémoires et leur journal |
 | `replayMemory()`    | Rejoue un log entier, mémoires comprises                        |
 
 ### `MatchMemory` — une partie et ce que chacun en sait
@@ -628,8 +697,14 @@ modification ici.
 2. Toute pièce adverse actuellement visible est (re)mémorisée à sa position, avec le
    `turn` courant en `lastSeenTurn`.
 
-**Il n'y a plus de drapeau `check`** : la règle qui le justifiait est retirée
-(`docs/design.md` section 7.1, suspendue).
+**`check` dit au joueur que son roi est en échec**, jamais celui de l'adversaire, qui
+trahirait sa position. Il est calculé sur la position réelle, donc vrai aussi pour une
+menace invisible (`docs/design/rules.md` 7.1), et seulement pour le camp au trait — hors de
+son tour, un roi n'est jamais menacé, le coup qui l'aurait exposé étant illégal. Toujours
+faux sous un ruleset sans `check`.
+
+**Une pièce prise sort de la mémoire d'elle-même** : la pièce qui prend occupe la case, donc
+la voit, et le souvenir y est contredit. Aucun traitement particulier dans `observe()`.
 
 `legalActions` est calculé sur la position **réelle**, et seulement pour le camp au trait —
 la liste de l'adversaire trahirait la position de ses pièces. Il reste transmis parce que le
@@ -639,6 +714,33 @@ davantage encore. Ce que cela révèle est assumé et documenté en section 7.1 
 
 `viewFor()` retire des fantômes les pièces actuellement vues, pour qu'une même pièce
 n'apparaisse jamais deux fois.
+
+### Le journal, les compositions et le compteur sans prise
+
+Ce que l'ATH montre en partie, et que le client ne saurait pas reconstruire seul.
+
+**Le journal** (`journal.ts`, `journalEntryFor()`) décrit chaque coup **tel que le joueur
+l'a vu**. Ses propres coups sont complets. D'un coup adverse, il n'a que la case de départ
+s'il la voyait avant le coup, la case d'arrivée s'il la voit après, et le type de la pièce
+s'il a vu l'une ou l'autre ; un champ absent est un fait qu'il ignore. Une prise subie est
+toujours connue — case et type perdu —, même hors de vue. Un piège qui se déclenche est
+connu des deux camps (`trapped`) ; une capacité adverse n'est connue que si le joueur
+voyait la pièce, et jamais sa cible (`ability` sans `target`). L'abandon n'y figure pas :
+l'issue le dit. Le journal vit dans `PlayerKnowledge` et avance dans `advanceMemory()`,
+parce qu'il dépend de ce que le joueur voyait **à chaque coup** : `replayMemory()` le
+reconstruit à l'identique, et il survit ainsi à l'hibernation sans stockage propre.
+`observe()` seul ne l'avance pas — il ne connaît pas le coup.
+
+**Les pièges** (`traps`) sont ceux du joueur seulement : un piège adverse n'est jamais
+transmis, il n'apparaît qu'au journal une fois déclenché.
+
+**Les compositions** (`rosters`) sont celles de départ des deux camps — pièces en jeu et
+pièces que `history` dit prises, au piège comprises —, triées par identifiant. Des types seulement, jamais une
+position : la composition adverse est révélée dès le début de la partie (décision du
+2026-11-20), et ses pertes sont des prises du joueur.
+
+**`sinceCapture` et `noCaptureLimit`** reprennent `state.draw.sinceCapture` et le seuil du
+ruleset : c'est le client qui décide quand montrer le compteur.
 
 ### Ce que `PlayerView` ne contient pas
 
@@ -662,53 +764,54 @@ pièces.
 
 ## Tests
 
-101 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
+158 tests : `pnpm test` (ou `pnpm --filter @occulis/core test`).
 
 | Fichier                                          | Couvre                                                                                                                                                                                                                                |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/core/src/los.test.ts`                  | Tracé, occultation par la hauteur **et par les pièces**, symétrie, portée                                                                                                                                                             |
-| `packages/core/src/movement.test.ts`             | Parcours, verticalité, grimpe, blocage par occupation                                                                                                                                                                                 |
+| `packages/core/src/endgame.test.ts`              | Prise à l'arrivée, pièce clouée, **menace invisible**, parades, mat, pat, triple répétition, compte par type et non par identifiant, nulle sans prise, prise sous le fog, rejeu avec prises, cas limites                              |
+| `packages/core/src/movement.test.ts`             | Parcours, verticalité, grimpe, blocage par occupation, prise à l'arrivée et ses règles de hauteur                                                                                                                                     |
 | `packages/core/src/actions.test.ts`              | Coups légaux, validation, blocage par les pièces, abandon (y compris hors tour)                                                                                                                                                       |
 | `packages/core/src/fog.test.ts`                  | Visibilité, mémoire fantôme, contenu de `PlayerView`                                                                                                                                                                                  |
-| `packages/core/src/memory.test.ts`               | `advanceMemory()` coup par coup et `replayMemory()` d'un bloc rendent les mêmes vues aux deux camps, mémoire fantôme comprise (120 coups sur la carte par défaut)                                                                     |
-| `packages/core/src/pieces/piece-type.test.ts`    | Vision, mêlée et déplacement définis par le type ; dérivation de `fieldOfView` depuis `canSee` y compris redéfini ; extension par héritage. **Indépendant du roster**                                                                 |
-| `packages/core/src/pieces/roster/roster.test.ts` | Propriétés du roster provisoire : différenciation par capacité, rôles, pion le plus lent et le plus myope, héritage du comportement commun, portée couvrant la carte de démonstration, indexation par `kind` et par rôle, composition |
+| `packages/core/src/memory.test.ts`               | `advanceMemory()` coup par coup et `replayMemory()` d'un bloc rendent les mêmes vues aux deux camps, mémoire fantôme comprise (120 coups sur la carte par défaut) ; **une partie `provisional-2` se rejoue sans aucune prise ni fin** |
+| `packages/core/src/pieces/piece-type.test.ts`    | Vision, prise et déplacement définis par le type, **sous-classe qui prend autrement qu'elle ne bouge** ; dérivation de `fieldOfView` depuis `canSee` y compris redéfini ; extension par héritage. **Indépendant du roster**           |
+| `packages/core/src/pieces/roster/roster.test.ts` | Propriétés du roster provisoire : différenciation par capacité, rôles, pion le plus myope, roi à un pas, héritage du comportement commun, portée couvrant la carte de démonstration, indexation par `kind` et par rôle, composition   |
 | `packages/core/src/team.test.ts`                 | Quotas exacts par rôle, type inconnu, case hors zone, deux pièces sur une case, ruleset sans composition, **identifiants déterministes**, lecture d'une équipe venue de l'extérieur, transposition d'une zone à l'autre               |
 | `packages/core/src/scenarios/ridge.test.ts`      | `ridge-1` : zones franchissables et assez larges, symétrie centrale, **aucune ligne de vue entre les zones**, équipes par défaut valides formant une position, transposition A → B                                                    |
-| `packages/core/src/rulesets/rulesets.test.ts`    | Versions anciennes chargeables, version courante avec composition, version inconnue refusée                                                                                                                                           |
+| `packages/core/src/scenarios/breach.test.ts`     | `breach-1` : carte des nouvelles parties, zones franchissables, symétrie centrale cases manquantes comprises, **aucune ligne de vue entre les zones**, équipes par défaut valides                                                     |
+| `packages/core/src/rulesets/rulesets.test.ts`    | Versions anciennes chargeables **avec leurs règles et portées**, version courante avec prise, échec et nulles, version inconnue refusée                                                                                               |
 
 `packages/core/src/testing.ts` fournit `definePiece()` (qui renvoie un
-`ConfigurablePieceType`), `testRuleset()` et `placePiece()`. **Il n'est pas réexporté par
+`ConfigurablePieceType`), `testRuleset()` (sans prise), `chessRuleset()` (avec prise, échec et
+nulles, ou les règles fournies) et `placePiece()`. **Il n'est pas réexporté par
 `index.ts`** : c'est du support de test, pas de l'API. Le roster provisoire partagé par le
 client et le serveur vit dans `pieces/roster/`, pas ici.
 
 ## Non implémenté
 
 Tout ce qui suit est listé comme ouvert en section 10 de `docs/design.md` et **n'a
-volontairement pas été codé** : attaque à distance différée, pièges,
-roster de pièces définitif, téléporteurs, poussée, objets bloquant la LOS.
-
-S'y ajoutent trois règles **actées mais retirées du moteur**, sur décision explicite du
-porteur du projet (point ouvert 13) : la **capture de mêlée** (section 3.1), la règle
-d'**échec et mat** (7.1) et les deux **nulles anti-blocage** (7.2). Elles reviendront ;
-d'ici là, seul l'abandon termine une partie. La géométrie qu'elles utilisaient est
-conservée — `canMeleeReach()` et `PieceType.canStrike()` restent codées et testées.
+volontairement pas été codé** : piège à déclenchement différé (et la file de résolution
+différée qu'il suppose ; le piège au contact, lui, est en place),
+roster de pièces définitif, téléporteurs, poussée, objets bloquant la LOS. L'attaque à
+distance différée, elle, est écartée depuis le 2026-10-27 (section 3.2).
 
 La hiérarchie `PieceType` est le point d'entrée prévu pour plusieurs d'entre eux : une
-vision particulière se code en redéfinissant `canSee()`, une portée de frappe particulière
-en redéfinissant `canStrike()`. Mais **avant d'implémenter l'un d'eux**, relire la section 6
+vision particulière se code en redéfinissant `canSee()`, une prise particulière en
+redéfinissant `capturesFrom()`. Mais **avant d'implémenter l'un d'eux**, relire la section 6
 de `docs/design.md` (pistes déjà écartées) et `docs/implementation-notes.md`
 (interprétations non validées).
 
 ## `scenarios/` — les positions de départ
 
-| Fichier                 | Rôle                                                                                                                                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `scenarios/scenario.ts` | Le type `Scenario` : un nom, une fabrique de `Board`, des pièces fixes, et un `Deployment` optionnel                                                                                             |
-| `scenarios/demo.ts`     | `demo-0`, la carte de démonstration à position fixe, **provisoire** — gardée pour les parties déjà jouées                                                                                        |
-| `scenarios/ridge.ts`    | `ridge-1`, la carte des nouvelles parties, à déploiement, **provisoire**                                                                                                                         |
-| `scenarios/index.ts`    | Le registre : `scenarioFor()`, `DEFAULT_SCENARIO` (`ridge-1`), et `frozenScenario(name, snapshot)` — la carte figée d'une partie, ou celle du registre pour une partie d'avant les cartes figées |
-| `scenarios/snapshot.ts` | `ScenarioSnapshot` (nom, cases, position fixe, déploiement — sérialisable) et `snapshotScenario()`. Une partie fige sa carte ainsi à sa création (docs/architecture.md section 1)                |
+| Fichier                 | Rôle                                                                                                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scenarios/scenario.ts` | Le type `Scenario` : un nom, une fabrique de `Board`, des pièces fixes, et un `Deployment` optionnel                                                                                              |
+| `scenarios/demo.ts`     | `demo-0`, la carte de démonstration à position fixe, **provisoire** — gardée pour les parties déjà jouées                                                                                         |
+| `scenarios/ridge.ts`    | `ridge-1`, la carte des nouvelles parties jusqu'au 2026-11-20, à déploiement, **provisoire** — gardée pour les parties déjà jouées et le site                                                     |
+| `scenarios/breach.ts`   | `breach-1`, 9 × 9, la carte des nouvelles parties le 2026-11-20 avant `breach-2`, à déploiement, **provisoire** — gardée pour les parties déjà jouées                                             |
+| `scenarios/breach-2.ts` | `breach-2`, 11 × 11, la carte des nouvelles parties depuis le 2026-11-20, à déploiement, **provisoire**                                                                                           |
+| `scenarios/index.ts`    | Le registre : `scenarioFor()`, `DEFAULT_SCENARIO` (`breach-2`), et `frozenScenario(name, snapshot)` — la carte figée d'une partie, ou celle du registre pour une partie d'avant les cartes figées |
+| `scenarios/snapshot.ts` | `ScenarioSnapshot` (nom, cases, position fixe, déploiement — sérialisable) et `snapshotScenario()`. Une partie fige sa carte ainsi à sa création (docs/architecture.md section 1)                 |
 
 **`ridge-1`** (14 × 10) : une arête en diagonale d'un bord à l'autre, haute de 3 avec un col
 de hauteur 1 en son milieu, sépare deux zones de 4 × 4 en coins opposés. La carte est
@@ -717,6 +820,23 @@ coupe toute ligne de vue entre les deux zones — col compris, un obstacle à ha
 regard bloquant (`implementation-notes.md` point 11) : le placement de chacun reste caché à
 l'autre jusqu'au premier contact, sans mécanique dédiée (`docs/design.md` section 7). Un
 test le vérifie case à case.
+
+**`breach-1`** (9 × 9, depuis le 2026-11-20) : un plateau dans l'esprit de la maquette de
+l'ATH (`docs/mockups/ath/`) — coins relevés en gradins, reliefs épars, deux cases manquantes
+au bord. Ses blocs de hauteur 3 dessinent au milieu une ligne brisée qui coupe toute vue
+d'une zone à l'autre (choix du porteur du projet : le placement reste caché, comme sur
+`ridge-1`) ; on la franchit par ses trouées, au niveau du sol. Les zones sont les deux
+rangées de chaque bord (18 cases). Symétrique par rapport à son centre, zones et équipes
+par défaut comprises ; `breach.test.ts` vérifie la symétrie et l'absence de vue case à
+case.
+
+**`breach-2`** (11 × 11, depuis le 2026-11-20) : `breach-1` élargie de deux cases dans
+chaque sens et dénouée à la demande du porteur du projet — plus aucun bloc de hauteur 3,
+des murets d'un niveau et quelques rebords de deux. Un muret d'un niveau suffit à couper la
+vue entre deux pièces au sol (regard à un niveau au-dessus de la case) : la brèche, faite
+de murets décalés, cache toujours chaque zone à l'autre. Les zones sont les deux rangées
+planes de chaque bord (22 cases) ; l'équipe par défaut y met un trappeur au centre.
+`breach.test.ts` vérifie les deux cartes.
 
 Un scénario vit dans `core` pour la même raison que le roster
 (`implementation-notes.md` point 12) : **le client dessine la carte sur laquelle le serveur
@@ -752,7 +872,10 @@ client envoie, le client à son brouillon, sans la redéduire.
 ## `rulesets/` — le registre des versions
 
 `rulesetFor(version)` rend le ruleset d'une version, et lève si elle est inconnue ;
-`CURRENT_RULESET_VERSION` est celle des nouvelles parties (`provisional-1`, avec pion et
-composition). `provisional-0` reste chargeable — sans composition — pour rejouer les
-parties qui la référencent. Le registre vit dans `core` et non plus dans le serveur : le
+`CURRENT_RULESET_VERSION` est celle des nouvelles parties (`provisional-4` : composition
+1 roi, 3 à capacité, 2 pions, portées resserrées, prise, échec et nulles, et le trappeur).
+`provisional-3` (les mêmes, sans trappeur), `provisional-2`
+(même composition, anciennes portées, sans prise), `provisional-1` (1, 3, 4 pions) et
+`provisional-0` (sans composition) restent chargeables pour rejouer les parties qui les
+référencent. Le registre vit dans `core` et non plus dans le serveur : le
 client doit appliquer la version de la partie qu'il joue, qu'il lit dans `welcome`.

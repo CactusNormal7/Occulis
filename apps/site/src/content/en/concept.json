@@ -1,0 +1,22 @@
+{
+  "label": "The game",
+  "statement": "Each player commands a team on a map with walls and high ground. Enemy pieces stay hidden until one of yours has line of sight.",
+  "facts": [
+    {
+      "term": "Format",
+      "text": "One on one, online"
+    },
+    {
+      "term": "Turns",
+      "text": "One piece at a time"
+    },
+    {
+      "term": "Board",
+      "text": "Isometric, with height"
+    },
+    {
+      "term": "Status",
+      "text": "In development"
+    }
+  ]
+}

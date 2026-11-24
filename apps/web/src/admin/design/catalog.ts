@@ -2,7 +2,7 @@
  * Le design system du back-office, en ce qu'il a de pur : il lit les **sources** de la
  * charte — celles-là mêmes dont la synchronisation vers Claude Design tire son projet
  * (`.design-sync/`, `packages/ui/src/`) — et en tire ce que la page montre : la catégorie
- * de chaque composant, le code de ses exemples, son commentaire, ses props, les animations
+ * de chaque composant, l'ordre de ses exemples, son commentaire, son contrat, les animations
  * déclarées dans une feuille, les notes d'une table de durées, et du Markdown découpé en
  * blocs. Ni DOM ni Vite : les textes lui sont passés, d'où ses tests.
  *
@@ -10,47 +10,67 @@
  * ce qu'elle montre est ce qui est construit, au commit près.
  */
 
-/** Les copies qu'iCloud fabrique à côté des fichiers (`Button 2.tsx`) : jamais des sources. */
+/** Les copies qu'iCloud fabrique à côté des fichiers (`Button 2.vue`) : jamais des sources. */
 export function isCopy(path: string): boolean {
   return / \d+\.[^/]+$/.test(path);
 }
 
-/** `../../.design-sync/previews/Button.tsx` → `Button`. */
+/** `../../.design-sync/previews/Button/Variants.vue` → `Variants`. */
 export function baseName(path: string): string {
   const file = path.slice(path.lastIndexOf("/") + 1);
   const dot = file.indexOf(".");
   return dot === -1 ? file : file.slice(0, dot);
 }
 
+/** `../../.design-sync/previews/Button/Variants.vue` → `Button` : le dossier qui le contient. */
+export function folderName(path: string): string {
+  const parts = path.split("/");
+  return parts[parts.length - 2] ?? "";
+}
+
+/** Les champs de l'en-tête d'une fiche (`category: Actions`), par nom. */
+function frontMatter(markdown: string): Map<string, string> {
+  const head = /^---\n([\s\S]*?)\n---/.exec(markdown)?.[1] ?? "";
+  const fields = new Map<string, string>();
+  for (const line of head.split("\n")) {
+    const colon = line.indexOf(":");
+    if (colon === -1) continue;
+    const value = line.slice(colon + 1).trim();
+    if (value.length > 0) fields.set(line.slice(0, colon).trim(), value);
+  }
+  return fields;
+}
+
 /** La catégorie d'un composant, portée par l'en-tête de sa fiche (`category: Actions`). */
 export function categoryOf(markdown: string): string | undefined {
-  const head = /^---\n([\s\S]*?)\n---/.exec(markdown);
-  const line = head?.[1]?.split("\n").find((entry) => entry.startsWith("category:"));
-  const value = line?.slice("category:".length).trim();
-  return value === undefined || value.length === 0 ? undefined : value;
+  return frontMatter(markdown).get("category");
 }
 
 /**
- * Le code de chaque exemple d'un fichier d'aperçus, par nom d'export : de `export const
- * Nom` jusqu'au suivant. C'est le code qui rend l'aperçu montré à côté — un exemple vérifié.
+ * L'ordre des aperçus d'un composant, tel que l'auteur l'a écrit dans l'en-tête de sa fiche
+ * (`stories: Variants, WithIcon, Disabled`) : un fichier par aperçu ne dit pas son rang.
+ * Les aperçus que la fiche ne cite pas suivent, par ordre alphabétique.
  */
-export function storySources(source: string): Map<string, string> {
-  const stories = new Map<string, string>();
-  const starts = [...source.matchAll(/^export const (\w+)/gm)];
-  starts.forEach((match, index) => {
-    const end = starts[index + 1]?.index ?? source.length;
-    stories.set(match[1] ?? "", source.slice(match.index, end).trim());
-  });
-  return stories;
+export function orderStories(markdown: string, names: readonly string[]): string[] {
+  const listed = (frontMatter(markdown).get("stories") ?? "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => names.includes(name));
+  const rest = names.filter((name) => !listed.includes(name)).sort();
+  return [...listed, ...rest];
 }
 
-/** Le texte entre l'ouvrant `open` à la position `from` et son fermant, bornes comprises. */
+/**
+ * Le texte entre l'ouvrant `open` à la position `from` et son fermant, bornes comprises. Entre
+ * chevrons, la flèche d'un type de fonction (`=>`) ne ferme rien.
+ */
 function balanced(source: string, from: number, open: string, close: string): string | undefined {
   let depth = 0;
   for (let i = from; i < source.length; i += 1) {
     const char = source[i];
+    const isArrow = char === ">" && source[i - 1] === "=";
     if (char === open) depth += 1;
-    else if (char === close) {
+    else if (char === close && !isArrow) {
       depth -= 1;
       if (depth === 0) return source.slice(from, i + 1);
     }
@@ -70,52 +90,36 @@ function cleanDoc(comment: string): string {
 }
 
 export interface ComponentDoc {
-  /** Le commentaire qui précède la déclaration, nettoyé ; vide s'il n'y en a pas. */
+  /** Le commentaire d'en-tête du composant, nettoyé ; vide s'il n'y en a pas. */
   readonly doc: string;
-  /** Le contrat : l'interface `NomProps` si elle existe, sinon les paramètres de la fonction. */
-  readonly props: string | undefined;
+  /** Le contrat : ses props, ses événements et ses emplacements, tels que déclarés. */
+  readonly contract: string | undefined;
 }
 
+/** Les macros qui déclarent le contrat d'un composant, dans l'ordre où la page les montre. */
+const CONTRACT_MACROS = ["defineProps", "defineModel", "defineEmits", "defineSlots"] as const;
+
 /**
- * Le commentaire et le contrat de chaque composant déclaré dans une source (`export function
- * Nom`, ou `export const Nom = forwardRef(…)`). Les props viennent de l'interface `NomProps`
- * quand le fichier la déclare, sinon du type des paramètres écrit en ligne
- * (`{ children }: { children: ReactNode }`).
+ * Le commentaire et le contrat d'un composant monofichier (`.vue`). Le commentaire est le
+ * premier `/** … *\/` de son `<script setup>`, avant tout import ; le contrat, le type passé à
+ * chacune de ses macros (`defineProps<{ … }>()`, `defineEmits<{ … }>()`…), recopié tel quel.
  */
-export function componentDocs(source: string): Map<string, ComponentDoc> {
-  const interfaces = new Map<string, string>();
-  for (const match of source.matchAll(
-    /^export interface (\w+)(?:<[^>]*>)?(?: extends [^{]+)? \{/gm,
-  )) {
-    const body = balanced(source, match.index + match[0].length - 1, "{", "}");
-    if (body !== undefined)
-      interfaces.set(
-        match[1] ?? "",
-        source.slice(match.index, match.index + match[0].length - 1) + body,
-      );
+export function componentDoc(source: string): ComponentDoc {
+  const script = /<script setup[^>]*>([\s\S]*?)<\/script>/.exec(source)?.[1] ?? "";
+  const head = /^\s*(\/\*\*[\s\S]*?\*\/)/.exec(script)?.[1];
+
+  const declarations: string[] = [];
+  for (const macro of CONTRACT_MACROS) {
+    for (const match of script.matchAll(new RegExp(`\\b${macro}<`, "g"))) {
+      const type = balanced(script, match.index + macro.length, "<", ">");
+      if (type !== undefined) declarations.push(`${macro}${type}`);
+    }
   }
 
-  const docs = new Map<string, ComponentDoc>();
-  for (const match of source.matchAll(/^export (function|const) (\w+)/gm)) {
-    const name = match[2] ?? "";
-    // Une constante n'est un composant que si elle enveloppe un rendu (`forwardRef`, `memo`).
-    if (
-      !/^[A-Z]/.test(name) ||
-      (match[1] === "const" &&
-        !/^export const \w+ = (?:forwardRef|memo)\b/.test(source.slice(match.index)))
-    )
-      continue;
-    const before = source.slice(0, match.index).trimEnd();
-    const comment = before.endsWith("*/") ? before.slice(before.lastIndexOf("/**")) : "";
-    const open = match[1] === "function" ? source.indexOf("(", match.index) : -1;
-    const parameters = open === -1 ? undefined : balanced(source, open, "(", ")");
-    const typed = parameters?.match(/\}:\s*([\s\S]+)\)$/)?.[1]?.trim();
-    const props =
-      interfaces.get(`${name}Props`) ??
-      (typed !== undefined && !typed.endsWith("Props") ? typed : undefined);
-    docs.set(name, { doc: comment.length > 0 ? cleanDoc(comment) : "", props });
-  }
-  return docs;
+  return {
+    doc: head === undefined ? "" : cleanDoc(head),
+    contract: declarations.length === 0 ? undefined : declarations.join("\n\n"),
+  };
 }
 
 export interface CssAnimation {

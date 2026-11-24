@@ -1,5 +1,5 @@
 import { INK_ALPHA, PANEL_ALPHA, cssColor, cssVariables } from "@occulis/ui/tokens";
-import { look } from "./theme.js";
+import { look } from "@occulis/board/theme";
 
 /**
  * Passe le code couleur du thème en vigueur (`theme.ts`) à la feuille de style de
@@ -16,7 +16,7 @@ export function applyPalette(root: HTMLElement): void {
   const { name, palette } = look();
   const variables: Record<string, string> = {
     // Toute la charte d'abord : les écrans natifs du jeu lisent aussi les `--occ-*`, sans
-    // attendre qu'un îlot React ait chargé la feuille de `@occulis/ui`.
+    // attendre qu'un îlot Vue ait chargé la feuille de `@occulis/ui`.
     ...cssVariables(name),
     "--ink": cssColor(palette.ink),
     "--ink-soft": cssColor(palette.ink, INK_ALPHA.soft),

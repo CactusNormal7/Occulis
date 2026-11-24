@@ -7,11 +7,11 @@ import {
   fitPixelCanvas,
   strokeQuad,
   terrainDrawables,
-} from "../render/canvas2d/paint.js";
+} from "@occulis/board/paint";
 import { centerOffset, fitScale } from "../replay/replay.js";
-import { METRICS, look } from "../theme/theme.js";
+import { METRICS, look } from "@occulis/board/theme";
 import { type Camera, createCamera, pivotOf, settle, toProjection, turn } from "../view/camera.js";
-import { compareDepth, depthOf, project, tileQuad } from "../view/iso.js";
+import { compareDepth, depthOf, project, tileQuad } from "@occulis/board/iso";
 import { tileAt } from "../view/picking.js";
 
 /**
@@ -187,11 +187,13 @@ export function mountPlacement(
           const top = drawPiece(
             context,
             project(piece.coord, height, proj),
-            current.side,
+            { kind: piece.kind, owner: current.side },
             look().pieces.alphaVisible,
             proj,
             tint,
           );
+          // Le glyphe dit déjà le type ; l'obélisque, commun à tous, a besoin de son initiale.
+          if (look().pieces.style !== "obelisk") return;
           context.fillStyle = cssColor(tint);
           // Tiny5 n'est nette qu'à 8 pixels du tampon, ou un multiple.
           context.font = `${8 / ratio}px ${FONT.pixel}`;

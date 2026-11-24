@@ -1,3 +1,4 @@
 ---
 category: Foundations
+stories: Panel
 ---

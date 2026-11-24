@@ -3,7 +3,7 @@ import type { Settings } from "../ui/settings.js";
 import type { Shell } from "../ui/shell.js";
 
 /** Les écrans pleine page, où l'engrenage des réglages n'a pas sa place. */
-const FULL_PAGE_STAGES: readonly Stage["kind"][] = ["boot", "deploying", "teams"];
+const FULL_PAGE_STAGES: readonly Stage["kind"][] = ["boot", "deploying", "teams", "debrief"];
 
 /** L'écran courant : `ui/flow.ts` le décide, le shell le montre. */
 export class Navigation {

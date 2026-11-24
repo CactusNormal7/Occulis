@@ -7,9 +7,8 @@ ligne de vue et fog of war.
 
 > **État** : prototype jouable en ligne. Plateau à hauteur, ligne de vue occultée par le
 > relief et les pièces, déplacement, tours alternés, fog of war avec mémoire, comptes,
-> matchmaking, salons privés et back-office. La capture et la fin de partie sont
-> temporairement retirées du moteur : **une partie ne se termine que par abandon**
-> ([design.md](docs/design.md), point ouvert 13). Le roster et les cartes sont provisoires.
+> matchmaking, salons privés et back-office. Prise à l'arrivée, échec et mat, pat et
+> nulles anti-blocage, comme aux échecs. Le roster et les cartes sont provisoires.
 
 ## Démarrage rapide
 
@@ -54,7 +53,7 @@ Monorepo pnpm, TypeScript strict partout.
 ```
 packages/core       logique de jeu pure et déterministe — plateau, LOS, déplacement, fog
 packages/protocol   messages client ↔ serveur, ni règle ni transport
-packages/ui         charte graphique en composants React (@occulis/ui)
+packages/ui         charte graphique en composants Vue (@occulis/ui)
 apps/web            client : rendu isométrique PixiJS, écrans, back-office (/admin/)
 apps/server         Worker Cloudflare : Durable Object par partie, file de matchmaking, D1, Better Auth
 tooling/infra       TUI de pilotage de l'infrastructure Cloudflare

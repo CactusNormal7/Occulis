@@ -21,6 +21,20 @@ export interface Selection {
   readonly piece: Piece;
   /** Cases où la pièce peut se rendre, indexées par leur clé. */
   readonly moves: ReadonlyMap<CoordKey, Coord>;
+  /**
+   * Parmi elles, celles où se tient une pièce adverse **que le joueur voit** : y aller,
+   * c'est la prendre. Une case tenue par une pièce cachée n'y figure pas — le serveur ne
+   * la distingue pas d'une case libre, et le client n'a pas à le deviner.
+   */
+  readonly captures: ReadonlySet<CoordKey>;
+  /** Cases où la pièce peut exercer sa capacité (poser un piège), indexées par leur clé. */
+  readonly abilityTargets: ReadonlyMap<CoordKey, Coord>;
+  /**
+   * La capacité est armée : un clic sur une de ses cibles l'exerce, et les déplacements
+   * sont masqués. Une case voisine peut être à la fois une destination et une cible : il
+   * faut donc un mode, choisi dans la fiche de la pièce (`aimAbility`).
+   */
+  readonly aiming: boolean;
 }
 
 export type ClickOutcome =
@@ -34,15 +48,35 @@ export type ClickOutcome =
  * il ignore les pièces cachées qui occupent une case ou barrent une route, donc il
  * proposerait des coups refusés.
  */
-export function selectionFor(legal: readonly Action[], piece: Piece): Selection {
+export function selectionFor(
+  legal: readonly Action[],
+  piece: Piece,
+  enemies: Iterable<Piece> = [],
+): Selection {
   const moves = new Map<CoordKey, Coord>();
+  const abilityTargets = new Map<CoordKey, Coord>();
 
   for (const action of legal) {
-    if (action.kind !== "move" || action.pieceId !== piece.id) continue;
-    moves.set(coordKey(action.to), action.to);
+    if (action.kind === "resign" || action.pieceId !== piece.id) continue;
+    if (action.kind === "move") moves.set(coordKey(action.to), action.to);
+    else abilityTargets.set(coordKey(action.target), action.target);
   }
 
-  return { piece, moves };
+  const captures = new Set<CoordKey>();
+  for (const enemy of enemies) {
+    const key = coordKey(enemy.coord);
+    if (enemy.owner !== piece.owner && moves.has(key)) captures.add(key);
+  }
+  return { piece, moves, captures, abilityTargets, aiming: false };
+}
+
+/**
+ * Arme ou désarme la capacité de la pièce sélectionnée. Sans cible, elle ne s'arme pas :
+ * la sélection reste telle quelle.
+ */
+export function aimAbility(selection: Selection, aiming: boolean): Selection {
+  if (aiming && selection.abilityTargets.size === 0) return selection;
+  return { ...selection, aiming };
 }
 
 /**
@@ -61,7 +95,14 @@ export function resolveClick(
     // Recliquer la pièce sélectionnée la désélectionne.
     if (coordEquals(coord, selection.piece.coord)) return { kind: "clear" };
 
-    const destination = selection.moves.get(coordKey(coord));
+    if (selection.aiming) {
+      const target = selection.abilityTargets.get(coordKey(coord));
+      if (target !== undefined) {
+        return { kind: "play", action: { kind: "ability", pieceId: selection.piece.id, target } };
+      }
+    }
+
+    const destination = selection.aiming ? undefined : selection.moves.get(coordKey(coord));
     if (destination !== undefined) {
       return {
         kind: "play",
@@ -70,8 +111,9 @@ export function resolveClick(
     }
   }
 
+  // Testé après les destinations : cliquer une pièce adverse à portée la prend.
   const piece = pieceAt(state, coord);
   // On ne sélectionne que ses propres pièces, et seulement à son tour.
   if (piece === undefined || piece.owner !== state.activePlayer) return { kind: "clear" };
-  return { kind: "select", selection: selectionFor(legal, piece) };
+  return { kind: "select", selection: selectionFor(legal, piece, state.pieces.values()) };
 }

@@ -1,30 +1,35 @@
 # État du projet
 
-Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-10-27.
+Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/) ; l'état détaillé au 2026-10-21 est dans [history/state-2026-10-21.md](history/state-2026-10-21.md). Mis à jour : 2026-11-22.
 
 ## Jeu (`packages/core`)
 
 - En place : plateau à hauteur, LOS occultée par le relief **et par les pièces**, verticalité, déplacement avec blocage mutuel, tours alternés, fog of war avec mémoire fantôme, historique et rejeu, abandon.
-- **Retirés** sur décision du porteur : capture, échec et mat, pat, nulles (règle « échecs strict » injouable avec les portées du roster provisoire). **Une partie ne se termine que par abandon.** Voir [open-points](design/open-points.md) 13.
-- Non implémenté (points ouverts) : pièges, roster définitif. Plus d'attaque à distance (décision du 2026-10-27). Seule la composition d'équipe est actée : 1 roi, 3 pièces à capacité, 2 pions (décision du 2026-10-27, ouverte à modification ; le moteur et `rules.md` §6 disent encore 1 maîtresse, 3, 4 pions).
+- **Fin de partie (2026-11-16)** : prise à l'arrivée, échec et mat « échecs strict », pat, triple répétition et 60 actions sans prise, sous le ruleset `provisional-3` (roi 1 pas, éclaireur 3, pion 1), repris par `provisional-4`. Les parties `provisional-0..2` se rejouent sans. Fiche d'une pièce au clic droit.
+- **Capacités de pièce et piège (2026-11-20)** : une action `ability` remplace le déplacement ; le **trappeur** pose sur une case voisine un piège invisible pour l'adversaire, qui prend la pièce adverse qui s'y arrête (roi compris : victoire par piège), un actif par trappeur. Ruleset `provisional-4`, protocole 10. Rendu : bouton « Poser un piège » dans la fiche, cibles et pièges posés en `--occ-trap` ; animations de pose et de déclenchement (la pièce marche jusqu'au piège, les mâchoires se referment) et bandeau « Pris au piège » (2026-11-22) ; le replay de l'historique montre les pièges posés et anime pose et déclenchement (2026-11-22).
+- Non implémenté (points ouverts) : piège à déclenchement différé, roster définitif. Plus d'attaque à distance (décision du 2026-10-27). Seule la composition d'équipe est actée : 1 roi, 3 pièces à capacité, 2 pions (décision du 2026-10-27, ouverte à modification, `rules.md` §7) : ruleset `provisional-4` (`provisional-3` : sans trappeur ; `provisional-2` : mêmes quotas, anciennes portées, sans prise) ; `provisional-1` (1/3/4) reste chargeable.
+- Carte des nouvelles parties : `breach-2` (11 × 11, relief bas, zones cachées l'une de l'autre, 2026-11-20) ; `breach-1` et `ridge-1` restent pour les parties jouées et le site.
 - Roster et cartes **provisoires** : rien ne s'équilibre dessus. Interprétations encodées : [implementation-notes.md](implementation-notes.md).
 
-## Règles décidées le 2026-10-27 (non implémentées)
+## Règles décidées le 2026-10-27 (non implémentées sauf mention)
 
 - Un tour : une seule pièce se déplace **ou** utilise une capacité, jamais les deux. Vaut pour toutes les capacités.
-- Capture de mêlée : en arrivant sur la case de la pièce adverse, comme aux échecs. Une pièce alliée bloque toujours.
+- Capture de mêlée : en arrivant sur la case de la pièce adverse, comme aux échecs. Une pièce alliée bloque toujours. C'est un déplacement : sur une case plus haute, mêmes règles de hauteur ; par une capacité, bornée par sa portée et sa LOS.
+- On ne peut pas passer son tour (déjà le cas dans le code).
 - Déplacements proches des échecs : lignes droites et diagonales, ou très courte portée.
-- Hauteur : un déplacement long ne comporte aucune montée, même de 1 niveau. Descendre est libre. Dès qu'il faut monter, le mouvement s'arrête.
-- Les pions pourront devenir des pièces plus fortes, comme aux échecs, sur une case de promotion particulière. Pièces obtenues : non définies.
-- Murs créés par une capacité : traités comme des pièces. Posé hors de la LOS de l'adversaire, un mur reste invisible pour lui jusqu'à ce qu'il puisse l'apercevoir normalement (orientation du porteur, à confirmer à l'implémentation).
-- Pas d'attaque à distance : toutes les captures se font en mêlée. L'attaque différée du repo est écartée ; open-points 5 et 12 (portée et hauteur) sans objet.
+- Hauteur : un déplacement long ne comporte aucune montée, même de 1 niveau. Descendre est libre. Dès qu'il faut monter, le mouvement s'arrête. **Déjà implémenté** (`movement.ts`).
+- Grimper : capacité de toutes les pièces. **Déjà implémenté**, désormais acté.
+- Promotion : seuls les pions se promeuvent, sur une case de promotion définie par la carte. Pièce obtenue : plus tard (une pièce de l'équipe, ou une pièce spéciale plus forte) ; visibilité non définie.
+- Murs créés par une capacité : traités comme des pièces. Posé hors de la LOS de l'adversaire, un mur reste invisible pour lui jusqu'à ce qu'il puisse l'apercevoir normalement (orientation du porteur, à confirmer à l'implémentation). La capacité elle-même reste une idée.
+- Pas d'attaque à distance : toutes les captures se font en mêlée. L'attaque différée du repo est écartée ; open-points 1, 2, 3 et 6, sections 3.3 et 5.3, sans objet. Le 12 (roster) reste ouvert.
 - Les types des pièces adverses sont connus avant la partie, jamais leurs positions. Mécanisme de révélation non défini.
 - Cartes de taille similaire, avec moins de murs.
-- Composition d'équipe (imposée ou choisie dans un pool) : à décider pour le moment.
+- Composition d'équipe : le joueur la compose dans les quotas (déjà en place).
+- Vocabulaire : « roi » remplace « pièce maîtresse » dans les docs et textes affichés ; les identifiants (`commander`, `isCommander`…) ne changent pas.
 
 ## Idées, non décidées
 
-- Un mat est souhaité, en comptant sur les capacités pour le rendre jouable ; l'expérience dira. La condition de victoire n'est pas tranchée.
+- Le mat est la condition de victoire du mode actuel (2026-11-16) ; d'autres modes pourront en avoir une autre.
 - Poison à échéance (la pièce meurt dans X tours, purge possible mais forte), ou poison presque aussi difficile à déclencher qu'une capture normale. À voir plus tard.
 - Rounds (manches), éventuellement selon un mode de jeu, sans forcer la condition de victoire. À voir plus tard.
 
@@ -39,8 +44,27 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 
 - Rendu isométrique pixel art (tampon réduit, plateau agrandi au plus proche voisin), 3 thèmes non tranchés (Obsidienne, Reliquaire, Astral), animations pures du temps.
 - **Voile tramé du changement de thème : acté, verrouillé par `veil.test.ts`, ne jamais le retoucher sans demande explicite.**
-- Aucune partie locale (hot-seat retiré, implementation-notes 18). Un coup se joue au clic ou par saisie de coordonnées ; la sélection filtre `legalActions`, elle ne redéduit jamais la légalité.
-- Charte `@occulis/ui` portant back-office, profil, compte, préparation. Le menu, l'attente et le bandeau de partie n'y ont pas migré.
+- Aucune partie locale (hot-seat retiré, implementation-notes 18). Un coup se joue à la souris seulement (saisie au clavier retirée le 2026-11-20) ; la sélection filtre `legalActions`, elle ne redéduit jamais la légalité.
+- **ATH « Bandeaux » (2026-11-20)** : plaques des deux camps avec leur composition, tour, fiche de pièce, journal tel que vu, caméra, légende, alertes d'échec et de départ adverse ; un glyphe pixel par type de pièce (obélisque gardé derrière `PIECE_STYLE`). Protocole 9 (`players`, `opponent-presence`).
+- **Vue de dessus (2026-11-20)** : un bouton de caméra ou la barre d'espace basculent le plateau en plan, animé ; caméra figée et centrée, pièces centrées sur leur case, relief en rebords et en points.
+- **Caméra bornée et colonne repliable (2026-11-22)** : la vue libre reste sur le plateau (dézoomé au plus loin, le plateau entier et immobile ; zoomé, on le parcourt jusqu'à ses bords) ; un bouton replie la fiche et le journal pour voir le plateau en grand.
+- Charte `@occulis/ui` portant back-office, profil, compte, préparation et ATH. Le menu et l'attente n'y ont pas migré.
+
+## Site vitrine (`apps/site`) — 2026-10-29
+
+- Page unique (Astro statique, Worker `occulis-site`), inscription beta en double opt-in sur une D1 dédiée. Décision : [architecture.md](architecture.md) §8 ; fonctionnement : [technical/site.md](technical/site.md).
+- Rendu Canvas 2D du plateau extrait dans `packages/board`, partagé avec `apps/web`.
+- Non en ligne : domaine, identité de l'éditeur et contact à fournir ; base, secrets et Resend à provisionner ; pas de déploiement CI.
+
+## Outil de gestion de projet — 2026-10-28
+
+Décision : Nota (base « Tâches », espace Tengram Ydays) remplace Notion comme outil de gestion de projet par défaut.
+Raison : choix de Jules, Nota devient l'outil de référence.
+Conséquences :
+
+- Les statuts, priorités et dates se mettent à jour dans Nota ; Notion n'est plus la source de vérité.
+- Base resynchronisée le 2026-10-28 (OCC-1 à OCC-128, 120 lignes). Chaque ligne garde son « Lien Notion ».
+- Les prompts et docs qui disent « passer la tâche Notion en Fait » (ex. prompt des Refontes 1-5, bilan hebdomadaire) sont à mettre à jour vers Nota (OCC-121).
 
 ## Vérifié le 2026-10-21
 
@@ -48,6 +72,6 @@ Plafond ~60 lignes. Les entrées plus anciennes partent dans [history/](history/
 
 ## Prochaines décisions à soumettre
 
-- Types et capacités des 3 pièces à capacité, composition d'équipe, révélation des types adverses, pièces obtenues par promotion, identité des pièces à travers le fog (open-points). Capture : règle décidée le 2026-10-27, à réimplémenter. Condition de victoire : non tranchée.
+- Types et capacités des 3 pièces à capacité (« ça dépendra »), révélation des types adverses, pièce obtenue par promotion et sa visibilité, détails des murs (à la création de la capacité), identité des pièces à travers le fog (open-points). Capture : règle décidée le 2026-10-27, à réimplémenter. Condition de victoire : non tranchée.
 - Choix du thème ; migration du menu, de l'attente et du bandeau vers la charte.
 - Points ouverts d'infra : [architecture.md](architecture.md) §7.

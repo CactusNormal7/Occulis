@@ -38,7 +38,8 @@ export const admin = {
   },
   result: {
     ongoing: "ongoing",
-    victory: (handle: string) => `${handle} wins (resignation)`,
+    victory: (handle: string, reason: string) => `${handle} wins (${reason})`,
+    draw: (reason: string) => `draw (${reason})`,
   },
   resign: "resignation",
   pageLabel: {
@@ -168,12 +169,11 @@ export const admin = {
     banTitle: (name: string) => `Suspend ${name}`,
     ban: "Suspend",
     banned: (name: string) => `${name} is suspended.`,
-    banNote:
-      "Their sessions are closed right away, and they cannot open new ones until it is lifted.",
+    banNote: "Signs them out now and until the suspension is lifted.",
     reason: "reason (optional)",
     days: "duration in days",
     daysPlaceholder: "empty: permanent",
-    daysHint: "A number of days, or nothing for a permanent suspension.",
+    daysHint: "A number of days, or empty.",
     deleteTitle: (name: string) => `Delete ${name}`,
     deleteConfirm: "Delete permanently",
     deleteNote:
@@ -225,6 +225,19 @@ export const admin = {
     viewOf: (handle: string) => `${handle}'s view`,
     rotate: "Rotate a quarter turn",
     frameStart: "starting position",
+    /**
+     * The sentence that explains a move's notation (`Sb3-c4`, `Pe4xd5`, `Tf3^g3`), shown on
+     * hover. Squares are named like the notation: column letter, then row from A's side.
+     */
+    notation: {
+      move: (piece: string, from: string, to: string) => `${piece} from ${from} to ${to}`,
+      takes: (taken: string) => `, takes the ${taken.toLowerCase()}`,
+      layTrap: (piece: string, from: string, at: string) =>
+        `${piece} on ${from} lays a trap on ${at}`,
+      trapped: ", caught in a trap",
+      checkmate: ": checkmate",
+      resign: (seat: string, winner: string) => `${seat} resigns: ${winner} wins`,
+    },
     frame: (index: number, total: number, who: string, move: string) =>
       `move ${index} / ${total} — ${who} — ${move}`,
     board: "Replayed board",

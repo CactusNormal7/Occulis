@@ -12,7 +12,7 @@
  *   lueur signifie toujours quelque chose.
  *
  * Deux consommateurs, deux formats :
- * - `apps/web/src/theme/theme.ts` (PixiJS) reprend les entiers 0xRRGGBB ;
+ * - `packages/board/src/theme.ts` (PixiJS) reprend les entiers 0xRRGGBB ;
  * - les composants de ce paquet lisent les propriétés CSS `--occ-*` de
  *   `generated/tokens.css`, produit depuis ce fichier par `pnpm --filter @occulis/ui
  *   tokens` et verrouillé par un test : il ne se modifie jamais à la main.
@@ -56,6 +56,8 @@ export interface Palette {
     /** Réservé : grimper consomme le tour entier et mériterait un marquage propre. */
     readonly climb: number;
     readonly threat: number;
+    /** Un piège : les siens posés, et les cases où la pose est possible. */
+    readonly trap: number;
   };
   /** Le ciel : la couleur des étoiles et de la lumière d'ambiance (nébuleuse, lucioles). */
   readonly sky: { readonly star: number; readonly aura: number };
@@ -84,7 +86,13 @@ export const THEMES = {
       sideShade: 0x09090a,
     },
     camp: { A: 0x9be7ff, B: 0xff4d5e },
-    state: { selection: 0xffd166, legalMove: 0x7d9cff, climb: 0xc49bff, threat: 0xff4d5e },
+    state: {
+      selection: 0xffd166,
+      legalMove: 0x7d9cff,
+      climb: 0xc49bff,
+      threat: 0xff4d5e,
+      trap: 0xa6e36b,
+    },
     sky: { star: 0xe9e6df, aura: 0x2a2a30 },
   },
   reliquary: {
@@ -99,7 +107,13 @@ export const THEMES = {
       sideShade: 0x0d0906,
     },
     camp: { A: 0x72f5c4, B: 0xff7a45 },
-    state: { selection: 0xfff0a0, legalMove: 0x5ec8ff, climb: 0xd49bff, threat: 0xff7a45 },
+    state: {
+      selection: 0xfff0a0,
+      legalMove: 0x5ec8ff,
+      climb: 0xd49bff,
+      threat: 0xff7a45,
+      trap: 0xd6f26b,
+    },
     sky: { star: 0xf2dcb0, aura: 0x8fe8a0 },
   },
   astral: {
@@ -114,7 +128,13 @@ export const THEMES = {
       sideShade: 0x0a0810,
     },
     camp: { A: 0x5ef0ff, B: 0xff4fd8 },
-    state: { selection: 0xffe066, legalMove: 0x8b7bff, climb: 0xb98bff, threat: 0xff4fd8 },
+    state: {
+      selection: 0xffe066,
+      legalMove: 0x8b7bff,
+      climb: 0xb98bff,
+      threat: 0xff4fd8,
+      trap: 0x9cf27a,
+    },
     sky: { star: 0xece6ff, aura: 0x6b3fa0 },
   },
 } as const satisfies Record<string, Palette>;
@@ -139,6 +159,13 @@ export const INK = DEFAULT_PALETTE.ink;
 export const TERRAIN = DEFAULT_PALETTE.terrain;
 export const CAMP = DEFAULT_PALETTE.camp;
 export const STATE = DEFAULT_PALETTE.state;
+
+/**
+ * Le ruban de chantier (`WorkInProgress`) : un signal de développement, ni couleur de
+ * partie ni matière de thème. Il garde donc le jaune et le noir de la signalétique dans
+ * tous les thèmes, et disparaît avec l'élément une fois celui-ci fini.
+ */
+export const CAUTION = { tape: 0xf5c518, ground: 0x0a0a0a } as const;
 
 /**
  * Les opacités de l'os, du plus présent au plus discret. L'interface n'a pas d'autre
@@ -257,10 +284,13 @@ export function paletteVariables(palette: Palette): Record<string, string> {
     "--occ-legal": cssColor(state.legalMove),
     "--occ-climb": cssColor(state.climb),
     "--occ-threat": cssColor(state.threat),
+    "--occ-trap": cssColor(state.trap),
     // Un geste accepté ou refusé est de l'information de partie : il reprend les tokens
     // d'état, pas une couleur d'interface propre.
     "--occ-accepted": cssColor(state.legalMove),
     "--occ-refused": cssColor(state.threat),
+    "--occ-caution": cssColor(CAUTION.tape),
+    "--occ-caution-ground": cssColor(CAUTION.ground),
     // Les échantillons de chaque thème, identiques sous tous les thèmes : le sélecteur
     // montre chaque proposition dans ses propres couleurs.
     ...Object.fromEntries(

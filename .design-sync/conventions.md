@@ -4,21 +4,25 @@ Occulis is a competitive 1v1 tactical board game in 2D isometric view — "a lit
 
 ## Setup
 
-Wrap every screen in `UiRoot`. It sets the ink (`occ-ink`), the pixel font (`--occ-font-pixel`, Tiny5) and the base size (`occ-text-md`, line-height 1.5). Use `fullPage` for a whole page: it adds the void (`occ-bg`), the aura halo (`occ-aura`) and two twinkling star fields (`occ-star`, `occ-star-faint`). Without `fullPage` the root stays transparent and sits on its host's matter (a game panel). Put page content in `<main className="occ-page">` (a centred column, max 1240px) and blocks in `occ-stack`. Use `ToastProvider` above any component that calls `useToast()`. Switch theme with `data-theme="obsidian" | "reliquary" | "astral"` on the root element.
+Wrap every screen in `UiRoot`. It sets the ink (`occ-ink`), the pixel font (`--occ-font-pixel`, Tiny5) and the base size (`occ-text-md`, line-height 1.5). Use `full-page` for a whole page: it adds the void (`occ-bg`), the aura halo (`occ-aura`) and two twinkling star fields (`occ-star`, `occ-star-faint`). Without `full-page` the root stays transparent and sits on its host's matter (a game panel). Put page content in `<main class="occ-page">` (a centred column, max 1240px) and blocks in `occ-stack`. Use `ToastProvider` above any component that calls `useToast()`. Switch theme with `data-theme="obsidian" | "reliquary" | "astral"` on the root element.
 
-```jsx
-<UiRoot fullPage>
-  <TopBar section="back-office" tabs={[{ href: "#/", label: "Overview", current: true }]} />
-  <main className="occ-page">
-    <div className="occ-stack occ-enter">{/* page blocks */}</div>
+The components are Vue 3 single-file components; a screen is a Vue template:
+
+```vue
+<UiRoot full-page>
+  <TopBar section="back-office" :tabs="[{ href: '#/', label: 'Overview', current: true }]" />
+  <main class="occ-page">
+    <div class="occ-stack occ-enter"><!-- page blocks --></div>
   </main>
 </UiRoot>
 ```
 
+Fields bind with `v-model`. Content goes in slots (`<template #actions>`, `#end`, `#footer`…), never in props. A gesture whose presence changes what is drawn is a prop, not an event: a `ChoiceRow` is selectable only with `:on-select`, a `SettingRow` shows its edit button only with `:on-edit`.
+
 ## Content fundamentals
 
-- Every visible text exists in English and French; English is the default and the source. Components that show their own words ("Cancel", "Continue with Google") follow the active `LocaleProvider` / `UiRoot locale`.
-- Labels, buttons, badges, tabs and headings are short and set in uppercase with `occ-caps` letter-spacing (`className="occ-label"`). Field labels are the exception: lowercase, dimmed.
+- Every visible text exists in English and French; English is the default and the source. Components that show their own words ("Cancel", "Continue with Google") follow the active `LocaleProvider` / `UiRoot :locale`.
+- Labels, buttons, badges, tabs and headings are short and set in uppercase with `occ-caps` letter-spacing (`class="occ-label"`). Field labels are the exception: lowercase, dimmed.
 - Plain, factual, terse. Facts over adjectives: "26–50 of 132". No exclamation marks, no emoji.
 - Destructive actions name what they do ("Suspend", "Delete"), and go through a `Dialog` with a `Note` explaining the consequence — never `confirm()`.
 
@@ -34,6 +38,8 @@ Wrap every screen in `UiRoot`. It sets the ink (`occ-ink`), the pixel font (`--o
    - `occ-legal` / `occ-accepted`: a legal move, an accepted action, a success toast.
    - `occ-threat` / `occ-refused`: a threat, a refusal, a sanction, a destructive button, the last five seconds of a `CountdownRing`.
    - Account states stay in bone (`Badge tone="strong" | "plain" | "dim"`); only a suspension takes `tone="refused"`.
+
+**Development signal.** `occ-caution` / `occ-caution-ground` (a yellow-and-black tape, identical under every theme) belong to `WorkInProgress` alone. They mean "unfinished, possibly placeholder", not game information, and leave with the element once it is finished.
 
 **Themes.** Three dark proposals share the grammar and change only matter and light; none is decided yet. _Obsidian_ (default) — grey neutral matter, cold bone, icy cyan and red glows. _Reliquary_ — warm brown-black, golden bone, mint and orange glows, fireflies. _Astral_ — plum-black, a dense star vault, cyan and magenta glows. The `occ-swatch-*` tokens are identical under every theme so a theme picker shows each proposal in its own colours.
 
@@ -64,6 +70,7 @@ Style your own layout glue with `var(--occ-*)` only. Helper classes: `occ-page`,
 - **Account flows:** `FormPanel` with `FormMessage`, `TextField`/`PasswordField`, `Divider` and `ProviderButton`; one form and one URL per flow.
 - **Settings:** `SettingList` of `SettingRow`s that unfold a `SettingEditor` in place.
 - Results go through `useToast()`; empty or failed loads use `EmptyState`.
+- **Unfinished elements:** wrap them in `WorkInProgress` (with a `note` saying what is missing) whenever placeholder data is shown.
 
 ## Not synced
 

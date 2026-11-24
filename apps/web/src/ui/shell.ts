@@ -5,7 +5,7 @@ import { messages } from "../locale/current.js";
 import { sweepVeil } from "./veil.js";
 
 /**
- * Les écrans : compte, menu, attente, partie. Un seul est visible à la fois.
+ * Les écrans : compte, menu, attente, partie, fin de partie. Un seul est visible à la fois.
  *
  * Ce module montre ce que `flow.ts` a décidé — il ne décide rien lui-même, et
  * n'appelle jamais le réseau : il rend les gestes du joueur à la racine de
@@ -13,7 +13,7 @@ import { sweepVeil } from "./veil.js";
  * connaisse les identifiants de la page avec `app/page.ts`.
  *
  * L'écran de compte n'est ici qu'un conteneur montré ou masqué : son contenu est
- * l'îlot React de `src/account/`, sur la charte.
+ * l'îlot Vue de `src/account/`, sur la charte.
  *
  * Ces écrans paraissent sans l'ouverture des fenêtres (`revealWindow`), réservée aux
  * fenêtres qu'un clic ouvre (docs/design.md 8.1). Une seule bascule s'anime : du menu vers
@@ -25,12 +25,14 @@ export interface ShellElements {
   readonly auth: HTMLElement;
   readonly menu: HTMLElement;
   readonly waiting: HTMLElement;
-  /** Le déploiement et les équipes : deux îlots React, ici seulement montrés ou masqués. */
+  /** Le déploiement, les équipes et l'écran de fin : des îlots Vue, ici seulement montrés ou masqués. */
   readonly deploy: HTMLElement;
   readonly teams: HTMLElement;
+  readonly debrief: HTMLElement;
   readonly teamsEntry: HTMLButtonElement;
   /** Le canevas de jeu, montré seulement une fois la partie commencée. */
   readonly board: HTMLElement;
+  /** L'hôte de l'ATH (`hud/`), montré avec le plateau. */
   readonly hud: HTMLElement;
 
   readonly identity: HTMLElement;
@@ -57,7 +59,6 @@ export interface ShellElements {
   readonly waitingCode: HTMLElement;
   readonly copy: HTMLButtonElement;
   readonly cancel: HTMLButtonElement;
-  readonly leave: HTMLButtonElement;
 }
 
 export interface ShellOptions {
@@ -66,8 +67,6 @@ export interface ShellOptions {
   readonly onSeek: (seeking: QueueSeeking, code?: string) => void;
   /** Retour au menu depuis une attente. */
   readonly onCancel: () => void;
-  /** Sortie d'une partie, jouée ou regardée. */
-  readonly onLeaveMatch: () => void;
   /** L'administrateur quitte l'identité d'emprunt. */
   readonly onStopImpersonating: () => void;
   readonly onSignOut: () => void;
@@ -118,7 +117,6 @@ export function attachShell(options: ShellOptions): Shell {
   });
 
   e.cancel.addEventListener("click", () => options.onCancel());
-  e.leave.addEventListener("click", () => options.onLeaveMatch());
 
   e.copy.addEventListener("click", () => {
     void navigator.clipboard?.writeText(e.waitingCode.textContent ?? "").then(() => {
@@ -138,6 +136,7 @@ export function attachShell(options: ShellOptions): Shell {
     e.waiting.hidden = stage.kind !== "waiting" && stage.kind !== "proposal";
     e.deploy.hidden = stage.kind !== "deploying";
     e.teams.hidden = stage.kind !== "teams";
+    e.debrief.hidden = stage.kind !== "debrief";
     e.board.hidden = stage.kind !== "game";
     e.hud.hidden = stage.kind !== "game";
     onMenu = stage.kind === "menu";

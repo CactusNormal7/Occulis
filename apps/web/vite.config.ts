@@ -1,6 +1,7 @@
 import { cp, readFile, rm } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import vue from "@vitejs/plugin-vue";
 import { defineConfig, type Connect, type Plugin } from "vite";
 // Par chemin relatif et non par `@occulis/ui/critical` : Vite laisse les imports nus de sa
 // configuration à Node, qui ne sait pas lire le TypeScript du paquet ; un chemin relatif
@@ -154,20 +155,11 @@ const PAGES = {
 /**
  * Le design system du back-office (`src/admin/design/`) monte les aperçus de la charte là
  * où la synchronisation vers Claude Design les range, dans `.design-sync/previews/`, hors
- * de tout paquet : aucun `node_modules` ni `tsconfig.json` ne les y attend. D'où trois
- * réglages, sans effet sur le reste du client :
- * - `@occulis/ui` et React se résolvent depuis cette application (`alias`, `dedupe`) —
- *   un second React casserait les hooks ;
- * - le JSX est compilé par le runtime automatique, celui que `"jsx": "react-jsx"` impose
- *   déjà à `src/`.
+ * de tout paquet : aucun `node_modules` ne les y attend. `@occulis/ui` et Vue se résolvent
+ * donc depuis cette application (`alias`, `dedupe`) — une seconde copie de Vue casserait
+ * l'injection (`provide`/`inject`) entre la charte et ses aperçus.
  */
 const UI_ENTRY = fileURLToPath(new URL("../../packages/ui/src/index.ts", import.meta.url));
-
-/**
- * Le runtime JSX du client (`src/cipher-jsx/`) : celui de React, qui sait chiffrer les textes
- * du back-office pour le rôle `goy`. Sans chiffre posé, il rend exactement ce que rendrait React.
- */
-const CIPHER_JSX = fileURLToPath(new URL("src/cipher-jsx", import.meta.url));
 
 /**
  * Le labo de la refonte graphique (`lab/`, qui monte `packages/ui/previews/`) : comme les
@@ -201,6 +193,7 @@ function redirectLab(): Plugin {
 
 export default defineConfig(({ mode }) => ({
   plugins: [
+    vue(),
     criticalPaint(),
     keepRenderBlocking(),
     serveMockups(),
@@ -208,12 +201,8 @@ export default defineConfig(({ mode }) => ({
     ...(mode === MOCKUPS_MODE ? [embedMockups()] : []),
   ],
   resolve: {
-    alias: [
-      { find: /^@occulis\/ui$/, replacement: UI_ENTRY },
-      { find: /^@occulis\/cipher-jsx\//, replacement: `${CIPHER_JSX}/` },
-    ],
-    dedupe: ["react", "react-dom"],
+    alias: [{ find: /^@occulis\/ui$/, replacement: UI_ENTRY }],
+    dedupe: ["vue"],
   },
-  esbuild: { jsx: "automatic", jsxImportSource: "@occulis/cipher-jsx" },
   build: { rollupOptions: { input: mode === MOCKUPS_MODE ? { ...PAGES, lab: LAB_PAGE } : PAGES } },
 }));

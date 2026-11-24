@@ -1,4 +1,5 @@
 import type { Action } from "./actions.js";
+import type { Trap } from "./abilities/trap.js";
 import type { Board } from "./board.js";
 import { type Coord, type CoordKey, coordEquals, coordKey } from "./coord.js";
 import type { Piece, PieceId, PlayerId, Ruleset } from "./pieces/index.js";
@@ -6,22 +7,78 @@ import type { Piece, PieceId, PlayerId, Ruleset } from "./pieces/index.js";
 /**
  * Fin de partie.
  *
- * L'abandon est la seule aujourd'hui : la capture et la règle « échecs strict » sont
- * retirées le temps de reconstruire la géométrie du jeu (docs/design.md 7.1), donc
- * plus rien ne peut terminer une partie automatiquement : ni mat, ni pat, ni nulle.
- * L'abandon survit parce que c'est une action de joueur et non une règle — et parce
- * qu'il reste le seul moyen de quitter une partie.
+ * L'abandon est une action de joueur, possible sous tous les rulesets. Les autres issues
+ * sont des règles (`endgame.ts`) et ne se produisent que sous un ruleset qui les déclare
+ * (`Ruleset.rules`) : le mat et le pat avec `check`, les deux nulles anti-blocage avec
+ * `draws` (docs/design/rules.md 7.1 et 7.2).
  */
-export type Outcome = {
-  readonly kind: "victory";
-  readonly winner: PlayerId;
-  readonly reason: "resignation";
-};
+export type Outcome =
+  | {
+      readonly kind: "victory";
+      readonly winner: PlayerId;
+      /** `trap` : le roi adverse a fini son déplacement sur un piège (rules.md section 4). */
+      readonly reason: "resignation" | "checkmate" | "trap";
+    }
+  | {
+      readonly kind: "draw";
+      /**
+       * `stalemate` : le joueur au trait n'a plus aucun coup légal, son roi hors de
+       * danger. Les deux autres sont les règles anti-blocage.
+       */
+      readonly reason: "stalemate" | "repetition" | "no-capture";
+    };
+
+/** Le vainqueur d'une issue, ou `undefined` pour une nulle. */
+export function winnerOf(outcome: Outcome): PlayerId | undefined {
+  return outcome.kind === "victory" ? outcome.winner : undefined;
+}
+
+/**
+ * Ce qu'il faut retenir pour les nulles anti-blocage (docs/design/rules.md 7.2).
+ *
+ * Tenu de façon incrémentale plutôt que recalculé depuis `history` : une partie est sans
+ * limite de temps de réflexion, donc potentiellement longue, et rejouer tout le log à
+ * chaque coup serait quadratique pour une information de deux entiers.
+ */
+export interface DrawClock {
+  /** Combien de fois chaque position a déjà été atteinte. */
+  readonly seen: ReadonlyMap<PositionKey, number>;
+  /** Actions jouées depuis la dernière prise. */
+  readonly sinceCapture: number;
+}
+
+export type PositionKey = string;
+
+/**
+ * Signature d'une position, pour la règle de répétition.
+ *
+ * Les pièces sont identifiées par leur camp et leur type, **pas par leur identifiant** :
+ * deux éclaireurs d'un même camp qui échangent leurs cases rendent bien la même
+ * position, comme aux échecs. Le trait en fait partie — la même disposition n'est pas la
+ * même position selon qui doit jouer. Les pièges aussi : en poser un change la position.
+ */
+export function positionKey(
+  pieces: Iterable<Piece>,
+  activePlayer: PlayerId,
+  traps: readonly Trap[] = [],
+): PositionKey {
+  const placed = [...pieces]
+    .map((piece) => `${piece.owner}${piece.kind}@${piece.coord.x},${piece.coord.y}`)
+    .sort()
+    .join(";");
+  const laid = traps
+    .map((trap) => `${trap.owner}trap@${trap.coord.x},${trap.coord.y}`)
+    .sort()
+    .join(";");
+  return `${placed}|${laid}|${activePlayer}`;
+}
 
 export interface GameState {
   readonly board: Board;
   readonly ruleset: Ruleset;
   readonly pieces: ReadonlyMap<PieceId, Piece>;
+  /** Les pièges en jeu, des deux camps (`abilities/trap.ts`). Jamais transmis tels quels. */
+  readonly traps: readonly Trap[];
   readonly activePlayer: PlayerId;
   /** Incrémenté à chaque action ; un tour = une action d'une seule pièce (section 6). */
   readonly turn: number;
@@ -35,12 +92,18 @@ export interface GameState {
    * diverger de la position qu'il décrit.
    */
   readonly history: readonly ActionRecord[];
+  /** L'horloge des nulles. Elle tourne sous tous les rulesets, seuls certains la lisent. */
+  readonly draw: DrawClock;
 }
 
 /** Un coup joué, avec le camp qui l'a joué — que la position seule ne dit plus. */
 export interface ActionRecord {
   readonly player: PlayerId;
   readonly action: Action;
+  /** La pièce prise par ce coup, telle qu'elle était sur sa case. */
+  readonly captured?: Piece | undefined;
+  /** La pièce jouée, prise par un piège adverse sur sa case d'arrivée. */
+  readonly trapped?: Piece | undefined;
 }
 
 export function createGame(
@@ -67,10 +130,14 @@ export function createGame(
     board,
     ruleset,
     pieces: byId,
+    traps: [],
     activePlayer: firstPlayer,
     turn: 0,
     outcome: null,
     history: [],
+    // La position de départ compte pour une occurrence : sans elle, y revenir deux fois
+    // n'en ferait que deux, et la troisième répétition n'arriverait jamais au bon coup.
+    draw: { seen: new Map([[positionKey(byId.values(), firstPlayer), 1]]), sinceCapture: 0 },
   };
 }
 

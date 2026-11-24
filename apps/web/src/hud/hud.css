@@ -1,0 +1,672 @@
+/*
+ * L'ATH de partie, disposition « Bandeaux » (docs/mockups/ath/a-bandeaux.html).
+ *
+ * Toutes les couleurs viennent des tokens de la charte (`--occ-*`) : l'ATH change de
+ * thème avec le plateau. Les panneaux reprennent le cadre de la charte — un pixel, coins
+ * crantés (`--pixel-notch`), ombre portée d'un bloc.
+ */
+
+/* ---- Le calque ---------------------------------------------------------------------- */
+
+/* L'ATH couvre l'écran sans le capter : seuls ses panneaux reçoivent la souris, le reste
+   la laisse au plateau. */
+.hud {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  color: var(--occ-ink);
+  font: 16px/1.5 var(--occ-font-pixel, ui-monospace, monospace);
+}
+
+.hud > *,
+.hud-duel > * {
+  pointer-events: auto;
+}
+
+.hud-duel,
+.hud-alerts {
+  pointer-events: none;
+}
+
+.hud p,
+.hud h2,
+.hud ol,
+.hud dl,
+.hud dd {
+  margin: 0;
+  padding: 0;
+}
+
+.hud ol {
+  list-style: none;
+}
+
+/* L'engrenage des réglages est celui de la page : en partie, il se range parmi les outils,
+   sous la plaque adverse, au lieu de la couvrir. */
+body:has(#hud-root:not([hidden]) .hud) #corner-tools {
+  top: 88px;
+}
+
+/* ---- Briques ------------------------------------------------------------------------ */
+
+.hud-panel {
+  border: 1px solid var(--occ-ink-faint);
+  background: var(--occ-panel);
+  box-shadow: 0 4px 0 var(--occ-shade);
+  clip-path: var(--pixel-notch);
+}
+
+.hud-panel--threat {
+  border-color: var(--occ-threat);
+  animation: hud-breathe 3.2s ease-in-out infinite;
+}
+
+.hud-panel--caution {
+  border-color: var(--occ-caution);
+}
+
+.hud-caps {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hud-dim {
+  color: var(--occ-ink-dim);
+}
+
+.hud-soft {
+  color: var(--occ-ink-soft);
+}
+
+.hud-faint {
+  color: var(--occ-ink-faint);
+}
+
+.hud-threat {
+  color: var(--occ-threat);
+}
+
+.hud-caution {
+  color: var(--occ-caution);
+}
+
+.hud-legal {
+  color: var(--occ-legal);
+}
+
+.hud-trap {
+  color: var(--occ-trap);
+}
+
+/* La couleur d'un camp, que ses éléments lisent par `currentColor` ou `--hud-camp`. */
+.hud-camp-A {
+  --hud-camp: var(--occ-camp-a);
+  --hud-camp-glow: var(--occ-camp-a-glow);
+  color: var(--occ-camp-a);
+}
+
+.hud-camp-B {
+  --hud-camp: var(--occ-camp-b);
+  --hud-camp-glow: var(--occ-camp-b-glow);
+  color: var(--occ-camp-b);
+}
+
+/* Une pastille de camp, carrée : la police et le plateau sont en pixels. */
+.hud-pip {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  vertical-align: 2px;
+}
+
+.hud-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.hud-icon {
+  width: 16px;
+  height: 16px;
+  shape-rendering: crispEdges;
+}
+
+/* `.hud` en tête : la règle des boutons de la page (`button:not([class*="occ-"])`,
+   `ui/ui.css`) est plus précise qu'une classe seule, et imposerait sinon ses marges. */
+.hud .hud-button {
+  box-sizing: border-box;
+  min-height: 32px;
+  padding: 3px 12px;
+  border: 1px solid var(--occ-ink-soft);
+  background: var(--occ-surface);
+  box-shadow: inset 0 -2px 0 var(--occ-shade);
+  clip-path: var(--pixel-notch);
+  color: var(--occ-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.hud .hud-button:hover,
+.hud .hud-button:focus-visible {
+  border-color: var(--occ-ink);
+  background: var(--occ-matter);
+  text-shadow: 0 0 8px var(--occ-ink-glow);
+  outline: none;
+}
+
+.hud .hud-button--quiet {
+  border-color: var(--occ-ink-faint);
+  background: var(--occ-panel);
+  box-shadow: none;
+  color: var(--occ-ink-soft);
+}
+
+.hud .hud-button--icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+
+/* Un bouton allumé : la vue de dessus est active. */
+.hud .hud-button[aria-pressed="true"] {
+  border-color: var(--occ-selection);
+  color: var(--occ-selection);
+  box-shadow:
+    inset 0 -2px 0 var(--occ-shade),
+    0 0 10px var(--occ-selection);
+}
+
+/* Un geste de caméra sans effet tant que la vue de dessus la fige. */
+.hud .hud-button:disabled {
+  border-color: var(--occ-ink-ghost);
+  background: transparent;
+  box-shadow: none;
+  color: var(--occ-ink-ghost);
+  text-shadow: none;
+  cursor: default;
+}
+
+/* ---- Glyphes de pièce --------------------------------------------------------------- */
+
+.hud-glyph {
+  width: 18px;
+  height: 18px;
+  shape-rendering: crispEdges;
+}
+
+.hud-glyph--large {
+  width: 36px;
+  height: 36px;
+}
+
+.hud-glyph[data-taken] {
+  opacity: 0.28;
+}
+
+.hud-glyph[data-ghost] {
+  opacity: 0.45;
+}
+
+.hud-roster {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.hud-roster__slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+/* Une pièce prise : éteinte et barrée. */
+.hud-roster__slot[data-taken]::after {
+  content: "";
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  top: 50%;
+  height: 1px;
+  background: var(--occ-ink-dim);
+  transform: rotate(-35deg);
+}
+
+/* ---- Bandeau du haut : les deux camps de part et d'autre du tour -------------------- */
+
+.hud-duel {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  gap: 16px;
+}
+
+.hud-band {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 56px;
+  padding: 8px 12px;
+  color: var(--occ-ink);
+}
+
+.hud-band--self {
+  justify-self: start;
+}
+
+.hud-band--opponent {
+  justify-self: end;
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.hud-band--opponent .hud-pip {
+  order: 1;
+  margin: 0 0 0 8px;
+}
+
+.hud-band__who {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.hud-band__name {
+  display: inline-flex;
+  align-items: center;
+  color: var(--hud-camp);
+}
+
+/* Le camp au trait : son bord s'allume de sa couleur. */
+.hud-band--to-move {
+  border-color: var(--hud-camp);
+  box-shadow:
+    0 4px 0 var(--occ-shade),
+    0 0 14px var(--hud-camp-glow);
+}
+
+.hud-turn {
+  min-width: 248px;
+  padding: 6px 20px 8px;
+  text-align: center;
+}
+
+.hud-turn__number {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.hud-turn__count {
+  font-size: 32px;
+  line-height: 1.1;
+  text-shadow: 0 0 10px var(--occ-ink-glow);
+}
+
+.hud-turn__line {
+  color: var(--occ-ink-soft);
+  animation: hud-line-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.hud-turn__line[data-tone="yours"] {
+  color: var(--occ-ink);
+  text-shadow: 0 0 10px var(--occ-ink-glow);
+}
+
+.hud-turn__line[data-tone="check"] {
+  color: var(--occ-threat);
+}
+
+/* ---- Bandeaux d'événement, sous le tour --------------------------------------------- */
+
+.hud-alerts {
+  position: absolute;
+  top: 104px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-alert,
+.hud-notice {
+  padding: 8px 20px;
+  text-align: center;
+}
+
+.hud-alert.hud-panel--threat {
+  color: var(--occ-threat);
+}
+
+/* Un message neuf paraît en fondu : un tracé par `clip-path` effacerait les coins crantés
+   du panneau. */
+.hud-notice {
+  color: var(--occ-ink-soft);
+  animation: hud-fade-in 240ms ease-out both;
+}
+
+.hud-notice[data-tone="refused"] {
+  border-color: var(--occ-refused);
+  color: var(--occ-refused);
+}
+
+/* ---- Outils, sous la plaque adverse, à gauche de l'engrenage ------------------------ */
+
+.hud-tools {
+  position: absolute;
+  top: 88px;
+  right: 64px;
+  display: flex;
+  gap: 4px;
+}
+
+/* Le bouton d'abandon a la hauteur de l'engrenage voisin : `.hud` en tête pour passer
+   devant la hauteur des boutons de l'ATH. */
+.hud .hud-tools > * {
+  min-height: 40px;
+}
+
+.hud-tools__watch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+}
+
+/* Le repli de la colonne, carré à la hauteur de ses voisins. */
+.hud .hud-tools > .hud-button--icon {
+  width: 40px;
+}
+
+/* ---- Colonne de droite : fiche de pièce et journal ---------------------------------- */
+
+/* Repliée, la colonne rend sa place : la légende s'étend jusqu'au bord. */
+.hud--column-closed .hud-legend {
+  right: 16px;
+}
+
+.hud-column {
+  position: absolute;
+  top: 144px;
+  right: 16px;
+  bottom: 16px;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hud-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.hud-sheet__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hud-sheet__title {
+  font-size: 16px;
+  font-weight: 400;
+  text-shadow: 0 0 10px var(--occ-ink-glow);
+}
+
+.hud-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+}
+
+.hud-facts dt {
+  color: var(--occ-ink-dim);
+}
+
+.hud-log {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.hud-log__title {
+  font-size: 16px;
+  font-weight: 400;
+}
+
+/* Les plus récents en bas : les anciens sortent par le haut. */
+.hud-journal {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.hud-journal li {
+  display: grid;
+  grid-template-columns: 32px 16px 1fr;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--occ-ink-soft);
+}
+
+.hud-journal li > :first-child {
+  color: var(--occ-ink-faint);
+  text-align: right;
+}
+
+.hud-journal .hud-pip {
+  margin: 0;
+}
+
+.hud-journal li[data-hidden] {
+  color: var(--occ-ink-dim);
+}
+
+.hud-journal li[data-last] {
+  color: var(--occ-ink);
+}
+
+.hud-journal li[data-upcoming] {
+  color: var(--occ-ink-faint);
+}
+
+/* ---- Nulle sans prise ---------------------------------------------------------------- */
+
+.hud-draw {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--occ-ink-line);
+}
+
+.hud-meter,
+.hud-draw__rule {
+  grid-column: 1 / -1;
+}
+
+/* Le remplissage, tramé un pixel sur deux. */
+.hud-meter {
+  position: relative;
+  height: 6px;
+  border: 1px solid var(--occ-caution);
+}
+
+.hud-meter > i {
+  position: absolute;
+  inset: 1px auto 1px 1px;
+  background: repeating-linear-gradient(90deg, var(--occ-caution) 0 1px, transparent 1px 2px);
+}
+
+/* ---- Bas : légende ; gauche : caméra ------------------------------------------------ */
+
+.hud-legend {
+  position: absolute;
+  left: 16px;
+  right: 312px;
+  bottom: 24px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  color: var(--occ-ink-dim);
+  pointer-events: none;
+}
+
+.hud-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-legend i {
+  width: 10px;
+  height: 10px;
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+.hud-legend__selection {
+  color: var(--occ-selection);
+}
+
+.hud-camera {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* L'annonce de la vue, sous le tour, qui paraît puis s'efface d'elle-même. */
+.hud-view-chip {
+  position: absolute;
+  top: 104px;
+  left: 50%;
+  margin: 0;
+  padding: 4px 16px;
+  border: 1px solid var(--occ-ink-faint);
+  background: var(--occ-panel);
+  clip-path: var(--pixel-notch);
+  color: var(--occ-ink-soft);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: hud-view-chip 1400ms ease-out both;
+}
+
+@keyframes hud-view-chip {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-view-chip {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* ---- Écrans étroits : la colonne se replie sous le bandeau, le journal se tait ------ */
+
+@media (max-width: 900px) {
+  .hud-duel {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hud-turn {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: center;
+  }
+
+  .hud-column {
+    top: auto;
+    width: auto;
+    left: 64px;
+  }
+
+  .hud-log,
+  .hud-legend {
+    display: none;
+  }
+}
+
+/* ---- Mouvement ----------------------------------------------------------------------- */
+
+@keyframes hud-line-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+    text-shadow: 0 0 12px currentColor;
+  }
+  60% {
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes hud-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes hud-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 4px 0 var(--occ-shade),
+      0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow:
+      0 4px 0 var(--occ-shade),
+      0 0 16px 0 var(--occ-camp-b-glow);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-turn__line,
+  .hud-notice,
+  .hud-panel--threat {
+    animation: none;
+  }
+}

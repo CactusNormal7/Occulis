@@ -1,4 +1,4 @@
-import { type PieceRole, PieceType } from "./piece-type.js";
+import { type AbilityKind, type PieceRole, PieceType } from "./piece-type.js";
 import type { PieceKind } from "./piece.js";
 import type { MovementProfile, VisionProfile } from "./profiles.js";
 
@@ -10,6 +10,8 @@ export interface PieceProfile {
   readonly isCommander?: boolean;
   /** `special` par défaut ; `isCommander: true` vaut `commander`. */
   readonly role?: PieceRole;
+  /** Aucune par défaut. */
+  readonly ability?: AbilityKind | null;
 }
 
 /**
@@ -24,6 +26,7 @@ export class ConfigurablePieceType extends PieceType {
   readonly movement: MovementProfile;
   readonly vision: VisionProfile;
   private readonly declaredRole: PieceRole;
+  private readonly declaredAbility: AbilityKind | null;
 
   constructor(profile: PieceProfile) {
     super();
@@ -31,6 +34,11 @@ export class ConfigurablePieceType extends PieceType {
     this.movement = profile.movement;
     this.vision = profile.vision;
     this.declaredRole = profile.role ?? (profile.isCommander === true ? "commander" : "special");
+    this.declaredAbility = profile.ability ?? null;
+  }
+
+  override get ability(): AbilityKind | null {
+    return this.declaredAbility;
   }
 
   override get role(): PieceRole {

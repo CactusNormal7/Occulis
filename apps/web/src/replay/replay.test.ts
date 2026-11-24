@@ -2,8 +2,8 @@ import { setLocale } from "../locale/current.js";
 import { describe, expect, it } from "vitest";
 import { Board } from "@occulis/core";
 import type { AdminFrame, AdminMatchDetail } from "@occulis/protocol";
-import { METRICS } from "../theme/theme.js";
-import { QUARTER_TURN, tileQuad } from "../view/iso.js";
+import { METRICS } from "@occulis/board/theme";
+import { QUARTER_TURN, tileQuad } from "@occulis/board/iso";
 import {
   centerOffset,
   clampFrame,
@@ -11,6 +11,7 @@ import {
   fitScale,
   frameLabel,
   movesBetween,
+  trapEventsBetween,
 } from "./replay.js";
 
 // Les phrases attendues ici sont les françaises ; la forme des deux dictionnaires est
@@ -26,6 +27,7 @@ const piece = (id: string, owner: "A" | "B", x: number, y: number) => ({
 });
 const frame = (...pieces: ReturnType<typeof piece>[]): AdminFrame => ({
   pieces,
+  traps: [],
   visible: { A: [], B: [] },
 });
 
@@ -61,15 +63,16 @@ describe("rejeu : lecture des images", () => {
     expect(movesBetween(match.frames[1] as AdminFrame, match.frames[2] as AdminFrame)).toEqual([]);
   });
 
-  it("écrit un coup comme l'historique de la maquette, et l'abandon en toutes lettres", () => {
-    expect(describeEntry(match, 0)).toBe("1,1 → 2,1");
-    expect(describeEntry(match, 1)).toBe("abandon");
+  it("note chaque coup, et l'explique en toutes lettres", () => {
+    // Sans carte, les rangées se comptent d'après les pièces : cinq, de 1 au sud à 5.
+    expect(describeEntry(match, 0)).toEqual({ short: "Sb4-c4", detail: "Éclaireur de b4 à c4" });
+    expect(describeEntry(match, 1)).toEqual({ short: "1-0", detail: "B abandonne : A gagne" });
   });
 
   it("annonce chaque image avec son camp et son joueur", () => {
     expect(frameLabel(match, 0)).toBe("position de départ");
-    expect(frameLabel(match, 1)).toBe("coup 1 / 2 — A · anne — 1,1 → 2,1");
-    expect(frameLabel(match, 2)).toBe("coup 2 / 2 — B · bruno — abandon");
+    expect(frameLabel(match, 1)).toBe("coup 1 / 2 — A · anne — Éclaireur de b4 à c4");
+    expect(frameLabel(match, 2)).toBe("coup 2 / 2 — B · bruno — B abandonne : A gagne");
   });
 
   it("borne la navigation aux images existantes", () => {
@@ -109,5 +112,23 @@ describe("rejeu : cadrage", () => {
     expect(fitScale(board, base, 1200, 800, 20)).toBeGreaterThan(
       fitScale(board, base, 600, 400, 20),
     );
+  });
+});
+
+describe("pièges rejoués", () => {
+  const trap = { owner: "A" as const, layer: "a-trapper", x: 3, y: 1 };
+  const trapper = { ...piece("a-trapper", "A", 2, 1), kind: "trapper" };
+  const pawn = { ...piece("b-pawn", "B", 4, 1), kind: "pawn" };
+  const start: AdminFrame = { ...frame(), pieces: [trapper, pawn] };
+  const laid: AdminFrame = { ...start, traps: [trap] };
+  const sprung: AdminFrame = { ...frame(), pieces: [trapper] };
+  const layAction = { kind: "ability" as const, pieceId: "a-trapper", target: { x: 3, y: 1 } };
+  const stepAction = { kind: "move" as const, pieceId: "b-pawn", to: { x: 3, y: 1 } };
+
+  it("voit la pose d'un piège, et la pièce qui s'y arrête", () => {
+    expect(trapEventsBetween(start, laid, layAction)).toEqual([{ kind: "laid", trap }]);
+    expect(trapEventsBetween(laid, sprung, stepAction)).toEqual([
+      { kind: "sprung", victim: pawn, from: { x: 4, y: 1 }, to: { x: 3, y: 1 }, trap },
+    ]);
   });
 });

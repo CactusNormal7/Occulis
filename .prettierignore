@@ -10,3 +10,5 @@ pnpm-lock.yaml
 .claude/
 # Doublons de la synchronisation iCloud.
 **/* 2.*
+# Types générés par Astro (apps/site).
+**/.astro/

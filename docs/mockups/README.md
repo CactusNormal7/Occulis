@@ -29,10 +29,24 @@ Une URL du type `occulis-staging.0kl.fr/mockups` n'existe pas et n'est pas prév
 
 `mockup.js` et `mockup.css` portent la projection isométrique, les glyphes de pièces et les particules communes.
 
+## L'ATH — `ath/`
+
+Le sous-dossier [`ath/`](ath/index.html) prépare la refonte de l'interface en partie. Il suit la direction
+artistique actuelle (police Tiny5, couleurs de `packages/ui/src/tokens.ts`, trois thèmes), contrairement
+aux cinq écrans ci-dessus, antérieurs à la refonte graphique et à l'abandon de l'attaque à distance.
+
+La disposition retenue est A « Bandeaux » ; B « Coins » et C « Registre » sont gardées comme
+écartées. A se décline en six états (à vous, adversaire au trait, échec, adversaire déconnecté,
+spectateur, nulle proche) et dans les trois thèmes, depuis la barre posée au-dessus de l'écran. L'état et le thème vivent dans l'adresse
+(`#etat=check&theme=astral`). `ath.js` et `ath.css` sont le socle commun : plateau de démonstration en
+SVG, glyphes de pièces, bascules.
+
+Les décisions prises sur A sont listées sur [`ath/index.html`](ath/index.html).
+
 ## Ce que ces fichiers ne sont pas
 
 **Ni une spécification d'interface, ni une source de vérité.** Le _pourquoi_ des décisions de DA reste dans
-[`../design.md`](../design.md) section 8.1, et le code couleur fait foi dans `apps/web/src/theme/theme.ts` — seul
+[`../design.md`](../design.md) section 8.1, et le code couleur fait foi dans `packages/board/src/theme.ts` — seul
 fichier du client autorisé à contenir une valeur de couleur. `mockup.css` recopie ces valeurs pour rester
 autonome ; en cas de divergence, c'est `theme.ts` qui a raison et la maquette qui se corrige.
 

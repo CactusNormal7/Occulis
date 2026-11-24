@@ -23,6 +23,11 @@ export const ui: Messages["ui"] = {
     seat: (seat) => `siège ${seat}`,
     against: "contre",
   },
+  wip: {
+    tag: "WIP",
+    label: "En construction",
+    note: "En cours de développement : ce qui est affiché peut être factice.",
+  },
   language: "Langue",
   languages: { en: "English", fr: "Français" },
   settings: { label: "Réglages", title: "Réglages" },

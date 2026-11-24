@@ -145,6 +145,11 @@ export const profile: Messages["profile"] = {
     ended: "terminée",
     wonByResignation: "victoire par abandon",
     lostByResignation: "défaite par abandon",
+    drawn: "nulle",
+    wonByCheckmate: "victoire par mat",
+    lostByCheckmate: "défaite par mat",
+    wonByTrap: "victoire par piège",
+    lostByTrap: "défaite par piège",
   },
   replay: {
     title: "Replay",

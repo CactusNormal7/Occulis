@@ -1,11 +1,15 @@
 /** La composition et le placement d'une équipe : constructeur, erreurs, presets. */
 export const team = {
-  roles: { commander: "Commander", special: "Specials", pawn: "Pawns" },
-  kinds: { commander: "Commander", scout: "Scout", pawn: "Pawn" } as Record<string, string>,
+  roles: { commander: "King", special: "Specials", pawn: "Pawns" },
+  kinds: { commander: "King", scout: "Scout", trapper: "Trapper", pawn: "Pawn" } as Record<
+    string,
+    string
+  >,
   kindDescriptions: {
-    commander: "The piece to protect. Moves 3, sees 14.",
-    scout: "Fast and far-sighted. Moves 6, sees 20.",
-    pawn: "The basic piece. Moves 1, sees 6.",
+    commander: "The piece to protect: lose it and you lose the match.",
+    scout: "Fast and far-sighted.",
+    trapper: "Lays a hidden trap on a neighbouring square instead of moving.",
+    pawn: "The basic piece, with no ability.",
   } as Record<string, string>,
   unknownKind: (kind: string) => kind,
   stats: (steps: number, range: number) => `moves ${steps} · sees ${range}`,

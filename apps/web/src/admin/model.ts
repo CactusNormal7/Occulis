@@ -1,5 +1,6 @@
 import type { Action, PlayerId } from "@occulis/core";
 import type { AdminMatchSummary } from "@occulis/protocol";
+import type { SkeletonLayout } from "@occulis/ui";
 import { messages } from "../locale/current.js";
 
 /**
@@ -18,6 +19,12 @@ export type Route =
   | { readonly view: "design"; readonly page: DesignPage; readonly component: string | null };
 
 export type MatchStatus = "ongoing" | "finished";
+
+/** La première page de la liste des comptes, sans recherche. */
+export const ACCOUNTS_ROUTE: Route = { view: "users", search: "", offset: 0 };
+
+/** La première page de la liste des parties, sans filtre. */
+export const MATCHES_ROUTE: Route = { view: "matches", status: null, offset: 0 };
 
 /** Les pages du design system (`#/design/…`). */
 export type DesignPage = "foundations" | "components" | "motion" | "conventions";
@@ -87,6 +94,40 @@ function query(values: Record<string, string | number>): string {
   return text.length === 0 ? "" : `?${text}`;
 }
 
+/**
+ * L'écran d'une route : une recherche, une page, un filtre ou une page du design system
+ * gardent l'écran affiché le temps que l'autre état arrive, sans squelette.
+ */
+export function screenOf(route: Route): string {
+  switch (route.view) {
+    case "user":
+    case "player":
+    case "match":
+      return `${route.view}:${route.id}`;
+    case "overview":
+    case "users":
+    case "matches":
+    case "design":
+      return route.view;
+  }
+}
+
+/** La forme de l'écran d'une route, montrée pendant qu'il arrive. */
+export function skeletonOf(route: Route): SkeletonLayout {
+  switch (route.view) {
+    case "overview":
+    case "user":
+    case "player":
+      return "hero";
+    case "match":
+      return "detail";
+    case "users":
+    case "matches":
+    case "design":
+      return "list";
+  }
+}
+
 /** L'onglet allumé pour une route : une fiche reste rangée sous sa liste. */
 export function sectionOf(route: Route): "overview" | "users" | "matches" | "design" {
   if (route.view === "users" || route.view === "user" || route.view === "player") return "users";
@@ -115,17 +156,21 @@ export function seatHandle(match: AdminMatchSummary, seat: PlayerId): string {
 }
 
 /**
- * Une partie qui n'a jamais été conclue reste « en cours » : seul l'abandon termine une
- * partie aujourd'hui (design.md 7.1), donc une partie délaissée le reste indéfiniment.
+ * Une partie qui n'a jamais été conclue reste « en cours » : sous les rulesets d'avant la
+ * prise, seul l'abandon termine une partie, donc une partie délaissée le reste indéfiniment.
  */
 export function describeResult(match: AdminMatchSummary): string {
   const m = messages().admin.result;
   if (match.outcome === null) return m.ongoing;
-  return m.victory(seatHandle(match, match.outcome.winner));
+  const reason = messages().game.outcome.reasons[match.outcome.reason];
+  if (match.outcome.kind === "draw") return m.draw(reason);
+  return m.victory(seatHandle(match, match.outcome.winner), reason);
 }
 
 export function describeAction(action: Action): string {
   if (action.kind === "resign") return messages().admin.resign;
+  // Une capacité se distingue d'un déplacement par sa flèche : la pièce reste sur sa case.
+  if (action.kind === "ability") return `${action.pieceId} ⇢ ${action.target.x},${action.target.y}`;
   return `${action.pieceId} → ${action.to.x},${action.to.y}`;
 }
 

@@ -1,3 +1,4 @@
 ---
 category: Forms
+stories: BanDuration
 ---

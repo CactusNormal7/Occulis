@@ -51,10 +51,16 @@ describe("litTiles et awaitsMove", () => {
     turn: 3,
     outcome: null,
     legalActions: [],
+    check: false,
     visible: new Set(keys),
     ownPieces: [],
     visibleEnemies: [],
     ghosts: [],
+    traps: [],
+    journal: [],
+    rosters: { own: [], opponent: [] },
+    sinceCapture: 0,
+    noCaptureLimit: null,
   };
   const finished: PlayerView = {
     ...view,

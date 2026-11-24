@@ -18,14 +18,10 @@ export {
   type CipherAlphabet,
   type GlyphShape,
 } from "./glyphs.js";
-export {
-  CipherFrieze,
-  CipherText,
-  Glyph,
-  type CipherFriezeProps,
-  type CipherMode,
-  type CipherTextProps,
-} from "./Cipher.js";
+export { default as CipherFrieze } from "./CipherFrieze.vue";
+export { default as CipherText } from "./CipherText.vue";
+export { default as Glyph } from "./Glyph.vue";
+export { useClock, type ClockOptions } from "./clock.js";
 export { DEFAULT_MOTION, durationMs, motionFrom, readMotion, type Motion } from "./motion.js";
 export {
   diamond,
@@ -39,9 +35,5 @@ export {
   type PaperTiming,
   type Tile,
 } from "./paper.js";
-export {
-  PaperInversion,
-  type PaperInversionProps,
-  type PaperRun,
-  type PaperSource,
-} from "./PaperInversion.js";
+export { default as PaperInversion } from "./PaperInversion.vue";
+export type { CipherMode, PaperRun, PaperSource } from "./types.js";

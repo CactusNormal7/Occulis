@@ -1,0 +1,26 @@
+---
+import { contentFor, type Locale } from "../i18n";
+import SectionBar from "./SectionBar.astro";
+
+interface Props {
+  locale: Locale;
+}
+
+const { faq } = contentFor(Astro.props.locale);
+---
+
+<section class="section" id="questions" aria-labelledby="faq-title" tabindex="-1">
+  <div class="frame">
+    <SectionBar id="faq-title" label={faq.label} />
+    <div class="faq">
+      {
+        faq.items.map((item) => (
+          <details class="faq__item">
+            <summary class="faq__question">{item.question}</summary>
+            <p class="faq__answer">{item.answer}</p>
+          </details>
+        ))
+      }
+    </div>
+  </div>
+</section>

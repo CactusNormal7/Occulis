@@ -185,4 +185,30 @@ describe("profil : équipes préparées", () => {
         .status,
     ).toBe(409);
   });
+
+  it("garde et signale un preset que la nouvelle composition rend caduc", async () => {
+    const handle = unique("caduc");
+    const cookie = await signUp(handle);
+    const playerId = await playerOf(handle);
+    // Une équipe à huit pièces, enregistrée sous `provisional-1` (1/3/4) : sous la
+    // composition courante (1/3/2), elle ne peut plus servir.
+    const eight = [
+      ...defaultTeam(),
+      { kind: "pawn", coord: { x: 0, y: 6 } },
+      { kind: "pawn", coord: { x: 0, y: 7 } },
+    ];
+    await env.DB.prepare(
+      "INSERT INTO team_presets (id, player_id, name, scenario, ruleset_version, team, is_default, created_at, updated_at) VALUES (?, ?, 'Ancienne', ?, 'provisional-1', ?, 1, 0, 0)",
+    )
+      .bind(crypto.randomUUID(), playerId, DEFAULT_SCENARIO, JSON.stringify(eight))
+      .run();
+
+    const list = (await (await request("GET", "/api/me/presets", cookie)).json()) as TeamPresetList;
+    expect(list.presets).toHaveLength(1);
+    expect(list.presets[0]).toMatchObject({
+      name: "Ancienne",
+      rulesetVersion: "provisional-1",
+      valid: false,
+    });
+  });
 });

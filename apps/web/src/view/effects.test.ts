@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { cascadeOf, introLength, introOf, landingAt, materializeAt, sparksOf } from "./effects.js";
+import {
+  cascadeOf,
+  introLength,
+  introOf,
+  landingAt,
+  materializeAt,
+  sparksOf,
+  trapLayingAt,
+  trapSpringAt,
+} from "./effects.js";
 import { easeOutBack, easeOutCubic, phase } from "./easing.js";
 
 const intro = { introMs: 600, introSpreadMs: 600, introDepth: 2 };
@@ -44,5 +53,25 @@ describe("retombée et matérialisation", () => {
   it("répartit les étincelles en couronne, de façon reproductible", () => {
     expect(sparksOf(6, 3)).toEqual(sparksOf(6, 3));
     expect(sparksOf(6, 3)).toHaveLength(6);
+  });
+});
+
+describe("effets du piège", () => {
+  it("pose le sceau de plus grand que la case jusqu'à sa taille, puis s'arrête", () => {
+    const early = trapLayingAt(10, 600);
+    const late = trapLayingAt(590, 600);
+    expect(early?.scale).toBeGreaterThan(1.3);
+    expect(late?.scale).toBeCloseTo(1, 1);
+    expect(trapLayingAt(600, 600)).toBeUndefined();
+  });
+
+  it("referme les mâchoires avant de dissoudre la pièce", () => {
+    const shut = trapSpringAt(260, 1400);
+    expect(shut?.jaws).toBeGreaterThan(0.95);
+    expect(shut?.victimAlpha).toBeCloseTo(1, 1);
+    const gone = trapSpringAt(900, 1400);
+    expect(gone?.victimAlpha).toBe(0);
+    expect(gone?.scar).toBeGreaterThan(0);
+    expect(trapSpringAt(1400, 1400)).toBeUndefined();
   });
 });

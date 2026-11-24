@@ -105,3 +105,65 @@ export function materializeAt(
     flash: t < 1 ? Math.sin(Math.PI * t) : 0,
   };
 }
+
+/**
+ * La pose d'un piège : le sceau tombe de plus grand que la case et s'y fixe (`scale`, de
+ * ~1,6 à 1), la case s'éclaire puis s'éteint (`flash`), les éclats convergent
+ * (`gather`, de 0 au loin à 1 sur le sceau). `undefined` une fois finie.
+ */
+export function trapLayingAt(
+  elapsed: number,
+  durationMs: number,
+):
+  | {
+      readonly scale: number;
+      readonly alpha: number;
+      readonly flash: number;
+      readonly gather: number;
+    }
+  | undefined {
+  const t = phase(elapsed, 0, durationMs);
+  if (t >= 1 || elapsed < 0) return undefined;
+  return {
+    scale: 1 + (1 - easeOutBack(clamp01(t * 1.6), 2)) * 0.6,
+    alpha: easeOutCubic(clamp01(t * 3)),
+    flash: (1 - t) ** 2,
+    gather: easeOutCubic(clamp01(t * 1.4)),
+  };
+}
+
+/**
+ * Un piège qui se déclenche, sur la case, une fois la pièce arrivée. Trois temps : les
+ * mâchoires se referment (`jaws`, de 0 ouvertes à 1 fermées), la pièce tremble et se
+ * dissout (`victimAlpha`, `shake`), puis la cicatrice du piège s'efface (`scar`).
+ * `undefined` une fois fini.
+ */
+export function trapSpringAt(
+  elapsed: number,
+  durationMs: number,
+):
+  | {
+      readonly jaws: number;
+      readonly flash: number;
+      readonly victimAlpha: number;
+      readonly rise: number;
+      readonly shake: number;
+      readonly burst: number;
+      readonly scar: number;
+    }
+  | undefined {
+  const t = phase(elapsed, 0, durationMs);
+  if (t >= 1 || elapsed < 0) return undefined;
+  const closing = clamp01(t / 0.18);
+  const dissolve = clamp01((t - 0.2) / 0.35);
+  return {
+    jaws: easeOutBack(closing, 2.4),
+    flash: closing < 1 ? closing : Math.max(0, 1 - (t - 0.18) / 0.25),
+    victimAlpha: 1 - easeOutCubic(dissolve),
+    rise: easeOutCubic(dissolve),
+    // Un tremblement bref, qui s'amortit pendant que la pièce s'efface.
+    shake: dissolve > 0 && dissolve < 1 ? Math.sin(t * 90) * (1 - dissolve) : 0,
+    burst: clamp01((t - 0.15) / 0.45),
+    scar: t < 0.18 ? 0 : (1 - clamp01((t - 0.18) / 0.82)) ** 1.5,
+  };
+}

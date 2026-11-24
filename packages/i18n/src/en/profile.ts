@@ -145,6 +145,11 @@ export const profile = {
     ended: "finished",
     wonByResignation: "victory by resignation",
     lostByResignation: "defeat by resignation",
+    drawn: "draw",
+    wonByCheckmate: "victory by checkmate",
+    lostByCheckmate: "defeat by checkmate",
+    wonByTrap: "victory by trap",
+    lostByTrap: "defeat by trap",
   },
   replay: {
     title: "Replay",

@@ -8,7 +8,7 @@ Les points ouverts sont dans [open-points.md](open-points.md), les idées écart
 
 ## 1. Pitch
 
-Un jeu de plateau tactique compétitif 1v1 en ligne, en vue isométrique 2D, en pixel art léger, mystique et cryptique (section 8.1 — l'intention de départ, « supra minimaliste, style traits, très chill », a été refondue à la demande du porteur du projet). Il reprend le squelette conceptuel des échecs — une pièce maîtresse (roi) à protéger, victoire par mat quand elle n'a plus aucune parade — mais casse le plateau plat 8x8 au profit d'une carte à géométrie libre, avec hauteur, murs, ligne de vue (LOS) et fog of war façon Dofus/XCOM. Les pièces ont des capacités au-delà du simple mouvement échiquéen.
+Un jeu de plateau tactique compétitif 1v1 en ligne, en vue isométrique 2D, en pixel art léger, mystique et cryptique (section 8.1 — l'intention de départ, « supra minimaliste, style traits, très chill », a été refondue à la demande du porteur du projet). Il reprend le squelette conceptuel des échecs — un roi à protéger, victoire par mat quand il n'a plus aucune parade — mais casse le plateau plat 8x8 au profit d'une carte à géométrie libre, avec hauteur, murs, ligne de vue (LOS) et fog of war façon Dofus/XCOM. Les pièces ont des capacités au-delà du simple mouvement échiquéen.
 
 Nom du projet : Occulis (voir section 8 — nom retenu avec réserve documentée).
 
@@ -24,29 +24,31 @@ Nom du projet : Occulis (voir section 8 — nom retenu avec réserve documentée
 
 ## 3. Règles de capture — état validé
 
+- **Un tour, une action (décision du 2026-10-27).** À son tour, un joueur fait agir une seule pièce, qui se déplace **ou** utilise une capacité, jamais les deux. Cela vaut pour toutes les capacités.
+- **On ne peut pas passer son tour (décision du 2026-10-27).** Chaque tour, une pièce se déplace ou utilise une capacité.
+
 ### 3.1 Attaque de mêlée (règle de base, toutes les pièces)
 
-- Capture instantanée, façon échecs classiques : si une pièce se déplace dans la portée/adjacence d'une pièce adverse (ou l'inverse), c'est immédiat, pas de délai.
+- Capture instantanée, façon échecs classiques : une pièce capture en **arrivant sur la case** d'une pièce adverse, pour toutes les pièces (précisé le 2026-10-27). Une pièce alliée bloque toujours : on n'entre jamais sur sa case.
 - Choisi après avoir écarté un modèle 100% différé, jugé trop complexe (calcul de mat généralisé à chaque capture) et trop lent en rythme de jeu.
-- **Suspendue à l'implémentation (décision de développement, la règle reste actée).** Aucune capture n'existe dans le moteur pour l'instant : une pièce ne peut simplement pas entrer sur la case d'une autre, alliée ou adverse. La décision est de reconstruire d'abord la géométrie du jeu — déplacement, blocage, ligne de vue — avant d'y reposer une règle de prise. La règle de dénivelé de la mêlée (section 5.3) reste codée et testée dans `packages/core` en attendant.
+- **Implémentée le 2026-11-16** (ruleset `provisional-3`), après avoir été suspendue le temps de reconstruire la géométrie du jeu. La capture étant un déplacement, elle suit les règles de hauteur du déplacement (section 5.3), et une pièce prise ne se traverse pas. Le joueur ne déclare pas la prise : il désigne la case, et la position dit s'il y avait une pièce. Les parties créées sous les rulesets antérieurs se rejouent sans prise.
 
-### 3.2 Attaque à distance (capacité spéciale, certaines pièces seulement)
+### 3.2 ~~Attaque à distance~~ — écartée le 2026-10-27
 
-- Réservée à des pièces spécifiques (pas une règle générale).
-- Fonctionne sur un modèle différé/télégraphié : l'attaquant déclare une zone d'attaque à son tour, elle se résout au tour suivant de l'attaquant (donc après un tour complet de l'adversaire).
-- La cible doit se déplacer hors de la zone pour survivre, OU l'attaquant peut être tué avant résolution — dans ce cas l'attaque est annulée.
-- La résolution suit un ordre de priorité basé sur l'instant de déclaration (queue) : si une attaque A est déclarée avant une attaque B, et que A permet de tuer l'auteur de B avant que B ne résolve, B est annulée.
-- Cible = zone fixe, PAS une cible mobile qui suit la pièce (tranché explicitement).
+**Pas d'attaque à distance : toutes les captures se font en mêlée** (3.1). Le modèle différé et télégraphié qui la décrivait (zone déclarée, résolution au tour suivant, file par ordre de déclaration) est archivé avec la raison de son abandon dans [history.md](history.md), itération 6.
 
-### 3.3 Point ouvert non résolu
+### 3.3 ~~Point ouvert non résolu~~
 
-Voir [open-points.md](open-points.md) § 3.3.
+Sans objet depuis l'abandon de l'attaque à distance : voir [open-points.md](open-points.md) § 3.3, barrée.
 
 ## 4. Pièges
 
-- Fonctionnement identique au modèle d'attaque différée : zone posée en anticipation, se déclenche soit au contact (marcher dessus), soit automatiquement après X tours si une pièce est dedans.
-- Cohérent avec le fog of war (voir section 5) — un piège caché suit la même logique que toute autre information hors LOS.
-- Point ouvert : voir [open-points.md](open-points.md) § 4.
+- **Première capacité de pièce, décidée par le porteur du projet le 2026-11-20** (ruleset `provisional-4`) : une nouvelle pièce à capacité, le **trappeur**, pose un piège **à la place** de se déplacer (un tour, une action — section 3).
+- **Pose** : sur une case voisine (huit directions), libre, pas plus haute que la sienne. **Un seul piège actif par trappeur** : il en repose un dès que le premier s'est déclenché.
+- **Effet** : la pièce adverse qui s'arrête sur le piège est **prise**, et le piège disparaît. **Le roi aussi** : la partie est alors gagnée par le camp du poseur (« victoire par piège »).
+- **Visibilité** : **invisible pour l'adversaire jusqu'à son déclenchement**, où les deux camps l'apprennent (journal). L'adversaire qui voit le trappeur sait qu'il a exercé sa capacité, jamais où. Ferme le point ouvert 11 pour ce piège ; un futur piège volontairement visible reste possible.
+- Conséquence du fog : aucune légalité ne dépend d'un piège adverse — sinon la liste des coups trahirait sa case. On peut donc entrer sur un piège caché, et un piège ne compte pas comme une menace pour l'échec.
+- **Reste une idée** : le piège à déclenchement différé (après X tours si une pièce est dedans), qui supposerait une file de résolution différée, non implémentée. Interprétations encodées : [implementation-notes.md](../implementation-notes.md) n° 37.
 
 ## 5. Ligne de vue (LOS), hauteur, fog of war
 
@@ -58,21 +60,22 @@ Le plateau n'est pas un simple array de valeurs (1 = mur, 2 = pièce...), mais u
 
 - Visibilité (LOS) : détermine ce qui est affiché à l'écran du joueur. Une pièce hors LOS n'est même pas rendue (fog of war confirmé — voir 5.4).
 - Portée : détermine ce qui peut être effectivement atteint/attaqué. Une pièce peut être vue sans être atteignable.
-- Une tour ne peut pas voir un élément derrière un mur, ni un élément positionné sur un mur (si elle-même n'est pas en hauteur). Si elle grimpe sur le mur, elle peut voir plus loin, mais toujours pas à travers un autre mur.
+- Une pièce ne peut pas voir un élément derrière un mur, ni un élément positionné sur un mur (si elle-même n'est pas en hauteur). Si elle grimpe sur le mur, elle peut voir plus loin, mais toujours pas à travers un autre mur.
 - **Une pièce occulte, comme aux échecs — tranché.** Une pièce coupe la ligne de vue _et_ la ligne de déplacement, sans distinction de camp : on ne voit pas derrière elle, on ne la traverse pas, on ne va pas sur sa case. Trois précisions actées avec la règle :
   - **Alliées comprises.** Si seules les pièces adverses occultaient, la ligne de vue cesserait d'être symétrique entre les deux camps — un joueur verrait l'autre sans être vu. C'est un invariant du moteur, il prime.
   - **Une pièce vaut un mur d'un niveau posé sur sa case.** L'occultation reste donc cohérente avec la hauteur : deux pièces au même niveau se masquent mutuellement ce qui est derrière elles, mais une pièce perchée voit par-dessus une pièce restée en contrebas. Une pièce occupe exactement la hauteur d'où elle regarde.
   - La pièce qui bloque reste, elle, parfaitement visible : elle n'occulte que ce qui est _derrière_ elle. **Précisé le 2026-10-21** : est visible toute pièce qui est le premier obstacle d'un regard porté dans la portée, même quand le regard direct vers sa propre case est coupé ailleurs (le tracé des lignes n'est pas transitif). Sans cela, l'ombre d'une pièce cachée trahissait sa place à qui recalculait sa vue.
 
-### 5.3 Règles de hauteur (mêlée / adjacence)
+### 5.3 Règles de hauteur (déplacement)
 
-- La hauteur n'affecte jamais la portée horizontale à distance — elle affecte uniquement (a) la LOS et (b) l'atteignabilité en mêlée par adjacence.
-- Monter d'un niveau de hauteur = coûte un déplacement complet par niveau, et nécessite d'être préalablement collé au mur/à la pente. Exemple : une pièce à côté d'un mur de hauteur 3 doit d'abord s'y coller, puis monter de 1, puis 1, puis 1 (plusieurs tours).
-- Descendre = libre, sans limite, dans le même tour.
-- Deux cases adjacentes de hauteurs différentes peuvent toujours s'atteindre mutuellement en mêlée (l'écart se comble par la règle de montée/descente ci-dessus).
-- Si l'écart est de 2 niveaux ou plus avec un palier intermédiaire, l'asymétrie apparaît : la pièce en hauteur peut atteindre la pièce basse (elle peut descendre librement), mais l'inverse n'est pas vrai dans le même tour (montée limitée à 1 niveau/tour).
-- Conséquence de gameplay explicitement actée : la hauteur protège contre les attaques à distance, mais pas contre une attaque de mêlée en adjacence directe — "plus haut" n'est donc pas synonyme de "totalement safe", nuance à documenter clairement dans le rulebook final pour éviter toute confusion en cours de développement.
-- Deux points ouverts (portée à distance indépendante de la hauteur ; grimper) : voir [open-points.md](open-points.md) § 5.3.
+Réécrite le 2026-10-27, avec les décisions du porteur du projet.
+
+- **Style de déplacement** : proche des échecs (lignes droites et diagonales), ou très courte portée.
+- La hauteur n'affecte jamais la portée horizontale : elle affecte la LOS et le déplacement.
+- **Un déplacement long ne comporte aucune montée, même d'un niveau.** Descendre est libre et sans limite ; un chemin à plat n'arrête pas le déplacement. Dès qu'un pas du chemin monterait, le mouvement s'arrête avant lui. Exemple : depuis une case de hauteur 8, une pièce peut aller sur une case de hauteur 6 si aucune case du chemin n'est plus haute que la précédente ; le chemin 8 → 5 → 6, qui remonte, est interdit. C'est déjà le comportement de `movement.ts`.
+- **Grimper est une capacité de toutes les pièces** (décision du 2026-10-27, conforme au code). Monter d'un niveau coûte un déplacement complet par niveau, et nécessite d'être préalablement collé au mur/à la pente. Exemple : une pièce à côté d'un mur de hauteur 3 doit d'abord s'y coller, puis monter de 1, puis 1, puis 1 (plusieurs tours).
+- **Capture d'une pièce sur une case plus haute (décision du 2026-10-27)** : la capture est un déplacement, elle suit donc exactement les règles ci-dessus — un déplacement long ne monte pas, grimper d'un niveau reste possible aux mêmes conditions. Une capture faite par une capacité est bornée par la portée et la ligne de vue de cette capacité.
+- **Retirés le 2026-10-27** : l'atteignabilité en mêlée entre cases adjacentes de hauteurs différentes, avec son asymétrie (la pièce haute atteignait la basse, pas l'inverse), et la conséquence « la hauteur protège contre les attaques à distance ». La capture se fait désormais en arrivant sur la case (3.1) et il n'y a plus d'attaque à distance (3.2) : ces deux règles n'ont plus d'objet.
 
 ### 5.4 Fog of war — confirmé
 
@@ -93,40 +96,39 @@ Le plateau n'est pas un simple array de valeurs (1 = mur, 2 = pièce...), mais u
 - Phase de déploiement : chaque joueur place ses pièces sur des cases prédéfinies avant le début de la partie.
 - Le déploiement suit la règle générale de LOS : si les zones de déploiement des deux joueurs n'ont pas de ligne de vue mutuelle au départ (probable par design de carte), le déploiement est de facto caché à l'adversaire — pas de mécanique de dissimulation dédiée, ça découle naturellement du système de LOS/FOW déjà en place.
 - **Tranché (porteur du projet) : un choix libre au sein d'une zone.** Chaque carte définit une zone de déploiement par camp ; chaque joueur y pose librement ses pièces, dans un temps limité (90 s — à l'échéance, son placement s'il est complet, sinon celui par défaut de la carte). Le déploiement des deux joueurs est simultané et caché par la seule LOS.
-- **Composition d'équipe (porteur du projet) :** une pièce maîtresse, trois pièces à capacité, quatre pièces de base (« pions »). Les quotas sont portés par le ruleset, donc versionnés par partie. Les types de pièces eux-mêmes restent à définir (point ouvert 12) : il n'existe aujourd'hui qu'une pièce à capacité, l'éclaireur, que l'on peut donc prendre trois fois.
+- **Composition d'équipe (porteur du projet, 2026-10-27) :** un roi, trois pièces à capacité, deux pièces de base (« pions »), soit six pièces. Elle remplace 1/3/4 pour des parties plus rapides, et reste ouverte à modification. Les quotas sont portés par le ruleset, donc versionnés par partie. Les types et capacités des trois pièces à capacité restent à définir (point ouvert 12) : il n'existe aujourd'hui qu'une pièce à capacité, l'éclaireur, que l'on peut donc prendre trois fois. **Le joueur compose lui-même son équipe** dans ces quotas, comme le fait déjà le constructeur d'équipe (décision du 2026-10-27).
+- **Promotion (2026-10-27) :** seuls les pions se promeuvent, sur une case de promotion définie par la carte. La pièce obtenue sera décidée plus tard : une des pièces de l'équipe, ou une pièce spéciale plus forte encore. Ce que l'adversaire voit de la promotion n'est pas décidé (point ouvert 15).
+- **Types adverses (2026-10-27) :** les types des pièces adverses sont connus avant la partie, jamais leurs positions. Le mécanisme de révélation n'est pas défini (point ouvert 16).
+- **Cartes (2026-10-27) :** de taille similaire, avec moins de murs.
+- **`breach-2` (2026-11-20) :** la carte des nouvelles parties passe à 11 × 11 (deux cases de plus dans chaque sens) avec un relief plus bas et plus épars, sans plus de verticalité (demande du porteur du projet). Les zones de déploiement restent cachées l'une de l'autre.
 - Point ouvert, à noter pour le level design futur : chaque carte doit décider consciemment si les zones de déploiement des deux joueurs ont LOS mutuelle ou non — c'est un paramètre de conception de carte, pas une règle générale.
-- Roi (pièce maîtresse) : gardé simple pour l'instant (mouvement/règles standards, pas de spécificité), avec possibilité d'évolution plus tard.
-- Fin de partie : abandon possible, et égalité/nulle prévue "de la même manière qu'aux échecs, plus aucun coup possible sans attaque à part entière" — interprété comme un pat classique (aucun coup légal du tout, ni déplacement ni attaque). Point explicitement reporté par le porteur du projet : aucune décision prise sur une éventuelle règle anti-blocage/anti-répétition (équivalent de la règle des 50 coups aux échecs), pour éviter des parties qui tournent en rond sans jamais qu'aucune pièce maîtresse ne soit menacée.
+- Roi : gardé simple pour l'instant (mouvement/règles standards, pas de spécificité), avec possibilité d'évolution plus tard.
+- Fin de partie : abandon possible, et égalité/nulle prévue "de la même manière qu'aux échecs, plus aucun coup possible sans attaque à part entière" — interprété comme un pat classique (aucun coup légal du tout, ni déplacement ni attaque). Point explicitement reporté par le porteur du projet : aucune décision prise sur une éventuelle règle anti-blocage/anti-répétition (équivalent de la règle des 50 coups aux échecs), pour éviter des parties qui tournent en rond sans jamais qu'aucun roi ne soit menacé.
+- **Condition de victoire (2026-10-27, précisée le 2026-11-16) :** elle dépend du mode de jeu. Pour le mode actuel, c'est le **mat** (7.1), décidé le 2026-11-16 ; d'autres modes pourront en avoir une autre.
+- **Portées resserrées pour le mat (2026-11-16) :** roi 1 pas, pion 1 pas, éclaireur 3 pas, visions inchangées (ruleset `provisional-3`). Chiffres provisoires, comme le roster ; ils existent pour qu'un mat soit constructible, pas pour équilibrer.
 
-### 7.1 Mise en échec et mat — « échecs strict », **suspendue**
+### 7.1 Mise en échec et mat — « échecs strict »
 
-> **État actuel : la règle est retirée du moteur.** À l'usage elle n'était pas jouable : combinée aux portées volontairement démesurées du roster provisoire (implementation-notes #14), elle mettait la pièce maîtresse en échec quasi permanent, supprimait tous ses coups légaux et déclenchait un mat immédiat. Décision du porteur du projet : **la retirer entièrement plutôt que la rafistoler**, et la reconstruire une fois la géométrie du jeu (portées, blocage, vision) stabilisée. Conséquences immédiates :
->
-> - aucun coup n'est illégal au motif qu'il expose sa propre pièce maîtresse ;
-> - il n'y a plus ni échec, ni mat, ni pat, et la vue transmise ne porte plus de drapeau `check` ;
-> - **plus aucune fin de partie automatique** : seul l'abandon termine une partie. Un joueur dont toutes les pièces seraient murées n'a plus que cette issue — cas très rare, accepté à ce stade ;
-> - `PlayerView.legalActions` reste transmis, pour la raison énoncée en fin de section : le client ne peut toujours pas savoir quelles pièces invisibles barrent la route des siennes.
->
-> Le raisonnement ci-dessous est conservé tel quel : c'est la décision de design, et le point de reprise quand la règle reviendra. Ce qui est écrit au présent décrit la règle visée, pas le moteur d'aujourd'hui.
+> **Rétablie le 2026-11-16** (ruleset `provisional-3`), confirmée telle quelle par le porteur du projet. Elle avait été retirée le 2026-09-09 : avec les portées démesurées du roster provisoire (éclaireur 6 pas, roi 3), le roi était en échec quasi permanent et le mat tombait aussitôt. Elle revient avec des portées resserrées (section 7). Les parties créées sous les rulesets antérieurs se rejouent sans elle.
 
-Décision actée : **un coup qui laisse sa propre pièce maîtresse capturable au tour suivant est illégal, exactement comme aux échecs — y compris quand la menace est hors de la ligne de vue de son auteur.**
+Décision actée : **un coup qui laisse son propre roi capturable au tour suivant est illégal, exactement comme aux échecs — y compris quand la menace est hors de la ligne de vue de son auteur.**
 
 Deux autres lectures avaient été posées et sont écartées :
 
 - _Illégal seulement si la menace est visible._ Aucune fuite d'information, mais la légalité d'un coup dépendrait alors de la connaissance du joueur : `packages/core` aurait dû prendre un `PlayerKnowledge` en paramètre, et le mat serait devenu « aucune parade parmi les menaces connues » — une notion différente pour chaque camp.
-- _Jamais illégal (capture du roi)._ La partie se termine à la capture effective de la maîtresse. Le plus simple, mais le pilier « victoire par mat » de la section 1 disparaît : il n'y aurait plus de mat, seulement des captures.
+- _Jamais illégal (capture du roi)._ La partie se termine à la capture effective du roi. Le plus simple, mais le pilier « victoire par mat » de la section 1 disparaît : il n'y aurait plus de mat, seulement des captures.
 
-Conséquence assumée : le moteur peut refuser un coup à cause d'une menace que le joueur ne voit pas, ce qui lui apprend indirectement qu'elle existe. C'est le prix payé pour garder une notion de mat unique et symétrique. La vue transmise à un joueur porte donc un drapeau `check` pour sa propre pièce maîtresse — jamais pour celle de l'adversaire, qui trahirait sa position.
+Conséquence assumée : le moteur peut refuser un coup à cause d'une menace que le joueur ne voit pas, ce qui lui apprend indirectement qu'elle existe. C'est le prix payé pour garder une notion de mat unique et symétrique. La vue transmise à un joueur porte donc un drapeau `check` pour son propre roi — jamais pour celui de l'adversaire, qui trahirait sa position.
 
-Le mat en découle sans règle supplémentaire : plus aucun coup légal **et** pièce maîtresse menacée = mat ; plus aucun coup légal et maîtresse hors de danger = pat.
+Le mat en découle sans règle supplémentaire : plus aucun coup légal **et** roi menacé = mat ; plus aucun coup légal et roi hors de danger = pat.
 
 Conséquence d'information, actée : **le serveur transmet à chaque joueur la liste de ses coups légaux.** Elle est calculée sur la position réelle, donc elle révèle d'un coup que des menaces invisibles le contraignent. C'est assumé pour deux raisons. D'abord, la même information s'obtient déjà en tâtonnant, puisqu'un coup refusé ne consomme pas de tour : la liste abaisse l'effort, pas le secret. Ensuite, sans elle l'interface est condamnée à mentir — un client qui ne voit qu'un camp ne peut ni deviner les menaces cachées, ni savoir qu'une pièce invisible barre la route d'un attaquant qu'il voit ; il proposerait donc des coups refusés et en cacherait d'acceptables.
 
-### 7.2 Nulles anti-blocage — les deux règles, **suspendues**
+### 7.2 Nulles anti-blocage — les deux règles
 
-> **État actuel : les deux règles sont retirées du moteur**, conséquence directe de 7.1. La nulle « coups sans capture » n'a plus de sens tant qu'aucune capture n'est possible — elle serait devenue une limite de tours déguisée, déclenchée dans toutes les parties. La triple répétition part avec elle, faute de fin de partie à laquelle se raccrocher. Elles reviendront avec la capture. Le raisonnement ci-dessous reste la décision de design.
+> **Rétablies le 2026-11-16** avec la capture et le mat (ruleset `provisional-3`) : triple répétition, et 60 actions sans prise (30 par camp). Elles avaient été retirées avec la capture, sans laquelle la seconde serait devenue une limite de tours déguisée.
 
-Le point était explicitement reporté (« éviter des parties qui tournent en rond sans jamais qu'aucune pièce maîtresse ne soit menacée »). Décision actée : **les deux règles des échecs modernes, et toutes deux automatiques.**
+Le point était explicitement reporté (« éviter des parties qui tournent en rond sans jamais qu'aucun roi ne soit menacé »). Décision actée : **les deux règles des échecs modernes, et toutes deux automatiques.**
 
 - **Triple répétition** : la même position atteinte trois fois met fin à la partie. Une position, c'est la disposition des pièces _et_ le camp au trait ; les pièces y sont identifiées par leur camp et leur type, pas par leur identifiant — deux éclaireurs d'un même camp qui échangent leurs cases rendent bien la même position.
 - **Coups sans capture** : au-delà d'un certain nombre d'actions sans qu'aucune pièce ne tombe, la partie est nulle. C'est cette règle qui couvre le vrai risque décrit plus haut, celui d'une partie qui tourne en rond en variant légèrement.
@@ -190,7 +192,7 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   projet : une nuée de petits carrés blancs éclose du centre (trop chaotique), un balayage de
   carrés depuis le coin le plus proche de la souris, puis un « œil qui s'ouvre » (un trait de
   lumière qui s'écarte en deux paupières tramées) — trop chargé. **Les écrans du parcours ne
-  s'ouvrent pas ainsi** — menu principal, compte, attente, bandeau de partie, bandeau
+  s'ouvrent pas ainsi** — menu principal, compte, attente, ATH de partie, bandeau
   d'usurpation —, à sa demande : ce ne sont pas des fenêtres qu'on ouvre, et
   l'on y revient sans cesse. **Une exception : l'entrée dans la recherche ou la
   création d'une partie** passe sous le voile tramé du changement de thème (ci-dessous).
@@ -213,7 +215,7 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   menace) : une lueur signifie toujours quelque chose. La contrainte est verrouillée
   mécaniquement — une règle ESLint interdit toute valeur de couleur hors de
   `packages/ui/src/tokens.ts`, seul détenteur du code couleur, que le rendu PixiJS
-  (`apps/web/src/theme/theme.ts`) et la charte d'interface (`@occulis/ui`) partagent.
+  (`packages/board/src/theme.ts`) et la charte d'interface (`@occulis/ui`) partagent.
 - **Faces pleines, et non plus filaire.** Le rendu filaire des débuts a été abandonné avec
   la refonte : les faces opaques rétablissent l'occlusion par surface (une pièce derrière
   un relief est cachée par une matière, plus seulement par l'ordre des traits), et c'est
@@ -223,18 +225,40 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   seule ressource que le premier écran attend, et il paraît directement dans cette police.
 - **Rotation libre avec aimantation.** La rotation se fait au drag (bouton droit ou milieu),
   de façon continue, et s'aimante sur le quart de tour le plus proche au relâchement ; les
-  flèches gauche/droite conservent le quart de tour direct. Conformément à la section 8, la
+  flèches gauche/droite, comme les boutons de l'ATH, conservent le quart de tour direct. Conformément à la section 8, la
   rotation reste un recalcul de projection sur les coordonnées logiques : les quatre coins
   de chaque case sont projetés individuellement, ce qui garde le pavage jointif à n'importe
   quel angle intermédiaire.
-- **Deux façons de jouer un coup, toutes deux provisoires.** À la souris : cliquer une de
-  ses pièces la sélectionne et fait apparaître ses destinations légales, cliquer une
-  destination l'y déplace, une pièce adverse n'est qu'un obstacle (la capture est retirée, 3.1). Au
-  clavier : taper les coordonnées (`1,6 2,5` déplace, `abandon`
-  abandonne) dans un champ HTML posé par-dessus le canevas. Aucune des deux n'est une décision d'interface arrêtée : ce sont des
-  moyens d'exercer la logique déjà implémentée. La partie est **toujours arbitrée par le
+- **Un coup se joue à la souris, et seulement à la souris** (décision du 2026-11-20).
+  Cliquer une de ses pièces la sélectionne et fait apparaître ses destinations légales,
+  cliquer une destination l'y déplace, cliquer une pièce adverse atteignable la prend
+  (3.1) ; un clic droit sur n'importe quelle pièce — la sienne, une adverse en vue, un
+  fantôme — ouvre sa fiche. La saisie des coordonnées au clavier (`1,6 2,5`) a été retirée
+  : elle ne servait pas (voir history.md). La partie est **toujours arbitrée par le
   serveur** : il n'existe aucun mode local, et le client ne voit jamais que sa propre vue —
   conformément au pilier « pas de local multiplayer » de la section 2.
+- **L'ATH de partie : la disposition « Bandeaux »** (décision du 2026-11-20, maquette
+  `docs/mockups/ath/a-bandeaux.html`, préférée à « Coins » et « Registre »). En haut, les
+  deux camps de part et d'autre du numéro de coup : pseudo, Elo et composition, le camp au
+  trait allumé de sa couleur. Sous la plaque adverse, les amis qui regardent, le repli de la colonne, les réglages
+  et l'abandon. À droite, la fiche de la pièce choisie puis le journal ; à gauche, les
+  boutons de caméra ; en bas, la légende des lueurs, tant qu'une pièce est sélectionnée.
+  L'échec et le départ de l'adversaire (avec le temps avant son forfait) s'annoncent sous le
+  tour. Trois règles :
+  - **la composition adverse est montrée avec ses pertes** : elle est connue dès le début
+    de la partie (point ouvert 16) ; l'ATH ne donne que des types, jamais une position ;
+  - **le journal dit les coups tels que le joueur les a vus** : un coup adverse hors de vue
+    s'écrit « coup hors de vue », un coup à moitié vu met un « ? » à la place de ce qui a
+    échappé (« Éclaireur ? → 1,3 ») ; la perte d'une de ses pièces est toujours connue ;
+  - **le compteur de nulle sans prise (7.2) ne paraît qu'à l'approche du seuil**, vingt
+    coups avant, en ambre.
+
+  Le plateau n'allume pas de lueur propre aux montées : la légende n'en parle donc pas.
+
+- **Chaque type de pièce a son glyphe** (décision du 2026-11-20) : une petite figure en
+  pixels pleins — roi, éclaireur, pion —, la même sur le plateau, au déploiement, au rejeu,
+  sur le site et dans l'ATH. L'obélisque commun des débuts reste dans le code, derrière un
+  seul réglage (`PIECE_STYLE`, `packages/board/src/theme.ts`).
 - **Le déplacement est animé, jamais instantané.** La pièce glisse d'une case à l'autre,
   hauteur comprise, avec départ et arrivée adoucis. L'action est appliquée à l'état
   immédiatement : seule la position à l'écran est interpolée, et le compte rendu du tour
@@ -250,6 +274,24 @@ et sont consignés ici pour que le code ne soit pas la seule trace d'une décisi
   déplacer la vue. Le facteur de zoom vit dans la projection et non dans la transformation
   du conteneur de rendu, afin que l'épaisseur des traits reste constante à l'écran quel que
   soit le niveau de zoom — une arête reste large d'un seul pixel du plateau.
+  - **La vue reste sur le plateau (2026-11-22)**, comme sur une carte de Dofus : dézoomé au
+    plus loin, le plateau entier tient dans ce que l'ATH laisse voir et ne se déplace plus ;
+    zoomé, on le parcourt, sans jamais pouvoir en écarter le bord du bord de la zone libre.
+- **La colonne de droite se replie (2026-11-22).** Un bouton à côté de l'abandon masque la
+  fiche et le journal, comme le mode plein écran d'un échiquier en ligne : le plateau
+  glisse au milieu de la place rendue. Le choix est retenu d'une partie à l'autre.
+- **Vue de dessus (2026-11-20).** Le premier bouton de caméra, ou la barre d'espace,
+  bascule le plateau en plan (maquette `docs/mockups/ath/vue-plateau.html`). En un seul
+  geste de 480 ms, il tourne d'un huitième de tour pour que ses rangées s'alignent sur
+  l'écran, ses cases se déplient en carrés et le relief s'aplatit. Le camp qu'on voyait
+  devant soi reste en bas.
+  - Le relief s'y lit sans faces : un rebord d'os sur chaque côté qui domine sa voisine, et
+    la hauteur en points dans le coin de la case, un par niveau.
+  - Les pièces s'y centrent sur leur case, au lieu de s'y tenir debout.
+  - La caméra est figée et centrée sur le plateau entier : ni déplacement, ni rotation, ni
+    zoom, et les autres boutons de caméra s'éteignent. On joue de la même façon.
+  - Le bouton ou la barre d'espace ramènent la vue isométrique telle qu'on l'avait
+    quittée : angle, zoom et déplacement compris.
 
 ## 9. Nom du projet
 

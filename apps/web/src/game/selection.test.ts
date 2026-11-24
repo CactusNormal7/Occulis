@@ -9,7 +9,7 @@ import {
   legalActions,
   provisionalRuleset,
 } from "@occulis/core";
-import { resolveClick, selectionFor } from "./selection.js";
+import { aimAbility, resolveClick, selectionFor } from "./selection.js";
 
 /** Assez grand pour que chaque pièce ait de la place autour d'elle. */
 const BOARD = Board.flat(14, 14);
@@ -44,23 +44,32 @@ describe("selectionFor", () => {
     }
   });
 
-  it("exclut les cases occupées", () => {
+  it("exclut les cases de ses propres pièces", () => {
     const state = game();
     const selection = selectionFor(legalActions(state), pieceOf(state, "a-scout"));
 
-    for (const occupied of PIECES) {
+    for (const occupied of PIECES.filter((piece) => piece.owner === "A")) {
       expect(selection.moves.has(coordKey(occupied.coord))).toBe(false);
     }
   });
 
-  it("ne propose rien derrière une pièce qui barre la route", () => {
-    // b-scout est en (1,0) : la case au-delà, sur la même ligne, n'est plus
-    // atteignable puisqu'on ne traverse pas une pièce.
+  it("marque comme prise la case d'une pièce adverse à portée, et elle seule", () => {
+    // b-scout est en (1,0), à un pas : y aller, c'est le prendre.
+    const state = game();
+    const selection = selectionFor(
+      legalActions(state),
+      pieceOf(state, "a-scout"),
+      state.pieces.values(),
+    );
+
+    expect(selection.moves.has(coordKey({ x: 1, y: 0 }))).toBe(true);
+    expect([...selection.captures]).toEqual([coordKey({ x: 1, y: 0 })]);
+  });
+
+  it("ne marque aucune prise quand les pièces adverses ne lui sont pas données", () => {
     const state = game();
     const selection = selectionFor(legalActions(state), pieceOf(state, "a-scout"));
-
-    expect(selection.moves.has(coordKey({ x: 1, y: 0 }))).toBe(false);
-    expect(selection.moves.has(coordKey({ x: 0, y: 1 }))).toBe(true);
+    expect(selection.captures.size).toBe(0);
   });
 });
 
@@ -99,13 +108,16 @@ describe("resolveClick", () => {
     });
   });
 
-  it("ne joue rien sur un clic vers une pièce adverse adjacente", () => {
-    // Sans capture, une pièce adverse n'est ni une destination ni une cible : le
-    // clic retombe sur la règle générale et ne sélectionne rien.
+  it("joue la prise sur un clic vers une pièce adverse à portée", () => {
+    // La case adverse est une destination : le clic la joue au lieu de retomber sur la
+    // règle générale, qui ne sélectionne jamais une pièce d'en face.
     const state = game();
     const selection = selectionFor(legalActions(state), pieceOf(state, "a-scout"));
 
-    expect(resolveClick(legalActions(state), state, selection, { x: 1, y: 0 }).kind).toBe("clear");
+    expect(resolveClick(legalActions(state), state, selection, { x: 1, y: 0 })).toEqual({
+      kind: "play",
+      action: { kind: "move", pieceId: "a-scout", to: { x: 1, y: 0 } },
+    });
   });
 
   it("désélectionne quand on reclique la pièce sélectionnée", () => {
@@ -136,5 +148,49 @@ describe("resolveClick", () => {
     expect(
       resolveClick(legalActions(resigned.value), resigned.value, undefined, { x: 0, y: 0 }).kind,
     ).toBe("clear");
+  });
+});
+
+describe("capacité : le piège", () => {
+  const TRAPPER: Piece = { id: "a-trap", kind: "trapper", owner: "A", coord: { x: 5, y: 5 } };
+
+  function withTrapper(): GameState {
+    return createGame(BOARD, provisionalRuleset(), [...PIECES, TRAPPER]);
+  }
+
+  it("relève les cibles de la capacité, sans les mêler aux déplacements", () => {
+    const state = withTrapper();
+    const selection = selectionFor(legalActions(state), pieceOf(state, "a-trap"));
+    expect(selection.abilityTargets.size).toBe(8);
+    expect(selection.aiming).toBe(false);
+    expect(selectionFor(legalActions(state), pieceOf(state, "a-scout")).abilityTargets.size).toBe(
+      0,
+    );
+  });
+
+  it("déplace la pièce tant que la capacité n'est pas armée, pose le piège une fois armée", () => {
+    const state = withTrapper();
+    const selection = selectionFor(legalActions(state), pieceOf(state, "a-trap"));
+    const target = { x: 6, y: 5 };
+
+    expect(resolveClick(legalActions(state), state, selection, target)).toEqual({
+      kind: "play",
+      action: { kind: "move", pieceId: "a-trap", to: target },
+    });
+    const aimed = aimAbility(selection, true);
+    expect(resolveClick(legalActions(state), state, aimed, target)).toEqual({
+      kind: "play",
+      action: { kind: "ability", pieceId: "a-trap", target },
+    });
+    // Armée, la capacité masque les déplacements : une case à deux pas ne joue rien.
+    expect(resolveClick(legalActions(state), state, aimed, { x: 7, y: 5 })).toEqual({
+      kind: "clear",
+    });
+  });
+
+  it("ne s'arme pas sans cible", () => {
+    const state = game();
+    const selection = selectionFor(legalActions(state), pieceOf(state, "a-scout"));
+    expect(aimAbility(selection, true).aiming).toBe(false);
   });
 });

@@ -6,10 +6,11 @@ import {
   panBy,
   rotateBy,
   snapRotation,
+  togglePlanView,
   turn,
   zoomAt,
 } from "../view/camera.js";
-import type { ScreenPoint } from "../view/iso.js";
+import type { ScreenPoint } from "@occulis/board/iso";
 import { sameCoord } from "../view/picking.js";
 
 /**
@@ -27,19 +28,28 @@ export interface ControlsOptions {
   readonly setHovered: (coord: Coord | undefined) => void;
   /** Case désignée par un clic ; `undefined` si le clic tombe hors du plateau. */
   readonly onPick: (coord: Coord | undefined) => void;
+  /**
+   * Case désignée par un clic **droit** qui n'a pas tourné le plateau : la fiche de sa
+   * pièce s'ouvre dans la colonne de l'ATH.
+   */
+  readonly onInspect: (coord: Coord | undefined) => void;
+  /** Une partie est sur la table : hors partie, la barre d'espace garde son rôle habituel. */
+  readonly inMatch: () => boolean;
 }
 
 type DragKind = "pan" | "rotate";
 
 /**
- * Un pan et un clic partent du même bouton. En deçà de ce déplacement cumulé, le
- * geste est lu comme un clic — sans quoi la moindre tremblote de souris pendant
- * l'appui annulerait la désignation.
+ * Un pan et un clic partent du même bouton, une rotation et un clic droit aussi. En deçà
+ * de ce déplacement cumulé, le geste est lu comme un clic — sans quoi la moindre
+ * tremblote de souris pendant l'appui annulerait la désignation.
  */
 const CLICK_SLOP = 4;
 
 interface Drag {
   readonly kind: DragKind;
+  /** Le bouton de l'appui : le droit et le milieu tournent tous deux, seul le droit inspecte. */
+  readonly button: number;
   readonly pointerId: number;
   x: number;
   y: number;
@@ -64,8 +74,18 @@ function isTyping(target: EventTarget | null): boolean {
   return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }
 
+/**
+ * La barre d'espace actionne déjà le bouton ou le lien qui a le focus — le bouton de vue
+ * de l'ATH après un clic, par exemple. La reprendre ici le basculerait deux fois.
+ */
+function isActivating(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return isTyping(target) || target.closest("button, a, summary, [role='button']") !== null;
+}
+
 export function attachControls(options: ControlsOptions): void {
-  const { canvas, getCamera, setCamera, pickTile, setHovered, onPick } = options;
+  const { canvas, getCamera, setCamera, pickTile, setHovered, onPick, onInspect, inMatch } =
+    options;
 
   let drag: Drag | undefined;
   let hovered: Coord | undefined;
@@ -106,7 +126,14 @@ export function attachControls(options: ControlsOptions): void {
     const kind = dragKindOf(event.button);
     if (kind === undefined) return;
     canvas.setPointerCapture(event.pointerId);
-    drag = { kind, pointerId: event.pointerId, x: event.clientX, y: event.clientY, travelled: 0 };
+    drag = {
+      kind,
+      button: event.button,
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      travelled: 0,
+    };
   });
 
   canvas.addEventListener("pointermove", (event) => {
@@ -129,6 +156,10 @@ export function attachControls(options: ControlsOptions): void {
     if (drag.kind === "rotate") update(snapRotation);
     // Un pan qui n'a presque pas bougé est un clic : il désigne la case visée.
     if (drag.kind === "pan" && drag.travelled <= CLICK_SLOP) onPick(pickTile(pointOf(event)));
+    // Un appui droit qui n'a pas tourné le plateau est un clic droit : il ouvre la fiche.
+    if (drag.button === 2 && drag.travelled <= CLICK_SLOP) {
+      onInspect(pickTile(pointOf(event)));
+    }
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     drag = undefined;
   };
@@ -144,6 +175,13 @@ export function attachControls(options: ControlsOptions): void {
 
   window.addEventListener("keydown", (event) => {
     if (isTyping(event.target)) return;
+    // La barre d'espace bascule la vue de dessus (docs/design/rules.md § 8.1).
+    if (event.code === "Space") {
+      if (event.repeat || !inMatch() || isActivating(event.target)) return;
+      event.preventDefault();
+      update(togglePlanView);
+      return;
+    }
     if (event.key === "ArrowLeft") update((camera) => turn(camera, -1));
     else if (event.key === "ArrowRight") update((camera) => turn(camera, 1));
     else return;

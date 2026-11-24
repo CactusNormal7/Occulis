@@ -13,7 +13,15 @@ import {
   type ServerMessage,
 } from "@occulis/protocol";
 import { type ChannelStatus, openChannel } from "./channel.js";
-import { type DeploymentState, type Session, fromMatch, seatedAt, watchingAt } from "./session.js";
+import {
+  type DeploymentState,
+  type MatchPlayers,
+  type OpponentAbsence,
+  type Session,
+  fromMatch,
+  seatedAt,
+  watchingAt,
+} from "./session.js";
 
 /**
  * Le canal d'une partie : il transporte, `session.ts` interprète.
@@ -47,6 +55,10 @@ export interface MatchHandlers {
    * déploiement, il n'en part aucune.
    */
   readonly onWatching?: () => void;
+  /** Les plaques des deux camps, reçues à chaque connexion. */
+  readonly onPlayers?: (players: MatchPlayers) => void;
+  /** L'adversaire est parti (`absence`), ou revenu (`undefined`). */
+  readonly onOpponentPresence?: (absence: OpponentAbsence | undefined) => void;
 }
 
 export interface SeatedContext {
@@ -115,6 +127,10 @@ function connect(start: Session, path: string, handlers: MatchHandlers): MatchCh
       return;
     }
     if (message.kind === "watching") handlers.onWatching?.();
+    if (message.kind === "players" && phase.players !== undefined) {
+      handlers.onPlayers?.(phase.players);
+    }
+    if (message.kind === "opponent-presence") handlers.onOpponentPresence?.(phase.opponentAbsence);
     if (phase.spectators !== spectators) {
       spectators = phase.spectators;
       handlers.onSpectators?.(spectators);

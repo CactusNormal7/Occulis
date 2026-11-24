@@ -9,14 +9,18 @@ import {
   rulesetFor,
 } from "@occulis/core";
 import type { TeamPreset } from "@occulis/protocol";
+import { type PieceSheet, sameSheet } from "../game/inspection.js";
 import type { Movement } from "../game/movement-diff.js";
 import { OnlineMatch } from "../game/online-match.js";
-import { type Selection, resolveClick } from "../game/selection.js";
+import { type Selection, aimAbility, resolveClick } from "../game/selection.js";
+import { trapEventsBetween } from "../game/trap-events.js";
+import { trapNotice } from "../hud/model.js";
 import { messages } from "../locale/current.js";
 import type { MatchChannel, MatchHandlers } from "../net/match-channel.js";
-import type { DeploymentProps } from "../prepare/Deployment.js";
+import type { MatchPlayers } from "../net/session.js";
+import type { DeploymentAnnouncement } from "./islands.js";
 import type { FlowEvent, Stage } from "../ui/flow.js";
-import { describeRejection } from "../ui/messages.js";
+import { describeActionError, describeRejection } from "../ui/messages.js";
 import { type MoveAnimation, advance as step, startMove } from "../view/animation.js";
 
 /**
@@ -26,7 +30,7 @@ import { type MoveAnimation, advance as step, startMove } from "../view/animatio
  *
  * Il n'existe qu'**un canal de partie à la fois** : `sit()` et `watch()` referment le
  * précédent avant d'en ouvrir un autre, et `close()` remet tout à zéro. Les effets sur
- * le reste de la page (écrans, console, plateau) sont fournis par la racine de
+ * le reste de la page (écrans, ATH, plateau) sont fournis par la racine de
  * composition (`MatchEffects`), si bien que ce module ne touche ni le DOM ni le réseau et
  * s'éprouve sans eux.
  */
@@ -34,11 +38,34 @@ import { type MoveAnimation, advance as step, startMove } from "../view/animatio
 /** Au-delà, une partie qui n'a envoyé aucune vue au spectateur lui est refusée. */
 const WATCH_TIMEOUT_MS = 6000;
 
-/** Ce que la console de partie sait faire pour la partie, sans que celle-ci la connaisse. */
-export interface MatchReports {
-  refresh(): void;
-  report(message: string, accepted: boolean): void;
-  announce(outcome: Outcome): void;
+/**
+ * Au-delà, un abandon resté sans vue finale va chercher l'écran de fin lui-même : le
+ * serveur a pu clore la partie sans que la vue arrive. S'il la tient encore ouverte, la
+ * racine revient au menu en le disant ; il la clora de toute façon, au pire par forfait.
+ */
+const RESIGN_TIMEOUT_MS = 6000;
+
+/** La fin d'une partie regardée, du camp de l'ami suivi. */
+export interface MatchEnd {
+  readonly outcome: Outcome;
+  readonly side: PlayerId;
+  readonly friend: string;
+}
+
+/**
+ * Un message bref de l'ATH, sous le tour : un coup refusé, une connexion qui se reprend.
+ * Il s'efface à la vue suivante.
+ */
+export interface MatchNotice {
+  readonly text: string;
+  readonly tone: "refused" | "info";
+}
+
+/** L'adversaire est parti : il perd par forfait dans `forfeitInMs` comptés depuis `receivedAt`. */
+export interface OpponentAway {
+  readonly forfeitInMs: number;
+  /** L'instant d'arrivée du message, sur `performance.now()`. */
+  readonly receivedAt: number;
 }
 
 /** Les équipes préparées du joueur, lues dans le cache de chargement. */
@@ -60,19 +87,20 @@ export interface MatchEffects {
   /** L'écran courant. */
   readonly stage: () => Stage["kind"];
   readonly go: (event: FlowEvent) => void;
-  /** Rend les îlots d'avant-partie, que la partie alimente (`deploying`, `leaving`). */
+  /** Rend les îlots, que la partie alimente (ATH, `deploying`, `leaving`). */
   readonly showIslands: () => void;
   /** Lance le chargement du plateau, sans l'attendre. */
   readonly ensureBoard: () => void;
   readonly clearBoard: () => void;
   /** La partie vient d'être assise : la caméra se recentre sur sa carte. */
   readonly seated: (board: Board) => void;
-  readonly reports: () => MatchReports;
   readonly notify: (message: string) => void;
   /** Quitte la table et revient au menu ; composée par la racine, qui tient aussi la file. */
   readonly leave: () => void;
   /** Rend compte d'une partie perdue : relit l'identité, puis le dit au joueur. */
   readonly connectionLost: () => Promise<void>;
+  /** La partie jouée vient de se clore : la racine ouvre son écran de fin (`debrief/`). */
+  readonly finished: (matchId: string) => void;
 }
 
 export class MatchController {
@@ -87,8 +115,17 @@ export class MatchController {
   private picked: Selection | undefined;
   private moving: MoveAnimation | undefined;
   private overTile: Coord | undefined;
-  private announcement: Omit<DeploymentProps, "locale"> | undefined;
+  private announcement: DeploymentAnnouncement | undefined;
   private confirmingLeave = false;
+  private resignDeadline: ReturnType<typeof setTimeout> | undefined;
+  /** La partie où le joueur est assis ; absente pour un spectateur. */
+  private seatedMatch: string | undefined;
+  private endDismissed = false;
+  private cards: MatchPlayers | undefined;
+  private away: OpponentAway | undefined;
+  /** La fiche ouverte d'un clic droit ; à défaut, l'ATH décrit la pièce sélectionnée. */
+  private inspected: PieceSheet | undefined;
+  private lastNotice: MatchNotice | undefined;
 
   constructor(private readonly effects: MatchEffects) {}
 
@@ -138,14 +175,60 @@ export class MatchController {
     return this.overTile;
   }
 
+  /** Les plaques des deux camps, telles que le serveur les a annoncées. */
+  get players(): MatchPlayers | undefined {
+    return this.cards;
+  }
+
+  /** L'absence en cours de l'adversaire, ou `undefined` s'il est là. */
+  get opponentAway(): OpponentAway | undefined {
+    return this.away;
+  }
+
+  /** La pièce que l'ATH décrit : celle d'un clic droit, sinon la pièce sélectionnée. */
+  get sheet(): PieceSheet | undefined {
+    if (this.inspected !== undefined) return this.inspected;
+    const selected = this.picked?.piece;
+    return selected === undefined ? undefined : this.matchOnTable?.inspect(selected.coord);
+  }
+
+  get notice(): MatchNotice | undefined {
+    return this.lastNotice;
+  }
+
   /** L'annonce de déploiement à montrer, tant que la partie se prépare. */
-  get deploying(): Omit<DeploymentProps, "locale"> | undefined {
+  get deploying(): DeploymentAnnouncement | undefined {
     return this.announcement;
+  }
+
+  /**
+   * L'abandon est parti, la vue qui clôt la partie pas encore arrivée. Rien ne doit alors
+   * ramener au menu : celui qui abandonne aboutit à l'écran de fin, comme son adversaire.
+   */
+  get resigning(): boolean {
+    return this.resignDeadline !== undefined;
   }
 
   /** Vrai pendant que la fenêtre « abandonner ? » attend la réponse du joueur. */
   get leaving(): boolean {
     return this.confirmingLeave;
+  }
+
+  /**
+   * La fin d'une partie **regardée**, que le spectateur n'a pas encore écartée pour revoir
+   * le plateau. Un joueur, lui, passe à l'écran de fin de sa partie (`finished`).
+   */
+  get ended(): MatchEnd | undefined {
+    const match = this.matchOnTable;
+    if (match === undefined || match.state.outcome === null || this.endDismissed) return undefined;
+    if (this.friend === undefined) return undefined;
+    return { outcome: match.state.outcome, side: match.player, friend: this.friend };
+  }
+
+  /** Le spectateur écarte la fin et reste devant le plateau final. */
+  dismissEnd(): void {
+    // Une fermeture qui arrive après le retour au menu ne doit pas masquer la fin suivante.
+    if (this.matchOnTable?.isOver === true) this.endDismissed = true;
   }
 
   hover(coord: Coord | undefined): void {
@@ -156,6 +239,7 @@ export class MatchController {
   sit(matchId: string, seat: string): void {
     this.close();
     this.effects.ensureBoard();
+    this.seatedMatch = matchId;
     this.channel = this.effects.connect(matchId, seat, this.handlersFor(false, matchId));
   }
 
@@ -184,6 +268,10 @@ export class MatchController {
   close(): void {
     this.generation += 1;
     this.confirmingLeave = false;
+    clearTimeout(this.resignDeadline);
+    this.resignDeadline = undefined;
+    this.seatedMatch = undefined;
+    this.endDismissed = false;
     this.channel?.close();
     this.channel = undefined;
     this.friend = undefined;
@@ -195,6 +283,10 @@ export class MatchController {
     this.moving = undefined;
     this.overTile = undefined;
     this.announcement = undefined;
+    this.cards = undefined;
+    this.away = undefined;
+    this.inspected = undefined;
+    this.lastNotice = undefined;
     this.effects.clearBoard();
   }
 
@@ -211,15 +303,17 @@ export class MatchController {
 
     this.awaitingReply = true;
     this.picked = undefined;
+    // Abandonner par la console mène, comme par la fenêtre, à l'écran de fin.
+    if (action.kind === "resign") this.awaitEnd();
     return sent;
   }
 
   /**
-   * Un clic sur le plateau, ou à côté (`undefined`) : sélectionne, désélectionne, ou rend
-   * l'action à envoyer.
+   * Un clic sur le plateau, ou à côté (`undefined`) : sélectionne, désélectionne, ou joue le
+   * coup désigné. La fiche d'un clic droit cède la place à la pièce cliquée.
    */
-  pick(coord: Coord | undefined): Action | undefined {
-    if (this.matchOnTable === undefined) return undefined;
+  pick(coord: Coord | undefined): void {
+    if (this.matchOnTable === undefined) return;
 
     const outcome = resolveClick(
       this.matchOnTable.legalActions,
@@ -227,40 +321,93 @@ export class MatchController {
       this.picked,
       coord,
     );
+    this.inspected = undefined;
     if (outcome.kind === "select") this.picked = outcome.selection;
     else if (outcome.kind === "clear") this.picked = undefined;
-    else return outcome.action;
-    return undefined;
+    else this.submit(outcome.action);
+    this.effects.showIslands();
   }
 
-  /** Fait avancer l'animation du dernier coup ; la console se rafraîchit à sa fin. */
+  /**
+   * Le bouton de la fiche : arme la capacité de la pièce sélectionnée — le prochain clic
+   * sur une de ses cibles l'exerce —, ou revient à ses déplacements.
+   */
+  toggleAbility(): void {
+    if (this.picked === undefined) return;
+    this.picked = aimAbility(this.picked, !this.picked.aiming);
+    this.effects.showIslands();
+  }
+
+  /** Un clic droit : la fiche de la pièce désignée dans la colonne, ou rien s'il n'y en a pas. */
+  inspect(coord: Coord | undefined): void {
+    this.inspected = coord === undefined ? undefined : this.matchOnTable?.inspect(coord);
+    this.effects.showIslands();
+  }
+
+  /**
+   * Envoie un coup venu du plateau. Un spectateur ne joue rien, et un seul coup est en vol
+   * à la fois : deux clics rapides enverraient deux coups pour le même tour, dont le second
+   * serait refusé sans que rien ne l'explique.
+   */
+  private submit(action: Action): void {
+    if (this.friend !== undefined) return;
+    if (this.awaitingReply) {
+      this.lastNotice = { text: messages().game.console.pending, tone: "refused" };
+      return;
+    }
+    const sent = this.play(action);
+    this.lastNotice = sent.ok
+      ? undefined
+      : { text: describeActionError(sent.error), tone: "refused" };
+  }
+
+  /** Fait avancer l'animation du dernier coup. */
   advance(deltaMS: number): void {
     if (this.moving === undefined) return;
     this.moving = step(this.moving, deltaMS);
-    if (this.moving === undefined) this.effects.reports().refresh();
   }
 
   /**
    * Partir d'une partie vivante sans abandonner la laisserait « en cours » à jamais dans
    * les deux historiques : la fenêtre `leave/` le demande. Rend vrai quand elle doit
-   * s'ouvrir ; partir d'une partie regardée ou finie n'a rien à confirmer.
+   * s'ouvrir ; partir d'une partie regardée, finie ou déjà abandonnée n'a rien à confirmer.
    */
   requestLeave(): boolean {
-    if (this.friend !== undefined || this.matchOnTable === undefined || this.matchOnTable.isOver) {
+    if (
+      this.friend !== undefined ||
+      this.matchOnTable === undefined ||
+      this.matchOnTable.isOver ||
+      this.resignDeadline !== undefined
+    ) {
       return false;
     }
     this.confirmingLeave = true;
     return true;
   }
 
-  /** Le joueur confirme : l'abandon part avant que la table soit vidée. */
+  /**
+   * Le joueur confirme : l'abandon part, et la table reste mise jusqu'à la vue qui clôt
+   * la partie, pour que l'écran de fin s'ouvre chez lui comme chez l'adversaire.
+   */
   confirmLeave(): void {
     this.confirmingLeave = false;
     this.channel?.submit({ kind: "resign" });
+    this.awaitEnd();
   }
 
   cancelLeave(): void {
     this.confirmingLeave = false;
+  }
+
+  /** Arme l'échéance de l'abandon : sans vue finale, l'écran de fin est demandé quand même. */
+  private awaitEnd(): void {
+    clearTimeout(this.resignDeadline);
+    this.resignDeadline = setTimeout(() => {
+      const matchId = this.seatedMatch;
+      if (this.matchOnTable?.isOver !== true && matchId !== undefined) {
+        this.effects.finished(matchId);
+      }
+    }, RESIGN_TIMEOUT_MS);
   }
 
   /**
@@ -273,11 +420,17 @@ export class MatchController {
   private adopt(movement?: Movement): void {
     this.awaitingReply = false;
     this.picked = undefined;
+    this.lastNotice = undefined;
     this.moving =
       movement === undefined || this.matchOnTable === undefined
         ? undefined
         : startMove(movement.pieceId, movement.from, movement.to, this.matchOnTable.board);
-    this.effects.reports().refresh();
+    // La pièce a bougé, a été prise ou est sortie de vue : sa fiche ne la décrit plus.
+    if (this.inspected !== undefined) {
+      const now = this.matchOnTable?.inspect(this.inspected.piece.coord);
+      if (!sameSheet(this.inspected, now)) this.inspected = undefined;
+    }
+    this.effects.showIslands();
   }
 
   /**
@@ -345,8 +498,20 @@ export class MatchController {
         this.effects.go({ kind: "deploying" });
       },
       onView: (incoming) => {
+        const before = this.matchOnTable?.viewFor(this.matchOnTable.player);
         this.adopt(this.matchOnTable?.receive(incoming));
-        if (incoming.outcome !== null) this.effects.reports().announce(incoming.outcome);
+        // Une pièce prise au piège disparaît du plateau : le bandeau dit pourquoi.
+        const caught =
+          before === undefined
+            ? undefined
+            : trapNotice(messages(), trapEventsBetween(before, incoming), incoming.player);
+        if (caught !== undefined) this.tell({ text: caught, tone: "info" });
+        // L'échec se dit dans l'ATH (`hud/model.ts`) : il peut venir d'une pièce que le
+        // joueur ne voit pas, et sans alerte des coups disparaîtraient de ses choix.
+        if (incoming.outcome !== null) {
+          clearTimeout(this.resignDeadline);
+          if (!spectating) this.effects.finished(matchId);
+        }
       },
       onRejected: (rejection) => {
         if (this.effects.stage() === "deploying" && this.announcement !== undefined) {
@@ -357,24 +522,41 @@ export class MatchController {
         // Rien à annuler : le coup n'avait pas été appliqué. Il reste au joueur d'en
         // jouer un autre, et c'est toujours son tour.
         this.awaitingReply = false;
-        this.effects.reports().report(describeRejection(rejection), false);
+        this.tell({ text: describeRejection(rejection), tone: "refused" });
       },
       onOutdated: (expected) => {
-        this.effects.reports().report(messages().game.outdated(expected), false);
+        this.tell({ text: messages().game.outdated(expected), tone: "refused" });
       },
       onStatus: (state) => {
         if (state === "reconnecting" && this.matchOnTable !== undefined) {
-          this.effects.reports().report(messages().game.reconnecting, false);
+          this.tell({ text: messages().game.reconnecting, tone: "info" });
         }
         if (state === "unreachable" && !spectating) void this.leaveIfUnseated(matchId);
       },
       onSpectators: (count) => {
         this.spectatorCount = count;
-        this.effects.reports().refresh();
+        this.effects.showIslands();
+      },
+      onPlayers: (players) => {
+        this.cards = players;
+        this.effects.showIslands();
+      },
+      onOpponentPresence: (absence) => {
+        this.away =
+          absence === undefined
+            ? undefined
+            : { forfeitInMs: absence.forfeitInMs, receivedAt: performance.now() };
+        this.effects.showIslands();
       },
       // Accepté par le serveur : la première vue peut attendre la fin du déploiement.
       onWatching: () => clearTimeout(this.watchDeadline),
     };
+  }
+
+  /** Montre un message bref dans l'ATH. */
+  private tell(notice: MatchNotice): void {
+    this.lastNotice = notice;
+    this.effects.showIslands();
   }
 
   /**

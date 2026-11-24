@@ -1,19 +1,23 @@
 import type { TeamPresetList } from "@occulis/protocol";
 import { Account } from "./app/account.js";
 import { BoardView } from "./app/board-view.js";
+import { Debrief, debriefFromPath } from "./app/debrief.js";
 import { Friends } from "./app/friends.js";
-import { Islands, type LeaveDialog, type TeamsScreen } from "./app/islands.js";
+import {
+  type DebriefScreen,
+  type EndScreen,
+  Islands,
+  type LeaveDialog,
+  type MatchHudIsland,
+  type TeamsScreen,
+} from "./app/islands.js";
 import { MatchController, type PresetSource } from "./app/match-controller.js";
 import { Matchmaking } from "./app/matchmaking.js";
 import { Navigation } from "./app/navigation.js";
-import {
-  boardElement,
-  consoleElements,
-  friendsPanelElements,
-  settingsElements,
-  shellElements,
-} from "./app/page.js";
+import { boardElement, friendsPanelElements, settingsElements, shellElements } from "./app/page.js";
 import { applyStoredPreferences, attachPreferences } from "./app/preferences.js";
+import * as debriefApi from "./debrief/api.js";
+import { hudModel } from "./hud/model.js";
 import { loadCache } from "./load/cache.js";
 import { translateDom } from "./locale/browser.js";
 import { messages, onLocaleChange } from "./locale/current.js";
@@ -21,7 +25,6 @@ import { stillSeated, whoAmI } from "./net/auth.js";
 import { connectToMatch, watchMatch } from "./net/match-channel.js";
 import { currentMatch } from "./profile/api.js";
 import { friendsOverview, presets as presetsResource } from "./profile/resources.js";
-import { attachConsole } from "./ui/console.js";
 import { attachShell } from "./ui/shell.js";
 
 /** Les équipes préparées du joueur, lues dans le cache de chargement. */
@@ -53,7 +56,6 @@ function main(): void {
     elements: shellElements(boardHost),
     onSeek: (seeking, code) => matchmaking.seek(seeking, code),
     onCancel: leave,
-    onLeaveMatch: leaveMatch,
     onStopImpersonating: () => account.stopImpersonating(),
     onSignOut: () => account.signOut(),
     onResend: () => account.resendVerification(),
@@ -61,10 +63,22 @@ function main(): void {
   });
   const navigation = new Navigation(shell, settings);
   const islands = new Islands({
+    hud: matchHud,
     leave: leaveDialog,
+    ended: endScreen,
     found: () => matchmaking.proposal,
     deploying: () => matches.deploying,
     teams: teamsScreen,
+    debrief: debriefScreen,
+  });
+
+  // ── Écran de fin ──────────────────────────────────────────────────────────────────
+  const debrief = new Debrief({
+    load: (matchId) => loadCache.request(debriefApi.debrief(matchId), { force: true }),
+    leave: (matchId) => void debriefApi.leave(matchId),
+    go: (event) => navigation.go(event),
+    setPath: (path) => history.replaceState(history.state, "", path),
+    showIslands: () => islands.render(),
   });
 
   // ── Partie ────────────────────────────────────────────────────────────────────────
@@ -79,23 +93,15 @@ function main(): void {
     ensureBoard: () => void board.ensure(),
     clearBoard: () => board.clear(),
     seated: (terrain) => board.center(terrain),
-    reports: () => gameConsole,
     notify: (message) => shell.notify(message),
     leave,
     connectionLost: async () => {
       await account.refresh();
       shell.notify(messages().game.connectionLost);
     },
+    finished,
   });
-  const gameConsole = attachConsole({
-    elements: consoleElements(),
-    match: () => matches.match,
-    play: (action) => matches.play(action),
-    pending: () => matches.pending,
-    watching: () => matches.watching,
-    spectators: () => matches.spectators,
-  });
-  const board = new BoardView(boardHost, matches, gameConsole);
+  const board = new BoardView(boardHost, matches, () => islands.render());
 
   // ── File d'attente, amis, compte ──────────────────────────────────────────────────
   const matchmaking = new Matchmaking({
@@ -126,7 +132,7 @@ function main(): void {
     welcomed: () => {
       // L'écran des équipes s'ouvre alors complet, sans attente.
       board.prewarm(() => loadCache.preload([presetsResource]));
-      void resume();
+      void arrive();
     },
   });
 
@@ -137,8 +143,12 @@ function main(): void {
 
   // ── Parcours ──────────────────────────────────────────────────────────────────────
 
-  /** Referme tout ce qui relie le client au serveur, vide la table et revient au menu. */
+  /**
+   * Referme tout ce qui relie le client au serveur, vide la table et revient au menu.
+   * L'écran de fin se quitte aussi par là, et le serveur l'apprend.
+   */
   function leave(): void {
+    debrief.close();
     matchmaking.close();
     friends.withdrawChallenge();
     matches.close();
@@ -148,6 +158,7 @@ function main(): void {
 
   /** Assied le joueur à une partie : la file et le défi en cours n'ont plus lieu d'être. */
   function sit(matchId: string, seat: string): void {
+    debrief.close();
     matchmaking.close();
     friends.forgetChallenge();
     matches.sit(matchId, seat);
@@ -161,6 +172,36 @@ function main(): void {
   function sitAfterChallenge(matchId: string, seat: string): void {
     if (matches.ownMatchRunning) return;
     sit(matchId, seat);
+  }
+
+  /**
+   * La partie jouée est close : son écran de fin remplace la table une fois lu. Refusé
+   * (illisible, réseau), on revient au menu en le disant.
+   */
+  function finished(matchId: string): void {
+    void debrief.open(matchId).then((opening) => {
+      if (opening.kind === "stale") return;
+      if (opening.kind === "opened") {
+        matches.close();
+        return;
+      }
+      leave();
+      shell.notify(opening.message);
+    });
+  }
+
+  /**
+   * L'arrivée au menu, connecté : par le lien d'un écran de fin, on l'ouvre si le serveur
+   * le tient encore ouvert ; sinon on rassoit le joueur à sa partie en cours.
+   */
+  async function arrive(): Promise<void> {
+    const linked = debriefFromPath(location.pathname);
+    if (linked !== undefined) {
+      const opening = await debrief.open(linked);
+      if (opening.kind === "opened") return;
+      if (opening.kind === "refused") shell.notify(opening.message);
+    }
+    await resume();
   }
 
   /**
@@ -185,9 +226,12 @@ function main(): void {
 
   /**
    * Aucun chemin ne ramène à un siège quitté : la fenêtre `leave/` demande l'abandon d'une
-   * partie vivante ; partir d'une partie regardée ou finie, non.
+   * partie vivante, puis la table attend la vue finale pour montrer l'écran de fin ;
+   * partir d'une partie regardée ou finie, non.
    */
   function leaveMatch(): void {
+    // L'abandon est parti : seul l'écran de fin attend le joueur, pas le menu.
+    if (matches.resigning) return;
     if (matches.requestLeave()) {
       islands.render();
       return;
@@ -195,16 +239,73 @@ function main(): void {
     leave();
   }
 
+  /** L'ATH, tant qu'une partie est sur la table : abandonner passe par `leaveMatch()`. */
+  function matchHud(): MatchHudIsland | undefined {
+    const match = matches.match;
+    if (match === undefined) return undefined;
+    const away = matches.opponentAway;
+    return {
+      model: hudModel(messages(), {
+        view: match.viewFor(match.player),
+        board: match.board,
+        watching: matches.watching,
+        players: matches.players,
+        opponentAway: away !== undefined,
+        pending: matches.pending,
+        selection: matches.selection,
+        sheet: matches.sheet,
+      }),
+      away,
+      notice: matches.notice,
+      spectators: matches.spectators,
+      planView: board.planView,
+      columnOpen: board.columnOpen,
+      onLeave: leaveMatch,
+      onCamera: (command) => board.command(command),
+      onToggleColumn: () => {
+        board.toggleColumn();
+        islands.render();
+      },
+      onAbility: () => matches.toggleAbility(),
+    };
+  }
+
   function leaveDialog(): LeaveDialog | undefined {
     if (!matches.leaving) return undefined;
     return {
       onConfirm: () => {
         matches.confirmLeave();
-        leave();
+        islands.render();
       },
       onCancel: () => {
         matches.cancelLeave();
         islands.render();
+      },
+    };
+  }
+
+  function endScreen(): EndScreen | undefined {
+    const ended = matches.ended;
+    if (ended === undefined) return undefined;
+    return {
+      end: ended,
+      onMenu: leave,
+      onBoard: () => {
+        matches.dismissEnd();
+        islands.render();
+      },
+    };
+  }
+
+  function debriefScreen(): DebriefScreen | undefined {
+    const matchId = debrief.matchId;
+    if (matchId === undefined) return undefined;
+    return {
+      matchId,
+      onMenu: leave,
+      onPlayAgain: () => {
+        leave();
+        matchmaking.seek("quick");
       },
     };
   }
@@ -235,7 +336,6 @@ function main(): void {
     settings.refresh();
     navigation.render();
     account.render();
-    gameConsole.refresh();
     islands.render();
   }
 }

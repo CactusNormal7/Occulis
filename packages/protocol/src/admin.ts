@@ -64,6 +64,14 @@ export interface AdminFramePiece {
   readonly y: number;
 }
 
+/** Un piège posé, tel qu'il est caché sur le plateau : `layer` est la pièce qui l'a posé. */
+export interface AdminFrameTrap {
+  readonly owner: PlayerId;
+  readonly layer: string;
+  readonly x: number;
+  readonly y: number;
+}
+
 /**
  * La position **complète** à un instant de la partie, et ce que chaque camp en voyait.
  * Réservée au back-office : c'est exactement ce que le serveur ne transmet jamais à un
@@ -71,6 +79,8 @@ export interface AdminFramePiece {
  */
 export interface AdminFrame {
   readonly pieces: readonly AdminFramePiece[];
+  /** Les pièges posés et pas encore déclenchés, des deux camps. */
+  readonly traps: readonly AdminFrameTrap[];
   /** Les cases dans la ligne de vue de chaque camp, en clés `x,y` (`coordKey`). */
   readonly visible: { readonly A: readonly string[]; readonly B: readonly string[] };
 }

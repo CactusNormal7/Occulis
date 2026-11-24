@@ -3,7 +3,7 @@
 Rendu isométrique en pixel art léger, en dessin procédural : aucun sprite, aucune image,
 aucun moteur 3D. Tout est tracé par `Graphics` de PixiJS 8, à partir des coordonnées
 logiques de `packages/core`, dans un tampon plus petit que l'écran puis agrandi au plus
-proche voisin — le pixel se voit, fin, et le mouvement reste continu (`view/pixel.ts`). Toute partie est arbitrée par le serveur : le client porte les
+proche voisin — le pixel se voit, fin, et le mouvement reste continu (`@occulis/board/pixel`). Toute partie est arbitrée par le serveur : le client porte les
 écrans de compte et de menu, l'entrée en partie, puis le plateau — à la souris ou au
 clavier.
 
@@ -12,46 +12,51 @@ clavier.
 **Fait** : les écrans de compte et de menu, l'entrée en partie (appariement rapide,
 salon privé, entrée par code), puis la partie elle-même — projection isométrique avec
 hauteur, rotation libre du plateau, zoom et déplacement de la caméra, survol, **sélection
-d'une pièce au clic et déplacement animé**, saisie de coups au clavier, occlusion du
-relief et des pièces, fog of war et fantômes.
+d'une pièce au clic et déplacement animé**, l'ATH de partie, occlusion du relief et des
+pièces, fog of war et fantômes. Un coup se joue à la souris seulement : la saisie au
+clavier a été retirée le 2026-11-20 (`docs/design/rules.md` § 8.1).
 
 **Ne fait pas** : **aucune partie locale**. Il n'existe pas de mode hot-seat ni de
 démonstration hors ligne : tant que le serveur n'a pas assis le joueur, il n'y a rien à
 jouer et le canevas reste masqué (`docs/design.md` section 2, « pas de local
-multiplayer »). **Aucune capture non plus** : la règle est retirée du moteur
-(`docs/design.md` section 3.1, suspendue), donc un tour se réduit à un déplacement et une
-pièce adverse n'est ni une cible ni une destination — juste un obstacle.
+multiplayer »). Sous `provisional-3`, **une pièce adverse à portée est une destination** : y aller, c'est
+la prendre, et la case est cernée comme une prise (`Selection.captures`). Seules les pièces
+adverses **visibles** y sont marquées ; une case tenue par une pièce cachée apparaît comme
+une case libre, comme le serveur la décrit.
 
 ## L'organisation des dossiers
 
 Le dossier dit la **classe de dépendance** du module, pas seulement son sujet. C'est ce
 qui permet de savoir d'un coup d'œil ce qui est testable sans navigateur.
 
-| Dossier            | Contenu                                                                                                                                                                       | Dépendances                                                                     |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `view/`            | Projection, caméra, désignation, animation                                                                                                                                    | **Aucune** — ni PixiJS, ni DOM                                                  |
-| `game/`            | La partie côté client, la sélection, le scénario                                                                                                                              | **Aucune** — ni PixiJS, ni DOM                                                  |
-| `net/`             | La lecture des messages du serveur                                                                                                                                            | **Aucune** sauf `channel.ts` (WebSocket)                                        |
-| `render/pixi/`     | Le dessin ; `board.ts`, chargé à part, monte le plateau                                                                                                                       | PixiJS                                                                          |
-| `input/`           | Les gestes sur le canevas                                                                                                                                                     | DOM                                                                             |
-| `ui/`              | Les écrans et le bandeau de partie                                                                                                                                            | DOM sauf `flow.ts`, `messages.ts`, `command.ts`                                 |
-| `account/`         | L'écran de compte, îlot React sur `@occulis/ui` dans la page du jeu                                                                                                           | React, DOM et réseau sauf `model.ts`                                            |
-| `profile/`         | La page de profil, page à part sous `/profile/`, en React sur `@occulis/ui`                                                                                                   | React, DOM et réseau sauf `model.ts`                                            |
-| `locale/`          | La langue courante (`current.ts`) et son choix dans le navigateur (`browser.ts`)                                                                                              | Aucune sauf `browser.ts` (DOM, stockage, cookie)                                |
-| `team-builder/`    | Le brouillon d'équipe (`model.ts`), le constructeur (`TeamBuilder.tsx`) et son plateau (`placement-canvas.ts`)                                                                | React, DOM sauf `model.ts`                                                      |
-| `prepare/`         | Les îlots d'avant-partie : fenêtre d'acceptation et déploiement (annonce de l'adversaire comprise)                                                                            | React, DOM sauf `model.ts`                                                      |
-| `leave/`           | L'îlot « quitter la partie » : la fenêtre qui demande d'abandonner (`Dialog` en teinte de refus)                                                                              | React, DOM                                                                      |
-| `presets/`         | Les équipes préparées, depuis le menu                                                                                                                                         | React, DOM et réseau                                                            |
-| `render/canvas2d/` | Les primitives du plateau en Canvas 2D, partagées par le rejeu et le déploiement                                                                                              | DOM (canevas)                                                                   |
-| `admin/`           | Le back-office, page à part sous `/admin/`, en React sur `@occulis/ui`, design system compris (`design/`)                                                                     | React, DOM et réseau sauf `model.ts`, `design/catalog.ts` et `design/tweaks.ts` |
-| `replay/`          | Le rejeu d'une partie, partagé par le back-office et le profil : coups entre deux images (`replay.ts`), plateau Canvas 2D (`replay-canvas.ts`), composant (`ReplayBoard.tsx`) | DOM (canevas) et React sauf `replay.ts`                                         |
-| `theme/`           | Tokens de DA du plateau (`theme.ts`), thème choisi (`theme-choice.ts`), code couleur passé au CSS (`palette.ts`)                                                              | Aucune sauf `theme-choice.ts` et `palette.ts` (DOM)                             |
-| `load/`            | La lecture des données des vues React : cache, `useLoad`, `whenReady`                                                                                                         | React sauf `cache.ts`                                                           |
-| `app/`             | La page du jeu découpée par responsabilité : partie en cours, file, amis, compte, plateau, îlots, écran courant, réglages, identifiants de la page                            | DOM et réseau sauf `match-controller.ts`                                        |
-| racine             | `main.ts` (composition)                                                                                                                                                       | —                                                                               |
+| Dossier          | Contenu                                                                                                                                                                       | Dépendances                                                                   |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `view/`          | Projection, caméra, désignation, animation                                                                                                                                    | **Aucune** — ni PixiJS, ni DOM                                                |
+| `game/`          | La partie côté client, la sélection, le scénario                                                                                                                              | **Aucune** — ni PixiJS, ni DOM                                                |
+| `net/`           | La lecture des messages du serveur                                                                                                                                            | **Aucune** sauf `channel.ts` (WebSocket)                                      |
+| `render/pixi/`   | Le dessin ; `board.ts`, chargé à part, monte le plateau                                                                                                                       | PixiJS                                                                        |
+| `input/`         | Les gestes sur le canevas                                                                                                                                                     | DOM                                                                           |
+| `ui/`            | Les écrans hors partie (menu, attente)                                                                                                                                        | DOM sauf `flow.ts`, `messages.ts`, `piece-info-model.ts`                      |
+| `hud/`           | L'ATH de partie, îlot Vue sur la charte : sa traduction pure (`model.ts`), ses composants, sa feuille (`hud.css`)                                                             | Vue, DOM sauf `model.ts`                                                      |
+| `account/`       | L'écran de compte, îlot Vue sur `@occulis/ui` dans la page du jeu                                                                                                             | Vue, DOM et réseau sauf `model.ts`                                            |
+| `profile/`       | La page de profil, page à part sous `/profile/`, en Vue sur `@occulis/ui`                                                                                                     | Vue, DOM et réseau sauf `model.ts`                                            |
+| `locale/`        | La langue courante (`current.ts`) et son choix dans le navigateur (`browser.ts`)                                                                                              | Aucune sauf `browser.ts` (DOM, stockage, cookie)                              |
+| `team-builder/`  | Le brouillon d'équipe (`model.ts`), le constructeur (`TeamBuilder.vue`) et son plateau (`placement-canvas.ts`)                                                                | Vue, DOM sauf `model.ts`                                                      |
+| `prepare/`       | Les îlots d'avant-partie : fenêtre d'acceptation et déploiement (annonce de l'adversaire comprise)                                                                            | Vue, DOM sauf `model.ts`                                                      |
+| `leave/`         | L'îlot « quitter la partie » : la fenêtre qui demande d'abandonner (`Dialog` en teinte de refus)                                                                              | Vue, DOM                                                                      |
+| `end/`           | La fenêtre de fin d'une partie regardée, chez le spectateur                                                                                                                   | Vue, DOM sauf `model.ts`                                                      |
+| `debrief/`       | L'écran de fin d'une partie jouée (`/debrief/:id`) : résultat, Elo, statistiques, faits d'armes (factices) et replay                                                          | Vue, DOM et réseau sauf `model.ts`                                            |
+| `presets/`       | Les équipes préparées, depuis le menu                                                                                                                                         | Vue, DOM et réseau                                                            |
+| `@occulis/board` | Projection, grain, thèmes du rendu et primitives Canvas 2D, extraits dans `packages/board` pour le site vitrine                                                               | DOM (canevas)                                                                 |
+| `admin/`         | Le back-office, page à part sous `/admin/`, en Vue sur `@occulis/ui`, design system compris (`design/`)                                                                       | Vue, DOM et réseau sauf `model.ts`, `design/catalog.ts` et `design/tweaks.ts` |
+| `replay/`        | Le rejeu d'une partie, partagé par le back-office et le profil : coups entre deux images (`replay.ts`), plateau Canvas 2D (`replay-canvas.ts`), composant (`ReplayBoard.vue`) | DOM (canevas) et Vue sauf `replay.ts`                                         |
+| `theme/`         | Tokens de DA du plateau (`theme.ts`), thème choisi (`theme-choice.ts`), code couleur passé au CSS (`palette.ts`)                                                              | Aucune sauf `theme-choice.ts` et `palette.ts` (DOM)                           |
+| `load/`          | La lecture des données des vues Vue : cache, `useLoad`, `<Ready>`, `useHashRoute`                                                                                             | Vue sauf `cache.ts`                                                           |
+| `app/`           | La page du jeu découpée par responsabilité : partie en cours, file, amis, compte, plateau, îlots, écran courant, réglages, identifiants de la page                            | DOM et réseau sauf `match-controller.ts`                                      |
+| racine           | `main.ts` (composition)                                                                                                                                                       | —                                                                             |
 
 Les modules de `view/`, `game/` et `net/session.ts` sont purs : c'est là que vivent tous
-les tests, avec `ui/flow.ts`, `ui/command.ts`, `ui/messages.ts`, `account/model.ts`,
+les tests, avec `ui/flow.ts`, `ui/piece-info-model.ts`, `hud/model.ts`, `account/model.ts`,
 `profile/model.ts`, `admin/model.ts`, `admin/design/catalog.ts`, `admin/design/tweaks.ts` et `load/cache.ts`. `net/channel.ts` est la
 seule exception de son dossier — il ouvre le socket, et rien d'autre.
 
@@ -70,28 +75,24 @@ par `ui/flow.ts`.
                                     └─ welcome + view ─► game/online-match.ts
 ```
 
-Une fois assis, deux chemins d'entrée convergent sur la même application d'action, puis
-sur le rendu.
+Une fois assis, les gestes mènent à l'application d'une action, puis au rendu ; l'ATH se
+redessine à chaque changement.
 
 ```
   ── GESTES ──────────────────────────────────────────────────────────
-  souris / clavier
+  souris / flèches / boutons de caméra de l'ATH
         │  input/controls.ts   ── seul module qui écoute le canevas
         ├─► view/camera.ts     ── zoomAt / panBy / rotateBy / snapRotation / turn
         ├─► view/picking.ts    ── tileAt() : quelle case est sous le curseur ?
-        └─► onPick()           ── au clic, app/board-view.ts consulte :
-                 game/selection.ts ── resolveClick() → select | play | clear
-
-  ── SAISIE ──────────────────────────────────────────────────────────
-  « 1,6 2,5 »
-        │  ui/console.ts       ── seul module qui touche le DOM
-        └─► ui/command.ts      ── parseCommand() puis toAction()
+        ├─► onPick()           ── au clic, MatchController.pick() consulte :
+        │        game/selection.ts ── resolveClick() → select | play | clear
+        └─► onInspect()        ── au clic droit, MatchController.inspect() : la fiche
 
   ── APPLICATION (app/match-controller.ts) ───────────────────────────
         play(action)
         ├─► game/online-match.ts ── envoie l'action, applique l'anticipation locale
         ├─► view/animation.ts    ── startMove() si la pièce change de case
-        └─► console.refresh()    ── état du tour, DIFFÉRÉ à la fin de l'animation
+        └─► showIslands()        ── l'ATH se redessine (hud/model.ts traduit l'état)
 
   ── RENDU (chaque frame) ────────────────────────────────────────────
         ├─► settle()           ── avance l'aimantation de la rotation
@@ -110,39 +111,56 @@ retenus — jamais un état qu'on fait évoluer image par image.
 ## Chargement et premier rendu
 
 **La convention de tout le client : un écran paraît d'un seul tenant.** Aucune partie d'un
-écran ne s'affiche avant les autres — ni cadre vide, ni squelette, ni bloc qui arrive une
-seconde plus tard en poussant le reste. Elle vaut pour tout écran à venir ; ses règles et ce
-qui les porte :
+écran ne s'affiche avant les autres — ni cadre vide, ni bloc qui arrive une seconde plus tard
+en poussant le reste. **Une seule exception, la navigation à l'intérieur d'une page Vue**
+(décision du porteur du projet, 2026-10-29) : un clic doit répondre tout de suite, et
+l'écran suivant, s'il n'est pas encore arrivé, montre **son squelette entier** plutôt que de
+laisser l'écran qu'on quitte en place (règle 4). Le premier rendu d'une page, lui, reste
+d'un seul tenant. Elle vaut pour tout écran à venir ; ses règles et ce qui les porte :
 
 1. **Peinture immédiate du fond.** Chaque page HTML porte en tête de `<head>`, juste après
    l'encodage, le bloc de `criticalHead()` (`packages/ui/src/critical.ts`), injecté au build
    par le greffon `occulis-critical-paint` de `vite.config.ts` : `color-scheme: dark`,
    `theme-color`, le fond en ligne (depuis `BACKGROUND`), la police pixel déclarée en
    `font-display: block` et préchargée — un écran ne paraît jamais dans la police de
-   secours pour basculer ensuite —, le fondu entre pages et les règles de spéculation. **Aucune couleur n'est écrite dans un `index.html`** ; une nouvelle page
+   secours pour basculer ensuite —, l'icône d'onglet (`favicon()`, un SVG `data:` aux couleurs
+   des tokens), le fondu entre pages et les règles de spéculation. **Aucune couleur n'est écrite dans un `index.html`** ; une nouvelle page
    Vite reçoit le bloc d'office.
 2. **Tout ce qu'un écran lit part en même temps.** Chaque page déclare, par route, les
    ressources de son écran (`profile/resources.ts`, `admin/resources.ts` : `resourcesOf(route)`)
-   et les **précharge** avant même son premier rendu (`main.tsx`), puis à chaque changement de
+   et les **précharge** avant même son premier rendu (`main.ts`), puis à chaque changement de
    route. Une ressource est une clé et sa lecture (`resource(key, load)`) ; le cache
    (`loadCache`) n'en lance qu'une lecture à la fois, quel que soit le nombre de vues qui la
    demandent.
-3. **Rien ne paraît avant que tout soit là.** Une vue lit par `useLoad(resource)`
-   (`load/hooks.tsx`), qui **suspend** tant que la ressource n'est jamais arrivée. La page a
-   **une seule frontière `Suspense`**, autour de tout l'écran — barre du haut comprise : la page
+3. **Rien ne paraît avant que tout soit là.** Une vue lit par
+   `await useLoad(() => resource)` en tête de son `<script setup>` (`load/use-load.ts`) : tant
+   que la ressource n'est jamais arrivée, la vue est **en attente**. La page a
+   **une seule frontière `<Suspense>`**, autour de tout l'écran — barre du haut comprise : la page
    reste sur son fond jusqu'à ce que toutes ses vues aient leurs données, puis paraît en une
    fois. Pendant l'attente, seule la `ProgressBar` de la charte, qui n'apparaît qu'après
    0,4 s : une attente courte ne montre rien du tout.
-4. **Une navigation garde l'écran affiché.** `useHashRoute(parse, resourcesOf)` précharge la
-   route suivante puis la pose en **transition** (`startTransition`) : React garde l'écran
-   courant jusqu'à ce que le suivant soit complet, puis le remplace d'un bloc. Un écran déjà vu
-   revient aussitôt depuis le cache, puis se relit s'il a plus de `FRESH_MS` (3 s) —
+4. **Une navigation est immédiate.** `useHashRoute(parse, resourcesOf, screenOf)` rend la
+   route affichée (`route`), la route visée (`target`) et `switching`. Au clic, la barre du
+   haut passe à `target` sans attendre. Si tout ce que l'écran suivant lit est déjà dans le
+   cache, il remplace l'écran courant dans la même image ; sinon `route` attend que tout soit
+   arrivé (`load/hash-route.ts`) et, pendant l'attente, `switching` fait montrer
+   `SkeletonScreen` (charte) dans la forme de l'écran visé (`skeletonOf(route)`, `hero`,
+   `list` ou `detail`), sous la barre du haut et le bandeau d'usurpation, qui ne bougent
+   pas. Il paraît en fondu depuis le transparent (`--occ-base`) : une réponse rapide le
+   remplace avant qu'il se voie. **Entre deux états d'un même écran** (`screenOf()` égal :
+   une autre page d'une table, une recherche au fil de la frappe, un filtre), pas de
+   squelette : l'écran affiché reste jusqu'à ce que l'autre état soit complet. Un écran déjà
+   vu revient aussitôt depuis le cache, puis se relit s'il a plus de `FRESH_MS` (3 s) —
    _stale-while-revalidate_. `reload()` relit après une écriture en gardant l'écran.
+   **Les liens d'un fragment se préchargent** : `useHashRoute` lit les ressources de la
+   route d'un lien `href="#…"` (`load/prefetch-links.ts`) après 60 ms de survol (`HOVER_PREFETCH_MS` : traverser une
+   liste ne lance pas une lecture par ligne), dès le focus et dès l'appui — le plus souvent,
+   l'écran est arrivé avant le relâchement du clic et le squelette n'a pas lieu.
 5. **Pas d'entrée en cascade.** `occ-enter` (charte) est un fondu du bloc entier, jamais de
    ses parties l'une après l'autre ; les écrans du profil et du back-office se remplacent sans
-   animation. Un îlot React de la page du jeu est rendu **de façon synchrone** (`flushSync`,
-   `*/mount.tsx`) avant que `shell.ts` montre son écran : un panneau n'est jamais montré vide le
-   temps que React dessine son contenu.
+   animation. Un îlot Vue de la page du jeu est rendu **de façon synchrone** (`render()` de Vue,
+   `app/island.ts`) avant que `shell.ts` montre son écran : un panneau n'est jamais montré vide
+   le temps que Vue dessine son contenu.
 6. **Navigation douce entre pages.** `@view-transition { navigation: auto }` fond une page dans
    la suivante (coupé sous `prefers-reduced-motion`) ; les liens internes sont **préchargés au
    survol** (règles de spéculation `prefetch`, `eagerness: moderate`, hors `/api/*`, `/match/*`
@@ -154,9 +172,9 @@ qui les porte :
    tourné en arrière-plan, mais `net/channel.ts` n'ouvre aucun WebSocket tant que
    `document.prerendering` est vrai : la connexion attend `prerenderingchange`, pour ne pas
    annoncer le joueur sur une page qu'il n'a pas ouverte. Quand la page n'a pas été
-   pré-rendue (clic sans survol, pré-rendu refusé), `guardPageReveal()` (`load/page.tsx`)
-   **annule le fondu** si l'écran n'est pas complet à la première image — `ScreenReady`,
-   posé dans la frontière `Suspense`, ne marque l'écran qu'une fois monté, et la police doit
+   pré-rendue (clic sans survol, pré-rendu refusé), `guardPageReveal()` (`load/page.ts`)
+   **annule le fondu** si l'écran n'est pas complet à la première image — `markScreenShown()`,
+   appelé par la frontière (`<Suspense @resolve>`), ne marque l'écran qu'une fois monté, et la police doit
    être chargée : une coupure franche plutôt qu'un fondu vers le vide. Pour entendre
    `pagereveal` à temps, le script d'entrée de ces deux pages bloque le rendu
    (`blocking="render"`), attribut que Vite retire au build et que `keepRenderBlocking()`
@@ -179,141 +197,157 @@ montré. Le **plateau** est chargé à part (`render/pixi/board.ts`) : PixiJS n'
 analysé avant d'afficher le menu ; il se charge au repos une fois le menu affiché, avec les
 équipes préparées, pour que l'écran des équipes s'ouvre complet.
 
-| Module                                                                                  | Rôle                                                                                                                                                          |
-| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `load/cache.ts` — `resource()`                                                          | Une lecture nommée : une clé et sa fonction de lecture                                                                                                        |
-| `load/cache.ts` — `LoadCache.request()`                                                 | Lit une ressource : reprend la lecture en cours, rend une réponse fraîche (`FRESH_MS`) sans relire sauf `force`, ne rejette jamais (un échec est une réponse) |
-| `load/cache.ts` — `LoadCache.preload()`                                                 | Lance plusieurs lectures à la fois, sans attendre                                                                                                             |
-| `load/cache.ts` — `LoadCache.peek()`, `value()`, `set()`, `invalidate()`, `subscribe()` | État d'une clé (même objet tant qu'il n'a pas changé), dernière valeur réussie, valeur obtenue autrement, oubli, abonnement                                   |
-| `load/cache.ts` — `loadedOf()`                                                          | L'état d'une clé arrivée, vu par une vue : `failed` ou `ready` (`refreshing` pendant une relecture)                                                           |
-| `load/cache.ts` — `PendingCount`                                                        | Le nombre de lectures en cours ; ses abonnés sont prévenus après coup (microtâche), une lecture pouvant démarrer pendant un rendu                             |
-| `load/cache.ts` — `loadCache`, `pendingLoads`                                           | Les instances de la page                                                                                                                                      |
-| `load/hooks.tsx` — `useLoad()`                                                          | Lit une ressource ; **suspend** tant qu'elle n'est jamais arrivée, relit au montage si elle n'est plus fraîche ; `reload()` force la relecture                |
-| `load/hooks.tsx` — `usePending()`                                                       | Vrai tant qu'une lecture est en cours : la `ProgressBar` le suit                                                                                              |
-| `load/hooks.tsx` — `whenReady()`                                                        | Le refus (`EmptyState`) ou le rendu d'une ressource arrivée                                                                                                   |
-| `load/hooks.tsx` — `useHashRoute()`                                                     | La route du fragment ; un changement précharge la route suivante et passe en transition                                                                       |
+| Module                                                                                  | Rôle                                                                                                                                                                                                      |
+| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `load/cache.ts` — `resource()`                                                          | Une lecture nommée : une clé et sa fonction de lecture                                                                                                                                                    |
+| `load/cache.ts` — `LoadCache.request()`                                                 | Lit une ressource : reprend la lecture en cours, rend une réponse fraîche (`FRESH_MS`) sans relire sauf `force`, ne rejette jamais (un échec est une réponse)                                             |
+| `load/cache.ts` — `LoadCache.preload()`                                                 | Lance plusieurs lectures à la fois, sans attendre                                                                                                                                                         |
+| `load/cache.ts` — `LoadCache.peek()`, `value()`, `set()`, `invalidate()`, `subscribe()` | État d'une clé (même objet tant qu'il n'a pas changé), dernière valeur réussie, valeur obtenue autrement, oubli, abonnement                                                                               |
+| `load/cache.ts` — `loadedOf()`                                                          | L'état d'une clé arrivée, vu par une vue : `failed` ou `ready` (`refreshing` pendant une relecture)                                                                                                       |
+| `load/cache.ts` — `PendingCount`                                                        | Le nombre de lectures en cours ; ses abonnés sont prévenus après coup (microtâche), une lecture pouvant démarrer pendant un rendu                                                                         |
+| `load/cache.ts` — `loadCache`, `pendingLoads`                                           | Les instances de la page                                                                                                                                                                                  |
+| `load/use-load.ts` — `useLoad()`                                                        | S'attend (`await`) en tête d'une vue : la vue reste **en attente** tant que la ressource n'est jamais arrivée, se relit si elle n'est plus fraîche ou si sa source change ; `reload()` force la relecture |
+| `load/use-load.ts` — `usePending()`                                                     | Vrai tant qu'une lecture est en cours : la `ProgressBar` le suit                                                                                                                                          |
+| `load/Ready.vue`                                                                        | Le refus (`EmptyState`) ou le rendu d'une ressource arrivée, par son emplacement `#default="{ value }"`                                                                                                   |
+| `load/hash-route.ts` — `useHashRoute()`                                                 | La route affichée et la route visée ; un changement est immédiat si l'écran est en cache, attend avec squelette sinon ; précharge les liens au survol (`prefetch-links.ts`)                               |
 
 Le fil d'un ami (`ChatView`) lit sa première page par `useLoad(chat(id))`, puis y fond ce que
 le canal pousse, ce qu'on envoie et les messages plus anciens (`merged()`, sans doublon, dans
-l'ordre d'envoi). La liste d'amis du profil (`SocialProvider`) part de la valeur du cache — la
-page l'a attendue avant de paraître (`WithFriends`, pour un compte vérifié) — et se relit à
-chaque ouverture du canal social.
+l'ordre d'envoi, `friends/thread.ts`). La liste d'amis du profil (`provideSocial()`,
+`profile/social.ts`) part de la valeur du cache — la page l'a attendue avant de paraître
+(`ProfilePage.vue`, pour un compte vérifié) — et se relit à chaque ouverture du canal social.
 
 ## Carte des modules
 
-| Fichier                                          | Rôle                                                                                                                                                                                           | Pur ?                                           |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `apps/web/src/app/match-controller.ts`           | La partie en cours : canal, partie, coup en attente, sélection, animation, déploiement, spectateur                                                                                             | oui                                             |
-| `apps/web/src/app/matchmaking.ts`                | La file d'attente : `seek()`, `close()`, la partie proposée (`proposal`) et son compte à rebours                                                                                               | non                                             |
-| `apps/web/src/app/friends.ts`                    | Le panneau d'amis, le canal social et le défi en attente ; la liste attendue avant le menu, au plus `MENU_DEADLINE_MS`                                                                         | non                                             |
-| `apps/web/src/app/account.ts`                    | L'identité rendue par le serveur (`refresh()`), l'îlot de compte, les retours par l'URL, déconnexion et fin d'usurpation                                                                       | non                                             |
-| `apps/web/src/app/board-view.ts`                 | Charge `render/pixi/board.ts` une seule fois (`ensure()`, `prewarm()`), tient la caméra, rend clics et images à `MatchController`                                                              | non                                             |
-| `apps/web/src/app/islands.ts`                    | Monte les îlots React de la page du jeu et les redessine ensemble ; leurs propriétés sont lues chez leurs modules                                                                              | non                                             |
-| `apps/web/src/app/navigation.ts`                 | L'écran courant : `go()` fait avancer `ui/flow.ts`, réaffiche les écrans et montre ou cache l'engrenage                                                                                        | non                                             |
-| `apps/web/src/app/preferences.ts`                | Thème et langue retenus au démarrage, engrenage des réglages (`chooseTheme` sous le voile)                                                                                                     | non                                             |
-| `apps/web/src/app/page.ts`                       | `element()` et les identifiants de `index.html`, regroupés par module qui les reçoit                                                                                                           | non                                             |
-| `apps/web/src/main.ts`                           | Racine de composition : crée les modules de `app/` et les relie                                                                                                                                | non                                             |
-| `apps/web/src/load/cache.ts`                     | Cache des lectures, état d'une lecture, compteur des lectures en cours                                                                                                                         | oui                                             |
-| `apps/web/src/load/hooks.tsx`                    | `useLoad()`, `usePending()`, `whenReady()`                                                                                                                                                     | non                                             |
-| `apps/web/public/_headers`                       | Cache d'un an des fichiers hachés de `/assets/`, d'une semaine de la police                                                                                                                    | —                                               |
-| `apps/web/public/fonts/`                         | La police pixel Tiny5 (sous-ensemble latin) et sa licence OFL, à adresse fixe                                                                                                                  | —                                               |
-| `apps/web/src/theme/theme.ts`                    | Couleurs reprises de `tokens.ts`, métriques, alphas et épaisseurs du rendu                                                                                                                     | oui                                             |
-| `apps/web/src/view/iso.ts`                       | Projection isométrique et géométrie des cases                                                                                                                                                  | oui                                             |
-| `apps/web/src/view/camera.ts`                    | État de caméra et ses transitions                                                                                                                                                              | oui                                             |
-| `apps/web/src/view/picking.ts`                   | Point à l'écran → case du plateau                                                                                                                                                              | oui                                             |
-| `apps/web/src/view/animation.ts`                 | Interpolation d'un déplacement de pièce                                                                                                                                                        | oui                                             |
-| `apps/web/src/view/pixel.ts`                     | Le grain du plateau (`pixelResolution()`), arrondi à la grille, mélange de couleurs, respiration                                                                                               | oui                                             |
-| `apps/web/src/view/easing.ts`                    | Les courbes d'animation                                                                                                                                                                        | oui                                             |
-| `apps/web/src/view/reveal.ts`                    | La lumière de chaque case, animée : vague de ligne de vue                                                                                                                                      | oui                                             |
-| `apps/web/src/view/effects.ts`                   | Entrée du plateau, cascade, retombée, matérialisation                                                                                                                                          | oui                                             |
-| `apps/web/src/view/matter.ts`                    | La teinte du dessus d'une case, selon sa hauteur et sa visibilité                                                                                                                              | oui                                             |
-| `apps/web/src/view/ambient.ts`                   | Poussières, lucioles, étoiles, constellations, étoiles filantes : à graine, fonctions du temps                                                                                                 | oui                                             |
-| `apps/web/src/game/online-match.ts`              | La partie arbitrée par le serveur, vue du client                                                                                                                                               | oui                                             |
-| `apps/web/src/game/hypothesis.ts`                | `PlayerView` → position telle que le joueur peut la croire                                                                                                                                     | oui                                             |
-| `apps/web/src/game/movement-diff.ts`             | Ce que deux vues successives ont fait bouger                                                                                                                                                   | oui                                             |
-| `apps/web/src/game/selection.ts`                 | Sélection d'une pièce et résolution d'un clic                                                                                                                                                  | oui                                             |
-| `apps/web/src/game/scenario.ts`                  | Résout la carte annoncée par le serveur                                                                                                                                                        | oui                                             |
-| `apps/web/src/net/session.ts`                    | Réduction des messages serveur en état de session                                                                                                                                              | oui                                             |
-| `apps/web/src/net/queue-channel.ts`              | Le canal de la file : appariement, salon, entrée par code                                                                                                                                      | non                                             |
-| `apps/web/src/net/match-channel.ts`              | Le canal d'une partie, assis (`connectToMatch`) ou spectateur (`watchMatch`)                                                                                                                   | non                                             |
-| `apps/web/src/net/social-channel.ts`             | Le canal social de la page (`/api/social`)                                                                                                                                                     | non                                             |
-| `apps/web/src/social/model.ts`                   | État social : liste d'amis retouchée par les poussées, défis, non-lus, relation à un joueur (`relationTo()`), refus traduits (`social.errors`)                                                 | oui                                             |
-| `apps/web/src/net/http.ts`                       | `request()` : un appel JSON qui ne rejette jamais, échec mis en mots par la famille d'appels (`ErrorWording`) ; `jsonInit()`                                                                   | non                                             |
-| `apps/web/src/social/api.ts`                     | Appels des routes d'amis, partagés par le menu et le profil ; comme `profile/api.ts` et `admin/api.ts`, sur `net/http.ts`                                                                      | non                                             |
-| `apps/web/src/ui/friends-panel.ts`               | Le panneau « Amis » du menu : défis reçus, présence, défier, regarder                                                                                                                          | non                                             |
-| `apps/web/src/net/channel.ts`                    | Transport WebSocket et reconnexion                                                                                                                                                             | non                                             |
-| `apps/web/src/net/backoff.ts`                    | Délai avant la n-ième tentative de reconnexion                                                                                                                                                 | oui                                             |
-| `apps/web/src/ui/flow.ts`                        | Quel écran a lieu d'être : amorce, compte, menu, attente, partie                                                                                                                               | oui                                             |
-| `apps/web/src/ui/shell.ts`                       | Les écrans hors partie : affichage et gestes ; ils paraissent sans l'ouverture des fenêtres, réservée à celles qu'un clic ouvre, et le passage du menu à l'attente se fait sous le voile tramé | non                                             |
-| `apps/web/src/ui/veil.ts`                        | Le voile tramé qui balaie l'écran pendant une bascule : changement de thème, entrée dans la recherche ou la création d'une partie ; sa feuille est `ui/veil.css`                               | non                                             |
-| `apps/web/src/ui/settings.ts`                    | Les réglages d'affichage (design, langue) derrière l'engrenage                                                                                                                                 | non                                             |
-| `apps/web/src/account/AccountApp.tsx`            | Écran de compte : connexion, inscription, oubli, réinitialisation, Google                                                                                                                      | non                                             |
-| `apps/web/src/account/mount.tsx`                 | Monte l'îlot de compte dans `#account-root`                                                                                                                                                    | non                                             |
-| `apps/web/src/account/model.ts`                  | Parcours ↔ URL, messages de retour, refus rattachés à leur champ, indication de longueur                                                                                                       | oui                                             |
-| `apps/web/src/net/auth.ts`                       | Appels d'authentification et traduction des refus                                                                                                                                              | non (sauf `authMessage()`, `redirectMessage()`) |
-| `apps/web/src/locale/current.ts`                 | La langue courante et son dictionnaire, sans DOM                                                                                                                                               | oui                                             |
-| `apps/web/src/locale/browser.ts`                 | Choix de langue (stockage, cookie, `<html lang>`) et remplissage du HTML statique (`data-i18n`)                                                                                                | non                                             |
-| `apps/web/src/team-builder/model.ts`             | Le brouillon d'une équipe : emplacements, clic sur une case, échange, remplissage ; verdict délégué à `validateTeam()`                                                                         | oui                                             |
-| `apps/web/src/team-builder/TeamBuilder.tsx`      | Le constructeur d'équipe : emplacements, plateau, actions                                                                                                                                      | non                                             |
-| `apps/web/src/team-builder/placement-canvas.ts`  | Le plateau de placement en Canvas 2D : zones, pièces posées, survol, clic                                                                                                                      | non                                             |
-| `apps/web/src/render/canvas2d/paint.ts`          | Relief, cases et pièces en Canvas 2D, avec la géométrie du jeu                                                                                                                                 | non                                             |
-| `apps/web/src/prepare/model.ts`                  | Temps restant, envoi automatique, presets jouables, équipe préchargée                                                                                                                          | oui                                             |
-| `apps/web/src/prepare/MatchFound.tsx`            | La fenêtre « partie trouvée »                                                                                                                                                                  | non                                             |
-| `apps/web/src/prepare/Deployment.tsx`            | L'écran de déploiement : annonce de l'adversaire, compte à rebours, constructeur, verrou                                                                                                       | non                                             |
-| `apps/web/src/prepare/Plates.tsx`                | La plaque d'un joueur depuis sa `PlayerCard`                                                                                                                                                   | non                                             |
-| `apps/web/src/prepare/clock.ts`                  | `useRemaining()`, le seul minuteur des écrans d'avant-partie                                                                                                                                   | non                                             |
-| `apps/web/src/prepare/mount.tsx`                 | Monte les deux îlots dans `#match-found-root` et `#deploy-root`                                                                                                                                | non                                             |
-| `apps/web/src/leave/LeaveMatch.tsx`, `mount.tsx` | La fenêtre « quitter la partie », montée dans `#leave-root`                                                                                                                                    | non                                             |
-| `apps/web/src/presets/TeamsApp.tsx`              | La liste des équipes préparées et leur éditeur                                                                                                                                                 | non                                             |
-| `apps/web/src/presets/mount.tsx`                 | Monte l'îlot dans `#teams-root`                                                                                                                                                                | non                                             |
-| `apps/web/profile/index.html`                    | Page de profil, troisième entrée Vite                                                                                                                                                          | —                                               |
-| `apps/web/src/profile/main.tsx`                  | Point d'entrée du profil : monte `App`                                                                                                                                                         | non                                             |
-| `apps/web/src/profile/App.tsx`                   | Compte, sécurité, spectateurs, sessions, suppression, parties et replay (liste des coups, point de vue A / B / tout)                                                                           | non                                             |
-| `apps/web/src/profile/Friends.tsx`               | Onglet Amis : état social partagé (`SocialProvider`), liste, recherche, demandes, bloqués, fiche, replay d'un ami, messages                                                                    | non                                             |
-| `apps/web/src/profile/parts.tsx`                 | Bilan, table d'historique et replay, communs à ses parties et à celles d'un ami                                                                                                                | non                                             |
-| `apps/web/src/profile/resources.ts`              | Ce que lit chaque écran du profil (liste d'amis et équipes préparées comprises, partagées avec la page du jeu), et `resourcesOf(route)` pour le précharger                                     | non                                             |
-| `apps/web/src/profile/api.ts`                    | Appels `/api/me/*` et routes de compte de Better Auth                                                                                                                                          | non                                             |
-| `apps/web/src/profile/model.ts`                  | Routes du profil, messages d'arrivée, délai de pseudo, liaison retirable, images du replay                                                                                                     | oui                                             |
-| `apps/web/src/render/pixi/board.ts`              | `mountBoard()` : application Pixi, scène, gestes, boucle d'images — chargé par `import()`                                                                                                      | non                                             |
-| `apps/web/src/render/pixi/scene.ts`              | Couches PixiJS, trames et détection de changement                                                                                                                                              | non                                             |
-| `apps/web/src/render/pixi/ground.ts`             | Le sceau gravé sous le plateau                                                                                                                                                                 | non                                             |
-| `apps/web/src/render/pixi/sky.ts`                | La voûte derrière le plateau et les particules devant                                                                                                                                          | non                                             |
-| `apps/web/src/theme/theme-choice.ts`             | Le thème choisi : stockage, document, rendu                                                                                                                                                    | non                                             |
-| `apps/web/src/render/pixi/terrain.ts`            | Faces et arêtes d'une case                                                                                                                                                                     | non                                             |
-| `apps/web/src/render/pixi/pieces.ts`             | Silhouette d'une pièce                                                                                                                                                                         | non                                             |
-| `apps/web/src/render/pixi/overlay.ts`            | Survol et sélection                                                                                                                                                                            | non                                             |
-| `apps/web/src/input/controls.ts`                 | Gestes du canevas → intentions                                                                                                                                                                 | non                                             |
-| `apps/web/src/ui/command.ts`                     | Grammaire de la saisie de coups                                                                                                                                                                | oui                                             |
-| `apps/web/src/ui/messages.ts`                    | Tous les textes de l'interface                                                                                                                                                                 | oui                                             |
-| `apps/web/src/theme/palette.ts`                  | Passe le code couleur au CSS                                                                                                                                                                   | non                                             |
-| `apps/web/src/ui/console.ts`                     | Bandeau de partie : saisie de coups et comptes rendus                                                                                                                                          | non                                             |
-| `apps/web/src/ui/ui.css`                         | Mise en page des écrans — **aucune couleur en dur**                                                                                                                                            | —                                               |
-| `apps/web/admin/index.html`                      | Page du back-office, seconde entrée Vite                                                                                                                                                       | —                                               |
-| `apps/web/src/admin/main.tsx`                    | Point d'entrée du back-office : monte `App`                                                                                                                                                    | non                                             |
-| `apps/web/src/admin/App.tsx`                     | Racine : garde d'affichage, barre du haut, aiguillage des vues                                                                                                                                 | non                                             |
-| `apps/web/src/admin/views.tsx`                   | Vue d'ensemble, comptes, fiche, profil, liste des parties                                                                                                                                      | non                                             |
-| `apps/web/src/admin/MatchDetail.tsx`             | Détail d'une partie et son rejeu                                                                                                                                                               | non                                             |
-| `apps/web/src/replay/ReplayBoard.tsx`            | Le canevas du rejeu, en composant React                                                                                                                                                        | non                                             |
-| `apps/web/src/admin/actions.tsx`                 | Actions rapides d'un compte et leurs fenêtres                                                                                                                                                  | non                                             |
-| `apps/web/src/admin/shared.tsx`                  | Pastilles d'état, résultat, table des parties                                                                                                                                                  | non                                             |
-| `apps/web/src/admin/resources.ts`                | Ce que lit chaque écran du back-office, et `resourcesOf(route)` pour le précharger                                                                                                             | non                                             |
-| `apps/web/src/admin/model.ts`                    | Routes du back-office et mise en mots des données                                                                                                                                              | oui                                             |
-| `apps/web/src/admin/api.ts`                      | Appels `/api/admin/*` et `/api/auth/admin/*`                                                                                                                                                   | non                                             |
-| `apps/web/src/replay/replay.ts`                  | Rejeu : coups lus entre deux images, libellés, cadrage du plateau                                                                                                                              | oui                                             |
-| `apps/web/src/replay/replay-canvas.ts`           | Rejeu : le plateau dessiné en Canvas 2D, avec la géométrie du jeu                                                                                                                              | non                                             |
-| `apps/web/src/admin/design/DesignSystem.tsx`     | Le design system : sous-navigation, retouches (thème, palette, vitesse) posées sur le document                                                                                                 | non                                             |
-| `apps/web/src/admin/design/Foundations.tsx`      | Tokens : palette retouchable, os par alpha, typographie, écarts, mouvement, propriétés CSS                                                                                                     | non                                             |
-| `apps/web/src/admin/design/Components.tsx`       | Catalogue des composants : aperçus montés en vrai, code, commentaire, props                                                                                                                    | non                                             |
-| `apps/web/src/admin/design/Motion.tsx`           | Animations rejouables et ralenties, durées du plateau, animations CSS déclarées                                                                                                                | non                                             |
-| `apps/web/src/admin/design/Conventions.tsx`      | Conventions de l'agent de design et section 8.1 du design doc, rendues depuis le Markdown                                                                                                      | non                                             |
-| `apps/web/src/admin/design/sources.ts`           | Les sources lues au build (`import.meta.glob`, `?raw`) et assemblées en catalogue                                                                                                              | non                                             |
-| `apps/web/src/admin/design/catalog.ts`           | Lecture des sources : catégorie, exemples, commentaires et props, animations CSS, notes d'une table, Markdown                                                                                  | oui                                             |
-| `apps/web/src/admin/design/tweaks.ts`            | Palette retouchée : couleurs par chemin, remplacement, écart, format de `tokens.ts`                                                                                                            | oui                                             |
-| `apps/web/src/admin/design/context.tsx`          | Les retouches partagées par les pages (`useTweaks`)                                                                                                                                            | non                                             |
+| Fichier                                                                                      | Rôle                                                                                                                                                                                               | Pur ?                                           |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `apps/web/src/app/match-controller.ts`                                                       | La partie en cours : canal, partie, coup en attente, sélection, animation, déploiement, spectateur                                                                                                 | oui                                             |
+| `apps/web/src/app/matchmaking.ts`                                                            | La file d'attente : `seek()`, `close()`, la partie proposée (`proposal`) et son compte à rebours                                                                                                   | non                                             |
+| `apps/web/src/app/friends.ts`                                                                | Le panneau d'amis, le canal social et le défi en attente ; la liste attendue avant le menu, au plus `MENU_DEADLINE_MS`                                                                             | non                                             |
+| `apps/web/src/app/account.ts`                                                                | L'identité rendue par le serveur (`refresh()`), l'îlot de compte, les retours par l'URL, déconnexion et fin d'usurpation                                                                           | non                                             |
+| `apps/web/src/app/board-view.ts`                                                             | Charge `render/pixi/board.ts` une seule fois (`ensure()`, `prewarm()`), tient la caméra, rend clics et images à `MatchController`                                                                  | non                                             |
+| `apps/web/src/app/islands.ts`                                                                | Le contrat de chaque îlot de la page du jeu ; les monte et les redessine ensemble, leurs propriétés lues chez leurs modules                                                                        |
+| `apps/web/src/app/island.ts`                                                                 | `mountIsland()` : un composant de la charte posé sous `UiRoot` dans un élément de la page, rendu de façon synchrone                                                                                | non                                             |
+| `apps/web/src/app/navigation.ts`                                                             | L'écran courant : `go()` fait avancer `ui/flow.ts`, réaffiche les écrans et montre ou cache l'engrenage                                                                                            | non                                             |
+| `apps/web/src/app/preferences.ts`                                                            | Thème et langue retenus au démarrage, engrenage des réglages (`chooseTheme` sous le voile)                                                                                                         | non                                             |
+| `apps/web/src/app/page.ts`                                                                   | `element()` et les identifiants de `index.html`, regroupés par module qui les reçoit                                                                                                               | non                                             |
+| `apps/web/src/main.ts`                                                                       | Racine de composition : crée les modules de `app/` et les relie                                                                                                                                    | non                                             |
+| `apps/web/src/load/cache.ts`                                                                 | Cache des lectures, état d'une lecture, compteur des lectures en cours                                                                                                                             | oui                                             |
+| `apps/web/src/load/use-load.ts`, `Ready.vue`, `hash-route.ts`, `page.ts`                     | `useLoad()`, `usePending()`, `<Ready>`, `useHashRoute()`, `guardPageReveal()`                                                                                                                      | non                                             |
+| `apps/web/public/_headers`                                                                   | Cache d'un an des fichiers hachés de `/assets/`, d'une semaine de la police                                                                                                                        | —                                               |
+| `apps/web/public/fonts/`                                                                     | La police pixel Tiny5 (sous-ensemble latin) et sa licence OFL, à adresse fixe                                                                                                                      | —                                               |
+| `packages/board/src/theme.ts`                                                                | Couleurs reprises de `tokens.ts`, métriques, alphas et épaisseurs du rendu                                                                                                                         | oui                                             |
+| `packages/board/src/iso.ts`                                                                  | Projection isométrique et géométrie des cases                                                                                                                                                      | oui                                             |
+| `apps/web/src/view/camera.ts`                                                                | État de caméra et ses transitions                                                                                                                                                                  | oui                                             |
+| `apps/web/src/view/picking.ts`                                                               | Point à l'écran → case du plateau                                                                                                                                                                  | oui                                             |
+| `apps/web/src/view/animation.ts`                                                             | Interpolation d'un déplacement de pièce                                                                                                                                                            | oui                                             |
+| `packages/board/src/pixel.ts`                                                                | Le grain du plateau (`pixelResolution()`), arrondi à la grille, mélange de couleurs, respiration                                                                                                   | oui                                             |
+| `apps/web/src/view/easing.ts`                                                                | Les courbes d'animation                                                                                                                                                                            | oui                                             |
+| `apps/web/src/view/reveal.ts`                                                                | La lumière de chaque case, animée : vague de ligne de vue                                                                                                                                          | oui                                             |
+| `apps/web/src/view/effects.ts`                                                               | Entrée du plateau, cascade, retombée, matérialisation                                                                                                                                              | oui                                             |
+| `packages/board/src/matter.ts`                                                               | La teinte du dessus d'une case, selon sa hauteur et sa visibilité                                                                                                                                  | oui                                             |
+| `apps/web/src/view/ambient.ts`                                                               | Poussières, lucioles, étoiles, constellations, étoiles filantes : à graine, fonctions du temps                                                                                                     | oui                                             |
+| `apps/web/src/game/online-match.ts`                                                          | La partie arbitrée par le serveur, vue du client                                                                                                                                                   | oui                                             |
+| `apps/web/src/game/hypothesis.ts`                                                            | `PlayerView` → position telle que le joueur peut la croire                                                                                                                                         | oui                                             |
+| `apps/web/src/game/movement-diff.ts`                                                         | Ce que deux vues successives ont fait bouger                                                                                                                                                       | oui                                             |
+| `apps/web/src/game/trap-events.ts`                                                           | Ce que deux vues successives disent des pièges : posé, aperçu, déclenché                                                                                                                           | oui                                             |
+| `apps/web/src/game/selection.ts`                                                             | Sélection d'une pièce et résolution d'un clic                                                                                                                                                      | oui                                             |
+| `apps/web/src/game/scenario.ts`                                                              | Résout la carte annoncée par le serveur                                                                                                                                                            | oui                                             |
+| `apps/web/src/net/session.ts`                                                                | Réduction des messages serveur en état de session                                                                                                                                                  | oui                                             |
+| `apps/web/src/net/queue-channel.ts`                                                          | Le canal de la file : appariement, salon, entrée par code                                                                                                                                          | non                                             |
+| `apps/web/src/net/match-channel.ts`                                                          | Le canal d'une partie, assis (`connectToMatch`) ou spectateur (`watchMatch`)                                                                                                                       | non                                             |
+| `apps/web/src/net/social-channel.ts`                                                         | Le canal social de la page (`/api/social`)                                                                                                                                                         | non                                             |
+| `apps/web/src/social/model.ts`                                                               | État social : liste d'amis retouchée par les poussées, défis, non-lus, relation à un joueur (`relationTo()`), refus traduits (`social.errors`)                                                     | oui                                             |
+| `apps/web/src/net/http.ts`                                                                   | `request()` : un appel JSON qui ne rejette jamais, échec mis en mots par la famille d'appels (`ErrorWording`) ; `jsonInit()`                                                                       | non                                             |
+| `apps/web/src/social/api.ts`                                                                 | Appels des routes d'amis, partagés par le menu et le profil ; comme `profile/api.ts` et `admin/api.ts`, sur `net/http.ts`                                                                          | non                                             |
+| `apps/web/src/ui/friends-panel.ts`                                                           | Le panneau « Amis » du menu : défis reçus, présence, défier, regarder                                                                                                                              | non                                             |
+| `apps/web/src/net/channel.ts`                                                                | Transport WebSocket et reconnexion                                                                                                                                                                 | non                                             |
+| `apps/web/src/net/backoff.ts`                                                                | Délai avant la n-ième tentative de reconnexion                                                                                                                                                     | oui                                             |
+| `apps/web/src/ui/flow.ts`                                                                    | Quel écran a lieu d'être : amorce, compte, menu, attente, partie                                                                                                                                   | oui                                             |
+| `apps/web/src/ui/shell.ts`                                                                   | Les écrans hors partie : affichage et gestes ; ils paraissent sans l'ouverture des fenêtres, réservée à celles qu'un clic ouvre, et le passage du menu à l'attente se fait sous le voile tramé     | non                                             |
+| `apps/web/src/ui/veil.ts`                                                                    | Le voile tramé qui balaie l'écran pendant une bascule : changement de thème, entrée dans la recherche ou la création d'une partie ; sa feuille est `ui/veil.css`                                   | non                                             |
+| `apps/web/src/ui/settings.ts`                                                                | Les réglages d'affichage (design, langue) derrière l'engrenage                                                                                                                                     | non                                             |
+| `apps/web/src/account/AccountApp.vue`                                                        | Écran de compte : le parcours de l'URL, l'adresse partagée entre formulaires, l'avis en tête ; la navigation par `history`                                                                         | non                                             |
+| `apps/web/src/account/SignInForm.vue`, `RegisterForm.vue`, `ForgotForm.vue`, `ResetForm.vue` | Un formulaire et une URL par parcours : connexion, inscription, oubli, réinitialisation                                                                                                            | non                                             |
+| `apps/web/src/account/flow.ts`                                                               | `provideAccountFlow()` / `useAccountFlow()` (ce que partagent les formulaires) et `useSubmission()` (envoi, refus général ou par champ, focus)                                                     | non                                             |
+| `apps/web/src/account/GoogleEntry.vue`, `NoticeLine.vue`, `RouteLink.vue`                    | L'entrée par Google, l'avis et son geste de réparation, le lien vers un autre parcours                                                                                                             | non                                             |
+| `apps/web/src/account/model.ts`                                                              | Parcours ↔ URL, messages de retour, refus rattachés à leur champ, indication de longueur                                                                                                           | oui                                             |
+| `apps/web/src/net/auth.ts`                                                                   | Appels d'authentification et traduction des refus                                                                                                                                                  | non (sauf `authMessage()`, `redirectMessage()`) |
+| `apps/web/src/locale/current.ts`                                                             | La langue courante et son dictionnaire, sans DOM                                                                                                                                                   | oui                                             |
+| `apps/web/src/locale/browser.ts`                                                             | Choix de langue (stockage, cookie, `<html lang>`) et remplissage du HTML statique (`data-i18n`)                                                                                                    | non                                             |
+| `apps/web/src/team-builder/model.ts`                                                         | Le brouillon d'une équipe : emplacements, clic sur une case, échange, remplissage ; verdict délégué à `validateTeam()`                                                                             | oui                                             |
+| `apps/web/src/team-builder/TeamBuilder.vue`                                                  | Le constructeur d'équipe (`v-model` du brouillon) : emplacements (`SlotRow.vue`), plateau (`PlacementBoard.vue`), actions                                                                          | non                                             |
+| `apps/web/src/team-builder/placement-canvas.ts`                                              | Le plateau de placement en Canvas 2D : zones, pièces posées, survol, clic                                                                                                                          | non                                             |
+| `packages/board/src/paint.ts`                                                                | Relief, cases et pièces en Canvas 2D, avec la géométrie du jeu                                                                                                                                     | non                                             |
+| `packages/board/src/glyphs.ts`                                                               | Les glyphes en pixels de chaque type de pièce, partagés par le plateau et l'ATH                                                                                                                    | non                                             |
+| `packages/board/src/glyph-layout.ts`                                                         | Place et taille d'un glyphe sur sa case, identiques en PixiJS et en Canvas                                                                                                                         | non                                             |
+| `packages/board/src/paint-glyph.ts`, `paint-obelisk.ts`                                      | Les deux silhouettes de pièce en Canvas 2D, choisies par `drawPiece()`                                                                                                                             | non                                             |
+| `apps/web/src/prepare/model.ts`                                                              | Temps restant, envoi automatique, presets jouables, équipe préchargée                                                                                                                              | oui                                             |
+| `apps/web/src/prepare/MatchFound.vue`                                                        | La fenêtre « partie trouvée »                                                                                                                                                                      | non                                             |
+| `apps/web/src/prepare/Deployment.vue`                                                        | L'écran de déploiement : annonce de l'adversaire, compte à rebours, constructeur, verrou                                                                                                           | non                                             |
+| `apps/web/src/prepare/CardPlate.vue`                                                         | La plaque d'un joueur depuis sa `PlayerCard`                                                                                                                                                       | non                                             |
+| `apps/web/src/prepare/clock.ts`                                                              | `useRemaining()`, le seul minuteur des écrans d'avant-partie                                                                                                                                       | non                                             |
+| `apps/web/src/leave/LeaveMatch.vue`                                                          | La fenêtre « quitter la partie », montée dans `#leave-root`                                                                                                                                        | non                                             |
+| `apps/web/src/end/EndScreen.vue`                                                             | La fin d'une partie regardée, montée dans `#end-root` : « Retour au menu » (`leave()`) ou « Voir le plateau » (`dismissEnd()`)                                                                     | non                                             |
+| `apps/web/src/end/model.ts`                                                                  | `endTexts()` : titre et raison du point de vue de l'ami regardé                                                                                                                                    | non                                             |
+| `apps/web/src/debrief/DebriefScreen.vue`, `DebriefView.vue`                                  | L'écran de fin d'une partie jouée, monté dans `#debrief-root` : `Hero`, plaques et Elo (`Reveal`), `FactStrip`, statistiques, faits d'armes et replay (`MatchReplay.vue` de `profile/parts/`)      | non                                             |
+| `apps/web/src/debrief/DebriefPlayers.vue`, `MatchFeats.vue`                                  | Les deux plaques et l'Elo de chacun ; les faits d'armes de la partie, factices                                                                                                                     | non                                             |
+| `apps/web/src/debrief/model.ts`                                                              | `debriefStats()` (coups, pièces déplacées, cases vues par camp ; durée ; coup final), `eloBefore()`, `formatDuration()`, et `PLACEHOLDER`, les chiffres **factices** montrés sous `WorkInProgress` | non                                             |
+| `apps/web/src/debrief/api.ts`                                                                | La ressource `debrief(id)` et `leave(id)` ; un `410` se dit `game.debrief.closed`                                                                                                                  | non                                             |
+| `apps/web/src/app/debrief.ts`                                                                | `Debrief` : ouvre l'écran une fois lu, sous son lien, et dit au serveur que le joueur l'a quitté                                                                                                   | oui                                             |
+| `apps/web/src/presets/TeamsScreen.vue`                                                       | L'îlot des équipes préparées, monté dans `#teams-root` : la liste (`TeamsList.vue`) ou l'éditeur (`PresetEditor.vue`, `editing.ts`)                                                                | non                                             |
+| `apps/web/profile/index.html`                                                                | Page de profil, troisième entrée Vite                                                                                                                                                              | —                                               |
+| `apps/web/src/profile/main.ts`                                                               | Point d'entrée du profil : monte `ProfileApp.vue` (charte, messages, frontière d'attente)                                                                                                          | non                                             |
+| `apps/web/src/profile/ProfilePage.vue`, `ProfileScreen.vue`                                  | La page : profil et amis attendus, route du fragment, barre du haut ; l'écran de la route, son squelette pendant un changement                                                                     | non                                             |
+| `apps/web/src/profile/account/`                                                              | Compte, sécurité, spectateurs, sessions, suppression : `AccountView.vue` et un éditeur par réglage (`editor.ts`)                                                                                   | non                                             |
+| `apps/web/src/profile/matches/`                                                              | Ses parties et le replay d'une partie (liste des coups, point de vue A / B / tout)                                                                                                                 | non                                             |
+| `apps/web/src/profile/social.ts`                                                             | L'état social partagé par les vues (`provideSocial()`, `useSocial()`) et les gestes sur un ami (`useFriendAct()`)                                                                                  | non                                             |
+| `apps/web/src/profile/friends/`                                                              | Onglet Amis : liste, recherche, demandes, bloqués, fiche, replay d'un ami, messages (`ChatView.vue`, `thread.ts`)                                                                                  | non                                             |
+| `apps/web/src/profile/parts/`                                                                | Bilan, table d'historique et replay, communs à ses parties et à celles d'un ami ; repris par l'écran de fin                                                                                        | non                                             |
+| `apps/web/src/profile/resources.ts`                                                          | Ce que lit chaque écran du profil (liste d'amis et équipes préparées comprises, partagées avec la page du jeu), et `resourcesOf(route)` pour le précharger                                         | non                                             |
+| `apps/web/src/profile/api.ts`                                                                | Appels `/api/me/*` et routes de compte de Better Auth                                                                                                                                              | non                                             |
+| `apps/web/src/profile/model.ts`                                                              | Routes du profil, messages d'arrivée, délai de pseudo, liaison retirable, images du replay                                                                                                         | oui                                             |
+| `apps/web/src/render/pixi/board.ts`                                                          | `mountBoard()` : application Pixi, scène, gestes, boucle d'images — chargé par `import()`                                                                                                          | non                                             |
+| `apps/web/src/render/pixi/scene.ts`                                                          | Couches PixiJS, trames et détection de changement                                                                                                                                                  | non                                             |
+| `apps/web/src/render/pixi/ground.ts`                                                         | Le sceau gravé sous le plateau                                                                                                                                                                     | non                                             |
+| `apps/web/src/render/pixi/sky.ts`                                                            | La voûte derrière le plateau et les particules devant                                                                                                                                              | non                                             |
+| `apps/web/src/theme/theme-choice.ts`                                                         | Le thème choisi : stockage, document, rendu                                                                                                                                                        | non                                             |
+| `apps/web/src/render/pixi/terrain.ts`                                                        | Faces et arêtes d'une case                                                                                                                                                                         | non                                             |
+| `apps/web/src/render/pixi/pieces.ts`                                                         | Aiguillage vers la silhouette en vigueur (`look().pieces.style`)                                                                                                                                   | non                                             |
+| `apps/web/src/render/pixi/piece-glyph.ts`, `piece-obelisk.ts`, `piece-paint.ts`              | Le glyphe par type, l'obélisque d'avant, et ce qu'elles partagent (`PiecePaint`, colonne de lumière)                                                                                               | non                                             |
+| `apps/web/src/render/pixi/overlay.ts`                                                        | Marques de case (survol, sélection, destinations, cibles et pièges posés) et retombées                                                                                                             | non                                             |
+| `apps/web/src/render/pixi/trap-fx.ts`                                                        | Effets du piège : sceau qui tombe à la pose, ondes du geste adverse, mâchoires qui se referment au déclenchement                                                                                   | non                                             |
+| `apps/web/src/input/controls.ts`                                                             | Gestes du canevas → intentions                                                                                                                                                                     | non                                             |
+| `apps/web/src/ui/messages.ts`                                                                | Tous les textes de l'interface                                                                                                                                                                     | oui                                             |
+| `apps/web/src/theme/palette.ts`                                                              | Passe le code couleur au CSS                                                                                                                                                                       | non                                             |
+| `apps/web/src/ui/ui.css`                                                                     | Mise en page des écrans — **aucune couleur en dur**                                                                                                                                                | —                                               |
+| `apps/web/admin/index.html`                                                                  | Page du back-office, seconde entrée Vite                                                                                                                                                           | —                                               |
+| `apps/web/src/admin/main.ts`                                                                 | Point d'entrée du back-office : monte `AdminApp.vue` par le rendu qui sait chiffrer les textes (`mountDressableApp`)                                                                               | non                                             |
+| `apps/web/src/admin/AdminPage.vue`, `AdminGate.vue`, `AdminView.vue`                         | Barre du haut et squelette, garde d'affichage (connexion, usurpation, administrateurs seuls), aiguillage des vues                                                                                  | non                                             |
+| `apps/web/src/admin/views/`                                                                  | Une vue par route : vue d'ensemble, comptes, fiche, profil, parties, détail d'une partie, design system                                                                                            | non                                             |
+| `apps/web/src/replay/ReplayBoard.vue`                                                        | Le canevas du rejeu, en composant Vue                                                                                                                                                              | non                                             |
+| `apps/web/src/admin/actions/`                                                                | Actions rapides d'un compte (`QuickActions.vue`, `act.ts`) et leurs fenêtres                                                                                                                       | non                                             |
+| `apps/web/src/admin/parts/`                                                                  | Pastilles d'état, résultat, table des parties, cartes de la fiche, rejeu d'une partie                                                                                                              | non                                             |
+| `apps/web/src/admin/resources.ts`                                                            | Ce que lit chaque écran du back-office, et `resourcesOf(route)` pour le précharger                                                                                                                 | non                                             |
+| `apps/web/src/admin/model.ts`                                                                | Routes du back-office et mise en mots des données                                                                                                                                                  | oui                                             |
+| `apps/web/src/admin/api.ts`                                                                  | Appels `/api/admin/*` et `/api/auth/admin/*`                                                                                                                                                       | non                                             |
+| `apps/web/src/replay/replay.ts`                                                              | Rejeu : coups lus entre deux images, libellés, cadrage du plateau                                                                                                                                  | oui                                             |
+| `apps/web/src/replay/replay-canvas.ts`                                                       | Rejeu : le plateau dessiné en Canvas 2D, avec la géométrie du jeu                                                                                                                                  | non                                             |
+| `apps/web/src/replay/trap-paint.ts`                                                          | Rejeu : pièges posés, pose et déclenchement animés, en Canvas 2D                                                                                                                                   | non                                             |
+| `apps/web/src/view/trap-shapes.ts`                                                           | Géométrie du piège à l'écran (sceau, mâchoires), partagée par le jeu et le rejeu                                                                                                                   | oui                                             |
+| `apps/web/src/admin/design/DesignSystem.vue`                                                 | Le design system : sous-navigation, retouches (thème, palette, vitesse) posées sur le document (`document-effects.ts`)                                                                             | non                                             |
+| `apps/web/src/admin/design/foundations/`                                                     | Tokens : palette retouchable, os par alpha, typographie, écarts, mouvement, propriétés CSS                                                                                                         | non                                             |
+| `apps/web/src/admin/design/components/`                                                      | Catalogue des composants : aperçus montés en vrai, code, commentaire, contrat (props, modèle, événements, emplacements)                                                                            | non                                             |
+| `apps/web/src/admin/design/motion/`                                                          | Animations rejouables et ralenties, durées du plateau, animations CSS déclarées                                                                                                                    | non                                             |
+| `apps/web/src/admin/design/conventions/`                                                     | Conventions de l'agent de design et section 8.1 du design doc, rendues depuis le Markdown                                                                                                          | non                                             |
+| `apps/web/src/admin/design/sources.ts`                                                       | Les sources lues au build (`import.meta.glob`, `?raw`) et assemblées en catalogue                                                                                                                  | non                                             |
+| `apps/web/src/admin/design/catalog.ts`                                                       | Lecture des sources : catégorie, exemples, commentaires et props, animations CSS, notes d'une table, Markdown                                                                                      | oui                                             |
+| `apps/web/src/admin/design/tweaks.ts`                                                        | Palette retouchée : couleurs par chemin, remplacement, écart, format de `tokens.ts`                                                                                                                | oui                                             |
+| `apps/web/src/admin/design/tweaks-context.ts`                                                | Les retouches partagées par les pages (`provideTweaks()`, `useTweaks()`)                                                                                                                           | non                                             |
 
 ---
 
-## `view/iso.ts` — projection et géométrie
+## `@occulis/board/iso` — projection et géométrie
 
 Conformément à `docs/design.md` section 8, **rien n'est jamais pivoté au niveau du
 rendu** : la rotation est un recalcul appliqué aux coordonnées logiques avant projection.
@@ -403,23 +437,32 @@ interface Camera {
   targetRotation: number; // angle visé par l'aimantation
   viewport: ScreenPoint;
   pivot: Coord;
+  home: Framing; // le cadrage où ramène le recentrage
+  footprint: Footprint | undefined; // emprise du plateau (largeur, profondeur, relief) ; absente : pas de bornes
+  planView: boolean; // la vue de dessus est visée
+  planProgress: number; // l'avancée de la bascule, 0 → 1, linéaire dans le temps
 }
 ```
 
-| Fonction              | Rôle                                                          |
-| --------------------- | ------------------------------------------------------------- |
-| `pivotOf()`           | Centre logique du plateau, par balayage de `board.allTiles()` |
-| `createCamera()`      | Caméra initiale : échelle 1, pan nul, rotation nulle          |
-| `originOf()`          | Origine écran de la projection = centre du canevas + pan      |
-| `toProjectionSpace()` | Point écran → espace de projection (retire l'origine)         |
-| `toProjection()`      | Caméra → `IsoProjection`, en y injectant `METRICS`            |
-| `withViewport()`      | Nouvelle taille de canevas (redimensionnement)                |
-| `zoomAt()`            | Zoom vers un point écran, avec bornes                         |
-| `panBy()`             | Déplacement de la vue                                         |
-| `rotateBy()`          | Rotation libre ; la cible suit l'angle courant                |
-| `snapRotation()`      | Vise le quart de tour le plus proche                          |
-| `turn()`              | Vise le quart de tour voisin (flèches)                        |
-| `settle()`            | Avance l'interpolation vers `targetRotation`                  |
+| Fonction              | Rôle                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `pivotOf()`           | Centre logique du plateau, par balayage de `board.allTiles()`                                                |
+| `footprintOf()`       | Emprise du plateau en cases et sa plus haute colonne : bornes de la vue libre, cadrage de la vue de dessus   |
+| `togglePlanView()`    | Entre dans la vue de dessus ou en sort ; l'angle se cale sur un quart de tour                                |
+| `flatnessOf()`        | Aplatissement lu par la projection et la scène, 0 → 1, la courbe appliquée à `planProgress`                  |
+| `isLocked()`          | Caméra figée : en vue de dessus, ou en route vers elle ou depuis elle                                        |
+| `createCamera()`      | Caméra initiale, rotation nulle, au cadrage `home` donné (par défaut : échelle 1, centre du canevas)         |
+| `originOf()`          | Origine écran de la projection = centre du canevas + pan                                                     |
+| `toProjectionSpace()` | Point écran → espace de projection (retire l'origine)                                                        |
+| `toProjection()`      | Caméra → `IsoProjection`, en y injectant `METRICS`                                                           |
+| `withViewport()`      | Nouvelle taille de canevas ou nouveau cadrage (colonne repliée) : le plateau suit le milieu de la zone libre |
+| `zoomAt()`            | Zoom vers un point écran, borné : jamais plus loin que le plateau entier dans la zone libre                  |
+| `panBy()`             | Déplacement de la vue, borné au plateau                                                                      |
+| `rotateBy()`          | Rotation libre ; la cible suit l'angle courant                                                               |
+| `snapRotation()`      | Vise le quart de tour le plus proche                                                                         |
+| `turn()`              | Vise le quart de tour voisin (flèches)                                                                       |
+| `commandCamera()`     | Les boutons de l'ATH : vue de dessus, quarts de tour, zoom sur le milieu de la zone libre, recentrage        |
+| `settle()`            | Avance la bascule de vue, puis l'interpolation vers `targetRotation`                                         |
 
 ### `zoomAt()` — pourquoi le point sous le curseur ne bouge pas
 
@@ -432,6 +475,76 @@ pan' = pan + p × (1 − s'/s)
 
 `zoomAt()` renvoie **la même caméra par identité** quand la borne est atteinte.
 
+### Le cadrage de départ — `home`
+
+Une caméra garde son cadrage de départ (`Framing` : une échelle et les bords de l'écran
+couverts, `ScreenInsets`), où ramène le bouton de recentrage. En partie, c'est
+`hudFraming()` (`hud/layout.ts`) : échelle `HUD_SCALE` (1,25) et les bords que l'ATH
+couvre — la colonne de droite, les plaques en haut, les boutons à gauche, la légende en
+bas, ou la fiche repliée en bas sous 900 px. `BoardView` le recalcule à chaque
+redimensionnement. Les mesures de `hud/layout.ts` suivent `hud.css` : à changer ensemble.
+
+Le pan de départ (`homePan()`) cumule deux décalages : le milieu de la zone libre par
+rapport au centre du canevas, et **la projection du pivot**. `project()` pose la case
+logique (0, 0) sur l'origine, pas le pivot : sans cette correction, le centre d'un
+plateau de 9 × 9 tomberait de `(x + y) × tileHeight / 2` — plus de 150 px — sous le
+milieu de l'écran. La rotation tourne autour du pivot, qui ne bouge donc pas d'un angle
+à l'autre.
+
+### Les bornes de la vue libre
+
+La vue libre reste sur le plateau, comme une carte qu'on fait glisser sous une fenêtre
+(docs/design/rules.md § 8.1). Toute transformation — `createCamera()`, `zoomAt()`,
+`panBy()`, `rotateBy()`, la rotation qui s'aimante dans `settle()`, `withViewport()`, le
+recentrage — passe par `constrain()`, qui borne l'origine axe par axe :
+
+- `boardBounds()` mesure le plateau dans l'espace de projection, à l'angle courant : les
+  quatre coins de son emprise, au sol et au sommet du relief (`footprint.relief`) ;
+- s'il tient dans la zone libre (`freeArea()`, l'écran moins les bords de `home`), il en
+  occupe le milieu et ne bouge plus ;
+- sinon, on le parcourt jusqu'à ce qu'un de ses bords touche le bord de la zone libre.
+
+`minScaleOf()` est le plancher du zoom : l'échelle où le plateau entier tient dans la zone
+libre, sans dépasser celle du cadrage de départ. Dézoomé au plus loin, le plateau est donc
+toujours entier et immobile. Une caméra sans `footprint` (le replay, le placement des
+équipes, qui ne se déplacent pas) n'est pas bornée.
+
+`BoardView.toggleColumn()` replie ou déplie la colonne de droite de l'ATH (retenu dans le
+navigateur par `hud/column-choice.ts`) : `hudFraming(screen, columnOpen)` rend sa place au
+plateau, et `withViewport()` le fait glisser d'autant que le milieu de la zone libre.
+
+### La vue de dessus
+
+`togglePlanView()` ne change que la vue visée ; `settle()` fait avancer `planProgress`
+d'une image à l'autre, sur `PLAN_VIEW_MS` (480 ms), dans un sens ou dans l'autre — une
+bascule interrompue repart d'où elle en était. `flatnessOf()` y applique la courbe
+(`easeInOutSine`).
+
+La caméra garde `scale`, `pan` et `rotation` de la vue libre pendant toute la vue de
+dessus : c'est la **lecture** qui mélange les deux vues. `toProjection()` et `originOf()`
+interpolent selon l'aplatissement :
+
+- `tileHeight` rejoint `tileWidth` : les losanges se déplient en carrés ;
+- `heightUnit` tombe à 0 : le relief s'aplatit, et les falaises de `cliffQuads()` se
+  réduisent à leur arête haute ;
+- l'angle prend un huitième de tour de moins (`PLAN_TURN`) : la rangée qui descendait en
+  biais vers la gauche s'aligne sur le bas de l'écran ;
+- l'échelle et le pan rejoignent ceux qui cadrent le plateau entier dans la zone libre
+  (`planScale()`, `planPan()`) — une case y est un carré de `tileWidth / √2`.
+
+Quitter la vue de dessus ramène donc exactement à la vue quittée. Tant que `isLocked()`,
+`zoomAt()`, `panBy()`, `rotateBy()`, `turn()` et les boutons autres que la bascule
+renvoient la caméra **par identité**.
+
+La scène reçoit l'aplatissement (`SceneInput.flatness`). Les pièces y glissent de debout
+à centrées (`layoutGlyph(…, seat)`, `@occulis/board/glyph-layout` : la silhouette allumée,
+non la grille du glyphe, se pose sur le centre de la case) ; leur élévation et leur
+colonne de lumière s'éteignent. `drawTile()` y ajoute le relief vu d'en haut
+(`look().geometry.plan`) : un rebord épais par falaise et la hauteur en points. La barre
+d'espace est lue par `input/controls.ts`, seulement en partie et jamais quand elle
+actionne déjà un bouton ou un lien qui a le focus ; `BoardView` prévient l'ATH
+(`onViewChange`) pour qu'il allume son bouton.
+
 ### `settle()`
 
 Interpole vers `targetRotation` sur `SETTLE_MS` (120 ms), puis **cale exactement** l'angle
@@ -439,7 +552,8 @@ sous `SETTLE_EPSILON` (1e-4) — sans quoi l'interpolation, asymptotique, réém
 géométrie indéfiniment pour un écart invisible.
 
 Constantes : `MIN_SCALE` 0,35 · `MAX_SCALE` 3 · `ZOOM_STEP` 1,12 ·
-`RADIANS_PER_PIXEL` 0,008 · `SETTLE_MS` 120 · `SETTLE_EPSILON` 1e-4.
+`RADIANS_PER_PIXEL` 0,008 · `SETTLE_MS` 120 · `SETTLE_EPSILON` 1e-4 ·
+`PLAN_VIEW_MS` 480 · `PLAN_TURN` π/4 · `PLAN_FILL` 0,92.
 
 ---
 
@@ -506,9 +620,10 @@ le joueur, jamais avant (`docs/design.md` section 2).
 | `menu`      | Connecté                                                | Partie rapide, créer une partie, rejoindre avec un code, **équipes** ; le panneau « Amis »                                                               |
 | `teams`     | Entrée « Équipes » du menu                              | L'îlot des équipes préparées (`presets/`)                                                                                                                |
 | `waiting`   | Une demande est partie                                  | Le code du salon, l'attente d'un adversaire, la réponse d'un ami défié (`challenge`), ou l'ouverture de la partie d'un ami (`watch`) — `friend` le nomme |
-| `proposal`  | File rapide : `proposal` reçu                           | La fenêtre « partie trouvée » par-dessus l'attente (`prepare/MatchFound.tsx`)                                                                            |
-| `deploying` | Assis, `deployment` reçu                                | L'annonce de l'adversaire et le constructeur d'équipe (`prepare/Deployment.tsx`)                                                                         |
-| `game`      | Le serveur a répondu `welcome` (ou `watching`) + `view` | Le plateau et le bandeau de partie ; `spectating: true` pour un ami qui regarde                                                                          |
+| `proposal`  | File rapide : `proposal` reçu                           | La fenêtre « partie trouvée » par-dessus l'attente (`prepare/MatchFound.vue`)                                                                            |
+| `deploying` | Assis, `deployment` reçu                                | L'annonce de l'adversaire et le constructeur d'équipe (`prepare/Deployment.vue`)                                                                         |
+| `game`      | Le serveur a répondu `welcome` (ou `watching`) + `view` | Le plateau et l'ATH ; `spectating: true` pour un ami qui regarde                                                                                         |
+| `debrief`   | Sa partie s'est close, ou arrivée par `/debrief/:id`    | L'écran de fin de la partie `matchId` (`debrief/`) ; jamais depuis `auth` ni l'amorce                                                                    |
 
 Les transitions ajoutées : `proposed` n'ouvre la fenêtre que depuis une attente **rapide** ;
 `lapsed` remet en attente qui avait accepté (`requeued`), au menu les autres ; `deploying`
@@ -572,6 +687,19 @@ Seules les pièces **présentes dans les deux vues** sont comparées. Sous fog, 
 entre ou sort de la ligne de vue n'a pas bougé pour autant : l'animer dessinerait un trajet
 qui n'a pas eu lieu, et trahirait une position que le joueur n'est pas censé connaître.
 
+## `game/trap-events.ts` — ce que la vue apprend des pièges
+
+`trapEventsBetween(before, after)` lit, de la même façon, ce que deux vues successives
+disent des pièges : `laid` (un piège du joueur est apparu dans `PlayerView.traps`),
+`glimpsed` (le journal dit que l'adversaire a exercé sa capacité sous ses yeux — la case de
+la pièce, jamais celle du piège) et `sprung` (le journal dit une pièce prise au piège). Pour
+`sprung`, la victime est retrouvée dans la vue d'avant, avec sa case de départ quand le
+joueur la voyait : la scène la fait **marcher jusqu'au piège** avant de la faire happer,
+au lieu de la faire disparaître sans raison. Rien n'y est déduit au-delà des vues.
+
+La scène en tire ses effets (`render/pixi/trap-fx.ts`) ; le contrôleur, un bandeau `info`
+dans l'ATH (`trapNotice()`, `hud/model.ts`) : « Pris au piège en 3,1 : Pion ».
+
 ---
 
 ## `game/online-match.ts` — la partie arbitrée par le serveur
@@ -605,7 +733,7 @@ sens en ligne, et la bascule de point de vue est désactivée dans ce mode.
 
 ## Le compte
 
-L'écran de compte est un **îlot React sur la charte** (`account/`), monté par
+L'écran de compte est un **îlot Vue sur la charte** (`account/`), monté par
 `mountAccount()` dans `#account-root`, à l'intérieur de `#screen-auth` que `shell.ts` montre
 ou masque comme les autres écrans. C'est le premier écran du jeu à avoir migré sur
 `@occulis/ui` ; le menu, l'attente et la partie restent en DOM natif.
@@ -717,9 +845,9 @@ réduit chaque poussée par `social/model.ts` — une poussée qui périme la li
   `watching`, le joueur revient au menu avec une explication. Une fois `watching` reçu
   (`onWatching`), l'échéance tombe : pendant le déploiement, la première vue peut attendre
   90 s. En spectateur, la
-  partie (`OnlineMatch`) n'envoie rien, la console cache la saisie et son aide, et la ligne
-  d'état dit qui l'on regarde (`describeWatching()`). Le joueur regardé voit « N amis vous
-  regardent » (`describeTurn()`, `onSpectators`).
+  partie (`OnlineMatch`) n'envoie rien, et l'ATH dit qui l'on regarde à la place de
+  l'abandon (`hud/MatchTools.vue`). Le joueur regardé voit le nombre d'amis qui le
+  regardent sous la plaque adverse (`onSpectators`).
 
 ### La traduction des refus
 
@@ -738,7 +866,7 @@ d'avance suffirait à capter le futur compte Google de son propriétaire.
 
 ## `profile/` — la page de profil
 
-Une **page à part**, `apps/web/profile/index.html`, servie sous `/profile/`, en React sur
+Une **page à part**, `apps/web/profile/index.html`, servie sous `/profile/`, en Vue sur
 `@occulis/ui` comme le back-office, sans PixiJS ni classe propre. Elle charge `/api/me` ;
 un 401 affiche un lien vers `/sign-in`. Chaque route précharge ce qu'elle lit (`resources.ts`) et
 paraît en une fois, barre du haut comprise (« Chargement et premier rendu »).
@@ -769,9 +897,9 @@ paraît en une fois, barre du haut comprise (« Chargement et premier rendu »).
 - **Suppression** : une fenêtre de confirmation, puis un lien par courrier ; rien n'est
   supprimé avant son ouverture.
 - **Replay** : `asBoardFrames()` adapte les images du serveur au plateau rejoué du
-  back-office (`replay/ReplayBoard.tsx`, réutilisé tel quel), avec la seule ligne de vue de
+  back-office (`replay/ReplayBoard.vue`, réutilisé tel quel), avec la seule ligne de vue de
   son camp et le point de vue fixé sur lui.
-- **Amis** : `SocialProvider` (`Friends.tsx`) ouvre le canal social (`surface=profile`) et
+- **Amis** : `provideSocial()` (`social.ts`) ouvre le canal social (`surface=profile`) et
   tient l'état social, partagé par l'onglet et le compteur de non-lus de la barre du haut.
   Ouvrir un fil le marque lu (`/messages/read`), sauf sous usurpation. **Ajouter** un
   adversaire se fait aussi depuis « Mes parties » (`opponentId`). Le réglage
@@ -874,56 +1002,39 @@ il ne voit qu'un camp — et depuis que les pièces occultent la vue, il en voit
 interface Selection {
   piece: Piece;
   moves: ReadonlyMap<CoordKey, Coord>; // cases où se rendre
+  captures: ReadonlySet<CoordKey>; // parmi elles, celles d'une pièce adverse vue
+  abilityTargets: ReadonlyMap<CoordKey, Coord>; // cibles de la capacité (piège)
+  aiming: boolean; // capacité armée : un clic sur une cible l'exerce
 }
 
 type ClickOutcome =
   { kind: "select"; selection: Selection } | { kind: "play"; action: Action } | { kind: "clear" };
 ```
 
-| Fonction         | Rôle                                                                     |
-| ---------------- | ------------------------------------------------------------------------ |
-| `selectionFor()` | Ce qu'une pièce peut faire ce tour-ci, filtré depuis la liste du serveur |
-| `resolveClick()` | Ce qu'un clic doit produire. **Fonction totale et sans effet**           |
+| Fonction         | Rôle                                                                      |
+| ---------------- | ------------------------------------------------------------------------- |
+| `selectionFor()` | Ce qu'une pièce peut faire ce tour-ci, filtré depuis la liste du serveur  |
+| `resolveClick()` | Ce qu'un clic doit produire. **Fonction totale et sans effet**            |
+| `aimAbility()`   | Arme ou désarme la capacité ; sans cible, la sélection reste telle quelle |
+
+Une case voisine peut être à la fois une destination et une cible de piège : la capacité
+s'arme donc par un bouton de la fiche (`MatchController.toggleAbility()`), et une fois
+armée elle masque les déplacements.
 
 ### La machine à états, telle que `resolveClick()` l'encode
 
-| Situation                                     | Résultat                          |
-| --------------------------------------------- | --------------------------------- |
-| Clic hors plateau, ou partie terminée         | `clear`                           |
-| Sélection active, clic sur la pièce elle-même | `clear` — recliquer désélectionne |
-| Sélection active, clic sur une destination    | `play` d'un déplacement           |
-| Clic sur une de ses pièces, à son tour        | `select`                          |
-| Tout le reste                                 | `clear`                           |
+| Situation                                     | Résultat                            |
+| --------------------------------------------- | ----------------------------------- |
+| Clic hors plateau, ou partie terminée         | `clear`                             |
+| Sélection active, clic sur la pièce elle-même | `clear` — recliquer désélectionne   |
+| Capacité armée, clic sur une de ses cibles    | `play` d'une capacité               |
+| Sélection active, clic sur une destination    | `play` d'un déplacement (non armée) |
+| Clic sur une de ses pièces, à son tour        | `select`                            |
+| Tout le reste                                 | `clear`                             |
 
 Une limite assumée : on ne sélectionne que ses propres pièces **et seulement à son tour**.
 Une pièce adverse, adjacente ou non, retombe donc sur `clear` — il n'y a plus rien à lui
 faire depuis le retrait de la capture, et `Selection` ne porte plus de `strikes`.
-
----
-
-## `ui/command.ts` — la grammaire de saisie
-
-Module pur : la résolution d'une coordonnée en pièce lui est **fournie**.
-
-```
-  1,6 2,5        déplace la pièce en (1,6) vers (2,5)
-  1,6 > 2,5      identique : la flèche est facultative
-  abandon        abandonne la partie
-```
-
-La syntaxe `x` de capture a disparu avec la règle (`docs/design.md` section 3.1).
-
-| Fonction                | Rôle                                                    |
-| ----------------------- | ------------------------------------------------------- |
-| `tokenize()` (privée)   | Normalise séparateurs et espaces                        |
-| `parseCoord()` (privée) | `"1,6"` → `Coord`                                       |
-| `parseCommand()`        | Texte → `Result<Command, CommandFault>` — syntaxe seule |
-| `toAction()`            | `Command` → `Action`, en résolvant les coordonnées      |
-
-**`toAction()` est le seul endroit du client où les coordonnées du joueur rejoignent les
-identifiants de pièces de `core`** — `core` raisonne en `PieceId`, le joueur en cases.
-`CommandFault` couvre les fautes de saisie ; les refus de règle restent des `ActionError`
-de `core`.
 
 ---
 
@@ -947,7 +1058,7 @@ l'exécution, et les pluriels s'écrivent dans la fonction.
   ses courriers), tient `<html lang>` à jour, et remplit le HTML statique :
   `translateDom()` donne son texte à chaque `data-i18n`, son indication à chaque
   `data-i18n-placeholder`, son `aria-label` à chaque `data-i18n-label`.
-- Les composants React lisent la langue par `useMessages()` (`@occulis/ui`), que fixe
+- Les composants Vue lisent la langue par `useMessages()` (`@occulis/ui`), que fixe
   `UiRoot locale={…}`. Chaque page la passe : l'îlot de compte la reçoit en propriété
   (`AccountAppProps.locale`), le profil et le back-office la tiennent dans un état et
   offrent un `LocaleSwitch` dans leur barre du haut.
@@ -959,8 +1070,8 @@ l'exécution, et les pluriels s'écrivent dans la fonction.
 ## `team-builder/` — le constructeur d'équipe
 
 `team-builder/model.ts` est **pur** : un `TeamDraft` est la liste des emplacements fixés par la
-composition du ruleset (`emptyDraft()` : maîtresse, trois à capacité, quatre pions, la
-maîtresse en main), chacun avec son type et sa case, et l'emplacement « en main ».
+composition du ruleset (`emptyDraft()` : roi, trois à capacité, deux pions sous `provisional-3`, le
+roi en main), chacun avec son type et sa case, et l'emplacement « en main ».
 
 | Fonction                                                     | Rôle                                                                                                                                                                                               |
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -970,12 +1081,12 @@ maîtresse en main), chacun avec son type et sa case, et l'emplacement « en mai
 | `toEntries()`, `isComplete()`, `placedCount()`               | Ce qui part au serveur, et où l'on en est                                                                                                                                                          |
 | `verdict()`                                                  | `validateTeam()` de `core` sur le brouillon — **la validité n'est jamais redéduite ici**, comme `game/selection.ts` ne redéduit pas la légalité                                                    |
 
-`TeamBuilder.tsx` montre le brouillon : la liste des emplacements (`ChoiceList`, le type
+`TeamBuilder.vue` montre le brouillon : la liste des emplacements (`ChoiceList`, le type
 d'une pièce à capacité au choix parmi ceux de son rôle), et le plateau. Il ne tient aucun
 état — `draft` et `onChange` viennent de l'appelant, le déploiement ou les équipes.
 
 `placement-canvas.ts` dessine le plateau en Canvas 2D, comme le rejeu et avec les
-primitives de `render/canvas2d/paint.ts` : la page n'a pas encore de partie à confier à PixiJS, et
+primitives de `@occulis/board/paint` : la page n'a pas encore de partie à confier à PixiJS, et
 le même plateau sert hors partie. La zone du joueur est dans la teinte de son camp, celle
 d'en face en pointillé dans la sienne, la pièce en main dans la teinte de la sélection — de
 l'information de partie, donc en couleur. Les pièces portent **l'initiale de leur type**,
@@ -985,12 +1096,12 @@ pour que sa zone se présente comme celle du camp A. Le clic passe par `tileAt()
 
 ## `prepare/` — de l'appariement au premier tour
 
-- **`MatchFound.tsx`** : la fenêtre « partie trouvée », un `Dialog` **non refermable**
+- **`MatchFound.vue`** : la fenêtre « partie trouvée », un `Dialog` **non refermable**
   (`dismissible={false}`) — ne pas répondre revient à refuser. Accepter la laisse ouverte
   sur l'attente de l'autre ; « Refuser » envoie `decline`. Un compte à rebours
   (`CountdownRing`) et un titre d'onglet clignotant signalent la partie à qui fait autre
   chose.
-- **`Deployment.tsx`** : l'annonce (`Reveal`, deux `PlayerPlate` : pseudo, Elo, bilan, faits
+- **`Deployment.vue`** : l'annonce (`Reveal`, deux `PlayerPlate` : pseudo, Elo, bilan, faits
   exhibés par leur nom) entre en scène puis se range en bandeau au bout de 2,6 s ; dessous,
   le constructeur d'équipe, le compte à rebours, le choix d'un preset et **Verrouiller**.
   L'équipe préchargée est le preset par défaut s'il est jouable ici, sinon celle de la
@@ -1006,8 +1117,8 @@ pour que sa zone se présente comme celle du camp A. Le clic passe par `tileAt()
 
 `Islands` (`app/islands.ts`) monte les îlots et les rend tous à chaque `render()`, après chaque
 message comme après un changement de langue. Il ne tient aucune propriété : chacune est lue chez
-le module qui la fait vivre — `found` chez `Matchmaking`, `deploying` et `leaving` chez
-`MatchController`, l'écran des équipes dans `main.ts`.
+le module qui la fait vivre — `found` chez `Matchmaking`, `deploying`, `leaving` et `ended` chez
+`MatchController`, l'écran de fin chez `Debrief`, l'écran des équipes dans `main.ts`.
 
 ## `presets/` — les équipes préparées
 
@@ -1019,14 +1130,15 @@ que porte le message `deployment` (`MatchZones`) et non celles du registre. Les 
 `profile/api.ts` (`/api/me/presets`), les mêmes que lit le déploiement. Le serveur valide
 chaque équipe ; un preset que de nouvelles règles rendent caduc reste listé, grisé.
 
-## `render/canvas2d/paint.ts` — le plateau en Canvas 2D
+## `@occulis/board/paint` — le plateau en Canvas 2D
 
 Les primitives communes au rejeu (`replay/replay-canvas.ts`) et au placement :
 `fitPixelCanvas()` (dimensionne le tampon au grain du plateau, `pixelResolution()`, et pose
 `image-rendering: pixelated`), `terrainDrawables()` (faces pleines, trame du fog et
 atténuation en profondeur du jeu, avec un crochet pour peindre une zone ou un survol **dans
-l'ordre du peintre**), `drawPiece()` (la silhouette de `render/pixi/pieces.ts` ; une pièce sous
-`PIECES.alphaVisible` y est un fantôme, contour seul), `strokeQuad()` (épaisseur en pixels
+l'ordre du peintre**), `drawPiece()` (la silhouette en vigueur, glyphe du type ou obélisque,
+comme `render/pixi/pieces.ts` ; une pièce sous `look().pieces.alphaVisible` y est un fantôme),
+`strokeQuad()` (épaisseur en pixels
 du plateau), `fillQuad()`. La trame du fog est un `CanvasPattern` de deux pixels sur deux,
 mis à l'échelle d'un pixel du tampon et gardé par contexte.
 
@@ -1034,29 +1146,16 @@ mis à l'échelle d'un pixel du tampon et gardé par contexte.
 
 Les phrases sont dans `@occulis/i18n` (domaine `game`) ; ce module choisit laquelle dire.
 
-| Fonction                  | Rôle                                                                          |
-| ------------------------- | ----------------------------------------------------------------------------- |
-| `formatCoord()` (interne) | `Coord` → `"(x,y)"`                                                           |
-| `describeFault()`         | Faute de saisie → phrase                                                      |
-| `describeActionError()`   | `ActionError` de `core` → phrase                                              |
-| `describeMove()`          | Compte rendu d'un coup joué                                                   |
-| `describeOutcome()`       | Fin de partie                                                                 |
-| `describeTurn()`          | Ligne d'état : tour, joueur au trait, point de vue, amis qui regardent        |
-| `describeWatching()`      | Ligne d'état d'un spectateur : tour, joueur au trait, ami regardé et son camp |
-| `describeTile()`          | Lecture d'une case désignée au clic                                           |
-| `describeRejection()`     | Un refus du serveur : règle de coup, d'équipe, siège ou phase                 |
-| `describeTeamError()`     | Pourquoi une équipe n'est pas déployable                                      |
-
-`describeTile()` rend `"1,6 · height 0"` (`"1,6 · hauteur 0"` en français), avec
-`· impassable` le cas échéant. La
-coordonnée est écrite **sans parenthèses, sous la forme qu'attend la saisie** : recopiable
-telle quelle. Elle ne rapporte **que du terrain** — le relief est public
-(`docs/implementation-notes.md` point 10), mais annoncer la pièce présente divulguerait
-une position hors LOS. Un test le verrouille.
+| Fonction                  | Rôle                                                          |
+| ------------------------- | ------------------------------------------------------------- |
+| `formatCoord()` (interne) | `Coord` → `"(x,y)"`                                           |
+| `describeActionError()`   | `ActionError` de `core` → phrase                              |
+| `describeRejection()`     | Un refus du serveur : règle de coup, d'équipe, siège ou phase |
+| `describeTeamError()`     | Pourquoi une équipe n'est pas déployable                      |
 
 ---
 
-## `theme/palette.ts` et `ui/console.ts`
+## `theme/palette.ts`
 
 `applyPalette()` pose sur la racine du document toutes les propriétés `--occ-*` de la
 charte pour le thème en vigueur (`cssVariables(look().name)`), puis convertit ses tokens en propriétés
@@ -1065,33 +1164,62 @@ personnalisées CSS (`--ink`, `--ink-soft`, `--ink-dim`, `--ink-faint`, `--panel
 n'en dépend pas : il lit les `--occ-*` de la feuille de `@occulis/ui`, posées sur la racine du document. **Aucune couleur n'est réécrite en dur dans
 `ui.css`.**
 
-`ui/console.ts` porte le bandeau affiché **pendant une partie**, et rien d'autre : le
-compte et le menu ont leurs écrans (`shell.ts`).
+---
 
-| Fonction                 | Rôle                                                                                                                                                                                      |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `attachConsole()`        | Installe le formulaire et rend un `GameConsole`                                                                                                                                           |
-| `refresh()` (interne)    | Réécrit la ligne d'état ; cache la saisie et son aide à un spectateur (`watching()`). Une ligne neuve est animée (`freshen()`), plus fort quand le trait revient au joueur (`data-yours`) |
-| `freshen()` (interne)    | Rejoue l'animation d'une ligne neuve (`data-fresh`) : elle se trace en luisant ; un refus tremble d'un pixel                                                                              |
-| `showTile()` (interne)   | Écrit la lecture d'une case désignée au clic                                                                                                                                              |
-| `report()` (interne)     | Écrit un compte rendu et son état `ok`/`ko`                                                                                                                                               |
-| `playAction()` (interne) | Joue une action **et la rapporte** ; rend `true` si acceptée — refusée d'emblée à un spectateur                                                                                           |
-| `submit()` (interne)     | Analyse la saisie, puis délègue à `playAction()`                                                                                                                                          |
+## L'ATH de partie — `hud/`
 
-**L'application d'une action lui est fournie (`play`), pas prise sur la partie.** C'est
-l'appelant qui décide ce qu'un coup déclenche — animation, passage de main — et ce module
-n'en sait rien. C'est aussi ce qui fait qu'un coup cliqué et un coup tapé sont rapportés
-exactement de la même façon : `app/board-view.ts` appelle `gameConsole.playAction()` pour le clic.
+L'ATH est un îlot Vue sur la charte (`app/islands.ts`, `#hud-root`), disposition
+« Bandeaux » (`docs/mockups/ath/a-bandeaux.html`, `docs/design/rules.md` § 8.1). Il ne lit
+rien lui-même et ne joue rien : `main.ts` (`matchHud()`) lui passe à chaque rendu un
+`HudModel` déjà traduit, l'absence de l'adversaire, le message bref du moment et le nombre
+de spectateurs ; il rend l'abandon (`onLeave`) et les boutons de caméra (`onCamera`).
 
-`GameConsole` expose `refresh()`, `report()`, `showTile()` et `playAction()`. La partie lui
-est fournie **par accès** (`match: () => OnlineMatch | undefined`) : elle change d'objet à
-chaque appariement, et n'existe pas du tout tant que le joueur est au menu — auquel cas la
-console s'efface au lieu de lever.
+| Module               | Rôle                                                                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model.ts`           | `hudModel(messages, input)` : plaques, tour, fiche, journal, compteur de nulle et légende, en textes prêts. Pur, testé                                                    |
+| `MatchHud.vue`       | La mise en page ; seuls les panneaux reçoivent la souris, le reste la laisse au plateau                                                                                   |
+| `PlayerBand.vue`     | Pseudo, Elo (ou « hors ligne »), composition (`PieceRoster.vue`) ; le camp au trait s'allume                                                                              |
+| `TurnPlate.vue`      | Le numéro du coup à jouer et qui le joue                                                                                                                                  |
+| `MatchAlerts.vue`    | L'échec, le départ de l'adversaire et son compte à rebours (`useRemaining`), le message bref d'un refus                                                                   |
+| `MatchTools.vue`     | Les amis qui regardent, abandonner ou quitter ; l'engrenage des réglages est celui de la page, rangé là par `hud.css`                                                     |
+| `PieceSheet.vue`     | La fiche de la pièce choisie (`describeSheet()`), ou ce qui se fait à la souris ; pour une pièce à capacité, le bouton qui l'arme (`ability`)                             |
+| `MatchJournal.vue`   | Le journal tel que vu (`PlayerView.journal`), dernier coup en clair, coup à venir en pointillés ; `DrawMeter.vue`                                                         |
+| `CameraControls.vue` | Les boutons de caméra → `CameraCommand` → `commandCamera()` (`view/camera.ts`), par `BoardView.command()` ; en tête la bascule de la vue de dessus, qui éteint les autres |
+| `GlowLegend.vue`     | La légende des lueurs, tant qu'une pièce est sélectionnée : sélection, déplacement, prise, piège (`--occ-trap`)                                                           |
+| `PieceGlyph.vue`     | Le glyphe d'un type en SVG, tiré de `@occulis/board/glyphs` : la forme exacte du plateau                                                                                  |
+| `icons.ts`           | Les icônes en pixels pleins, sur une grille de 8 × 8                                                                                                                      |
+| `hud.css`            | La feuille de l'ATH, **tokens `--occ-*` seulement**                                                                                                                       |
 
-Un détail qui compte : `playAction()` compose son résumé **avant** de jouer, car dans
-l'état suivant la pièce déplacée n'est plus à sa place et la capturée n'existe plus.
+Trois règles d'affichage vivent dans `model.ts`, et ses tests les verrouillent :
+
+- **le journal dit ce que le joueur a vu** : `describeEntry()` met « ? » à la place d'une case
+  qu'il n'a pas vue, et écrit « coup hors de vue » quand il n'a rien vu ;
+- **le compteur de nulle sans prise ne paraît qu'à `DRAW_WARNING_MARGIN` (20) coups du
+  seuil**, et jamais sous un ruleset sans cette nulle ;
+- **le numéro du tour est celui du coup à jouer** (`view.turn + 1`) tant que la partie
+  court, celui du dernier coup une fois finie.
+
+Le contrôleur garde la fiche ouverte d'un clic droit (`inspect()`) et l'efface quand la
+pièce n'est plus celle qu'elle décrit (`sameSheet()`) ; un coup refusé, localement ou par le
+serveur, devient un `MatchNotice`, effacé par la vue suivante.
 
 ---
+
+## La fiche d'une pièce — `game/inspection.ts`, `ui/piece-info-model.ts`
+
+Un clic droit sur une pièce (appui droit relâché sans avoir tourné le plateau) montre sa
+fiche dans la colonne de l'ATH ; la pièce sélectionnée y paraît aussi, avec le nombre de
+ses coups. Deux modules purs, que `hud/PieceSheet.vue` affiche :
+
+| Module                   | Rôle                                                                                                      | Dépendances |
+| ------------------------ | --------------------------------------------------------------------------------------------------------- | ----------- |
+| `game/inspection.ts`     | `inspectPiece(view, ruleset, coord)` : la `PieceSheet` de sa pièce, d'une adverse visible ou d'un fantôme | pur         |
+| `ui/piece-info-model.ts` | `describeSheet()` : les textes de la fiche                                                                | pur         |
+
+La fiche ne lit que la vue du joueur et le ruleset de la partie : les caractéristiques d'un
+type sont publiques (`docs/design/rules.md` § 7), donc elle ne révèle rien. Le contrôleur
+l'efface quand la pièce n'est plus là (`sameSheet()`), à un clic gauche et à la sortie de
+la partie.
 
 ## `input/controls.ts` — les gestes du canevas
 
@@ -1104,6 +1232,7 @@ de rendu.
 | Drag bouton gauche          | `panBy()`                                                                                                             |
 | **Clic bouton gauche**      | `pickTile()` → `onPick()` : sélection, déplacement, ou lecture de case                                                |
 | Drag bouton droit ou milieu | `rotateBy()`, puis `snapRotation()` au relâchement                                                                    |
+| **Clic bouton droit**       | Un appui droit relâché sous `CLICK_SLOP` : `onInspect()`, la fiche de la pièce dans l'ATH                             |
 | Mouvement de souris         | Survol. **Ne notifie que si la case change**                                                                          |
 | Sortie du curseur           | Efface le survol                                                                                                      |
 | Flèches ← →                 | `turn()` : quart de tour                                                                                              |
@@ -1123,18 +1252,19 @@ Un pan et un clic partent du **même bouton**. `Drag` accumule donc le déplacem
 l'accumulation, un aller-retour de 200 px reviendrait au point de départ et passerait pour
 un clic.
 
-### Les raccourcis clavier et la saisie
+### Les raccourcis clavier
 
 Les raccourcis sont posés sur `window` pour rester actifs hors du canevas. `isTyping()`
-les efface devant une saisie en cours — sans quoi une flèche tapée dans le champ de
-commande ferait pivoter le plateau.
+les efface devant une saisie en cours — sans quoi une flèche tapée dans un champ (un
+message à un ami, par exemple) ferait pivoter le plateau. Les boutons de caméra de l'ATH
+font les mêmes gestes (`commandCamera()`).
 
 ---
 
 ## `render/pixi/board.ts` et `render/pixi/scene.ts` — couches, tri et animation
 
 `mountBoard()` initialise PixiJS **sans anticrénelage**, à la résolution
-`pixelResolution(devicePixelRatio)` (`view/pixel.ts`) avec `autoDensity`, et pose
+`pixelResolution(devicePixelRatio)` (`@occulis/board/pixel`) avec `autoDensity`, et pose
 `image-rendering: pixelated` sur le canevas : le tampon fait la moitié de l'écran en pixels
 physiques, et le navigateur l'agrandit au plus proche voisin. Un pixel du plateau couvre
 donc toujours **deux pixels physiques** (`ART_PIXEL`). À chaque image, il passe la taille de
@@ -1147,9 +1277,12 @@ plateau de quelques dizaines de cases se redessine en une fraction de millisecon
 
 - **`sky`** (coordonnées d'écran) : la voûte du thème (`render/pixi/sky.ts`) ;
 - **`ground`** (dans `board`) : le sceau (`render/pixi/ground.ts`), pour les thèmes qui l'allument ;
-- **`world`** (dans `board`) : terrain et pièces, qui doivent partager un **unique ordre du
-  peintre** pour qu'une pièce derrière un relief soit réellement masquée ;
-- **`overlay`** (dans `board`) : survol, sélection, retombées ;
+- **`world`** (dans `board`) : terrain, pièces et **marques de case** (survol, case de la
+  pièce sélectionnée, destinations), qui partagent un **unique ordre du peintre** : une
+  pièce ou une destination derrière un relief est réellement masquée. Chaque marque se
+  peint juste après sa case (`drawTileMarks()`) ; peinte par-dessus tout le plateau, une
+  destination au pied d'un bloc semblait posée sur son sommet ;
+- **`overlay`** (dans `board`) : les retombées, des éclats par-dessus le monde ;
 - **`ambient`** (coordonnées d'écran) : les particules en suspension (`render/pixi/sky.ts`).
 
 La scène tient `px`, la taille d'un pixel du plateau en unités logiques (`1 / resolution`) :
@@ -1201,7 +1334,7 @@ ensemble par `compareDepth()`. Les cases sont poussées en premier : le tri de J
 stable, à profondeur égale une pièce se dessine donc toujours **après** la case qui la porte.
 
 **La profondeur d'une pièce est celle de la case sur laquelle elle se tient**
-(`standingDepth()`, `view/iso.ts`) : la case la plus proche de sa position, fractionnaire en
+(`standingDepth()`, `@occulis/board/iso`) : la case la plus proche de sa position, fractionnaire en
 cours de déplacement, un demi-niveau au-dessus. Calculée depuis la position exacte, une pièce
 qui glissait vers l'avant passait derrière la case qu'elle allait atteindre — dessinée après
 elle — et semblait s'enfoncer sous le sol. Rattachée à sa case, elle bascule dans l'ordre du
@@ -1218,20 +1351,22 @@ pièce présente l'emporte sur un souvenir situé sur la même case.
 Ce sont des **fonctions**, pas des classes : elles écrivent dans un `Graphics` qu'on leur
 passe. Toutes lisent le thème en vigueur par `look()`.
 
-| Fonction                 | Emplacement              | Rôle                                                                                                                                                                                                 |
-| ------------------------ | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `drawTile()`             | `render/pixi/terrain.ts` | Falaises **tournées vers la caméra** (face éclairée à gauche, d'ombre à droite), dessus plein, trame selon l'éclairage, arête qui luit au passage de la vague ; décalée et estompée pendant l'entrée |
-| `facesCamera()` (privée) | `render/pixi/terrain.ts` | Une falaise dont l'arête haute est dans la moitié basse du dessus ; une face arrière, pleine, déborderait sous le relief                                                                             |
-| `depthAlpha()` (privée)  | `render/pixi/terrain.ts` | Proximité normalisée → opacité des arêtes                                                                                                                                                            |
-| `drawPiece()`            | `render/pixi/pieces.ts`  | Colonne de lumière (sélection), ombre, obélisque à deux faces, halo et œil (qui s'élève et s'illumine) ; fantôme : contour et trame                                                                  |
-| `drawBeam()` (privée)    | `render/pixi/pieces.ts`  | La colonne de lumière, en bandes d'un pixel qui s'effacent vers le haut                                                                                                                              |
-| `drawHover()`            | `render/pixi/overlay.ts` | Voile et réticule qui se referme sur la case survolée, falaises soulignées                                                                                                                           |
-| `drawSelection()`        | `render/pixi/overlay.ts` | Destinations en cascade (aplat qui respire, gemme qui jaillit), puis la case de la pièce                                                                                                             |
-| `drawLanding()`          | `render/pixi/overlay.ts` | Deux ondes au sol et une couronne d'étincelles                                                                                                                                                       |
-| `drawSigil()`            | `render/pixi/ground.ts`  | Trois cercles tracés progressivement (`drawn`), graduations et glyphes, projetés dans le plan du sol                                                                                                 |
-| `boardRadius()`          | `render/pixi/ground.ts`  | Rayon du plateau autour du pivot, en cases                                                                                                                                                           |
-| `drawSky()`              | `render/pixi/sky.ts`     | Nuées tramées, constellations, étoiles qui scintillent, étoile filante — selon l'atmosphère du thème                                                                                                 |
-| `drawMotes()`            | `render/pixi/sky.ts`     | Poussière d'os qui monte, ou lucioles qui errent et luisent                                                                                                                                          |
+| Fonction                                                                          | Emplacement                    | Rôle                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `drawTile()`                                                                      | `render/pixi/terrain.ts`       | Falaises **tournées vers la caméra** (face éclairée à gauche, d'ombre à droite), dessus plein, trame selon l'éclairage, arête qui luit au passage de la vague ; décalée et estompée pendant l'entrée                                                                                                                                 |
+| `facesCamera()` (privée)                                                          | `render/pixi/terrain.ts`       | Une falaise dont l'arête haute est dans la moitié basse du dessus ; une face arrière, pleine, déborderait sous le relief                                                                                                                                                                                                             |
+| `depthAlpha()` (privée)                                                           | `render/pixi/terrain.ts`       | Proximité normalisée → opacité des arêtes                                                                                                                                                                                                                                                                                            |
+| `drawPiece()`                                                                     | `render/pixi/pieces.ts`        | Aiguille vers le glyphe ou l'obélisque selon `look().pieces.style`                                                                                                                                                                                                                                                                   |
+| `drawGlyph()`                                                                     | `render/pixi/piece-glyph.ts`   | Colonne de lumière, ombre au sol, halo, glyphe décalé dans le vide puis glyphe (corps du camp, socle d'ombre), qui s'élève et blanchit sous un éclat ; fantôme : trame du glyphe                                                                                                                                                     |
+| `drawObelisk()`                                                                   | `render/pixi/piece-obelisk.ts` | Colonne de lumière, ombre, obélisque à deux faces, halo et œil (qui s'élève et s'illumine) ; fantôme : contour et trame                                                                                                                                                                                                              |
+| `drawBeam()`                                                                      | `render/pixi/piece-paint.ts`   | La colonne de lumière, en bandes d'un pixel qui s'effacent vers le haut                                                                                                                                                                                                                                                              |
+| `drawTileMarks()`                                                                 | `render/pixi/overlay.ts`       | Les marques d'une case, peintes juste après elle dans `world` : destination ou prise (aplat qui respire, gemme qui jaillit, en cascade), case de la pièce sélectionnée, survol (voile et réticule)                                                                                                                                   |
+| `drawLanding()`                                                                   | `render/pixi/overlay.ts`       | Deux ondes au sol et une couronne d'étincelles                                                                                                                                                                                                                                                                                       |
+| `drawTrapLaying()`, `drawTrapGlimpse()`, `drawTrapAwaiting()`, `drawTrapSpring()` | `render/pixi/trap-fx.ts`       | Pose (sceau qui tombe, éclats qui convergent), geste adverse (deux ondes autour de la pièce), son piège qui attend la pièce en marche, déclenchement (case qui s'embrase, mâchoires dentées, onde, éclats, cicatrice) ; tout est peint au sol dans `world`, juste après la case, et la pièce happée tremble et se dissout par-dessus |
+| `drawSigil()`                                                                     | `render/pixi/ground.ts`        | Trois cercles tracés progressivement (`drawn`), graduations et glyphes, projetés dans le plan du sol                                                                                                                                                                                                                                 |
+| `boardRadius()`                                                                   | `render/pixi/ground.ts`        | Rayon du plateau autour du pivot, en cases                                                                                                                                                                                                                                                                                           |
+| `drawSky()`                                                                       | `render/pixi/sky.ts`           | Nuées tramées, constellations, étoiles qui scintillent, étoile filante — selon l'atmosphère du thème                                                                                                                                                                                                                                 |
+| `drawMotes()`                                                                     | `render/pixi/sky.ts`           | Poussière d'os qui monte, ou lucioles qui errent et luisent                                                                                                                                                                                                                                                                          |
 
 L'opacité des **arêtes** d'une case, dans `drawTile()` :
 
@@ -1246,28 +1381,35 @@ valeur** : le dessus s'éclaircit avec la hauteur (`topColor()`), et une case ho
 est assombrie et tramée — le relief reste lisible (implementation-notes 10).
 
 Aucun type de `packages/core/src/pieces/` ne porte de champ visuel : la correspondance
-`kind` → forme appartient à `render/pixi/pieces.ts`. Le roster n'étant pas acté, **toutes les
-pièces partagent aujourd'hui la même silhouette**.
+`kind` → forme appartient au rendu, dans `@occulis/board/glyphs` — une grille de pixels par
+type, avec un glyphe de repli pour un type qui n'en a pas. Les pixels d'un même ton sont
+tracés **en un seul chemin** : posés un par un, deux carrés voisins laisseraient un liseré
+d'anticrénelage.
+
+**Revenir à l'obélisque** commun à tous les types, la silhouette d'avant l'ATH « Bandeaux » :
+passer `PIECE_STYLE` à `"obelisk"` dans `packages/board/src/theme.ts`. C'est le seul
+changement à faire ; la partie, le déploiement, le rejeu et le site suivent.
 
 ## `view/` — les modules purs du rendu animé
 
-| Fonction                                                                     | Emplacement         | Rôle                                                                                                                                                                                                                      |
-| ---------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pixelResolution()`                                                          | `view/pixel.ts`     | `devicePixelRatio / ART_PIXEL` : la résolution qui fait d'un pixel du plateau deux pixels physiques                                                                                                                       |
-| `snap()`, `mixColor()`, `breath()`                                           | `view/pixel.ts`     | Arrondi à la grille, mélange de couleurs, pulsation en cosinus                                                                                                                                                            |
-| `topColor(height, light)`                                                    | `view/matter.ts`    | Teinte du dessus, continue entre hors de vue (0) et en vue (1)                                                                                                                                                            |
-| `clamp01()`, `easeOutCubic()`, `easeInOutSine()`, `easeOutBack()`, `phase()` | `view/easing.ts`    | Les courbes ; `easeOutBack` dépasse sa cible avant de s'y poser                                                                                                                                                           |
-| `relight()`                                                                  | `view/reveal.ts`    | Nouvel éclairage après un changement de vue : chaque case part de son éclairage courant, avec un retard par case de distance à la plus proche pièce qui voit (vague qui se déploie ; extinction plus rapide et d'un bloc) |
-| `lightAt()`, `crestAt()`, `settling()`                                       | `view/reveal.ts`    | Éclairage d'une case à un instant, front de la vague, transition en cours                                                                                                                                                 |
-| `litTiles()`, `awaitsMove()`                                                 | `view/reveal.ts`    | Cases qu'une vue éclaire (aucune une fois la partie finie, `outcome` n'étant `null` que pendant la partie) ; trait au joueur dans une partie qui dure, ce qui déclenche `turnAt`                                          |
-| `introOf()`, `introLength()`                                                 | `view/effects.ts`   | Entrée d'une case selon son rang de profondeur                                                                                                                                                                            |
-| `cascadeOf()`                                                                | `view/effects.ts`   | Ouverture d'une destination selon sa distance à la pièce sélectionnée                                                                                                                                                     |
-| `sparksOf()`, `landingAt()`                                                  | `view/effects.ts`   | Étincelles d'une retombée et état de la retombée                                                                                                                                                                          |
-| `materializeAt()`                                                            | `view/effects.ts`   | Matérialisation : opacité, chute de quelques pixels, éclat de l'œil                                                                                                                                                       |
-| `liftOf()`, `lagging()`                                                      | `view/animation.ts` | Arc d'un déplacement ; la même animation en retard (image rémanente)                                                                                                                                                      |
-| `standingDepth()`                                                            | `view/iso.ts`       | Profondeur d'une pièce : celle de la case qui la porte                                                                                                                                                                    |
-| `createMotes()`, `moteAt()`, `fireflyAt()`                                   | `view/ambient.ts`   | Nuée à graine ; poussière qui monte, luciole qui erre                                                                                                                                                                     |
-| `createStars()`, `starAlpha()`, `constellationsOf()`, `shootingStarAt()`     | `view/ambient.ts`   | La voûte, son scintillement, ses segments, une étoile filante par période                                                                                                                                                 |
+| Fonction                                                                     | Emplacement             | Rôle                                                                                                                                                                                                                      |
+| ---------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pixelResolution()`                                                          | `@occulis/board/pixel`  | `devicePixelRatio / ART_PIXEL` : la résolution qui fait d'un pixel du plateau deux pixels physiques                                                                                                                       |
+| `snap()`, `mixColor()`, `breath()`                                           | `@occulis/board/pixel`  | Arrondi à la grille, mélange de couleurs, pulsation en cosinus                                                                                                                                                            |
+| `topColor(height, light)`                                                    | `@occulis/board/matter` | Teinte du dessus, continue entre hors de vue (0) et en vue (1)                                                                                                                                                            |
+| `clamp01()`, `easeOutCubic()`, `easeInOutSine()`, `easeOutBack()`, `phase()` | `view/easing.ts`        | Les courbes ; `easeOutBack` dépasse sa cible avant de s'y poser                                                                                                                                                           |
+| `relight()`                                                                  | `view/reveal.ts`        | Nouvel éclairage après un changement de vue : chaque case part de son éclairage courant, avec un retard par case de distance à la plus proche pièce qui voit (vague qui se déploie ; extinction plus rapide et d'un bloc) |
+| `lightAt()`, `crestAt()`, `settling()`                                       | `view/reveal.ts`        | Éclairage d'une case à un instant, front de la vague, transition en cours                                                                                                                                                 |
+| `litTiles()`, `awaitsMove()`                                                 | `view/reveal.ts`        | Cases qu'une vue éclaire (aucune une fois la partie finie, `outcome` n'étant `null` que pendant la partie) ; trait au joueur dans une partie qui dure, ce qui déclenche `turnAt`                                          |
+| `introOf()`, `introLength()`                                                 | `view/effects.ts`       | Entrée d'une case selon son rang de profondeur                                                                                                                                                                            |
+| `cascadeOf()`                                                                | `view/effects.ts`       | Ouverture d'une destination selon sa distance à la pièce sélectionnée                                                                                                                                                     |
+| `sparksOf()`, `landingAt()`                                                  | `view/effects.ts`       | Étincelles d'une retombée et état de la retombée                                                                                                                                                                          |
+| `trapLayingAt()`, `trapSpringAt()`                                           | `view/effects.ts`       | Pose d'un piège (`MOTION_FX.trapLayMs`) ; déclenchement en trois temps, mâchoires, dissolution, cicatrice (`trapSnapMs`)                                                                                                  |
+| `materializeAt()`                                                            | `view/effects.ts`       | Matérialisation : opacité, chute de quelques pixels, éclat de l'œil                                                                                                                                                       |
+| `liftOf()`, `lagging()`                                                      | `view/animation.ts`     | Arc d'un déplacement ; la même animation en retard (image rémanente)                                                                                                                                                      |
+| `standingDepth()`                                                            | `@occulis/board/iso`    | Profondeur d'une pièce : celle de la case qui la porte                                                                                                                                                                    |
+| `createMotes()`, `moteAt()`, `fireflyAt()`                                   | `view/ambient.ts`       | Nuée à graine ; poussière qui monte, luciole qui erre                                                                                                                                                                     |
+| `createStars()`, `starAlpha()`, `constellationsOf()`, `shootingStarAt()`     | `view/ambient.ts`       | La voûte, son scintillement, ses segments, une étoile filante par période                                                                                                                                                 |
 
 La vague de lumière ne lit que la vue transmise : elle anime ce que le serveur a envoyé,
 elle ne révèle rien d'autre.
@@ -1301,7 +1443,7 @@ voûte (`stars`), les constellations, les étoiles filantes, les nuées.
 | `astral`            | Noir à peine prune, matière violette, camps cyan et magenta     | Voûte dense, constellations, étoiles filantes, nuées |
 
 `STATE.legalMove` est **délibérément distinct des deux couleurs de camp** dans chaque thème.
-Les épaisseurs sont en **pixels du plateau** (`view/pixel.ts`), jamais en pixels CSS.
+Les épaisseurs sont en **pixels du plateau** (`@occulis/board/pixel`), jamais en pixels CSS.
 
 ## `theme/theme-choice.ts` — le choix du joueur
 
@@ -1362,7 +1504,7 @@ pour que leurs rejeux en Canvas 2D en suivent les couleurs.
 ### La règle est mécanique, pas conventionnelle
 
 `eslint.config.js` interdit tout littéral de couleur dans `apps/web/src/**` et
-`packages/ui/src/**` (`.ts` et `.tsx`), avec une exception unique : `packages/ui/src/tokens.ts`.
+`packages/ui/src/**` (`.ts` et `.vue`), avec une exception unique : `packages/ui/src/tokens.ts`.
 Ses sélecteurs `no-restricted-syntax` couvrent `0xffffff` (par le `raw`), `"#ffffff"` (par la
 valeur), et une couleur glissée dans une chaîne ou un gabarit (`"1px solid #fff"`,
 `` `rgb(${r} …)` ``). Le CSS échappe à ESLint : `theme/palette.ts` y soumet les écrans du jeu,
@@ -1376,31 +1518,59 @@ les tests de `@occulis/ui` gardent sa feuille, et `theme/colors.test.ts` garde `
 
 `MatchController` possède tout ce qui n'a de sens que pendant une partie : le canal
 (`MatchChannel`), l'`OnlineMatch`, le coup en attente (`pending`), la sélection, l'animation du
-dernier coup, la case survolée, l'annonce de déploiement, l'ami regardé et le nombre de
-spectateurs. Les autres modules ne les lisent que par ses accesseurs.
+dernier coup, la case survolée, l'annonce de déploiement, l'ami regardé, le nombre de
+spectateurs, les cartes des deux joueurs, l'absence de l'adversaire, la fiche ouverte d'un
+clic droit et le message bref d'un refus (`MatchNotice`). Les autres modules ne les lisent que par ses accesseurs.
 
-| Méthode                                               | Rôle                                                                                                                                              |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sit(matchId, seat)`                                  | `close()`, charge le plateau, ouvre le canal d'un joueur assis                                                                                    |
-| `watch(friend, matchId, side)`                        | `close()`, ouvre le canal d'un spectateur et arme l'échéance `WATCH_TIMEOUT_MS` (6 s) : sans vue, `leave()` puis l'annonce `cannotWatch`          |
-| `close()`                                             | Referme le canal et remet tout à zéro ; incrémente la génération qu'une réponse tardive (équipes préparées, `stillSeated`) compare avant d'écrire |
-| `play(action)`                                        | Envoie le coup sans rien déplacer et lève `pending` ; sans partie, `game-over`                                                                    |
-| `pick(coord)`                                         | Un clic : sélectionne, désélectionne, ou rend l'action à envoyer (`resolveClick`)                                                                 |
-| `advance(deltaMS)`                                    | Fait avancer l'animation ; la console se rafraîchit à sa fin                                                                                      |
-| `requestLeave()` / `confirmLeave()` / `cancelLeave()` | La fenêtre d'abandon : vraie pour une partie vivante, jamais pour un spectateur ni une partie finie                                               |
+| Méthode                                               | Rôle                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `sit(matchId, seat)`                                  | `close()`, charge le plateau, ouvre le canal d'un joueur assis                                                                                                                                                                                                                                                                                         |
+| `watch(friend, matchId, side)`                        | `close()`, ouvre le canal d'un spectateur et arme l'échéance `WATCH_TIMEOUT_MS` (6 s) : sans vue, `leave()` puis l'annonce `cannotWatch`                                                                                                                                                                                                               |
+| `close()`                                             | Referme le canal et remet tout à zéro ; incrémente la génération qu'une réponse tardive (équipes préparées, `stillSeated`) compare avant d'écrire                                                                                                                                                                                                      |
+| `play(action)`                                        | Envoie le coup sans rien déplacer et lève `pending` ; sans partie, `game-over`                                                                                                                                                                                                                                                                         |
+| `toggleAbility()`                                     | Le bouton de la fiche : arme ou désarme la capacité de la pièce sélectionnée (`aimAbility`)                                                                                                                                                                                                                                                            |
+| `pick(coord)` / `inspect(coord)`                      | Un clic : sélectionne, désélectionne ou envoie le coup (`resolveClick`) ; un droit : la fiche                                                                                                                                                                                                                                                          |
+| `advance(deltaMS)`                                    | Fait avancer l'animation du dernier coup                                                                                                                                                                                                                                                                                                               |
+| `requestLeave()` / `confirmLeave()` / `cancelLeave()` | La fenêtre d'abandon : vraie pour une partie vivante, jamais pour un spectateur, une partie finie ni un abandon déjà envoyé. `confirmLeave()` envoie `resign` et garde la table jusqu'à la vue finale ; sans elle après `RESIGN_TIMEOUT_MS` (6 s), `finished()` demande l'écran de fin quand même. Un `resign` joué par `play()` arme la même échéance |
+| `resigning`                                           | L'abandon est parti, la vue finale pas encore arrivée : `#leave-match` n'y fait plus rien, celui qui abandonne aboutit à l'écran de fin comme son adversaire                                                                                                                                                                                           |
+| `ended` / `dismissEnd()`                              | La fin d'une partie **regardée** (`MatchEnd` : issue, camp, ami), présente dès qu'une vue porte une issue, jusqu'à ce que le spectateur l'écarte pour revoir le plateau ; un joueur passe, lui, par `MatchEffects.finished`                                                                                                                            |
 
 Les gestionnaires du canal (`handlersFor`, interne) : `onSeated` construit l'`OnlineMatch` et
 recentre la caméra, `onDeployment` garde l'annonce (le compte à rebours ne repart que si
 `remainingMs` change), `onView` adopte la vue qui fait autorité — elle lève `pending`, efface la
-sélection et lance l'animation —, `onRejected` rend la main au joueur, ou garde le refus pour
-l'écran de déploiement, `onStatus` quitte une partie que le serveur ne tient plus.
+sélection et lance l'animation ; porteuse d'une issue, elle ouvre la fin chez le
+spectateur ou appelle `finished(matchId)` chez un joueur —, `onRejected` rend la main au joueur
+avec un `MatchNotice`, ou garde le refus pour l'écran de déploiement, `onPlayers` et
+`onOpponentPresence` gardent les cartes et l'absence adverse pour l'ATH, `onStatus` quitte
+une partie que le serveur ne tient plus.
 
 Le contrôleur ne touche ni le DOM ni le réseau : ses dépendances lui sont données (`MatchEffects`
-— ouverture des canaux, écran courant, console, plateau, `leave()`), si bien que
+— ouverture des canaux, écran courant, îlots, plateau, `leave()`), si bien que
 `match-controller.test.ts` l'éprouve avec de faux canaux : un seul canal ouvert à la fois,
-`close()` remet tout à zéro, l'échéance du spectateur, la fenêtre d'abandon, les réponses
-tardives. Il reçoit `leave()` en effet (`MatchEffects.leave`) : quitter touche aussi la file
+`close()` remet tout à zéro, l'échéance du spectateur, la fenêtre d'abandon, la fin de partie
+(abandonneur gardé à table, `finished` chez le joueur, fenêtre chez le spectateur, écartée puis
+rendue à la partie suivante), les réponses tardives. Il reçoit `leave()` en effet (`MatchEffects.leave`) : quitter touche aussi la file
 et les défis, et c'est `main.ts` qui les tient ensemble.
+
+---
+
+## `app/debrief.ts` — l'écran de fin d'une partie jouée
+
+À la clôture d'une partie jouée (`MatchEffects.finished`), ou en arrivant par son lien
+`/debrief/:id` (que le Worker sert comme la page du jeu), `Debrief.open()` lit l'écran
+(`GET /api/me/matches/:id/debrief`, sans cache) et ne le montre **qu'une fois lu** : l'adresse
+devient son lien (`history.replaceState`, sans entrée d'historique), puis l'étape `debrief`.
+Il rend `opened`, `refused` (fermé ou illisible, avec le message) ou `stale` (une fermeture ou
+une autre partie l'a devancé ; une vue finale répétée ne le redemande pas).
+
+`close()` le quitte, quel qu'en soit le chemin — menu, « Rejouer », défi accepté, déconnexion :
+`POST /api/me/matches/:id/debrief/leave`, puis l'adresse revient à `/`. **Le serveur seul
+décide de l'accès** : il ferme l'écran, lien compris (`410 DEBRIEF_CLOSED`), une fois que
+les deux joueurs l'ont quitté ; un spectateur n'y a jamais accès et garde la fenêtre `end/`.
+Fermer l'onglet ou recharger n'est pas un départ.
+
+Ce qui n'est pas encore calculé par partie — temps de réflexion, faits d'armes — est montré
+factice (`PLACEHOLDER`, `debrief/model.ts`) sous le ruban `WorkInProgress` de la charte.
 
 ---
 
@@ -1410,15 +1580,19 @@ et les défis, et c'est `main.ts` qui les tient ensemble.
 crée les modules de `app/` et les relie par leurs effets. Il ne garde en propre que l'ouverture
 de l'écran des équipes (`teamsOpen`) et les parcours qui traversent plusieurs modules :
 
-| Fonction (interne à `main()`)  | Rôle                                                                                                                                                                                                                                                                                   |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `leave()`                      | Referme la file (`Matchmaking.close()`), retire un défi en attente, `MatchController.close()`, puis rend la main au menu ; passée en effet à `MatchController`                                                                                                                         |
-| `sit()`                        | Referme la file et oublie le défi, puis `MatchController.sit()`, qui referme **tout canal de partie déjà ouvert** avant d'ouvrir le sien                                                                                                                                               |
-| `sitAfterChallenge()`          | Un `matched` du canal social : `sit()`, sauf pendant sa propre partie (`ownMatchRunning`)                                                                                                                                                                                              |
-| `resume()`                     | À l'arrivée au menu connecté, demande `/api/me/current-match` (`currentMatch()`, `profile/api.ts`) et rassoit le joueur à sa partie en cours : le jeton de siège ne vit que dans la page, et un rechargement le perd. Rien s'il attend déjà une partie ou en joue une (`idleOnMenu()`) |
-| `leaveMatch()`                 | `#leave-match` : `requestLeave()` ouvre la fenêtre `leave/` pour une partie vivante, dont la confirmation (`confirmLeave()`) envoie `resign` avant `leave()` — aucun chemin ne ramène à un siège quitté ; spectateur ou partie finie, `leave()` seul                                   |
-| `openTeams()` / `closeTeams()` | L'écran des équipes préparées, depuis le menu                                                                                                                                                                                                                                          |
-| `rewriteTexts()`               | Après un changement de langue, réécrit le HTML statique, l'écran courant, l'identité, la console et les îlots                                                                                                                                                                          |
+| Fonction (interne à `main()`)  | Rôle                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `leave()`                      | Quitte l'écran de fin (`Debrief.close()`), referme la file (`Matchmaking.close()`), retire un défi en attente, `MatchController.close()`, puis rend la main au menu ; passée en effet à `MatchController`                                                                                                                                                                 |
+| `sit()`                        | Quitte l'écran de fin, referme la file et oublie le défi, puis `MatchController.sit()`, qui referme **tout canal de partie déjà ouvert** avant d'ouvrir le sien                                                                                                                                                                                                           |
+| `finished()`                   | `MatchEffects.finished` : ouvre l'écran de fin (`Debrief.open()`) et, une fois lu, referme la partie ; refusé, `leave()` et le message du refus                                                                                                                                                                                                                           |
+| `arrive()`                     | À l'arrivée au menu connecté : par le lien `/debrief/:id`, ouvre l'écran de fin s'il est encore ouvert (sinon dit pourquoi) ; puis `resume()`                                                                                                                                                                                                                             |
+| `sitAfterChallenge()`          | Un `matched` du canal social : `sit()`, sauf pendant sa propre partie (`ownMatchRunning`)                                                                                                                                                                                                                                                                                 |
+| `resume()`                     | À l'arrivée au menu connecté, demande `/api/me/current-match` (`currentMatch()`, `profile/api.ts`) et rassoit le joueur à sa partie en cours : le jeton de siège ne vit que dans la page, et un rechargement le perd. Rien s'il attend déjà une partie ou en joue une (`idleOnMenu()`)                                                                                    |
+| `leaveMatch()`                 | `#leave-match` : `requestLeave()` ouvre la fenêtre `leave/` pour une partie vivante, dont la confirmation (`confirmLeave()`) envoie `resign` puis attend la vue finale, qui ouvre l'écran de fin `debrief/` — aucun chemin ne ramène à un siège quitté, ni au menu : pendant l'attente (`resigning`), le bouton ne fait rien ; spectateur ou partie finie, `leave()` seul |
+| `endScreen()`                  | Les propriétés de l'îlot `end/` (spectateur) : `MatchController.ended`, « Retour au menu » vers `leave()`, « Voir le plateau » vers `dismissEnd()`                                                                                                                                                                                                                        |
+| `debriefScreen()`              | Les propriétés de l'îlot `debrief/` : la partie de `Debrief.matchId`, « Retour au menu » vers `leave()`, « Rejouer » vers `leave()` puis la file rapide                                                                                                                                                                                                                   |
+| `openTeams()` / `closeTeams()` | L'écran des équipes préparées, depuis le menu                                                                                                                                                                                                                                                                                                                             |
+| `rewriteTexts()`               | Après un changement de langue, réécrit le HTML statique, l'écran courant, l'identité et les îlots, ATH compris                                                                                                                                                                                                                                                            |
 
 ### `play()` et le passage de main différé
 
@@ -1444,28 +1618,22 @@ menu, il n'y a rien à jouer.
 
 Les écrans et la saisie sont **en HTML et non dessinés dans le canevas** : des champs natifs
 donnent gratuitement le focus, la saisie, l'autocomplétion et l'accessibilité. L'écran de
-compte est en React sur la charte ; les autres restent en DOM natif, habillés par
+compte est en Vue sur la charte ; les autres restent en DOM natif, habillés par
 `ui/ui.css`, dont les règles génériques (`button`, `form`) sont circonscrites pour ne pas
 atteindre les composants `occ-*`.
 
-| Élément                            | Rôle                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `#app`                             | Hôte du canevas PixiJS — **masqué hors partie**                                                                                                                                                                                                                                                                                                                                                                                  |
-| `#shell`                           | Conteneur des écrans, transparent aux clics                                                                                                                                                                                                                                                                                                                                                                                      |
-| `#screen-boot`                     | L'amorce : la barre de chargement, visible dès le HTML (après 0,4 s) jusqu'à ce que le premier écran soit complet                                                                                                                                                                                                                                                                                                                |
-| `#screen-auth` / `#account-root`   | Compte : l'hôte de l'îlot React (`account/`)                                                                                                                                                                                                                                                                                                                                                                                     |
-| `#impersonation`                   | Bandeau de session d'emprunt, au-dessus de tous les écrans — masqué hors usurpation                                                                                                                                                                                                                                                                                                                                              |
-| `#account-corner`                  | Pseudo et lien vers le profil, en haut à droite — montré au seul menu                                                                                                                                                                                                                                                                                                                                                            |
-| `#screen-menu`                     | Trois sections séparées par un filet : **Jouer** (partie rapide, création, entrée par code — trois cartes `.primary` au même gabarit, la partie rapide seule au trait plein — puis la carte en retrait des équipes), **Amis**, et un pied de liens (`.menu-link` : back-office pour les administrateurs, déconnexion). Sous le titre, `#menu-identity` n'apparaît que si l'adresse n'est pas vérifiée, avec le renvoi du message |
-| `#menu-friends`                    | Le panneau « Amis » : `#friends-challenges`, `#friends-list`, `#friends-empty` — masqué tant que la liste n'est pas lue                                                                                                                                                                                                                                                                                                          |
-| `#screen-waiting`                  | Le code du salon, sa copie, l'attente (adversaire, ami défié, partie d'un ami) et son annulation                                                                                                                                                                                                                                                                                                                                 |
-| `#console`                         | Le bandeau de partie                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `#status`                          | Ligne d'état : tour, camp au trait, camp du joueur                                                                                                                                                                                                                                                                                                                                                                               |
-| `#tile-readout`                    | Lecture de la case désignée au clic                                                                                                                                                                                                                                                                                                                                                                                              |
-| `#command-form` / `#command-input` | La saisie                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `#command-log`                     | Compte rendu, coloré par `data-state="ok"` ou `"ko"`                                                                                                                                                                                                                                                                                                                                                                             |
-| `#command-help`                    | Rappel de la grammaire                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `#leave-match`                     | Quitte la partie et revient au menu ; une partie jouée et pas finie s'abandonne d'abord, après confirmation (`game.console.leaveConfirm`)                                                                                                                                                                                                                                                                                        |
+| Élément                          | Rôle                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `#app`                           | Hôte du canevas PixiJS — **masqué hors partie**                                                                                                                                                                                                                                                                                                                                                                                  |
+| `#shell`                         | Conteneur des écrans, transparent aux clics                                                                                                                                                                                                                                                                                                                                                                                      |
+| `#screen-boot`                   | L'amorce : la barre de chargement, visible dès le HTML (après 0,4 s) jusqu'à ce que le premier écran soit complet                                                                                                                                                                                                                                                                                                                |
+| `#screen-auth` / `#account-root` | Compte : l'hôte de l'îlot Vue (`account/`)                                                                                                                                                                                                                                                                                                                                                                                       |
+| `#impersonation`                 | Bandeau de session d'emprunt, au-dessus de tous les écrans — masqué hors usurpation                                                                                                                                                                                                                                                                                                                                              |
+| `#account-corner`                | Pseudo et lien vers le profil, en haut à droite — montré au seul menu                                                                                                                                                                                                                                                                                                                                                            |
+| `#screen-menu`                   | Trois sections séparées par un filet : **Jouer** (partie rapide, création, entrée par code — trois cartes `.primary` au même gabarit, la partie rapide seule au trait plein — puis la carte en retrait des équipes), **Amis**, et un pied de liens (`.menu-link` : back-office pour les administrateurs, déconnexion). Sous le titre, `#menu-identity` n'apparaît que si l'adresse n'est pas vérifiée, avec le renvoi du message |
+| `#menu-friends`                  | Le panneau « Amis » : `#friends-challenges`, `#friends-list`, `#friends-empty` — masqué tant que la liste n'est pas lue                                                                                                                                                                                                                                                                                                          |
+| `#screen-waiting`                | Le code du salon, sa copie, l'attente (adversaire, ami défié, partie d'un ami) et son annulation                                                                                                                                                                                                                                                                                                                                 |
+| `#hud-root`                      | L'hôte de l'îlot ATH (`hud/`), montré avec le plateau                                                                                                                                                                                                                                                                                                                                                                            |
 
 `applyPalette()` porte les variables de couleur, posées sur la racine du document. La règle
 `[hidden] { display: none !important }` est nécessaire : les `display: flex` de la feuille
@@ -1475,7 +1643,7 @@ l'emporteraient sinon sur l'attribut, et un écran masqué resterait visible.
 
 ## `admin/` — le back-office
 
-Une **page à part**, `apps/web/admin/index.html`, servie sous `/admin/`, **en React sur les
+Une **page à part**, `apps/web/admin/index.html`, servie sous `/admin/`, **en Vue sur les
 composants de `@occulis/ui`** (`docs/technical/ui.md`). Elle ne charge ni PixiJS ni le moteur
 de jeu, et le jeu n'embarque rien d'elle. Elle n'a **ni classe ni feuille propres** : tout ce
 qui manquait à une vue (`Toolbar`, `Versus`…) a été ajouté à la charte, pas à la page.
@@ -1489,26 +1657,28 @@ est revérifié par `handleAdmin()` ou par le greffon Better Auth (`docs/technic
 **Le routage tient dans le fragment** (`#/users/<id>`, `#/matches?status=ongoing`…) : la page
 reste un seul fichier statique, et une fiche se partage par son lien. `parseRoute()` et
 `routeHash()` (`model.ts`) sont inverses l'un de l'autre, ce que les tests vérifient ;
-`useHashRoute(parseRoute, resourcesOf)` suit `hashchange`. `App` rend la vue sous une clé
-égale à la route : l'écran suivant remplace le précédent d'un bloc.
+`useHashRoute(parseRoute, resourcesOf, screenOf)` suit `hashchange` : l'onglet change au clic,
+et un écran pas encore arrivé montre son squelette (`skeletonOf()`). `AdminGate.vue` rend la vue sous
+une clé égale à son écran (`screenOf()`) : l'écran suivant remplace le précédent d'un bloc,
+mais une recherche ou une page de table garde l'écran monté, son champ et son focus.
 
-**Les données passent par les ressources de `resources.ts`, `useLoad()` et `whenReady()`**
+**Les données passent par les ressources de `resources.ts`, `useLoad()` et `<Ready>`**
 (`load/`, voir « Chargement et premier rendu ») : tout ce qu'une route lit est préchargé
 ensemble, la page paraît ou change d'écran une fois tout arrivé, une vue déjà vue revient
 aussitôt depuis le cache, et `reload()` relit depuis le serveur après chaque geste, pour que
 l'écran montre ce que la base contient et non ce qu'on vient d'envoyer.
 
-| Route                                                                              | Vue (`views.tsx`, `MatchDetail.tsx`) | Contenu                                                                                                                                                                               |
-| ---------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `#/`                                                                               | `Overview`                           | Les huit compteurs de `/api/admin/stats`, les dernières parties, les derniers inscrits                                                                                                |
-| `#/users?q=&offset=`                                                               | `UserList`                           | Recherche (par adresse si la saisie contient `@`, par pseudo sinon), table paginée avec les **actions rapides** de chaque compte, création en fenêtre modale                          |
-| `#/users/<id>`                                                                     | `UserDetail`                         | `Hero` (insigne, pastilles, actions rapides), bandeau de suspension ; en deux colonnes : profil de jeu et dernières parties, puis édition (pseudo, adresse, mot de passe) et sessions |
-| `#/players/<id>`                                                                   | `PlayerDetail`                       | Profil de jeu — y compris ceux **sans compte**, laissés par un compte supprimé — et tout son historique                                                                               |
-| `#/matches?status=&offset=`                                                        | `MatchList`                          | Toutes, en cours ou terminées (`Segmented` en liens), paginées                                                                                                                        |
-| `#/matches/<id>`                                                                   | `MatchDetail`                        | `Versus`, `FactStrip` ; la liste des coups, et sous elle **le plateau rejoué**                                                                                                        |
-| `#/design`, `#/design/components/<Nom>`, `#/design/motion`, `#/design/conventions` | `DesignSystem` (`design/`)           | **Le design system** : fondations, composants, animations, conventions — voir plus bas                                                                                                |
+| Route                                                                              | Vue (`views/`)             | Contenu                                                                                                                                                                               |
+| ---------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `#/`                                                                               | `Overview`                 | Les huit compteurs de `/api/admin/stats`, les dernières parties, les derniers inscrits                                                                                                |
+| `#/users?q=&offset=`                                                               | `UserList`                 | Recherche (par adresse si la saisie contient `@`, par pseudo sinon), table paginée avec les **actions rapides** de chaque compte, création en fenêtre modale                          |
+| `#/users/<id>`                                                                     | `UserDetail`               | `Hero` (insigne, pastilles, actions rapides), bandeau de suspension ; en deux colonnes : profil de jeu et dernières parties, puis édition (pseudo, adresse, mot de passe) et sessions |
+| `#/players/<id>`                                                                   | `PlayerDetail`             | Profil de jeu — y compris ceux **sans compte**, laissés par un compte supprimé — et tout son historique                                                                               |
+| `#/matches?status=&offset=`                                                        | `MatchList`                | Toutes, en cours ou terminées (`Segmented` en liens), paginées                                                                                                                        |
+| `#/matches/<id>`                                                                   | `MatchDetail`              | `Versus`, `FactStrip` ; la liste des coups, et sous elle **le plateau rejoué**                                                                                                        |
+| `#/design`, `#/design/components/<Nom>`, `#/design/motion`, `#/design/conventions` | `DesignSystem` (`design/`) | **Le design system** : fondations, composants, animations, conventions — voir plus bas                                                                                                |
 
-**Les actions rapides** (`QuickActions`, `actions.tsx`) sont une rangée d'`IconButton`, la même
+**Les actions rapides** (`QuickActions`, `actions/`) sont une rangée d'`IconButton`, la même
 dans la liste et sur la fiche : vérification de l'adresse, rôle, suspension ou levée,
 usurpation, fermeture des sessions, suppression. `quickActions()` (`model.ts`, pur et testé)
 dit lesquelles sont fermées et pourquoi — `disabledReason` met la raison dans l'infobulle. Sont
@@ -1528,55 +1698,75 @@ serveur refuse ce dernier, qui n'écrirait qu'une des deux tables portant le pse
 
 ### Le rejeu d'une partie
 
-`Replay` (`MatchDetail.tsx`) montre la `MoveList` — numéro, camp, `2,4 → 3,4`, chaque ligne
+`MatchReplay` (`parts/MatchReplay.vue`) montre la `MoveList` — numéro, camp, coup noté `Sb3-c4`
+(`replay/notation.ts`, implementation-notes 38) et expliqué en infobulle au survol, chaque ligne
 dans la couleur du camp, comme l'historique de la maquette de partie — et sous elle une
 `Toolbar` (lecture, libellé de l'image, point de vue, rotation) puis le plateau. **Survoler** un
 coup montre la position qui le suit ; **cliquer** l'épingle, et le plateau y revient quand la
-souris quitte la liste. Les flèches du clavier parcourent la partie, la lecture la déroule. Le
+souris quitte la liste. Les flèches du clavier parcourent la partie (et `Début` / `Fin` dans le
+replay du profil), sauf dans un champ de saisie ; la lecture la déroule. Le
 point de vue **tout / vue de A / vue de B** estompe les cases hors de la ligne de vue du camp
 choisi et passe en fantôme (`PIECES.alphaGhost`) les pièces adverses qu'il ne voyait pas.
 
-`ReplayBoard` enveloppe le canevas impératif de `replay-canvas.ts` : React ne lui transmet que
+`ReplayBoard` enveloppe le canevas impératif de `replay-canvas.ts` : Vue ne lui transmet que
 l'image, le point de vue et le nombre de quarts de tour ; le dessin et ses animations restent
 hors du cycle de rendu, et `destroy()` cesse d'observer le canevas au démontage. Le plateau est
 dessiné en **Canvas 2D**, pas en PixiJS, mais avec la géométrie du jeu à l'identique —
-`view/iso.ts` pour la projection et l'ordre du peintre (relief et pièces dans une seule
+`@occulis/board/iso` pour la projection et l'ordre du peintre (relief et pièces dans une seule
 liste), `view/camera.ts` pour le quart de tour amorti, `view/animation.ts` pour le glissement
 des pièces, `theme.ts` pour les métriques et les couleurs — et la carte vient du serveur
 (`board` du détail de la partie, les cases qu'elle a figées à sa création). Le dernier coup est marqué : départ en pointillé, trajet dans la
-couleur du camp, arrivée dans la teinte de la sélection. `fitScale()` (`replay.ts`) calcule une
+couleur du camp, arrivée dans la teinte de la sélection.
+
+**Les pièges** sont dessinés à chaque image (`traps` de `AdminFrame`), au sol dans l'ordre du
+peintre — sous la pièce qui s'y tient — et en fantôme quand le camp regardé ne les connaissait
+pas. `trapEventsBetween()` (`replay.ts`) lit entre deux images la pose d'un piège et la pièce qui
+s'y est arrêtée : celle-ci a disparu de l'image d'après, et c'est le log (`ReplayBoard` le reçoit
+avec les images) qui dit où elle allait. En avançant jusqu'à un tel coup, le rejeu l'anime comme
+la partie — sceau qui tombe, ou pièce qui marche jusqu'au piège, mâchoires qui se referment,
+dissolution (`replay/trap-paint.ts`, mêmes courbes que `view/effects.ts` et même géométrie que
+`view/trap-shapes.ts`, partagée avec `render/pixi/trap-fx.ts`). Figée (survol en arrière,
+mouvements réduits), l'image garde la case de la pose éclairée, ou la case du piège rougie,
+mâchoires fermées. L'historique les note `Tf3^g3` (piège posé) et `Pe4-f3^` (pièce prise au piège). `fitScale()` (`replay.ts`) calcule une
 échelle qui tient **aux quatre quarts de tour**, pour que le plateau ne change pas de taille en
 tournant. Les positions viennent du serveur (`frames`) : le client ne rejoue rien, il n'a pas
 les rulesets versionnés.
 
 ### Le design system
 
-Un onglet du back-office, **réservé aux administrateurs comme le reste** (`Gate`) : la charte
+Un onglet du back-office, **réservé aux administrateurs comme le reste** (`AdminGate.vue`) : la charte
 montrée par ses propres sources, avec des retouches à chaud. Il **ne lit pas le projet Claude
 Design** mais ce dont la synchronisation le tire — `.design-sync/previews/` (les aperçus),
 `.design-sync/docs/` (la catégorie de chaque composant), `.design-sync/conventions.md`,
-`packages/ui/src/components/` (commentaires et props) — plus la section 8.1 du design doc, les
+`packages/ui/src/components/` (commentaires et contrats) — plus la section 8.1 du design doc, les
 deux feuilles (`ui/ui.css`, `packages/ui/src/styles.css`) et la table `MOTION_FX` de
 `theme.ts`. La page montre donc ce qui est construit, au commit près, sans re-synchronisation.
+
+**Un aperçu est un composant monofichier**, `.design-sync/previews/<Composant>/<Aperçu>.vue` ;
+l'ordre des aperçus d'un composant est celui de la ligne `stories:` de sa fiche
+(`.design-sync/docs/<Composant>.md`, `orderStories()`), à défaut l'ordre alphabétique. Un
+composant d'appoint qu'un aperçu importe vit dans un sous-dossier (`ToastProvider/parts/`) : il
+n'est pas pris pour un aperçu.
 
 **Chargement.** `sources.ts` rassemble ces fichiers au build : les aperçus sont **montés**
 (`import.meta.glob`, `eager`) et lus en texte (`?raw`), si bien que le code affiché est celui
 qui rend l'aperçu d'à côté. Le tout forme un morceau à part, `DesignSystem` : la ressource
 `designSystem` (`resources.ts`) l'importe, et `resourcesOf()` la précharge avec l'identité —
 l'onglet paraît d'un seul tenant, comme les autres, et le reste du back-office ne télécharge
-pas les aperçus. Les copies d'iCloud (`Button 2.tsx`) sont écartées (`isCopy()`).
+pas les aperçus. Les copies d'iCloud (`Variants 2.vue`) sont écartées (`isCopy()`).
 
 **Les aperçus vivent hors de tout paquet** : `vite.config.ts` résout pour eux `@occulis/ui`
-(`alias`) et React (`dedupe`) depuis l'application, et compile le JSX par le runtime
-automatique (`esbuild.jsx`). Un aperçu doit donc se rendre seul, sous `UiRoot` et
+(`alias`) et Vue (`dedupe`) depuis l'application — une seconde copie de Vue casserait
+l'injection entre la charte et ses aperçus — et `tsconfig.json` les vérifie avec le client
+(`paths`). Un aperçu doit donc se rendre seul, sous `UiRoot` et
 `ToastProvider` — c'est déjà la règle de la synchronisation.
 
-| Page        | Contenu                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Fondations  | La palette du thème montré, **chaque couleur modifiable** (`Swatch` avec `onChange`) ; l'os par alpha ; la typographie ; les écarts ; les durées de la charte sur un point qui traverse sa piste ; toutes les propriétés CSS, recalculées par `paletteVariables()`                                                                                                                                                                     |
-| Composants  | Navigation par catégorie (`NavList`) ; pour le composant choisi, son commentaire et son fichier, chacun de ses aperçus dans un `Stage` avec son code, et ses props (`componentDocs()`). Un aperçu qui lève est remplacé par son message (`Contained`). Une fenêtre modale ne se monte qu'à la demande, et Échap ou un clic sur son voile la démonte (`OverlayHost`) : son `onClose` d'aperçu ne fait rien                              |
-| Animations  | L'ouverture des fenêtres (centre, souris, message, modale) ; **le voile tramé**, rejoué avec sa vraie feuille (`ui/veil.css`) et montré verrouillé ; l'entrée d'un bloc ; le compte à rebours et l'annonce de l'adversaire ; les durées du plateau (`fieldNotes()` sur `MOTION_FX`) et ses courbes (`view/easing.ts`, tracées avec un point qui les parcourt) ; les animations CSS déclarées par les deux feuilles (`cssAnimations()`) |
-| Conventions | `conventions.md` — **le brand book du projet « Occulis UI »** (matières, thèmes, typographie, forme, mouvement, composition ; son miroir dans Claude Design est le `README.md` du projet, à garder identique) — et la section 8.1 du design doc, rendus par `markdownBlocks()` — le sous-ensemble de Markdown que ces fichiers emploient                                                                                               |
+| Page        | Contenu                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fondations  | La palette du thème montré, **chaque couleur modifiable** (`Swatch` avec `onChange`) ; l'os par alpha ; la typographie ; les écarts ; les durées de la charte sur un point qui traverse sa piste ; toutes les propriétés CSS, recalculées par `paletteVariables()`                                                                                                                                                                                                                                                                        |
+| Composants  | Navigation par catégorie (`NavList`) ; pour le composant choisi, son commentaire et son fichier, chacun de ses aperçus dans un `Stage` avec son code, et son contrat — propriétés, modèle, événements, emplacements — lu dans les macros du composant (`componentDoc()`). Un aperçu qui lève est remplacé par son message (`ContainedPreview.vue`, `onErrorCaptured`). Une fenêtre modale ne se monte qu'à la demande, et Échap ou un clic sur son voile la démonte (`OverlayHost.vue`) : son événement `close` d'aperçu n'est pas écouté |
+| Animations  | L'ouverture des fenêtres (centre, souris, message, modale) ; **le voile tramé**, rejoué avec sa vraie feuille (`ui/veil.css`) et montré verrouillé ; l'entrée d'un bloc ; le compte à rebours et l'annonce de l'adversaire ; les durées du plateau (`fieldNotes()` sur `MOTION_FX`) et ses courbes (`view/easing.ts`, tracées avec un point qui les parcourt) ; les animations CSS déclarées par les deux feuilles (`cssAnimations()`)                                                                                                    |
+| Conventions | `conventions.md` — **le brand book du projet « Occulis UI »** (matières, thèmes, typographie, forme, mouvement, composition ; son miroir dans Claude Design est le `README.md` du projet, à garder identique) — et la section 8.1 du design doc, rendus par `markdownBlocks()` — le sous-ensemble de Markdown que ces fichiers emploient                                                                                                                                                                                                  |
 
 **Le lien vers le labo.** Sous l'introduction, une note renvoie à `/lab/` quand la page existe
 (`LAB_ONLINE` : `pnpm dev` ou `--mode mockups`, donc recette et branches, jamais production) ; le
@@ -1642,7 +1832,7 @@ maquettes : `pnpm dev` le sert sous `/lab/` (Vite sert toute page HTML de sa rac
 ne l'ajoute à ses entrées que sous `--mode mockups`. Le greffon `occulis-lab-redirect`
 (`serve`) renvoie `/lab` vers `/lab/` : sans la barre finale, le repli SPA servirait la page du
 jeu, noire sans serveur derrière. La page ne fait que monter
-`packages/ui/previews/main.tsx` (`lab/main.ts`) ; le client ne l'importe jamais. Elle **appelle**
+`packages/ui/previews/main.ts` (`lab/main.ts`) ; le client ne l'importe jamais. Elle **appelle**
 `mountLab()` au lieu d'importer le module pour son effet : `@occulis/ui` se déclare sans effet
 de bord hors CSS (`sideEffects`), et Rollup élaguait l'import — la page construite, servie par
 wrangler, restait noire quand `pnpm dev`, qui n'élague rien, l'affichait. Voir
@@ -1675,7 +1865,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
     dans l'interface la ferait diverger de `applyAction()`.
 11. **Rien de ce qui est hors LOS ne doit apparaître dans l'interface.**
 12. **`view/` et `game/` restent purs**, ainsi que `net/session.ts`, `ui/flow.ts`,
-    `ui/command.ts` et `ui/messages.ts`. Y importer PixiJS ou le DOM rendrait leurs tests
+    `ui/messages.ts`, `ui/piece-info-model.ts` et `hud/model.ts`. Y importer PixiJS ou le DOM rendrait leurs tests
     impossibles sans navigateur.
 13. **L'hypothèse locale ne doit jamais escamoter un coup légal.** Elle peut en proposer
     trop — le serveur refuse — jamais trop peu.
@@ -1701,7 +1891,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 
 ## Tests
 
-238 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
+339 tests, sous Node, sans navigateur : `pnpm test` (ou `pnpm --filter @occulis/web test`).
 
 | Fichier                                     | Ce qui est verrouillé                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1713,8 +1903,7 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
 | `apps/web/src/ui/flow.test.ts`              | Départ sur le formulaire, menu ouvert à la connexion, retour au formulaire à la déconnexion **même en partie**, identité reconfirmée sans effet, code affiché dans l'attente, `hosting` en retard ignoré, **fenêtre d'acceptation ouverte depuis la seule attente rapide**, retour en attente ou au menu à sa chute, déploiement avant la partie et jamais après, équipes depuis le menu, attente d'un ami défié nommée, entrée en spectateur        |
 | `apps/web/src/social/model.test.ts`         | Présence allumée et éteinte, inconnu ignoré, **non-lus comptés pour les messages reçus seulement**, relecture demandée sur un changement de relation, un défi reçu par ami et retiré à l'annulation, défi envoyé oublié au refus, **défis d'un ancien ami écartés à la relecture**, libellé de présence, traduction des refus, **relation à un joueur lue dans la liste**                                                                            |
 | `apps/web/src/game/selection.test.ts`       | **Toute destination affichée est applicable par `core`**, exclusion des cases occupées, frappe sur place, machine à états complète de `resolveClick`                                                                                                                                                                                                                                                                                                 |
-| `apps/web/src/ui/command.test.ts`           | Grammaire complète et résolution coordonnée → pièce                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `apps/web/src/ui/messages.test.ts`          | `describeTile()`, dont l'absence de fuite d'information sur les pièces                                                                                                                                                                                                                                                                                                                                                                               |
+| `apps/web/src/hud/model.test.ts`            | Plaques, tour (« À vous », échec, coup envoyé, partie finie), fiche et portée, **journal tel que vu** (« ? », « coup hors de vue », perte), compteur de nulle **seulement près du seuil**                                                                                                                                                                                                                                                            |
 | `apps/web/src/game/hypothesis.test.ts`      | L'hypothèse ne contient que le visible et reporte la fin de partie annoncée par la vue                                                                                                                                                                                                                                                                                                                                                               |
 | `apps/web/src/game/online-match.test.ts`    | **`play()` n'écrit rien** — ni position, ni trait —, n'envoie pas un coup refusé localement, laisse rejouer après un refus, et n'avance qu'à réception de la vue                                                                                                                                                                                                                                                                                     |
 | `apps/web/src/game/movement-diff.test.ts`   | Le déplacement lu entre deux vues, y compris celui de l'adversaire ; une pièce qui entre ou sort de la LOS n'est pas animée                                                                                                                                                                                                                                                                                                                          |
@@ -1736,16 +1925,11 @@ maquettes continuent de résoudre, la redirection étant transparente pour le na
   adversaire qui réfléchit d'un adversaire parti.
 - **Aucun marquage des montées.** `MoveOption.kind` distingue `walk` de `climb` — grimper
   consomme le tour entier — et `STATE.climb` est déjà un token, mais `selectionFor()`
-  filtre `legalActions()`, qui ne porte pas cette distinction.
-- **Aucune capture, ni au clic ni au clavier** : la règle est retirée du moteur
-  (`docs/design.md` section 3.1). Il n'y a donc ni cible à désigner, ni animation de prise,
-  ni marquage de case frappable — le token `STATE.threat` du thème n'a plus d'emploi.
-- **Aucun affichage d'échec ni de fin de partie automatique** : la règle « échecs strict »
-  et les nulles sont retirées (`docs/design.md` 7.1 et 7.2). L'état du tour n'annonce plus
-  `ÉCHEC`, et `describeOutcome()` ne connaît que l'abandon.
-- **Aucune silhouette propre à chaque type de pièce** : seule l'initiale du type, portée
-  par la pièce, les distingue (point ouvert de design sur la silhouette par rôle).
-- **Aucun historique de saisie** dans le champ de commande.
+  filtre `legalActions()`, qui ne porte pas cette distinction. La légende de l'ATH ne
+  parle donc pas de montée.
+- **Aucune animation de prise** : la pièce prise disparaît de la vue suivante sans effet
+  propre. La case de prise est cernée, l'échec annoncé dans l'ATH, mais le roi en
+  échec n'est pas encore marqué sur le plateau.
 - **Aucune reprise de partie depuis le menu.** Quitter une partie referme le canal ; rien
   ne propose d'y revenir, alors que le Durable Object la tient toujours.
 - **Aucun partage du code autrement qu'à la main** : ni lien joignable, ni invitation.

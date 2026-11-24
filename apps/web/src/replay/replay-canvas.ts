@@ -1,6 +1,6 @@
 import type { Board, Coord } from "@occulis/core";
-import type { AdminFrame } from "@occulis/protocol";
-import { METRICS, look } from "../theme/theme.js";
+import type { AdminFrame, AdminLogEntry } from "@occulis/protocol";
+import { METRICS, MOTION_FX, look } from "@occulis/board/theme";
 import {
   type Drawable,
   drawPiece,
@@ -8,17 +8,26 @@ import {
   fitPixelCanvas,
   strokeQuad,
   terrainDrawables,
-} from "../render/canvas2d/paint.js";
+} from "@occulis/board/paint";
 import { cssColor } from "@occulis/ui/tokens";
 import { type Camera, createCamera, pivotOf, settle, toProjection, turn } from "../view/camera.js";
 import { type MoveAnimation, advance, positionOf, startMove } from "../view/animation.js";
-import { compareDepth, depthOf, project, tileQuad } from "../view/iso.js";
-import { centerOffset, fitScale, movesBetween, type Perspective } from "./replay.js";
+import { compareDepth, depthOf, project, tileQuad } from "@occulis/board/iso";
+import { trapSpringAt } from "../view/effects.js";
+import {
+  type Perspective,
+  type ReplayTrapEvent,
+  centerOffset,
+  fitScale,
+  movesBetween,
+  trapEventsAt,
+} from "./replay.js";
+import { paintTrap, paintTrapLaying, paintTrapSpring, paintTrapSprung } from "./trap-paint.js";
 
 /**
  * Le plateau du rejeu, dessiné en Canvas 2D et non en PixiJS : le back-office ne charge
  * pas le moteur. Il reprend pourtant **la même géométrie** que le jeu — projection
- * (`view/iso.ts`), caméra et quart de tour amorti (`view/camera.ts`), glissement des
+ * (`@occulis/board/iso`), caméra et quart de tour amorti (`view/camera.ts`), glissement des
  * pièces (`view/animation.ts`), métriques et code couleur (`theme.ts`) — pour que ce
  * que l'administrateur voit soit ce que les joueurs ont vu.
  *
@@ -38,11 +47,29 @@ export interface ReplayCanvas {
 
 const PADDING = 28;
 
+/**
+ * Un effet de piège en cours. Pour un déclenchement, `travel` est le trajet de la pièce
+ * jusqu'au piège : elle le parcourt, puis les mâchoires se referment sur elle.
+ */
+interface TrapEffect {
+  readonly event: ReplayTrapEvent;
+  readonly travel: MoveAnimation | undefined;
+  elapsed: number;
+}
+
+/** Combien de temps l'effet occupe le plateau, trajet compris. */
+function lengthOf(effect: TrapEffect): number {
+  if (effect.event.kind === "laid") return MOTION_FX.trapLayMs;
+  return (effect.travel?.duration ?? 0) + MOTION_FX.trapSnapMs;
+}
+
 export function mountReplay(
   canvas: HTMLCanvasElement,
   board: Board,
   frames: readonly AdminFrame[],
+  log: readonly AdminLogEntry[],
 ): ReplayCanvas {
+  const match = { frames, log };
   const context = canvas.getContext("2d");
   const base = {
     tileWidth: METRICS.tileWidth,
@@ -55,6 +82,7 @@ export function mountReplay(
   let perspective: Perspective = "all";
   let camera: Camera = createCamera(base.pivot, { x: 0, y: 0 });
   let moving: MoveAnimation[] = [];
+  let trapEffects: TrapEffect[] = [];
   let frameRequest: number | undefined;
   let last = 0;
 
@@ -80,8 +108,10 @@ export function mountReplay(
     last = now;
     camera = settle(camera, delta);
     moving = moving.flatMap((animation) => advance(animation, delta) ?? []);
+    for (const effect of trapEffects) effect.elapsed += delta;
+    trapEffects = trapEffects.filter((effect) => effect.elapsed < lengthOf(effect));
     draw();
-    if (moving.length > 0 || camera.rotation !== camera.targetRotation)
+    if (moving.length > 0 || trapEffects.length > 0 || camera.rotation !== camera.targetRotation)
       frameRequest = requestAnimationFrame(tick);
     else {
       frameRequest = undefined;
@@ -110,6 +140,14 @@ export function mountReplay(
     const previous = frames[index - 1];
     const moves = previous === undefined ? [] : movesBetween(previous, frame);
     const gliding = new Map(moving.map((animation) => [animation.pieceId, positionOf(animation)]));
+    const events = trapEventsAt(match, index);
+    // Un piège qu'on est en train de voir se refermer n'a pas besoin de sa marque figée.
+    const springing = trapEffects.some((effect) => effect.event.kind === "sprung");
+    /** Ce que le camp regardé savait d'un piège : le sien, ou tout après la partie. */
+    const alphaOf = (owner: string) =>
+      perspective === "all" || owner === perspective
+        ? look().pieces.alphaVisible
+        : look().pieces.alphaGhost;
 
     // Un seul ordre du peintre pour le relief et les pièces, comme `scene.ts` : une pièce
     // derrière un mur doit être recouverte par lui.
@@ -133,16 +171,126 @@ export function mountReplay(
           drawPiece(
             context,
             project(coord, height, proj),
-            piece.owner,
+            piece,
             seen ? look().pieces.alphaVisible : look().pieces.alphaGhost,
             proj,
           ),
       });
     }
 
+    // La pièce happée par un piège : absente de l'image, elle marche jusqu'au piège puis
+    // tremble et se dissout pendant que les mâchoires se referment.
+    for (const effect of trapEffects) {
+      if (effect.event.kind !== "sprung") continue;
+      const { victim, to } = effect.event;
+      const travelling = effect.travel !== undefined && effect.elapsed < effect.travel.duration;
+      if (travelling && effect.travel !== undefined) {
+        const at = positionOf({ ...effect.travel, elapsed: effect.elapsed });
+        drawables.push({
+          depth: { ...depthOf(at.coord, at.height, proj), height: at.height + 0.5 },
+          paint: () =>
+            drawPiece(
+              context,
+              project(at.coord, at.height, proj),
+              victim,
+              alphaOf(victim.owner),
+              proj,
+            ),
+        });
+        continue;
+      }
+      const spring = trapSpringAt(
+        effect.elapsed - (effect.travel?.duration ?? 0),
+        MOTION_FX.trapSnapMs,
+      );
+      if (spring === undefined || spring.victimAlpha <= 0) continue;
+      const height = board.heightAt(to) ?? 0;
+      const base = project(to, height, proj);
+      drawables.push({
+        depth: { ...depthOf(to, height, proj), height: height + 0.5 },
+        paint: () =>
+          drawPiece(
+            context,
+            { x: base.x + spring.shake * 2, y: base.y - spring.rise * 6 },
+            victim,
+            alphaOf(victim.owner) * spring.victimAlpha,
+            proj,
+          ),
+      });
+    }
+
+    // Les pièges sont peints au sol, dans l'ordre du peintre : sur leur case, sous la
+    // pièce qui s'y tient, et cachés par un mur placé devant.
+    const onGround = (coord: Coord, paint: () => void) => {
+      const height = board.heightAt(coord) ?? 0;
+      drawables.push({ depth: { ...depthOf(coord, height, proj), height: height + 0.25 }, paint });
+    };
+
+    // Celui qu'on est en train de poser est dessiné par son effet.
+    const laying = new Set(
+      trapEffects.flatMap((effect) =>
+        effect.event.kind === "laid" ? [`${effect.event.trap.x},${effect.event.trap.y}`] : [],
+      ),
+    );
+    for (const trap of frame.traps) {
+      const coord = { x: trap.x, y: trap.y };
+      if (laying.has(`${trap.x},${trap.y}`)) continue;
+      onGround(coord, () => paintTrap(context, board, coord, proj, alphaOf(trap.owner)));
+    }
+
+    for (const event of events) {
+      if (event.kind === "laid") {
+        const coord = { x: event.trap.x, y: event.trap.y };
+        const quad = tileQuad(coord, board.heightAt(coord) ?? 0, proj);
+        onGround(coord, () => fillQuad(context, quad, cssColor(look().selection.trap, 0.12)));
+      } else if (!springing) {
+        onGround(event.to, () => paintTrapSprung(context, board, event.to, proj));
+      }
+    }
+
+    for (const effect of trapEffects) {
+      const { event } = effect;
+      if (event.kind === "laid") {
+        const coord = { x: event.trap.x, y: event.trap.y };
+        onGround(coord, () => paintTrapLaying(context, board, coord, effect.elapsed, proj));
+        continue;
+      }
+      const sinceArrival = effect.elapsed - (effect.travel?.duration ?? 0);
+      const { trap, to } = event;
+      if (sinceArrival >= 0) {
+        onGround(to, () => paintTrapSpring(context, board, to, sinceArrival, proj));
+      } else if (trap !== undefined) {
+        // Le piège attend la pièce : on le montre encore, de la couleur de son poseur.
+        onGround(to, () => paintTrap(context, board, to, proj, alphaOf(trap.owner)));
+      }
+    }
+
     drawables.sort((a, b) => compareDepth(a.depth, b.depth));
 
     for (const drawable of drawables) drawable.paint();
+
+    // Le trajet d'une pièce happée, par-dessus le relief comme celui d'un coup ordinaire.
+    for (const event of events) {
+      if (event.kind !== "sprung") continue;
+      const fromHeight = board.heightAt(event.from) ?? 0;
+      const toHeight = board.heightAt(event.to) ?? 0;
+      const a = project(event.from, fromHeight, proj);
+      const b = project(event.to, toHeight, proj);
+      context.setLineDash([2 / ratio, 2 / ratio]);
+      strokeQuad(
+        context,
+        tileQuad(event.from, fromHeight, proj),
+        cssColor(look().state.threat, 0.7),
+        1,
+      );
+      context.beginPath();
+      context.moveTo(a.x, a.y);
+      context.lineTo(b.x, b.y);
+      context.strokeStyle = cssColor(look().players[event.victim.owner], 0.6);
+      context.lineWidth = 1 / ratio;
+      context.stroke();
+      context.setLineDash([]);
+    }
 
     // Le dernier coup se dessine par-dessus le relief : dessous, son pointillé se perdait
     // dans les traits blancs des cases. Départ en pointillé, trajet dans la couleur du
@@ -175,6 +323,12 @@ export function mountReplay(
     }
   }
 
+  function effectOf(event: ReplayTrapEvent): TrapEffect {
+    const travel =
+      event.kind === "sprung" ? startMove(event.victim.id, event.from, event.to, board) : undefined;
+    return { event, travel, elapsed: 0 };
+  }
+
   const observer = new ResizeObserver(resize);
   observer.observe(canvas);
 
@@ -183,14 +337,19 @@ export function mountReplay(
       if (next === index || frames[next] === undefined) return;
       const from = frames[index];
       const to = frames[next];
+      // Le piège du coup montré s'anime quand on avance jusqu'à lui ; en revenant en
+      // arrière, l'image se montre telle qu'elle est.
+      const forward = next > index;
       index = next;
       moving = [];
+      trapEffects = [];
       if (animate && from !== undefined && to !== undefined && !reducedMotion()) {
         moving = movesBetween(from, to).map((move) =>
           startMove(move.pieceId, move.from, move.to, board),
         );
+        if (forward) trapEffects = trapEventsAt(match, next).map((event) => effectOf(event));
       }
-      if (moving.length > 0) animateLoop();
+      if (moving.length > 0 || trapEffects.length > 0) animateLoop();
       else draw();
     },
     setPerspective(next) {

@@ -96,7 +96,7 @@ voile est verrouillé par `veil.test.ts`.
 Des durées sont encore écrites en dur hors des tokens : `OPEN_MS` / `CLOSE_MS`
 (`window-reveal.ts`), `VEIL_MS` (`veil.ts`, **verrouillé**), une dizaine de littéraux dans
 `styles.css` (`100ms`, `120ms`, `0.2s`, `0.22s`, `0.16s`, `0.4s`, `1.4s`, scintillement
-`4.7s` / `6.1s`), et la table `MOTION_FX` du plateau (`apps/web/src/theme/theme.ts`). Le
+`4.7s` / `6.1s`), et la table `MOTION_FX` du plateau (`packages/board/src/theme.ts`). Le
 `prefers-reduced-motion` actuel de `styles.css` ramène **toutes** les durées à 0,01 ms, fondus
 compris, alors que la proposition garde des fondus courts sous `still` (voir questions).
 
@@ -199,7 +199,7 @@ prendrait l'effet sur le plateau : le même fragment en filtre PixiJS.
   plateau en renverserait la lecture. Seulement en éclair.
 - **Sort / capacité** : la zone d'effet d'une capacité, le jour où un roster existe (point
   ouvert 12) — l'effet « suivre une zone » est fait pour ça.
-- **Fin de partie** : l'inversion part de la maîtresse vaincue et couvre le plateau.
+- **Fin de partie** : l'inversion part du roi vaincu et couvre le plateau.
 
 ---
 
@@ -208,28 +208,28 @@ prendrait l'effet sur le plateau : le même fragment en filtre PixiJS.
 Priorités : **P0** structure le vocabulaire, à faire en premier ; **P1** attendu à
 l'intégration ; **P2** finition.
 
-| Écran / composant               | Intention, en une phrase                                                                                                                                       | Priorité | État                                                               |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------ |
-| **Plateau — sélection**         | La pièce s'élève et ses destinations s'ouvrent en cascade depuis elle.                                                                                         | P0       | Existe en PixiJS ; **prototype 1**                                 |
-| **Plateau — déplacement**       | Un saut en arc avec rémanences, une onde à la retombée : le coup se voit, puis s'efface.                                                                       | P0       | Existe ; **prototype 1**                                           |
-| **Fog et ligne de vue**         | La vue se déploie en vague depuis la pièce qui voit et se retire d'un bloc ; un adversaire perdu laisse un fantôme pointillé.                                  | P0       | Existe ; **prototype 1**                                           |
-| Plateau — adversaire qui paraît | Il se matérialise à l'instant où la vague l'atteint, jamais avant.                                                                                             | P0       | **Prototype 1**                                                    |
-| Silhouettes par rôle            | Le rôle se lit à la forme seule — œil (maîtresse), losange et pointe (capacité), mât penché (pion).                                                            | P0       | **Prototype 1** (légende) ; provisoire, roster non acté            |
-| Plateau — attaque               | Un trait d'os relie l'attaquant à la cible, puis une inversion papier éclair sur la case.                                                                      | P1       | Non prototypé : la capture est retirée du moteur (point ouvert 13) |
-| Plateau — attaque différée      | Un glyphe se pose sur la case visée et se déchiffre à la résolution.                                                                                           | P2       | Dépend des points ouverts 2 et 3                                   |
-| Tour qui revient                | L'œil des pièces bat une fois, en vague du fond vers l'avant.                                                                                                  | P1       | Existe en PixiJS                                                   |
-| Entrée du plateau               | Le plateau monte du vide, case par case.                                                                                                                       | P2       | Existe                                                             |
-| **Transitions d'écran**         | Partie trouvée → déploiement → partie passent sous le papier, qui part du geste et se résorbe en trame ; le reste garde le voile acté et le fondu entre pages. | P0       | **Prototype 2**                                                    |
-| **File d'attente**              | Une couronne de glyphes tourne très lentement autour d'un œil qui respire ; trouvé, elle se referme et le statut se déchiffre.                                 | P0       | **Prototype 3**                                                    |
-| Partie trouvée (15 s)           | L'anneau se vide ; à l'acceptation, le papier part du bouton.                                                                                                  | P1       | Prototype 2 en couvre la sortie                                    |
-| Salons privés                   | Le code de cinq caractères se pose lettre à lettre depuis ses glyphes, une seule fois — il reste lisible et copiable dès la première image.                    | P2       | —                                                                  |
-| Menu                            | Le mot-symbole se déchiffre à la première visite de la session ; les entrées ne bougent pas.                                                                   | P1       | —                                                                  |
-| Déploiement                     | Une pièce posée se matérialise dans sa case ; la zone de pose respire.                                                                                         | P1       | —                                                                  |
-| Chat, messages privés           | Un message arrive d'un fondu et d'une montée de `--occ-dist-rise` ; « en train d'écrire » = trois glyphes qui frémissent.                                      | P2       | —                                                                  |
-| Amis — présence                 | Le point « en ligne » respire lentement (boucle, arrêtée en `calm`).                                                                                           | P2       | —                                                                  |
-| Profil, historique              | Le replay réutilise la chorégraphie du plateau, au tempo du lecteur.                                                                                           | P1       | —                                                                  |
-| Fenêtres, toasts                | Inchangés : `revealWindow()` acté.                                                                                                                             | —        | Existe                                                             |
-| Fin de partie                   | L'inversion papier part de la maîtresse vaincue ; le résultat se déchiffre.                                                                                    | P1       | —                                                                  |
+| Écran / composant               | Intention, en une phrase                                                                                                                                       | Priorité | État                                                    |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------- |
+| **Plateau — sélection**         | La pièce s'élève et ses destinations s'ouvrent en cascade depuis elle.                                                                                         | P0       | Existe en PixiJS ; **prototype 1**                      |
+| **Plateau — déplacement**       | Un saut en arc avec rémanences, une onde à la retombée : le coup se voit, puis s'efface.                                                                       | P0       | Existe ; **prototype 1**                                |
+| **Fog et ligne de vue**         | La vue se déploie en vague depuis la pièce qui voit et se retire d'un bloc ; un adversaire perdu laisse un fantôme pointillé.                                  | P0       | Existe ; **prototype 1**                                |
+| Plateau — adversaire qui paraît | Il se matérialise à l'instant où la vague l'atteint, jamais avant.                                                                                             | P0       | **Prototype 1**                                         |
+| Silhouettes par rôle            | Le rôle se lit à la forme seule — œil (roi), losange et pointe (capacité), mât penché (pion).                                                                  | P0       | **Prototype 1** (légende) ; provisoire, roster non acté |
+| Plateau — attaque               | Un trait d'os relie l'attaquant à la cible, puis une inversion papier éclair sur la case.                                                                      | P1       | Non prototypé ; capture en place depuis `provisional-3` |
+| Plateau — attaque différée      | Un glyphe se pose sur la case visée et se déchiffre à la résolution.                                                                                           | P2       | Sans objet : attaque à distance écartée le 2026-10-27   |
+| Tour qui revient                | L'œil des pièces bat une fois, en vague du fond vers l'avant.                                                                                                  | P1       | Existe en PixiJS                                        |
+| Entrée du plateau               | Le plateau monte du vide, case par case.                                                                                                                       | P2       | Existe                                                  |
+| **Transitions d'écran**         | Partie trouvée → déploiement → partie passent sous le papier, qui part du geste et se résorbe en trame ; le reste garde le voile acté et le fondu entre pages. | P0       | **Prototype 2**                                         |
+| **File d'attente**              | Une couronne de glyphes tourne très lentement autour d'un œil qui respire ; trouvé, elle se referme et le statut se déchiffre.                                 | P0       | **Prototype 3**                                         |
+| Partie trouvée (15 s)           | L'anneau se vide ; à l'acceptation, le papier part du bouton.                                                                                                  | P1       | Prototype 2 en couvre la sortie                         |
+| Salons privés                   | Le code de cinq caractères se pose lettre à lettre depuis ses glyphes, une seule fois — il reste lisible et copiable dès la première image.                    | P2       | —                                                       |
+| Menu                            | Le mot-symbole se déchiffre à la première visite de la session ; les entrées ne bougent pas.                                                                   | P1       | —                                                       |
+| Déploiement                     | Une pièce posée se matérialise dans sa case ; la zone de pose respire.                                                                                         | P1       | —                                                       |
+| Chat, messages privés           | Un message arrive d'un fondu et d'une montée de `--occ-dist-rise` ; « en train d'écrire » = trois glyphes qui frémissent.                                      | P2       | —                                                       |
+| Amis — présence                 | Le point « en ligne » respire lentement (boucle, arrêtée en `calm`).                                                                                           | P2       | —                                                       |
+| Profil, historique              | Le replay réutilise la chorégraphie du plateau, au tempo du lecteur.                                                                                           | P1       | —                                                       |
+| Fenêtres, toasts                | Inchangés : `revealWindow()` acté.                                                                                                                             | —        | Existe                                                  |
+| Fin de partie                   | L'inversion papier part du roi vaincu ; le résultat se déchiffre.                                                                                              | P1       | —                                                       |
 
 Les trois prototypes retenus fixent le vocabulaire que les autres reprennent : **le coup**
 (sélection, saut, vague, matérialisation, fantôme), **le seuil** (papier + déchiffrement),

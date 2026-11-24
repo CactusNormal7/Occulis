@@ -1,0 +1,70 @@
+---
+/**
+ * Les pictogrammes des règles : une grille de 9 × 9 cases vue de dessus (de côté pour la
+ * hauteur), dessinée comme le plateau — l'os pour la géométrie, la couleur des camps pour
+ * les pièces. Les cases `wave` s'éclairent l'une après l'autre quand le pictogramme entre
+ * à l'écran (`scripts/reveal.ts`), comme la ligne de vue du jeu. Au survol, chacun joue sa
+ * règle (`glyph--<nom>` dans `site.css`). Décoratifs : le texte de la règle dit tout.
+ */
+type Name = "sight" | "height" | "ghost" | "turns";
+type Cell = readonly [number, number];
+
+interface Props {
+  name: string;
+}
+
+const C = 8;
+const cells = (from: Cell, to: Cell): Cell[] => {
+  const out: Cell[] = [];
+  for (let x = from[0]; x <= to[0]; x += 1) for (let y = from[1]; y <= to[1]; y += 1) out.push([x, y]);
+  return out;
+};
+
+interface Drawing {
+  /** Cases éclairées, dans l'ordre où la vue les atteint. */
+  wave?: Cell[];
+  wall?: Cell[];
+  dim?: Cell[];
+  a?: Cell[];
+  b?: Cell[];
+  ghost?: Cell[];
+}
+
+const sightWave = [2, 3, 4, 5].flatMap((x) => [3, 4, 5].map((y): Cell => [x, y]));
+const DRAWINGS: Record<Name, Drawing> = {
+  sight: { a: [[1, 4]], wave: sightWave, wall: cells([6, 2], [6, 6]), dim: cells([7, 3], [8, 5]) },
+  height: {
+    wall: [...cells([1, 7], [1, 7]), ...cells([2, 5], [3, 7]), ...cells([5, 7], [5, 7])],
+    a: [[3, 4]],
+    b: [[7, 7]],
+    wave: [[4, 5], [5, 6], [6, 6]],
+  },
+  ghost: { a: [[1, 6]], wall: cells([4, 2], [4, 6]), ghost: [[6, 3]], dim: cells([5, 2], [8, 6]) },
+  turns: { a: [[2, 2]], b: [[6, 6]], wave: [[3, 3], [4, 4], [5, 5]] },
+};
+
+const drawing = DRAWINGS[Astro.props.name as Name];
+if (drawing === undefined) throw new Error(`Pictogramme inconnu : ${Astro.props.name}`);
+// Les points de la grille en un seul tracé : 81 carrés, un seul élément.
+const dots = cells([0, 0], [8, 8])
+  .map(([x, y]) => `M${x * C + 3} ${y * C + 3}h2v2h-2z`)
+  .join("");
+---
+
+<svg class={`glyph glyph--${Astro.props.name}`} viewBox="0 0 72 72" width="72" height="72" aria-hidden="true" focusable="false">
+  <path class="glyph__dot" d={dots} />
+  {drawing.dim?.map(([x, y]) => <rect class="glyph__dim" x={x * C + 1} y={y * C + 1} width="6" height="6" />)}
+  {
+    drawing.wave?.map(([x, y], index) => (
+      <rect class="glyph__wave" style={`--i:${index}`} x={x * C + 1} y={y * C + 1} width="6" height="6" />
+    ))
+  }
+  {drawing.wall?.map(([x, y]) => <rect class="glyph__wall" x={x * C} y={y * C} width="8" height="8" />)}
+  {drawing.a?.map(([x, y]) => <rect class="glyph__a" x={x * C + 1} y={y * C + 1} width="6" height="6" />)}
+  {drawing.b?.map(([x, y]) => <rect class="glyph__b" x={x * C + 1} y={y * C + 1} width="6" height="6" />)}
+  {
+    drawing.ghost?.map(([x, y]) => (
+      <rect class="glyph__ghost" x={x * C + 1.5} y={y * C + 1.5} width="5" height="5" />
+    ))
+  }
+</svg>

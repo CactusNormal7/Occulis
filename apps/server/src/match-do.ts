@@ -19,6 +19,7 @@ import {
   frozenScenario,
   validateTeam,
   viewFor,
+  winnerOf,
 } from "@occulis/core";
 import {
   HEARTBEAT,
@@ -105,6 +106,8 @@ const UNRECORDED = "unrecorded-outcome";
  * le cache : sinon l'alarme du battement de cœur la croirait en cours à chaque réveil.
  */
 const FINISHED = "finished";
+
+type OpponentPresence = Extract<ServerMessage, { readonly kind: "opponent-presence" }>;
 
 function absenceKey(player: PlayerId): string {
   return `absent:${player}`;
@@ -213,12 +216,15 @@ export class MatchDO extends DurableObject<Env> {
     // Revenu à temps : le forfait qui courait depuis sa déconnexion tombe. L'adversaire,
     // s'il n'est pas là sans qu'aucun départ ait été noté — une partie d'avant le forfait —,
     // commence à compter maintenant : sinon le joueur revenu l'attendrait à jamais.
+    const wasAbsent = (await this.ctx.storage.get<number>(absenceKey(player))) !== undefined;
     await this.ctx.storage.delete(absenceKey(player));
+    if (wasAbsent) await this.announcePresence(player);
     const other = opponentOf(player);
     if (
       !this.connected(other) &&
       (await this.ctx.storage.get<number>(absenceKey(other))) === undefined
     ) {
+      // Pas d'annonce ici : le seul à l'apprendre est ce joueur, et son `hello` la lui dira.
       await this.ctx.storage.put(absenceKey(other), Date.now());
     }
     await this.scheduleAlarm();
@@ -251,6 +257,7 @@ export class MatchDO extends DurableObject<Env> {
         board: [...(await this.scenario()).board().allTiles()],
         rulesetVersion: config.rulesetVersion,
       });
+      await this.sendPlayers(ws, player);
       this.send(ws, { kind: "spectators", count: this.ctx.getWebSockets(watchTag(player)).length });
       if (await this.deploying()) await this.sendDeployment(ws, player);
       else await this.sendView(ws, player);
@@ -296,7 +303,40 @@ export class MatchDO extends DurableObject<Env> {
     if (this.connected(player, ws)) return;
     if ((await this.ctx.storage.get<number>(absenceKey(player))) !== undefined) return;
     await this.ctx.storage.put(absenceKey(player), Date.now());
+    await this.announcePresence(player);
     await this.scheduleAlarm();
+  }
+
+  /**
+   * Les plaques des deux camps, vues depuis `self`, puis l'absence en cours du camp d'en
+   * face s'il y en a une : à la reconnexion, l'ATH retrouve son alerte et son compte à
+   * rebours. Sa présence n'est pas redite — un client part du principe qu'il est là.
+   */
+  private async sendPlayers(ws: WebSocket, self: PlayerId): Promise<void> {
+    const config = await this.config();
+    const other = opponentOf(self);
+    this.send(ws, { kind: "players", self: cardOf(config, self), opponent: cardOf(config, other) });
+    const presence = await this.presenceOf(other);
+    if (!presence.present) this.send(ws, presence);
+  }
+
+  /** Dit au camp d'en face, joueur et spectateurs, que `player` vient de partir ou de revenir. */
+  private async announcePresence(player: PlayerId): Promise<void> {
+    const presence = await this.presenceOf(player);
+    const other = opponentOf(player);
+    for (const socket of this.ctx.getWebSockets(other)) this.send(socket, presence);
+    for (const socket of this.ctx.getWebSockets(watchTag(other))) this.send(socket, presence);
+  }
+
+  /** La présence de `player` telle que son adversaire la reçoit (`opponent-presence`). */
+  private async presenceOf(player: PlayerId): Promise<OpponentPresence> {
+    const since = await this.ctx.storage.get<number>(absenceKey(player));
+    if (since === undefined) return { kind: "opponent-presence", present: true };
+    return {
+      kind: "opponent-presence",
+      present: false,
+      forfeitInMs: Math.max(0, since + ABSENCE_MS - Date.now()),
+    };
   }
 
   /**
@@ -325,6 +365,7 @@ export class MatchDO extends DurableObject<Env> {
       board: [...(await this.scenario()).board().allTiles()],
       rulesetVersion: config.rulesetVersion,
     });
+    await this.sendPlayers(ws, side);
     // Pendant le déploiement, aucune position n'existe encore — et la zone de l'ami
     // trahirait ses choix : le spectateur attend la première vue, que `start` diffusera.
     if (await this.deploying()) return;
@@ -559,6 +600,7 @@ export class MatchDO extends DurableObject<Env> {
       if (this.connected(seat)) continue;
       if ((await this.ctx.storage.get<number>(absenceKey(seat))) === undefined) {
         await this.ctx.storage.put(absenceKey(seat), now);
+        await this.announcePresence(seat);
       }
     }
     await this.scheduleAlarm();
@@ -697,7 +739,10 @@ export class MatchDO extends DurableObject<Env> {
       .bind(A, B)
       .all<{ id: string; elo: number }>();
     const elo = (id: string) => rows.results.find((row) => row.id === id)?.elo ?? INITIAL_RATING;
-    const changes = ratingChanges(elo(A), elo(B), state.outcome.winner === "A" ? 1 : 0);
+    // Une nulle vaut un demi-point : l'Elo bouge quand même, vers le moins bien classé.
+    const winner = winnerOf(state.outcome);
+    const scoreA = winner === undefined ? 0.5 : winner === "A" ? 1 : 0;
+    const changes = ratingChanges(elo(A), elo(B), scoreA);
     const bump = db.prepare(
       `UPDATE players SET elo = elo + ? WHERE id = ?
          AND EXISTS (SELECT 1 FROM matches WHERE id = ? AND finished_at IS NULL)`,

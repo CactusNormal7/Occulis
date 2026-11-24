@@ -13,9 +13,9 @@ import { deployTeams } from "./team.js";
  * exactement les mêmes vues, mémoire fantôme comprise — sinon un joueur verrait sa
  * connaissance changer au réveil du Durable Object.
  */
-function startingPosition() {
-  const scenario = scenarioFor(DEFAULT_SCENARIO);
-  const ruleset = rulesetFor(CURRENT_RULESET_VERSION);
+function startingPosition(version: string, map: string) {
+  const scenario = scenarioFor(map);
+  const ruleset = rulesetFor(version);
   if (scenario.deployment === undefined) throw new Error("carte sans déploiement");
   const pieces = deployTeams(ruleset, scenario.deployment, scenario.deployment.defaultTeams);
   if (!pieces.ok) throw new Error("équipes par défaut invalides");
@@ -31,12 +31,13 @@ const views = (memory: MatchMemory) =>
   );
 
 describe("MatchMemory : avancer coup par coup ou rejouer le log", () => {
-  it("rend les mêmes vues aux deux camps, tous les 20 coups", () => {
-    const start = startingPosition();
+  /** Joue jusqu'à `limit` coups, ou jusqu'à la fin de la partie, en comparant au rejeu. */
+  function playAndCompare(version: string, limit: number, map = DEFAULT_SCENARIO): MatchMemory {
+    const start = startingPosition(version, map);
     let live = startMemory(start);
     const log: Action[] = [];
     // Un choix de coup fixe, mais varié : pas toujours le premier coup légal.
-    for (let move = 0; move < 120; move++) {
+    for (let move = 0; move < limit; move++) {
       const legal = legalActions(live.state);
       const action = legal[(move * 7) % legal.length];
       if (action === undefined) break;
@@ -52,7 +53,26 @@ describe("MatchMemory : avancer coup par coup ou rejouer le log", () => {
       if (!replayed.ok) throw new Error(`rejeu interrompu au coup ${move}`);
       expect(views(replayed.value)).toBe(views(live));
     }
-    expect(log.length).toBe(120);
+    const replayed = replayMemory(start, log);
+    if (!replayed.ok) throw new Error("rejeu final interrompu");
+    expect(views(replayed.value)).toBe(views(live));
+    return live;
+  }
+
+  it("rend les mêmes vues aux deux camps, tous les 20 coups", () => {
+    const live = playAndCompare(CURRENT_RULESET_VERSION, 120);
+    // Sous les règles courantes, une partie jouée au hasard finit d'elle-même : par un
+    // mat, un pat ou une nulle. Elle ne s'arrête jamais faute de coup sans issue.
+    expect(live.state.history.length === 120 || live.state.outcome !== null).toBe(true);
+  });
+
+  it("rejoue à l'identique une partie d'avant la prise : aucune pièce ne tombe, rien ne finit", () => {
+    // `breach-1` : son équipe par défaut n'a que des types que connaît `provisional-2`.
+    const live = playAndCompare("provisional-2", 120, "breach-1");
+    expect(live.state.history.length).toBe(120);
+    expect(live.state.outcome).toBeNull();
+    expect(live.state.pieces.size).toBe(12);
+    expect(live.state.history.every((record) => record.captured === undefined)).toBe(true);
   });
 });
 
@@ -65,7 +85,7 @@ describe("MatchMemory : avancer coup par coup ou rejouer le log", () => {
  */
 describe("la vue transmise ne trahit aucune pièce cachée", () => {
   it("se recalcule entièrement depuis ce que le joueur connaît", () => {
-    let memory = startMemory(startingPosition());
+    let memory = startMemory(startingPosition(CURRENT_RULESET_VERSION, DEFAULT_SCENARIO));
     for (let move = 0; move < 300; move++) {
       const { state } = memory;
       for (const player of ["A", "B"] as const) {

@@ -3,7 +3,7 @@
  *
  * Mise en page seulement. Aucune couleur en dur ici : les propriétés personnalisées
  * `--ink`, `--panel`, `--accepted` et `--refused` sont posées par `palette.ts` à
- * partir des tokens de `src/theme/theme.ts`, seul détenteur du code couleur du client
+ * partir des tokens de `@occulis/board/theme`, seul détenteur du code couleur du client
  * (docs/design.md 8.1).
  *
  * `palette.ts` y pose aussi toutes les propriétés `--occ-*` de la charte : les écrans
@@ -42,6 +42,12 @@ html[data-theme] {
 html body,
 html[data-theme] body {
   background: transparent;
+}
+
+/* Un toucher ne fait pas clignoter de rectangle sur ce qu'il vise : chaque geste a déjà
+   son état (survol, appui, focus au clavier). */
+html {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* La voûte : deux trames d'étoiles d'un pixel à pas premiers entre eux, pour qu'aucun
@@ -351,8 +357,6 @@ body::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #status[data-fresh],
-  #command-log[data-fresh],
   .friend--challenge,
   .waiting-orbit i {
     animation: none !important;
@@ -380,7 +384,7 @@ body::after {
   pointer-events: auto;
 }
 
-/* Un écran pleine page, en React sur la charte (déploiement, équipes) : il prend toute la
+/* Un écran pleine page, en Vue sur la charte (déploiement, équipes) : il prend toute la
    place du conteneur et défile seul, la page du jeu ne défilant jamais. */
 .screen--page {
   align-self: stretch;
@@ -419,10 +423,9 @@ body::after {
   color: var(--ink-soft);
 }
 
-/* Les formulaires du menu et du bandeau de partie. L'écran de compte est en React sur
-   la charte (`@occulis/ui`), qui habille les siens : ces règles ne doivent pas l'atteindre. */
-.panel form,
-#console form {
+/* Les formulaires du menu. L'écran de compte est en Vue sur la charte (`@occulis/ui`),
+   qui habille les siens : ces règles ne doivent pas l'atteindre. */
+.panel form {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -569,9 +572,11 @@ button.primary:focus-visible::after {
   color: var(--ink-dim);
 }
 
+/* Le focus visible seulement (clavier, champ de saisie) : une carte cliquée à la souris ne
+   reste pas allumée une fois le pointeur parti. */
 #screen-menu button.primary:hover:not(:disabled),
 #screen-menu button.primary:focus-visible,
-#screen-menu .primary:focus-within {
+#screen-menu .primary:has(:focus-visible) {
   outline: none;
   border-color: var(--ink);
 }
@@ -761,148 +766,6 @@ button.primary:focus-visible::after {
 #menu-identity:empty,
 #menu-notice:empty {
   display: none;
-}
-
-/* ---- Bandeau de partie ------------------------------------------------------ */
-
-#console {
-  position: fixed;
-  left: 16px;
-  bottom: 16px;
-  min-width: 320px;
-  padding: 12px 16px;
-  border: var(--line);
-  background: var(--panel);
-  box-shadow: 0 4px 0 var(--occ-shade);
-  clip-path: var(--notch);
-  color: var(--ink);
-}
-
-#console p {
-  margin: 0;
-}
-
-#command-form {
-  flex-direction: row;
-  align-items: baseline;
-  gap: 8px;
-  margin: 8px 0;
-}
-
-#console label {
-  color: var(--ink-soft);
-  text-transform: lowercase;
-}
-
-#command-input {
-  flex: 1;
-  padding: 4px 6px;
-  border: var(--line);
-  background: var(--occ-bg);
-  box-shadow: inset 0 2px 0 var(--occ-shade);
-  caret-color: var(--ink);
-  color: inherit;
-  font: inherit;
-}
-
-#command-input:focus {
-  outline: none;
-  border-color: var(--ink-soft);
-}
-
-#status {
-  color: var(--ink-soft);
-}
-
-/*
- * Lecture d'une case au clic. Du terrain, donc de la géométrie : elle reste en
- * blanc atténué et n'emprunte aucune couleur d'état (docs/design.md 8.1).
- */
-#tile-readout {
-  margin-top: 4px;
-  color: var(--ink-soft);
-}
-
-#tile-readout:empty,
-#command-log:empty {
-  display: none;
-}
-
-#command-log[data-state="ok"] {
-  color: var(--accepted);
-}
-
-#command-log[data-state="ko"] {
-  color: var(--refused);
-}
-
-/* Un compte rendu neuf : il se trace de gauche à droite en luisant, puis s'éteint. Un refus
-   tremble d'un pixel, deux fois — assez pour se voir, pas assez pour inquiéter. */
-#status[data-fresh],
-#command-log[data-fresh] {
-  animation: line-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-
-#status[data-fresh][data-yours="true"] {
-  animation:
-    line-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both,
-    your-turn 1.4s ease-out both;
-}
-
-#command-log[data-fresh][data-state="ko"] {
-  animation:
-    line-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both,
-    refused 320ms linear both;
-}
-
-@keyframes line-in {
-  from {
-    clip-path: inset(0 100% 0 0);
-    text-shadow: 0 0 12px currentColor;
-  }
-  60% {
-    clip-path: inset(0 0 0 0);
-  }
-  to {
-    clip-path: inset(0 0 0 0);
-    text-shadow: none;
-  }
-}
-
-@keyframes your-turn {
-  0%,
-  40% {
-    color: var(--ink);
-    text-shadow: 0 0 10px var(--occ-ink-glow);
-  }
-  to {
-    text-shadow: none;
-  }
-}
-
-@keyframes refused {
-  20%,
-  60% {
-    transform: translateX(-2px);
-  }
-  40%,
-  80% {
-    transform: translateX(2px);
-  }
-}
-
-#command-help {
-  margin-top: 8px;
-  color: var(--ink-dim);
-}
-
-#command-help code {
-  font: inherit;
-  color: var(--ink-soft);
-}
-
-#leave-match {
-  margin-top: 10px;
 }
 
 /* ---- Écran de compte ---------------------------------------------------------- */

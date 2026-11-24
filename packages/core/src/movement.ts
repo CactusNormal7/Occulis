@@ -9,6 +9,8 @@ export interface MoveOption {
   /** Pas horizontaux consommés. Grimper consomme la totalité du budget. */
   readonly cost: number;
   readonly kind: MoveKind;
+  /** Vrai quand la case est tenue par une pièce que ce déplacement prend en y arrivant. */
+  readonly capture: boolean;
 }
 
 /**
@@ -20,12 +22,18 @@ export interface MoveOption {
  *  - monter de 2 niveaux ou plus en un pas est impossible (descendre, lui, reste libre).
  *
  * `occupied` porte les cases tenues par une pièce : elles bloquent le passage.
+ *
+ * `capturable` désigne, parmi elles, celles où le déplacement peut **s'achever** : la
+ * prise est un déplacement (docs/design/rules.md 3.1), elle suit donc exactement ces
+ * règles de hauteur. On s'y arrête — une pièce prise ne se traverse pas dans le même
+ * coup.
  */
 export function reachableTiles(
   board: Board,
   from: Coord,
   profile: MovementProfile,
   occupied: ReadonlySet<CoordKey> = new Set(),
+  capturable: ReadonlySet<CoordKey> = new Set(),
 ): Map<CoordKey, MoveOption> {
   const options = new Map<CoordKey, MoveOption>();
   const originHeight = board.heightAt(from);
@@ -42,15 +50,17 @@ export function reachableTiles(
 
       for (const candidate of neighbors(current, profile.adjacency)) {
         const key = coordKey(candidate);
-        if (visited.has(key) || occupied.has(key)) continue;
+        if (visited.has(key)) continue;
+        const capture = capturable.has(key);
+        if (occupied.has(key) && !capture) continue;
 
         const tile = board.getTile(candidate);
         if (tile === undefined || !tile.passable) continue;
         if (tile.height > currentHeight) continue;
 
         visited.add(key);
-        options.set(key, { coord: candidate, cost, kind: "walk" });
-        next.push(candidate);
+        options.set(key, { coord: candidate, cost, kind: "walk", capture });
+        if (!capture) next.push(candidate);
       }
     }
     frontier = next;
@@ -59,27 +69,17 @@ export function reachableTiles(
   if (profile.canClimb) {
     for (const candidate of neighbors(from, profile.adjacency)) {
       const key = coordKey(candidate);
-      if (visited.has(key) || occupied.has(key)) continue;
+      if (visited.has(key)) continue;
+      const capture = capturable.has(key);
+      if (occupied.has(key) && !capture) continue;
 
       const tile = board.getTile(candidate);
       if (tile === undefined || !tile.passable) continue;
       if (tile.height !== originHeight + 1) continue;
 
-      options.set(key, { coord: candidate, cost: profile.steps, kind: "climb" });
+      options.set(key, { coord: candidate, cost: profile.steps, kind: "climb", capture });
     }
   }
 
   return options;
-}
-
-/**
- * Atteignabilité en mêlée entre deux cases adjacentes (docs/design.md section 5.3).
- * L'asymétrie de la verticalité s'applique : on frappe librement vers le bas, d'un
- * seul niveau vers le haut. Ne teste pas l'adjacence elle-même.
- */
-export function canMeleeReach(board: Board, from: Coord, to: Coord): boolean {
-  const fromHeight = board.heightAt(from);
-  const toHeight = board.heightAt(to);
-  if (fromHeight === undefined || toHeight === undefined) return false;
-  return toHeight - fromHeight <= 1;
 }

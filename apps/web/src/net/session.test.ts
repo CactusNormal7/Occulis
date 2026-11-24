@@ -32,6 +32,8 @@ describe("fromQueue", () => {
       view: undefined,
       spectating: false,
       spectators: 0,
+      players: undefined,
+      opponentAbsence: undefined,
     });
   });
 
@@ -133,6 +135,37 @@ describe("fromMatch", () => {
       rulesetVersion: "v1",
     });
     expect(after.phase).toMatchObject({ kind: "seated", seat: "", player: "B", spectating: true });
+  });
+  it("retient les plaques des deux camps", () => {
+    const card = (handle: string) => ({ handle, elo: 1200, played: 0, won: 0, feats: [] });
+    const after = fromMatch(seated(), {
+      kind: "players",
+      self: card("anne"),
+      opponent: card("boris"),
+    });
+    expect(after.phase.kind === "seated" && after.phase.players?.opponent.handle).toBe("boris");
+  });
+
+  it("retient l'absence de l'adversaire, puis l'oublie à son retour", () => {
+    const gone = fromMatch(seated(), {
+      kind: "opponent-presence",
+      present: false,
+      forfeitInMs: 25_000,
+    });
+    expect(gone.phase.kind === "seated" && gone.phase.opponentAbsence).toEqual({
+      forfeitInMs: 25_000,
+    });
+    const back = fromMatch(gone, { kind: "opponent-presence", present: true });
+    expect(back.phase.kind === "seated" && back.phase.opponentAbsence).toBeUndefined();
+  });
+
+  it("ne relit pas un refus passé quand l'adversaire part ou revient", () => {
+    const refused = fromMatch(seated(), {
+      kind: "rejected",
+      error: { code: "not-your-turn", activePlayer: "B" },
+    });
+    const after = fromMatch(refused, { kind: "opponent-presence", present: false });
+    expect(after.rejection).toBeUndefined();
   });
 });
 

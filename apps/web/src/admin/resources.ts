@@ -63,7 +63,7 @@ export const match = (id: string) => resource(`match:${id}`, () => api.match(id)
  */
 export const designSystem = resource("design-system", async () => ({
   ok: true as const,
-  value: await import("./design/DesignSystem.js"),
+  value: (await import("./design/DesignSystem.vue")).default,
 }));
 
 export function resourcesOf(route: Route): readonly Resource<unknown>[] {
