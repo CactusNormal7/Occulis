@@ -146,7 +146,11 @@ Quelques comportements à connaître :
   compte — rend `true` pour fermer, `false` pour rester ouverte
   sur un refus ; une promesse rejetée vaut `false` et rend le bouton de nouveau actif. Elle s'ouvre et se
   referme depuis son centre (`revealWindow`) ; la fermeture attend la fin de l'animation avant
-  d'émettre `close`, et son voile tramé se pose en fondu.
+  d'émettre `close`, et son voile tramé se pose en fondu. **Aucun contenu n'en sort** : elle
+  n'hérite pas l'alignement de l'endroit où elle est rendue (une cellule d'actions), tout
+  texte trop long passe à la ligne, au besoin en coupant un mot, les boutons du pied passent
+  à la ligne puis leur libellé aussi, et une fenêtre trop haute pour l'écran garde titre et
+  boutons en vue pendant que seul son corps défile.
 - **`IconButton`** exige un `label` ; `disabledReason` grise le bouton **et** remplace
   l'infobulle par la raison.
 - **`ToastProvider`** empile les messages en bas à droite ; un refus reste deux fois plus
