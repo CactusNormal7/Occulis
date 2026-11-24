@@ -1337,7 +1337,9 @@ select.occ-input option {
 }
 
 .occ-chip {
+  max-width: 100%;
   padding: var(--occ-space-1) var(--occ-space-3);
+  overflow-wrap: anywhere;
   border: 1px solid var(--occ-ink-faint);
   background: transparent;
   color: var(--occ-ink-soft);
@@ -1657,6 +1659,15 @@ select.occ-input option {
   -webkit-font-smoothing: none;
 }
 
+/* Trop haute pour l'écran, la fenêtre garde son titre et ses boutons en vue : seul son
+   corps défile. */
+.occ-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 32px);
+  overflow: hidden;
+}
+
 /* Le voile tramé : ce qui est derrière reste lisible, un pixel sur deux. */
 .occ-dialog::backdrop {
   background: var(--pixel-dither);
@@ -1668,19 +1679,28 @@ select.occ-input option {
 }
 
 .occ-dialog form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   margin: 0;
 }
 
+/* Aucun texte, si long soit-il, ne sort de la fenêtre : il passe à la ligne, au besoin en
+   coupant un mot (un pseudo sans espace, une traduction plus longue). */
 .occ-dialog__head {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: space-between;
+  gap: var(--occ-space-3);
   padding: 14px 14px 14px var(--occ-space-5);
   border-bottom: 1px solid var(--occ-ink-line);
 }
 
 .occ-dialog__head h2 {
+  min-width: 0;
   margin: 0;
+  overflow-wrap: anywhere;
   font-size: var(--occ-text-md);
   text-shadow: 0 0 10px var(--occ-ink-glow);
   font-weight: 400;
@@ -1692,14 +1712,40 @@ select.occ-input option {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-height: 0;
   padding: 18px var(--occ-space-5);
+  overflow-wrap: anywhere;
+  overflow-y: auto;
 }
 
+.occ-dialog__body > * {
+  min-width: 0;
+}
+
+/* Les boutons passent à la ligne quand ils ne tiennent plus côte à côte, puis leur
+   libellé lui-même : sur un téléphone étroit, « Annuler » sortait de la fenêtre. */
 .occ-dialog__foot {
   display: flex;
+  flex: none;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
   padding: var(--occ-space-3) var(--occ-space-5) var(--occ-space-4);
+}
+
+/* La hauteur fixe des boutons devient un minimum : un libellé sur deux lignes reste lisible. */
+.occ-dialog__foot .occ-button--md {
+  height: auto;
+  min-height: 40px;
+  padding-block: var(--occ-space-2);
+}
+
+.occ-dialog__foot .occ-button {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 /* ---- Messages éphémères ------------------------------------------------------------ */
@@ -1719,7 +1765,8 @@ select.occ-input option {
 }
 
 .occ-toast {
-  max-width: 380px;
+  max-width: min(380px, calc(100vw - 2 * var(--occ-space-5)));
+  overflow-wrap: anywhere;
   padding: 10px var(--occ-space-4);
   border: 1px solid;
   background: var(--occ-surface);
