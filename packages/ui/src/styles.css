@@ -1650,6 +1650,10 @@ select.occ-input option {
   box-shadow: 0 4px 0 var(--occ-shade);
   color: var(--occ-ink);
   font: var(--occ-text-md) / 1.5 var(--occ-font-pixel);
+  /* La fenêtre est rendue là où son bouton l'ouvre, parfois une cellule d'actions alignée
+     à droite : elle n'en hérite pas l'alignement. */
+  text-align: start;
+  white-space: normal;
   -webkit-font-smoothing: none;
 }
 
@@ -2063,6 +2067,16 @@ select.occ-input option {
     padding: var(--occ-space-3) var(--occ-space-4);
   }
 
+  /* Les onglets passent à la ligne entiers, sans couper un libellé ni déborder de l'écran. */
+  .occ-top-bar__tabs {
+    flex-wrap: wrap;
+    gap: var(--occ-space-2) var(--occ-space-4);
+  }
+
+  .occ-root .occ-top-bar__tabs a {
+    white-space: nowrap;
+  }
+
   .occ-card-grid,
   .occ-aside-layout {
     grid-template-columns: 1fr;
@@ -2085,8 +2099,13 @@ select.occ-input option {
     grid-template-columns: repeat(2, 1fr);
   }
 
+  /* `minmax(0, …)` : sans lui, la largeur propre du champ pousse le bouton hors de la carte. */
   .occ-inline-edit {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .occ-inline-edit .occ-input {
+    min-width: 0;
   }
 
   .occ-inline-edit .occ-field__label {
