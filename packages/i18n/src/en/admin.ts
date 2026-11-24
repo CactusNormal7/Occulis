@@ -169,12 +169,11 @@ export const admin = {
     banTitle: (name: string) => `Suspend ${name}`,
     ban: "Suspend",
     banned: (name: string) => `${name} is suspended.`,
-    banNote:
-      "Their sessions are closed right away, and they cannot open new ones until it is lifted.",
+    banNote: "Signs them out now and until the suspension is lifted.",
     reason: "reason (optional)",
     days: "duration in days",
     daysPlaceholder: "empty: permanent",
-    daysHint: "A number of days, or nothing for a permanent suspension.",
+    daysHint: "A number of days, or empty.",
     deleteTitle: (name: string) => `Delete ${name}`,
     deleteConfirm: "Delete permanently",
     deleteNote:
