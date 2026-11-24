@@ -7,6 +7,7 @@ import {
   type PlayerView,
   type Ruleset,
   coordEquals,
+  lineReach,
 } from "@occulis/core";
 
 /**
@@ -28,6 +29,11 @@ export interface PieceSheet {
   readonly steps: number;
   readonly adjacency: Adjacency;
   readonly canClimb: boolean;
+  /**
+   * Pour une pièce qui glisse en ligne droite, sa portée en ligne et en diagonale (0 :
+   * aucune ligne de cette famille) ; `null` pour une pièce qui marche librement.
+   */
+  readonly lines: { readonly orthogonal: number; readonly diagonal: number } | null;
   /** `Infinity` : seule l'occultation limite la vue. */
   readonly visionRange: number;
   /** Le tour où un fantôme a été vu pour la dernière fois. */
@@ -59,6 +65,13 @@ export function inspectPiece(
     steps: type.movement.steps,
     adjacency: type.movement.adjacency,
     canClimb: type.movement.canClimb,
+    lines:
+      type.movement.lines === undefined
+        ? null
+        : {
+            orthogonal: lineReach(type.movement.lines, "orthogonal"),
+            diagonal: lineReach(type.movement.lines, "diagonal"),
+          },
     visionRange: type.vision.range,
     lastSeenTurn: ghost?.lastSeenTurn,
     inCheck: own !== undefined && type.isCommander && view.check,

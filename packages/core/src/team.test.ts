@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { type Coord } from "./coord.js";
-import { provisionalRuleset, provisionalRulesetV0, provisionalRulesetV1 } from "./pieces/index.js";
+import {
+  provisionalRuleset,
+  provisionalRulesetV0,
+  provisionalRulesetV1,
+  provisionalRulesetV4,
+} from "./pieces/index.js";
 import { type TeamEntry, deployTeams, parseTeam, translateTeam, validateTeam } from "./team.js";
 
 const ZONE: Coord[] = Array.from({ length: 12 }, (_, index) => ({
@@ -10,16 +15,21 @@ const ZONE: Coord[] = Array.from({ length: 12 }, (_, index) => ({
 
 const TEAM: TeamEntry[] = [
   { kind: "commander", coord: { x: 0, y: 0 } },
+  { kind: "bishop", coord: { x: 1, y: 0 } },
+  { kind: "rook", coord: { x: 2, y: 0 } },
+  { kind: "trapper", coord: { x: 3, y: 0 } },
+  { kind: "pawn", coord: { x: 0, y: 1 } },
+  { kind: "pawn", coord: { x: 1, y: 1 } },
+];
+
+/** L'équipe à huit pièces d'avant le 2026-10-27 : celle des parties `provisional-1`, éclaireurs compris. */
+const TEAM_V1: TeamEntry[] = [
+  { kind: "commander", coord: { x: 0, y: 0 } },
   { kind: "scout", coord: { x: 1, y: 0 } },
   { kind: "scout", coord: { x: 2, y: 0 } },
   { kind: "scout", coord: { x: 3, y: 0 } },
   { kind: "pawn", coord: { x: 0, y: 1 } },
   { kind: "pawn", coord: { x: 1, y: 1 } },
-];
-
-/** L'équipe à huit pièces d'avant le 2026-10-27 : celle des parties `provisional-1`. */
-const TEAM_V1: TeamEntry[] = [
-  ...TEAM,
   { kind: "pawn", coord: { x: 2, y: 1 } },
   { kind: "pawn", coord: { x: 3, y: 1 } },
 ];
@@ -32,12 +42,13 @@ describe("validateTeam", () => {
   });
 
   it("refuse les huit pièces d'avant, que le ruleset `provisional-1` accepte toujours", () => {
-    expect(validateTeam(ruleset, ZONE, TEAM_V1)).toEqual({
+    // Le ruleset de `provisional-4`, le dernier à connaître l'éclaireur, sous la composition courante.
+    expect(validateTeam(provisionalRulesetV4(), ZONE, TEAM_V1)).toEqual({
       ok: false,
       error: { code: "wrong-count", role: "pawn", expected: 2, actual: 4 },
     });
     expect(validateTeam(provisionalRulesetV1(), ZONE, TEAM_V1).ok).toBe(true);
-    expect(validateTeam(provisionalRulesetV1(), ZONE, TEAM)).toMatchObject({
+    expect(validateTeam(provisionalRulesetV1(), ZONE, TEAM_V1.slice(0, 6))).toMatchObject({
       ok: false,
       error: { code: "wrong-count", role: "pawn", expected: 4, actual: 2 },
     });

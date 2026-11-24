@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { coordKey } from "../coord.js";
 import { hasLineOfSight } from "../los.js";
-import { provisionalRuleset } from "../pieces/index.js";
+import { provisionalRulesetV4 } from "../pieces/index.js";
 import { createGame } from "../state.js";
 import { deployTeams, teamForSide, validateTeam } from "../team.js";
 import { scenarioFor } from "./index.js";
@@ -36,7 +36,8 @@ describe("ridge-1", () => {
   });
 
   it("pose des équipes par défaut valides, qui forment une position de départ", () => {
-    const ruleset = provisionalRuleset();
+    // Le ruleset de son époque, éclaireurs compris.
+    const ruleset = provisionalRulesetV4();
     for (const player of ["A", "B"] as const) {
       expect(
         validateTeam(ruleset, deployment.zones[player], deployment.defaultTeams[player]).ok,

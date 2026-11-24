@@ -3,7 +3,7 @@ import {
   type Action,
   Board,
   createGame,
-  provisionalRuleset,
+  provisionalRulesetV4,
   startMemory,
   viewFor,
 } from "@occulis/core";
@@ -15,7 +15,7 @@ const WALLED = Array.from({ length: 14 }, () => "0000000" + "3" + "000000");
 function table() {
   const board = Board.fromAscii(WALLED);
   const { state, knowledge } = startMemory(
-    createGame(board, provisionalRuleset(), [
+    createGame(board, provisionalRulesetV4(), [
       { id: "a-scout", kind: "scout", owner: "A", coord: { x: 0, y: 0 } },
       { id: "a-cmd", kind: "commander", owner: "A", coord: { x: 0, y: 13 } },
       { id: "b-cmd", kind: "commander", owner: "B", coord: { x: 13, y: 13 } },

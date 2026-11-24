@@ -2,15 +2,19 @@ import { describe, expect, it } from "vitest";
 import { Board } from "../../board.js";
 import { PieceType } from "../piece-type.js";
 import {
+  Bishop,
   Commander,
   Pawn,
+  Rook,
   Scout,
   provisionalRuleset,
   provisionalRulesetV0,
   provisionalRulesetV1,
   provisionalRulesetV2,
   provisionalRulesetV3,
+  provisionalRulesetV4,
 } from "./index.js";
+import { lineReach } from "../profiles.js";
 
 /**
  * Le roster est provisoire : ces vérifications portent sur des propriétés qui
@@ -36,16 +40,28 @@ describe("roster provisoire", () => {
     expect(new Pawn().isCommander).toBe(false);
   });
 
-  it("fait du pion la pièce la plus myope, jamais plus rapide qu'une autre", () => {
+  it("fait du pion la pièce la plus myope", () => {
     const pawn = new Pawn();
-    for (const other of [new Scout(), new Commander()]) {
-      expect(pawn.movement.steps).toBeLessThanOrEqual(other.movement.steps);
+    for (const other of [new Scout(), new Commander(), new Bishop(), new Rook()]) {
       expect(pawn.vision.range).toBeLessThan(other.vision.range);
     }
   });
 
-  it("donne au roi un seul pas, pour qu'un mat soit constructible", () => {
-    expect(new Commander().movement.steps).toBe(1);
+  it("fait glisser le roi d'une case en diagonale et de deux en ligne droite", () => {
+    const lines = new Commander().movement.lines ?? [];
+    expect(lineReach(lines, "orthogonal")).toBe(2);
+    expect(lineReach(lines, "diagonal")).toBe(1);
+  });
+
+  it("fait du fou et de la tour des pièces basiques, sans capacité ni limite", () => {
+    const bishop = new Bishop().movement.lines ?? [];
+    const rook = new Rook().movement.lines ?? [];
+    expect(lineReach(bishop, "diagonal")).toBe(Infinity);
+    expect(lineReach(bishop, "orthogonal")).toBe(0);
+    expect(lineReach(rook, "orthogonal")).toBe(Infinity);
+    expect(lineReach(rook, "diagonal")).toBe(0);
+    expect(new Bishop().ability).toBeNull();
+    expect(new Rook().ability).toBeNull();
   });
 
   it("hérite du comportement commun", () => {
@@ -68,8 +84,14 @@ describe("roster provisoire", () => {
   it("indexe chaque type par son kind", () => {
     const ruleset = provisionalRuleset();
 
-    expect(ruleset.kinds().sort()).toEqual(["commander", "pawn", "scout", "trapper"]);
-    expect(ruleset.kindsOf("special")).toEqual(["scout", "trapper"]);
+    expect(ruleset.kinds().sort()).toEqual(["bishop", "commander", "pawn", "rook", "trapper"]);
+    expect(ruleset.kindsOf("special")).toEqual(["bishop", "rook", "trapper"]);
+    expect(provisionalRulesetV4().kinds().sort()).toEqual([
+      "commander",
+      "pawn",
+      "scout",
+      "trapper",
+    ]);
     expect(ruleset.get("trapper").ability).toBe("trap");
     expect(provisionalRulesetV3().kinds().sort()).toEqual(["commander", "pawn", "scout"]);
     expect(ruleset.kindsOf("pawn")).toEqual(["pawn"]);
@@ -80,7 +102,8 @@ describe("roster provisoire", () => {
     expect(provisionalRulesetV0().team).toBeNull();
     expect(provisionalRulesetV2().team).toEqual({ commander: 1, special: 3, pawn: 2 });
     expect(provisionalRulesetV2().get("scout")).not.toBeInstanceOf(Scout);
-    expect(ruleset.get("scout")).toBeInstanceOf(Scout);
+    expect(provisionalRulesetV4().get("scout")).toBeInstanceOf(Scout);
+    expect(ruleset.get("rook")).toBeInstanceOf(Rook);
     expect(
       ruleset.typeOf({ id: "x", kind: "commander", owner: "A", coord: { x: 0, y: 0 } }),
     ).toBeInstanceOf(Commander);

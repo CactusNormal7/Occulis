@@ -47,11 +47,11 @@ const ZONE_A: readonly Coord[] = Array.from({ length: 2 * SIZE }, (_, index) => 
   y: SIZE - 2 + Math.floor(index / SIZE),
 }));
 
-/** Le roi au fond, au milieu ; les pions devant lui ; le trappeur au centre, les éclaireurs sur les ailes. */
+/** Le roi au fond, au milieu ; les pions devant lui ; le trappeur au centre, le fou et la tour sur les ailes. */
 const TEAM_A: readonly TeamEntry[] = [
   { kind: "commander", coord: { x: 5, y: 10 } },
-  { kind: "scout", coord: { x: 2, y: 9 } },
-  { kind: "scout", coord: { x: 8, y: 9 } },
+  { kind: "bishop", coord: { x: 2, y: 9 } },
+  { kind: "rook", coord: { x: 8, y: 9 } },
   { kind: "trapper", coord: { x: 5, y: 9 } },
   { kind: "pawn", coord: { x: 4, y: 9 } },
   { kind: "pawn", coord: { x: 6, y: 9 } },

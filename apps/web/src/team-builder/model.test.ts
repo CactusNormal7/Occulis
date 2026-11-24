@@ -15,8 +15,8 @@ import {
 } from "./model.js";
 
 const ruleset = provisionalRuleset();
-const deployment = scenarioFor("ridge-1").deployment;
-if (deployment === undefined) throw new Error("ridge-1 sans déploiement");
+const deployment = scenarioFor("breach-2").deployment;
+if (deployment === undefined) throw new Error("breach-2 sans déploiement");
 const zone = deployment.zones.A;
 
 describe("brouillon d'équipe", () => {
@@ -60,7 +60,7 @@ describe("brouillon d'équipe", () => {
   it("ne change le type d'un emplacement que dans son rôle", () => {
     const draft = emptyDraft(ruleset);
     expect(setKind(draft, ruleset, 1, "pawn")).toBe(draft);
-    expect(setKind(draft, ruleset, 1, "scout").slots[1]?.kind).toBe("scout");
+    expect(setKind(draft, ruleset, 1, "rook").slots[1]?.kind).toBe("rook");
   });
 
   it("se remplit depuis une équipe, et la rend à l'identique", () => {

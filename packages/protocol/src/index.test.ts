@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { Board, createGame, provisionalRuleset, startMemory, viewFor } from "@occulis/core";
+import { Board, createGame, provisionalRulesetV4, startMemory, viewFor } from "@occulis/core";
 import { decodeView, encodeView } from "./index.js";
 
 /** Un mur de hauteur 3 sur toute la colonne 7 : aucun camp ne voit l'autre. */
 const WALLED = Array.from({ length: 14 }, () => "0000000" + "3" + "000000");
 
 function view() {
-  const state = createGame(Board.fromAscii(WALLED), provisionalRuleset(), [
+  const state = createGame(Board.fromAscii(WALLED), provisionalRulesetV4(), [
     { id: "a-scout", kind: "scout", owner: "A", coord: { x: 0, y: 0 } },
     { id: "a-cmd", kind: "commander", owner: "A", coord: { x: 0, y: 13 } },
     { id: "b-cmd", kind: "commander", owner: "B", coord: { x: 13, y: 13 } },

@@ -27,7 +27,7 @@ coord.ts ──► board.ts ──► los.ts ──────┐
    │            │                      │
    │            └──► movement.ts ──┐   │
    ▼                               ▼   ▼
-pieces/profiles.ts ──────────► pieces/piece-type.ts ◄── pieces/roster/{scout,commander,pawn}.ts
+pieces/profiles.ts ──────────► pieces/piece-type.ts ◄── pieces/roster/{commander,bishop,rook,trapper,pawn,scout}.ts
                                    │        ▲
 pieces/piece.ts ──────────────► state.ts    └── pieces/configurable-piece-type.ts
 pieces/ruleset.ts                  │
@@ -271,14 +271,16 @@ indéfiniment, sans qu'aucun log n'ait à être vidé.
 
 **Une classe par fichier**, assemblées par `roster/index.ts`.
 
-| Fichier               | Classe      | Caractéristiques, déclarées dans la classe                                                                                  |
-| --------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `roster/scout.ts`     | `Scout`     | 3 pas, vision 20, octile, grimpe                                                                                            |
-| `roster/commander.ts` | `Commander` | 1 pas, vision 14, octile, grimpe ; rôle `commander`                                                                         |
-| `roster/pawn.ts`      | `Pawn`      | 1 pas, vision 6, octile, grimpe ; rôle `pawn`                                                                               |
-| `roster/trapper.ts`   | `Trapper`   | 2 pas, vision 8, octile, grimpe ; capacité `trap` (`provisional-4`)                                                         |
-| `roster/legacy.ts`    | —           | Roi 3 pas, éclaireur 6, pion 1 : les chiffres d'avant `provisional-3`, en `ConfigurablePieceType`                           |
-| `roster/index.ts`     | —           | `provisionalRuleset()` (`provisional-4` : roster courant, prise et échec), `provisionalRulesetV3()`, `V2()`, `V1()`, `V0()` |
+| Fichier               | Classe      | Caractéristiques, déclarées dans la classe                                                                                     |
+| --------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `roster/commander.ts` | `Commander` | Glisse d'1 case en diagonale, de 2 en ligne droite (`lines`), vision 14, grimpe ; rôle `commander` (`provisional-5`)           |
+| `roster/bishop.ts`    | `Bishop`    | Glisse en diagonale sans limite, vision 10, grimpe, sans capacité (`provisional-5`)                                            |
+| `roster/rook.ts`      | `Rook`      | Glisse en ligne droite sans limite, vision 10, grimpe, sans capacité (`provisional-5`)                                         |
+| `roster/pawn.ts`      | `Pawn`      | 2 pas, vision 6, octile, grimpe ; rôle `pawn` (le carré de 5 × 5 autour de lui)                                                |
+| `roster/trapper.ts`   | `Trapper`   | 2 pas, vision 8, octile, grimpe ; capacité `trap` (`provisional-4`)                                                            |
+| `roster/scout.ts`     | `Scout`     | 3 pas, vision 20, octile, grimpe ; seulement `provisional-3` et `provisional-4`                                                |
+| `roster/legacy.ts`    | —           | Roi 3 pas, éclaireur 6, pion 1 (avant `provisional-3`) ; roi et pion d'un pas (`provisional-3..4`), en `ConfigurablePieceType` |
+| `roster/index.ts`     | —           | `provisionalRuleset()` (`provisional-5` : roster courant), `provisionalRulesetV4()`, `V3()`, `V2()`, `V1()`, `V0()`            |
 
 **Les portées ont été resserrées le 2026-11-16** pour que le mat soit constructible : avec
 un roi à trois pas et un éclaireur à six, le roi était en échec presque en permanence et
@@ -288,7 +290,12 @@ données dans `legacy.ts`, que plus rien ne doit faire évoluer, parce que les p
 
 **La composition 1 + 3 + 2 (depuis le 2026-10-27, avant 1 + 3 + 4) et le profil du pion sont des décisions du porteur du projet** ;
 les types eux-mêmes restent provisoires. Les trois pièces à capacité se choisissent parmi
-l'éclaireur et le trappeur, doublons permis.
+le fou, la tour et le trappeur, doublons permis (l'éclaireur, avant `provisional-5`).
+
+**Des déplacements proches des échecs depuis le 2026-11-24** (`provisional-5`) : le roi
+glisse comme celui des échecs avec une case de plus en ligne droite, le fou et la tour
+remplacent l'éclaireur, le pion fait deux pas. Le roi et le pion d'un pas des parties
+`provisional-3..4` sont figés dans `legacy.ts`.
 
 **Les visions sont volontairement généreuses.** Les cartes de démonstration font au plus
 une dizaine de cases de côté : à ces portées, **seule l'occultation limite la vue**. C'est
@@ -424,6 +431,15 @@ interface MoveOption {
 ```
 
 `reachableTiles(board, from, profile, occupied, capturable)` rend les cases atteignables,
+selon l'un de deux modes. **Sans `profile.lines`**, la pièce _marche_ : parcours en
+largeur de `profile.steps` pas, qui contourne les obstacles. **Avec `profile.lines`**
+(`MovementLine` : une direction et une portée `reach`, `Infinity` pour la tour et le fou),
+elle _glisse_ comme aux échecs : dans chaque direction, case par case, elle s'arrête avant
+le bord, une case infranchissable, une pièce qu'elle ne peut pas prendre ou une case qui
+monte, et **sur** une pièce qu'elle prend ; grimper d'un niveau n'est possible que sur la
+première case d'une ligne, comme unique mouvement. `orthogonalLines()`, `diagonalLines()`
+et `lineReach()` (`pieces/profiles.ts`) construisent et résument ces lignes ; `steps` y
+vaut la plus longue, pour les fiches. Dans les deux modes,
 avec coût et nature du déplacement. `capturable` désigne, parmi les cases occupées, celles
 où le déplacement **peut s'achever** : une prise est un déplacement (`docs/design/rules.md`
 3.1), elle suit donc exactement les mêmes règles de hauteur, et on s'y arrête — une pièce
@@ -872,9 +888,10 @@ client envoie, le client à son brouillon, sans la redéduire.
 ## `rulesets/` — le registre des versions
 
 `rulesetFor(version)` rend le ruleset d'une version, et lève si elle est inconnue ;
-`CURRENT_RULESET_VERSION` est celle des nouvelles parties (`provisional-4` : composition
-1 roi, 3 à capacité, 2 pions, portées resserrées, prise, échec et nulles, et le trappeur).
-`provisional-3` (les mêmes, sans trappeur), `provisional-2`
+`CURRENT_RULESET_VERSION` est celle des nouvelles parties (`provisional-5` : composition
+1 roi, 3 à capacité, 2 pions, prise, échec et nulles, trappeur, et déplacements proches des
+échecs — roi étendu, fou, tour, pion de deux pas). `provisional-4` (roi et pion d'un pas,
+éclaireur et trappeur), `provisional-3` (les mêmes, sans trappeur), `provisional-2`
 (même composition, anciennes portées, sans prise), `provisional-1` (1, 3, 4 pions) et
 `provisional-0` (sans composition) restent chargeables pour rejouer les parties qui les
 référencent. Le registre vit dans `core` et non plus dans le serveur : le

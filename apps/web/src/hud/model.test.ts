@@ -4,7 +4,7 @@ import {
   type JournalEntry,
   type PlayerView,
   createGame,
-  provisionalRuleset,
+  provisionalRulesetV4,
   startMemory,
   viewFor,
 } from "@occulis/core";
@@ -24,7 +24,7 @@ const m = messagesFor("fr");
 const BOARD = Board.flat(7, 3);
 
 function startingView(): PlayerView {
-  const state = createGame(BOARD, provisionalRuleset(), [
+  const state = createGame(BOARD, provisionalRulesetV4(), [
     { id: "a-king", kind: "commander", owner: "A", coord: { x: 0, y: 0 } },
     { id: "a-scout", kind: "scout", owner: "A", coord: { x: 1, y: 2 } },
     { id: "b-scout", kind: "scout", owner: "B", coord: { x: 5, y: 2 } },
@@ -127,6 +127,7 @@ describe("hudModel : fiche", () => {
     steps: 3,
     adjacency: "octile",
     canClimb: true,
+    lines: null,
     visionRange: 20,
     inCheck: false,
   };
@@ -232,7 +233,7 @@ describe("hudModel : nulle sans prise", () => {
 
 describe("hudModel : capacité du trappeur", () => {
   function trapperView(): PlayerView {
-    const state = createGame(BOARD, provisionalRuleset(), [
+    const state = createGame(BOARD, provisionalRulesetV4(), [
       { id: "a-king", kind: "commander", owner: "A", coord: { x: 0, y: 0 } },
       { id: "a-trap", kind: "trapper", owner: "A", coord: { x: 2, y: 1 } },
       { id: "b-king", kind: "commander", owner: "B", coord: { x: 6, y: 0 } },
@@ -247,6 +248,7 @@ describe("hudModel : capacité du trappeur", () => {
     steps: 2,
     adjacency: "octile",
     canClimb: true,
+    lines: null,
     visionRange: 8,
     inCheck: false,
   };

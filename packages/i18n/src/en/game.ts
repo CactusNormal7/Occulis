@@ -85,6 +85,15 @@ export const game = {
     movement: "Movement",
     steps: (steps: number) => (steps === 1 ? "1 tile" : `${steps} tiles`),
     adjacency: { octile: "in any direction", orthogonal: "no diagonals" },
+    lines: (orthogonal: number, diagonal: number) => {
+      const reach = (tiles: number) =>
+        !Number.isFinite(tiles) ? "any distance" : tiles === 1 ? "1 tile" : `${tiles} tiles`;
+      const parts = [
+        ...(orthogonal > 0 ? [`${reach(orthogonal)} straight`] : []),
+        ...(diagonal > 0 ? [`${reach(diagonal)} diagonally`] : []),
+      ];
+      return `in a straight line: ${parts.join(", ")}`;
+    },
     climbs: "climbs one level",
     noClimb: "does not climb",
     vision: "Vision",

@@ -1,5 +1,4 @@
 import {
-  CURRENT_RULESET_VERSION,
   applyAction,
   createGame,
   deployTeams,
@@ -42,6 +41,12 @@ export const SCRIPT: readonly Step[] = [
 /** La carte du scénario : l'arête et son col, sur lesquels l'histoire est écrite. */
 const HERO_MAP = "ridge-1";
 
+/**
+ * Le ruleset de l'histoire, nommé comme la carte : elle est écrite pour l'éclaireur, que
+ * les nouvelles parties n'ont plus depuis `provisional-5` (2026-11-24).
+ */
+const HERO_RULESET = "provisional-4";
+
 /** Le camp dont on suit la vue. */
 export const VIEWER = "A" as const;
 
@@ -57,7 +62,7 @@ export const FRAMES = { fog: 1, summit: 3, ghosts: 5 } as const;
 
 export function buildFrames(): Frame[] {
   const scenario = scenarioFor(HERO_MAP);
-  const ruleset = rulesetFor(CURRENT_RULESET_VERSION);
+  const ruleset = rulesetFor(HERO_RULESET);
   if (scenario.deployment === undefined)
     throw new Error("La carte du hero n'a pas de déploiement.");
   const pieces = deployTeams(ruleset, scenario.deployment, scenario.deployment.defaultTeams);

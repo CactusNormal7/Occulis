@@ -2,15 +2,24 @@ import type { Messages } from "../messages.js";
 
 export const team: Messages["team"] = {
   roles: { commander: "Roi", special: "Pièces à capacité", pawn: "Pions" },
-  kinds: { commander: "Roi", scout: "Éclaireur", trapper: "Trappeur", pawn: "Pion" },
+  kinds: {
+    commander: "Roi",
+    scout: "Éclaireur",
+    bishop: "Fou",
+    rook: "Tour",
+    trapper: "Trappeur",
+    pawn: "Pion",
+  },
   kindDescriptions: {
     commander: "La pièce à protéger : la perdre, c'est perdre la partie.",
     scout: "Rapide et voyant loin.",
+    bishop: "Une pièce basique qui glisse en diagonale, sans limite.",
+    rook: "Une pièce basique qui glisse en ligne droite, sans limite.",
     trapper: "Pose un piège caché sur une case voisine, au lieu de se déplacer.",
     pawn: "La pièce de base, sans capacité.",
   },
   unknownKind: (kind) => kind,
-  stats: (steps, range) => `déplacement ${steps} · vue ${range}`,
+  stats: (steps, range) => `déplacement ${Number.isFinite(steps) ? steps : "∞"} · vue ${range}`,
   climbs: "grimpe",
   slot: {
     empty: "non placée",

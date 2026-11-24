@@ -5,6 +5,7 @@ import {
   provisionalRulesetV1,
   provisionalRulesetV2,
   provisionalRulesetV3,
+  provisionalRulesetV4,
 } from "../pieces/index.js";
 
 /**
@@ -21,11 +22,15 @@ const REGISTRY = new Map<string, Ruleset>([
   ["provisional-1", provisionalRulesetV1()],
   ["provisional-2", provisionalRulesetV2()],
   ["provisional-3", provisionalRulesetV3()],
-  ["provisional-4", provisionalRuleset()],
+  ["provisional-4", provisionalRulesetV4()],
+  ["provisional-5", provisionalRuleset()],
 ]);
 
-/** Depuis le 2026-11-20 : le trappeur et son piège. */
-export const CURRENT_RULESET_VERSION = "provisional-4";
+/**
+ * Depuis le 2026-11-24 : déplacements proches des échecs — roi étendu en ligne droite,
+ * fou, tour, pion de deux pas. Avant (`provisional-4`, 2026-11-20) : le trappeur et son piège.
+ */
+export const CURRENT_RULESET_VERSION = "provisional-5";
 
 export function rulesetFor(version: string): Ruleset {
   const ruleset = REGISTRY.get(version);

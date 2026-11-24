@@ -13,6 +13,7 @@ const scout: PieceSheet = {
   steps: 3,
   adjacency: "octile",
   canClimb: true,
+  lines: null,
   visionRange: 20,
   inCheck: false,
 };
@@ -33,6 +34,17 @@ describe("describeSheet", () => {
       ],
       notes: ["Prend en arrivant sur la case d'une pièce adverse."],
     });
+  });
+
+  it("décrit le glissement en ligne droite du roi, du fou et de la tour", () => {
+    const movementOf = (lines: PieceSheet["lines"]) =>
+      describeSheet(m, { ...scout, lines }).facts[0]?.value;
+    expect(movementOf({ orthogonal: 2, diagonal: 1 })).toBe(
+      "en ligne droite : 2 cases en ligne, 1 case en diagonale, grimpe d'un niveau",
+    );
+    expect(movementOf({ orthogonal: 0, diagonal: Infinity })).toBe(
+      "en ligne droite : sans limite en diagonale, grimpe d'un niveau",
+    );
   });
 
   it("dit d'un fantôme depuis quand il n'a plus été vu", () => {

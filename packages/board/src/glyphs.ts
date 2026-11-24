@@ -53,6 +53,32 @@ const SCOUT = [
   ".#######.",
 ];
 
+/** Le fou : une mitre fendue en biais, comme ses déplacements. */
+const BISHOP = [
+  "....#....",
+  "...###...",
+  "..##.##..",
+  "..#.###..",
+  "...###...",
+  "...###...",
+  "..#####..",
+  ".#######.",
+  ".#######.",
+];
+
+/** La tour : des créneaux au sommet d'un fût droit. */
+const ROOK = [
+  ".#.#.#.#.",
+  ".#######.",
+  "..#####..",
+  "..#####..",
+  "..#####..",
+  "..#####..",
+  "..#####..",
+  ".#######.",
+  ".#######.",
+];
+
 /** Le trappeur : une mâchoire ouverte au sommet, ses dents tournées vers le haut. */
 const TRAPPER = [
   ".#.....#.",
@@ -95,6 +121,8 @@ const FALLBACK = [
 const ROWS_BY_KIND: Readonly<Record<PieceKind, readonly string[]>> = {
   commander: COMMANDER,
   scout: SCOUT,
+  bishop: BISHOP,
+  rook: ROOK,
   trapper: TRAPPER,
   pawn: PAWN,
 };

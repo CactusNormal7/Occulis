@@ -24,12 +24,27 @@ describe("registre des rulesets", () => {
       check: true,
       draws: { repetition: 3, withoutCapture: 60 },
     });
-    expect(ruleset.get("scout").movement.steps).toBe(3);
-    expect(ruleset.get("commander").movement.steps).toBe(1);
+    expect(ruleset.has("scout")).toBe(false);
+    expect(ruleset.get("bishop").movement.lines).toHaveLength(4);
+    expect(ruleset.get("rook").movement.lines).toHaveLength(4);
+    expect(ruleset.get("pawn").movement.steps).toBe(2);
+  });
+
+  it("garde aux parties de provisional-3 et 4 leur roi et leur pion d'un pas", () => {
+    for (const version of ["provisional-3", "provisional-4"]) {
+      const ruleset = rulesetFor(version);
+      expect(ruleset.get("scout").movement.steps).toBe(3);
+      expect(ruleset.get("commander").movement).toEqual({
+        steps: 1,
+        adjacency: "octile",
+        canClimb: true,
+      });
+      expect(ruleset.get("pawn").movement.steps).toBe(1);
+    }
   });
 
   it("fait de la version courante celle du déploiement", () => {
-    expect(CURRENT_RULESET_VERSION).toBe("provisional-4");
+    expect(CURRENT_RULESET_VERSION).toBe("provisional-5");
     expect(rulesetFor(CURRENT_RULESET_VERSION).team).toEqual({
       commander: 1,
       special: 3,
@@ -37,9 +52,10 @@ describe("registre des rulesets", () => {
     });
   });
 
-  it("ne donne le trappeur qu'aux parties de provisional-4", () => {
+  it("ne donne le trappeur qu'aux parties depuis provisional-4", () => {
     expect(rulesetFor("provisional-3").has("trapper")).toBe(false);
     expect(rulesetFor("provisional-4").get("trapper").ability).toBe("trap");
+    expect(rulesetFor("provisional-5").get("trapper").ability).toBe("trap");
   });
 
   it("refuse une version inconnue", () => {
