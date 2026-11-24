@@ -26,6 +26,8 @@ export interface MoveNotation {
 const PIECE_LETTERS: Readonly<Record<string, string>> = {
   commander: "K",
   scout: "S",
+  bishop: "B",
+  rook: "R",
   trapper: "T",
   pawn: "P",
 };

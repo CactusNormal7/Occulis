@@ -7,7 +7,7 @@ import {
   coordKey,
   createGame,
   legalActions,
-  provisionalRuleset,
+  provisionalRulesetV4,
 } from "@occulis/core";
 import { aimAbility, resolveClick, selectionFor } from "./selection.js";
 
@@ -22,7 +22,7 @@ const PIECES: readonly Piece[] = [
 ];
 
 function game(): GameState {
-  return createGame(BOARD, provisionalRuleset(), [...PIECES]);
+  return createGame(BOARD, provisionalRulesetV4(), [...PIECES]);
 }
 
 function pieceOf(state: GameState, id: string): Piece {
@@ -155,7 +155,7 @@ describe("capacité : le piège", () => {
   const TRAPPER: Piece = { id: "a-trap", kind: "trapper", owner: "A", coord: { x: 5, y: 5 } };
 
   function withTrapper(): GameState {
-    return createGame(BOARD, provisionalRuleset(), [...PIECES, TRAPPER]);
+    return createGame(BOARD, provisionalRulesetV4(), [...PIECES, TRAPPER]);
   }
 
   it("relève les cibles de la capacité, sans les mêler aux déplacements", () => {

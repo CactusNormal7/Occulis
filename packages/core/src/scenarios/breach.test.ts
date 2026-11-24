@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { coordKey } from "../coord.js";
 import { hasLineOfSight } from "../los.js";
-import { provisionalRuleset } from "../pieces/index.js";
+import { provisionalRuleset, provisionalRulesetV4 } from "../pieces/index.js";
 import { createGame } from "../state.js";
 import { deployTeams, teamForSide, validateTeam } from "../team.js";
 import { DEFAULT_SCENARIO, scenarioFor } from "./index.js";
@@ -11,9 +11,11 @@ it("fait de breach-2 la carte des nouvelles parties", () => {
 });
 
 describe.each([
-  { name: "breach-1", size: 9 },
-  { name: "breach-2", size: 11 },
-])("$name", ({ name, size }) => {
+  // Chaque carte avec le ruleset de son époque : breach-1 et ses éclaireurs, breach-2 et le
+  // roster courant.
+  { name: "breach-1", size: 9, rulesetOf: provisionalRulesetV4 },
+  { name: "breach-2", size: 11, rulesetOf: provisionalRuleset },
+])("$name", ({ name, size, rulesetOf }) => {
   const breach = scenarioFor(name);
   const board = breach.board();
   const deployment = breach.deployment as NonNullable<typeof breach.deployment>;
@@ -45,7 +47,7 @@ describe.each([
   });
 
   it("pose des équipes par défaut valides, qui forment une position de départ", () => {
-    const ruleset = provisionalRuleset();
+    const ruleset = rulesetOf();
     for (const player of ["A", "B"] as const) {
       expect(
         validateTeam(ruleset, deployment.zones[player], deployment.defaultTeams[player]).ok,

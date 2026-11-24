@@ -85,6 +85,15 @@ export const game: Messages["game"] = {
     movement: "Déplacement",
     steps: (steps) => (steps === 1 ? "1 case" : `${steps} cases`),
     adjacency: { octile: "dans toutes les directions", orthogonal: "sans diagonale" },
+    lines: (orthogonal, diagonal) => {
+      const reach = (tiles: number) =>
+        !Number.isFinite(tiles) ? "sans limite" : tiles === 1 ? "1 case" : `${tiles} cases`;
+      const parts = [
+        ...(orthogonal > 0 ? [`${reach(orthogonal)} en ligne`] : []),
+        ...(diagonal > 0 ? [`${reach(diagonal)} en diagonale`] : []),
+      ];
+      return `en ligne droite : ${parts.join(", ")}`;
+    },
     climbs: "grimpe d'un niveau",
     noClimb: "ne grimpe pas",
     vision: "Vision",

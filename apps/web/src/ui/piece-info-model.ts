@@ -25,11 +25,11 @@ export function describeSheet(m: Pick<Messages, "game" | "team">, sheet: PieceSh
       : sheet.relation === "enemy"
         ? t.enemy
         : t.ghost(sheet.lastSeenTurn ?? 0);
-  const movement = [
-    t.steps(sheet.steps),
-    t.adjacency[sheet.adjacency],
-    sheet.canClimb ? t.climbs : t.noClimb,
-  ].join(", ");
+  const pattern =
+    sheet.lines === null
+      ? [t.steps(sheet.steps), t.adjacency[sheet.adjacency]]
+      : [t.lines(sheet.lines.orthogonal, sheet.lines.diagonal)];
+  const movement = [...pattern, sheet.canClimb ? t.climbs : t.noClimb].join(", ");
 
   return {
     title: m.team.kinds[kind] ?? m.team.unknownKind(kind),

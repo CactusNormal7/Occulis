@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { Board } from "./board.js";
 import { type Coord, coordKey } from "./coord.js";
 import { reachableTiles } from "./movement.js";
-import type { MovementProfile } from "./pieces/index.js";
+import {
+  Commander,
+  type MovementProfile,
+  Pawn,
+  diagonalLines,
+  orthogonalLines,
+} from "./pieces/index.js";
 
 const walker = (overrides: Partial<MovementProfile> = {}): MovementProfile => ({
   steps: 1,
@@ -188,5 +194,98 @@ describe("reachableTiles — prise à l'arrivée", () => {
     const enemy = new Set([at(1, 0)]);
     const down = reachableTiles(Board.fromAscii(["90"]), { x: 0, y: 0 }, walker(), enemy, enemy);
     expect(down.get(at(1, 0))).toMatchObject({ capture: true });
+  });
+});
+
+describe("reachableTiles — glissement en ligne droite", () => {
+  const rook: MovementProfile = {
+    steps: Infinity,
+    adjacency: "octile",
+    canClimb: true,
+    lines: orthogonalLines(Infinity),
+  };
+  const bishop: MovementProfile = { ...rook, lines: diagonalLines(Infinity) };
+  const keys = (options: Map<string, unknown>) => [...options.keys()].sort();
+
+  it("fait glisser la tour jusqu'au bord, sans diagonale", () => {
+    const options = reachableTiles(Board.flat(5, 5), { x: 2, y: 2 }, rook);
+    expect(options.size).toBe(8);
+    expect(at(options, { x: 2, y: 0 })?.cost).toBe(2);
+    expect(at(options, { x: 3, y: 3 })).toBeUndefined();
+  });
+
+  it("fait glisser le fou sur ses seules diagonales", () => {
+    const options = reachableTiles(Board.flat(5, 5), { x: 2, y: 2 }, bishop);
+    expect(options.size).toBe(8);
+    expect(at(options, { x: 0, y: 0 })?.cost).toBe(2);
+    expect(at(options, { x: 2, y: 3 })).toBeUndefined();
+  });
+
+  it("ne contourne rien : une pièce ou une case infranchissable arrête la ligne", () => {
+    const board = Board.fromAscii(["00000", "00~00"]);
+    const occupied = new Set([coordKey({ x: 3, y: 0 })]);
+    const options = reachableTiles(board, { x: 2, y: 1 }, rook, occupied);
+    expect(keys(options)).toEqual(["0,1", "1,1", "2,0", "3,1", "4,1"].sort());
+    const blocked = reachableTiles(board, { x: 0, y: 0 }, rook, occupied);
+    expect(at(blocked, { x: 2, y: 0 })).toBeDefined();
+    expect(at(blocked, { x: 4, y: 0 })).toBeUndefined();
+  });
+
+  it("s'arrête sur la pièce qu'elle prend, jamais au-delà", () => {
+    const board = Board.flat(5, 1);
+    const enemy = new Set([coordKey({ x: 2, y: 0 })]);
+    const options = reachableTiles(board, { x: 0, y: 0 }, rook, enemy, enemy);
+    expect(at(options, { x: 2, y: 0 })).toMatchObject({ capture: true });
+    expect(at(options, { x: 3, y: 0 })).toBeUndefined();
+  });
+
+  it("descend librement mais ne monte jamais en glissant", () => {
+    const board = Board.fromAscii(["2101"]);
+    const options = reachableTiles(board, { x: 0, y: 0 }, rook);
+    expect(keys(options)).toEqual(["1,0", "2,0"]);
+  });
+
+  it("grimpe d'un niveau sur la première case d'une ligne, comme unique mouvement", () => {
+    const board = Board.fromAscii(["0111"]);
+    const options = reachableTiles(board, { x: 0, y: 0 }, rook);
+    expect(at(options, { x: 1, y: 0 })?.kind).toBe("climb");
+    expect(at(options, { x: 2, y: 0 })).toBeUndefined();
+  });
+});
+
+describe("motifs du roster courant", () => {
+  const pattern = (profile: MovementProfile, size: number) => {
+    const center = { x: (size - 1) / 2, y: (size - 1) / 2 };
+    const options = reachableTiles(Board.flat(size, size), center, profile);
+    return Array.from({ length: size }, (_, y) =>
+      Array.from({ length: size }, (_, x) =>
+        x === center.x && y === center.y ? "R" : options.has(coordKey({ x, y })) ? "#" : ".",
+      ).join(""),
+    );
+  };
+
+  it("donne au roi le roi des échecs, plus une case en ligne droite : un rond de pixels", () => {
+    expect(pattern(new Commander().movement, 5)).toEqual([
+      "..#..",
+      ".###.",
+      "##R##",
+      ".###.",
+      "..#..",
+    ]);
+  });
+
+  it("donne au pion tout le carré de deux cases autour de lui", () => {
+    expect(pattern(new Pawn().movement, 5)).toEqual(["#####", "#####", "##R##", "#####", "#####"]);
+  });
+
+  it("refuse au roi sa seconde case quand la première est occupée", () => {
+    const occupied = new Set([coordKey({ x: 3, y: 2 })]);
+    const options = reachableTiles(
+      Board.flat(5, 5),
+      { x: 2, y: 2 },
+      new Commander().movement,
+      occupied,
+    );
+    expect(options.has(coordKey({ x: 4, y: 2 }))).toBe(false);
   });
 });

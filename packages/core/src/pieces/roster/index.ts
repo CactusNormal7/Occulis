@@ -1,7 +1,15 @@
 import { Ruleset, STRICT_CHESS_RULES, type TeamRules } from "../ruleset.js";
+import { Bishop } from "./bishop.js";
 import { Commander } from "./commander.js";
-import { legacyCommander, legacyPawn, legacyScout } from "./legacy.js";
+import {
+  legacyCommander,
+  legacyPawn,
+  legacyScout,
+  oneStepCommander,
+  oneStepPawn,
+} from "./legacy.js";
 import { Pawn } from "./pawn.js";
+import { Rook } from "./rook.js";
 import { Scout } from "./scout.js";
 import { Trapper } from "./trapper.js";
 
@@ -13,8 +21,10 @@ import { Trapper } from "./trapper.js";
  * définition au lieu de trois copies. Ce n'est PAS du contenu de jeu et il ne faut
  * pas bâtir d'équilibrage dessus.
  */
+export { Bishop } from "./bishop.js";
 export { Commander } from "./commander.js";
 export { Pawn } from "./pawn.js";
+export { Rook } from "./rook.js";
 export { Scout } from "./scout.js";
 export { Trapper } from "./trapper.js";
 
@@ -29,12 +39,25 @@ export const PROVISIONAL_TEAM: TeamRules = { commander: 1, special: 3, pawn: 2 }
 export const PROVISIONAL_TEAM_V1: TeamRules = { commander: 1, special: 3, pawn: 4 };
 
 /**
- * Le roster provisoire courant, celui des parties `provisional-4` : celui de
- * `provisional-3`, plus le trappeur et son piège (décision du 2026-11-20).
+ * Le roster provisoire courant, celui des parties `provisional-5` : des déplacements
+ * proches des échecs (décision du 2026-11-24). Le roi gagne une case en ligne droite, le
+ * pion un pas, et le fou et la tour remplacent l'éclaireur aux côtés du trappeur.
  */
 export function provisionalRuleset(): Ruleset {
   return new Ruleset(
-    [new Commander(), new Scout(), new Trapper(), new Pawn()],
+    [new Commander(), new Bishop(), new Rook(), new Trapper(), new Pawn()],
+    PROVISIONAL_TEAM,
+    STRICT_CHESS_RULES,
+  );
+}
+
+/**
+ * Les parties `provisional-4` : celui de `provisional-3`, plus le trappeur et son piège
+ * (décision du 2026-11-20).
+ */
+export function provisionalRulesetV4(): Ruleset {
+  return new Ruleset(
+    [oneStepCommander(), new Scout(), new Trapper(), oneStepPawn()],
     PROVISIONAL_TEAM,
     STRICT_CHESS_RULES,
   );
@@ -46,7 +69,7 @@ export function provisionalRuleset(): Ruleset {
  */
 export function provisionalRulesetV3(): Ruleset {
   return new Ruleset(
-    [new Commander(), new Scout(), new Pawn()],
+    [oneStepCommander(), new Scout(), oneStepPawn()],
     PROVISIONAL_TEAM,
     STRICT_CHESS_RULES,
   );

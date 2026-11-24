@@ -4,13 +4,13 @@ import {
   type GameState,
   advanceMemory,
   createGame,
-  provisionalRuleset,
+  provisionalRulesetV4,
   startMemory,
   viewFor,
 } from "@occulis/core";
 import { inspectPiece, sameSheet } from "./inspection.js";
 
-const ruleset = provisionalRuleset();
+const ruleset = provisionalRulesetV4();
 
 /** Un mur en x = 3 : l'éclaireur de B, derrière, n'est vu que par-dessus ou en le contournant. */
 const WALLED = Board.fromAscii(["0009000", "0009000", "0000000"]);
@@ -37,6 +37,7 @@ describe("inspectPiece", () => {
       steps: 3,
       adjacency: "octile",
       canClimb: true,
+      lines: null,
       visionRange: 20,
       lastSeenTurn: undefined,
       inCheck: false,

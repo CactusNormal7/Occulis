@@ -15,6 +15,9 @@ import type { MovementProfile, VisionProfile } from "../profiles.js";
  * presque toute la carte et mettaient le roi adverse en échec permanent. La vue, elle,
  * reste généreuse — sur les cartes de démonstration, seule l'occultation la limite. Ce
  * n'est pas un équilibrage. Les anciens chiffres vivent dans `legacy.ts`.
+ *
+ * Retiré des nouvelles parties le 2026-11-24 (`provisional-5`), remplacé par le fou et la
+ * tour ; il reste ici pour les parties `provisional-3` et `provisional-4`.
  */
 export class Scout extends PieceType {
   readonly kind: PieceKind = "scout";

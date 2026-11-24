@@ -38,3 +38,26 @@ export function legacyPawn(): PieceType {
     role: "pawn",
   });
 }
+
+/**
+ * Le roi d'un pas des parties `provisional-3` et `provisional-4` (décision du 2026-11-16),
+ * figé quand il a gagné sa case de plus en ligne droite (`provisional-5`).
+ */
+export function oneStepCommander(): PieceType {
+  return new ConfigurablePieceType({
+    kind: "commander",
+    movement: { steps: 1, adjacency: "octile", canClimb: true },
+    vision: { range: 14 },
+    role: "commander",
+  });
+}
+
+/** Le pion d'un pas des parties `provisional-3` et `provisional-4`, figé comme le roi. */
+export function oneStepPawn(): PieceType {
+  return new ConfigurablePieceType({
+    kind: "pawn",
+    movement: { steps: 1, adjacency: "octile", canClimb: true },
+    vision: { range: 6 },
+    role: "pawn",
+  });
+}
