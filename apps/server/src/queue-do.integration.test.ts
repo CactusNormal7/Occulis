@@ -120,6 +120,24 @@ describe("QueueDO dans workerd", () => {
     boris.socket.close();
   });
 
+  it("ne propose la partie qu'à deux joueurs quand trois cherchent", async () => {
+    const anne = await connect(await signUp(unique("anne")));
+    const boris = await connect(await signUp(unique("boris")));
+    const carla = await connect(await signUp(unique("carla")));
+    anne.hello({ kind: "quick" });
+    boris.hello({ kind: "quick" });
+    carla.hello({ kind: "quick" });
+
+    // Les deux premiers arrivés sont mis en relation ; la troisième attend toujours.
+    await Promise.all([anne.awaiting("proposal"), boris.awaiting("proposal")]);
+    expect(await carla.awaiting("waiting")).toEqual({ kind: "waiting" });
+    await expect(carla.awaiting("proposal")).rejects.toThrow();
+
+    anne.socket.close();
+    boris.socket.close();
+    carla.socket.close();
+  });
+
   it("remet en tête de file qui avait accepté, et sort qui a refusé", async () => {
     const anne = await connect(await signUp(unique("anne")));
     const boris = await connect(await signUp(unique("boris")));
