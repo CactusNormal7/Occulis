@@ -55,7 +55,7 @@ Fields bind with `v-model`. Content goes in slots (`<template #actions>`, `#end`
 
 ## Iconography
 
-Twenty-nine stroke icons on a 24 grid (`Icon`), 1.6 stroke, round caps, never filled, always `currentColor`. An icon alone says nothing: every `IconButton` takes a `label` (shown as a tooltip) and `disabledReason` instead of a bare `disabled`. The Google logo in `ProviderButton` is monochrome too. There is no logo file: the mark is the wireframe `cube` icon followed by the uppercase wordmark (`occ-wordmark` spacing) — use `Wordmark`.
+Twenty-nine stroke icons on a 24 grid (`Icon`, group _Icons_), 1.6 stroke, round caps, never filled, always `currentColor`. An icon alone says nothing: every `IconButton` takes a `label` (shown as a tooltip) and `disabledReason` instead of a bare `disabled`. The Google logo in `ProviderButton` is monochrome too. There is no logo file: the mark is the wireframe `cube` icon followed by the uppercase wordmark (`occ-wordmark` spacing) — use `Wordmark`.
 
 ## Classes
 
@@ -76,3 +76,5 @@ Style your own layout glue with `var(--occ-*)` only. Helper classes: `occ-page`,
 
 - `--occ-font-pixel`, `--occ-font-mono` and the motion values live in `components/bundle.css`, because `tokens.json` has no place for font stacks or motion; edit them in `packages/ui/src/tokens.ts`.
 - The proposed redesign tokens (`PROPOSED`) and the lab components (`src/lab/`) are not included: no screen uses them yet. They live in the lab (`/lab/`), next to this design system.
+- `LocaleProvider` has no preview of its own (it renders nothing); the bundle exports it, with `SkeletonScreen`.
+- The bundle is `packages/ui/dist/occulis-ui.iife.js` as the package build writes it: it reads Vue from `window.Vue` (`components/lib/vue.global.prod.js`, loaded before it). Previews are the repository's own Vue previews (`.design-sync/previews/`), compiled one file per component; several are still written in French.
